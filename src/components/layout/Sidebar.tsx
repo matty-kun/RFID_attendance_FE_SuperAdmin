@@ -1,32 +1,28 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard,
   Calendar,
   Clock,
   MapPin,
   Users,
   Radio,
-  BarChart3,
-  Settings,
+  GraduationCap,
   ShieldCheck,
   LogOut,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../features/auth';
 
 export const Sidebar: React.FC = () => {
   const { user, logout } = useAuth();
 
   const navItems = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Events', path: '/events', icon: Calendar },
     { name: 'Sessions', path: '/sessions', icon: Clock },
-    { name: 'Kiosks & Venues', path: '/locations', icon: MapPin },
-    { name: 'Marshals & Admins', path: '/admins', icon: Users },
-    { name: 'Live Scan Stream', path: '/scans', icon: Radio },
-    { name: 'Reports & Export', path: '/reports', icon: BarChart3 },
-    { name: 'Settings', path: '/settings', icon: Settings },
+    { name: 'Locations & Kiosks', path: '/locations', icon: MapPin },
+    { name: 'Attendance Records', path: '/attendance', icon: Radio },
+    { name: 'Students & RFID', path: '/students', icon: GraduationCap },
+    { name: 'Admins & Marshals', path: '/admins', icon: Users },
   ];
 
   return (
@@ -48,9 +44,9 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Nav List */}
-      <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-        <div className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-          Operations
+      <nav className="flex-1 p-4 space-y-1">
+        <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-500">
+          Backend Domains
         </div>
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -58,41 +54,45 @@ export const Sidebar: React.FC = () => {
             <NavLink
               key={item.path}
               to={item.path}
-              end={item.path === '/'}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150',
+                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all',
                   isActive
-                    ? 'bg-brand-600 text-white shadow-md shadow-brand-900/40 font-bold'
+                    ? 'bg-brand-600 text-white shadow-md shadow-brand-900/30'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
                 )
               }
             >
-              <Icon className="w-4 h-4 shrink-0" />
+              <Icon className="w-4 h-4" />
               <span>{item.name}</span>
             </NavLink>
           );
         })}
-      </div>
+      </nav>
 
-      {/* Super Admin User Footer */}
-      <div className="p-3 border-t border-slate-800 bg-slate-950/30">
-        <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-800/40 border border-slate-700/50">
-          <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center font-bold text-xs text-white">
-            {user?.name ? user.name.slice(0, 2).toUpperCase() : 'SA'}
+      {/* User Footer */}
+      <div className="p-4 border-t border-slate-800 bg-slate-950/20">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <div className="w-8 h-8 rounded-full bg-brand-700 text-white flex items-center justify-center font-black text-xs shrink-0">
+              {user?.name ? user.name.charAt(0) : 'A'}
+            </div>
+            <div className="overflow-hidden">
+              <div className="text-xs font-black text-white truncate">{user?.name || 'Super Admin'}</div>
+              <div className="text-[10px] text-brand-400 font-semibold truncate capitalize">
+                {user?.role?.replace('_', ' ') || 'Super Administrator'}
+              </div>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white truncate">{user?.name || 'Super Admin'}</p>
-            <p className="text-[10px] text-slate-400 truncate">{user?.email || 'admin@rfid.edu'}</p>
-          </div>
-          <button
-            onClick={logout}
-            title="Log out"
-            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
         </div>
+
+        <button
+          onClick={logout}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer border border-transparent hover:border-rose-500/20"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          Sign Out
+        </button>
       </div>
     </aside>
   );

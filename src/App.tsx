@@ -1,19 +1,17 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from './features/auth';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { SuperAdminLayout } from './components/layout/SuperAdminLayout';
 
-// Pages
+// Domain Page Routes
 import { LoginPage } from './pages/LoginPage';
-import { DashboardPage } from './pages/DashboardPage';
 import { EventsPage } from './pages/EventsPage';
 import { SessionsPage } from './pages/SessionsPage';
 import { LocationsPage } from './pages/LocationsPage';
+import { AttendancePage } from './pages/AttendancePage';
+import { StudentsPage } from './pages/StudentsPage';
 import { AdminsPage } from './pages/AdminsPage';
-import { LiveScansPage } from './pages/LiveScansPage';
-import { ReportsPage } from './pages/ReportsPage';
-import { SettingsPage } from './pages/SettingsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 export const App: React.FC = () => {
@@ -24,18 +22,17 @@ export const App: React.FC = () => {
           {/* Public Authentication Route */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* Protected Super Admin Dashboard Routes */}
+          {/* Protected Super Admin Tier (Mirrors Backend Domains) */}
           <Route element={<ProtectedRoute />}>
             <Route element={<SuperAdminLayout />}>
-              <Route path="/" element={<DashboardPage />} />
+              <Route path="/" element={<Navigate to="/events" replace />} />
               <Route path="/events" element={<EventsPage />} />
               <Route path="/sessions" element={<SessionsPage />} />
               <Route path="/locations" element={<LocationsPage />} />
+              <Route path="/attendance" element={<AttendancePage />} />
+              <Route path="/scans" element={<Navigate to="/attendance" replace />} />
+              <Route path="/students" element={<StudentsPage />} />
               <Route path="/admins" element={<AdminsPage />} />
-              <Route path="/scans" element={<LiveScansPage />} />
-              <Route path="/live-scans" element={<Navigate to="/scans" replace />} />
-              <Route path="/reports" element={<ReportsPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Route>
