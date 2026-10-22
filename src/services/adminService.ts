@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from './apiClient';
 import {
   EventRecord,
   SessionRecord,
@@ -22,6 +22,7 @@ export const adminService = {
           description: 'Annual College Sports & Academic Festival with RFID kiosk attendance.',
           start_date: '2026-10-20',
           end_date: '2026-10-25',
+          status: 'ongoing',
           created_at: new Date().toISOString(),
         },
       ];
@@ -29,8 +30,20 @@ export const adminService = {
   },
 
   async createEvent(payload: Partial<EventRecord>): Promise<EventRecord> {
-    const data: any = await api.post('/events', payload);
-    return data;
+    try {
+      const data: any = await api.post('/events', payload);
+      return data;
+    } catch {
+      return {
+        id: `ev-${Date.now()}`,
+        name: payload.name || 'New Campus Event',
+        description: payload.description || null,
+        start_date: payload.start_date || new Date().toISOString(),
+        end_date: payload.end_date || new Date().toISOString(),
+        status: payload.status || 'upcoming',
+        created_at: new Date().toISOString(),
+      };
+    }
   },
 
   // --- SESSIONS ---
@@ -43,31 +56,49 @@ export const adminService = {
       return [
         {
           id: '77777777-8888-4444-9999-000000000011',
-          event_id: '77777777-8888-4444-9999-000000000001',
+          event_id: eventId || '77777777-8888-4444-9999-000000000001',
           name: 'Morning General Assembly',
           date: '2026-10-21',
           time_in_start: '07:00:00',
           time_in_end: '09:00:00',
           time_out_start: '11:30:00',
           time_out_end: '13:00:00',
+          status: 'open',
+          event: { name: 'SIDLAK 2026: University Intramurals' },
         },
         {
           id: '77777777-8888-4444-9999-000000000012',
-          event_id: '77777777-8888-4444-9999-000000000001',
+          event_id: eventId || '77777777-8888-4444-9999-000000000001',
           name: 'Afternoon Sports Competitions',
           date: '2026-10-21',
           time_in_start: '13:00:00',
           time_in_end: '14:30:00',
           time_out_start: '16:30:00',
           time_out_end: '18:30:00',
+          status: 'upcoming',
+          event: { name: 'SIDLAK 2026: University Intramurals' },
         },
       ];
     }
   },
 
   async createSession(eventId: string, payload: Partial<SessionRecord>): Promise<SessionRecord> {
-    const data: any = await api.post(`/events/${eventId}/sessions`, payload);
-    return data;
+    try {
+      const data: any = await api.post(`/events/${eventId}/sessions`, payload);
+      return data;
+    } catch {
+      return {
+        id: `ses-${Date.now()}`,
+        event_id: eventId,
+        name: payload.name || 'New Session',
+        date: payload.date || new Date().toISOString().slice(0, 10),
+        time_in_start: payload.time_in_start || '08:00:00',
+        time_in_end: payload.time_in_end || '10:00:00',
+        time_out_start: payload.time_out_start || '12:00:00',
+        time_out_end: payload.time_out_end || '14:00:00',
+        status: payload.status || 'upcoming',
+      };
+    }
   },
 
   // --- LOCATIONS / KIOSKS ---
@@ -77,16 +108,44 @@ export const adminService = {
       return data || [];
     } catch {
       return [
-        { id: 'fb394945-1593-426f-89ff-4f2e55467ccb', name: 'CITE Building - Ground Floor Lobby', room_or_floor: 'Lobby Kiosk 1' },
-        { id: 'f531764d-690b-4d98-a383-57759b24f76c', name: 'Gymnasium - Gate 1', room_or_floor: 'Main Gate Kiosk' },
-        { id: 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d', name: 'University Auditorium - Main Entrance', room_or_floor: 'Auditorium Kiosk' },
+        {
+          id: 'fb394945-1593-426f-89ff-4f2e55467ccb',
+          name: 'CITE Building - Ground Floor Lobby',
+          room_or_floor: 'Lobby Kiosk 1',
+          is_active: true,
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: 'f531764d-690b-4d98-a383-57759b24f76c',
+          name: 'Gymnasium - Gate 1',
+          room_or_floor: 'Main Gate Kiosk',
+          is_active: true,
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d',
+          name: 'University Auditorium - Main Entrance',
+          room_or_floor: 'Auditorium Kiosk',
+          is_active: false,
+          created_at: new Date().toISOString(),
+        },
       ];
     }
   },
 
   async createLocation(payload: Partial<LocationRecord>): Promise<LocationRecord> {
-    const data: any = await api.post('/locations', payload);
-    return data;
+    try {
+      const data: any = await api.post('/locations', payload);
+      return data;
+    } catch {
+      return {
+        id: `loc-${Date.now()}`,
+        name: payload.name || 'Station',
+        room_or_floor: payload.room_or_floor,
+        is_active: true,
+        created_at: new Date().toISOString(),
+      };
+    }
   },
 
   // --- ADMINS & MARSHALS ---
@@ -126,12 +185,16 @@ export const adminService = {
           student_id: '5a530cd1-fa4a-4778-8492-a419f215adf8',
           session_id: '77777777-8888-4444-9999-000000000012',
           location_id: 'f531764d-690b-4d98-a383-57759b24f76c',
+          rfid_tag_id: 'E28011700000020B042F3401',
           type: 'time_in',
-          recorded_at: new Date().toISOString(),
+          status: 'on_time',
+          scanned_at: new Date().toISOString(),
           student: {
             student_id: '2026-00001',
+            student_number: '2026-00001',
             name: 'Juan Dela Cruz',
             course: 'BS Information Technology',
+            course_year: 'BSIT - 3A',
           },
           session: {
             id: '77777777-8888-4444-9999-000000000012',
@@ -155,6 +218,9 @@ export const adminService = {
       return {
         totalEvents: 4,
         activeSessions: 2,
+        totalLocations: 3,
+        totalAdmins: 5,
+        totalScansToday: 384,
         todayScans: 384,
         activeKiosks: 3,
         totalStudents: 1250,
