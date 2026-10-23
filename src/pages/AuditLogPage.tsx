@@ -10,6 +10,10 @@ function formatTimestamp(timestamp: string) {
   }).format(new Date(timestamp));
 }
 
+function initials(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('') || '?';
+}
+
 export function AuditLogPage() {
   const [search, setSearch] = useState('');
   const {
@@ -45,7 +49,7 @@ export function AuditLogPage() {
         </tr></thead>
         <tbody>{visibleRecords.map((record) => <tr key={record.id} className="h-[58px]">
           <td className="whitespace-nowrap px-3 text-[11px] text-[#637596]">{formatTimestamp(record.recorded_at)}</td>
-          <td className="px-3"><span className="block font-bold">{record.student?.name ?? 'Unknown student'}</span><span className="text-[10px] text-[#637596]">{record.student?.student_id ?? record.student_id}</span></td>
+          <td className="px-3"><div className="flex items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#DFE8F8] text-[10px] font-extrabold text-[#294B85]" aria-hidden="true">{record.student?.avatar_url ? <img src={record.student.avatar_url} alt="" className="h-full w-full object-cover" /> : initials(record.student?.name ?? '')}</span><span><span className="block font-bold">{record.student?.name ?? 'Unknown student'}</span><span className="text-[10px] text-[#637596]">{record.student?.student_id ?? record.student_id}</span></span></div></td>
           <td className="whitespace-nowrap px-3"><span className={`inline-block rounded-xl px-3 py-1.5 text-[11px] font-semibold ${record.type === 'time_in' ? 'bg-[#E4F7EB] text-[#16883F]' : 'bg-[#FDE8EA] text-[#C52736]'}`}>{record.type === 'time_in' ? 'Time In' : 'Time Out'}</span></td>
           <td className="px-3 text-[11px]">{record.session?.name ?? 'Unknown session'}</td><td className="px-3 text-[11px]">{record.location?.name ?? 'Unknown checkpoint'}</td>
         </tr>)}</tbody>

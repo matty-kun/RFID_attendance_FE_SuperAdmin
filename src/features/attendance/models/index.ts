@@ -11,6 +11,7 @@ export interface AttendanceRecord {
     student_id?: string;
     student_number?: string;
     name: string;
+    avatar_url?: string | null;
     course?: string;
     year_level?: number;
   };
