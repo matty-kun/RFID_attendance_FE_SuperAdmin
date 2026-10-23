@@ -34,6 +34,8 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     try {
       const data = await adminManagementService.getAdmins();
       setAdmins(data);
+    } catch {
+      setAdmins([]);
     } finally {
       setIsLoading(false);
     }
@@ -52,6 +54,8 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
       setIsModalOpen(false);
       setName('');
       setEmail('');
+    } catch {
+      // The shared API error banner shows the server error; keep the form open.
     } finally {
       setIsSubmitting(false);
     }

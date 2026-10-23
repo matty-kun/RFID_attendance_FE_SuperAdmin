@@ -47,6 +47,8 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     try {
       const data = await studentService.getStudents();
       setStudents(data);
+    } catch {
+      setStudents([]);
     } finally {
       setIsLoading(false);
     }
@@ -87,6 +89,8 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
       setName('');
       setEmail('');
       setRfidUid('');
+    } catch {
+      // Keep the form open so the user can correct the request or retry.
     } finally {
       setIsSubmitting(false);
     }

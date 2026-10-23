@@ -31,6 +31,8 @@ export const useLocationsViewModel = (): UseLocationsViewModelReturn => {
     try {
       const data = await locationService.getLocations();
       setLocations(data);
+    } catch {
+      setLocations([]);
     } finally {
       setIsLoading(false);
     }

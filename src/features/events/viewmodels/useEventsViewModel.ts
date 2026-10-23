@@ -37,6 +37,8 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
     try {
       const data = await eventService.getEvents();
       setEvents(data);
+    } catch {
+      setEvents([]);
     } finally {
       setIsLoading(false);
     }
