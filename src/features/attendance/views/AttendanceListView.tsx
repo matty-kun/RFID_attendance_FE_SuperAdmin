@@ -21,7 +21,7 @@ export const AttendanceListView: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Radio className="w-6 h-6 text-rose-500 animate-pulse" /> RFID Attendance Audit
+            <Radio className="w-6 h-6 text-rose-500 animate-pulse" /> Attendance Records
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
             Recorded time-in and time-out scans across campus sessions.

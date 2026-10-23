@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { Activity, AlertCircle, CalendarDays, GraduationCap, MapPin, ScanLine, ShieldCheck, Users, X } from 'lucide-react';
 import { adminService } from '../services/adminService';
 import type { DashboardMetrics } from '../types';
@@ -7,11 +8,11 @@ import type { DashboardMetrics } from '../types';
 const summaryCards = [
   { key: 'totalStudents', label: 'Total Students', eyebrow: 'Enrolled', path: '/students', icon: Users, iconClass: 'bg-[#E8F1FF] text-[#3B82F6]', accent: 'text-brand-700' },
   { key: 'totalAdmins', label: 'Staff Accounts', eyebrow: 'Registered', path: '/admins', icon: ShieldCheck, iconClass: 'bg-[#E8F1FF] text-[#3B82F6]', accent: 'text-[#3B82F6]' },
-  { key: 'todayTimeIns', label: 'Time Ins Today', eyebrow: 'Today', path: '/attendance', icon: GraduationCap, iconClass: 'bg-[#E4F7EB] text-[#17B556]', accent: 'text-[#17B556]' },
+  { key: 'todayTimeIns', label: 'Time Ins Today', eyebrow: 'Today', path: '/attendance?tab=records', icon: GraduationCap, iconClass: 'bg-[#E4F7EB] text-[#17B556]', accent: 'text-[#17B556]' },
   { key: 'totalLocations', label: 'Checkpoints', eyebrow: 'Registered', path: '/locations', icon: MapPin, iconClass: 'bg-[#FFF3D8] text-[#F59E0B]', accent: 'text-[#F59E0B]' },
   { key: 'totalEvents', label: 'Events', eyebrow: 'Scheduled', path: '/events', icon: CalendarDays, iconClass: 'bg-[#F0E8FC] text-brand-700', accent: 'text-brand-700' },
   { key: 'totalSessions', label: 'Sessions', eyebrow: 'Configured', path: '/sessions', icon: Activity, iconClass: 'bg-[#E8F1FF] text-[#3B82F6]', accent: 'text-[#3B82F6]' },
-  { key: 'totalScans', label: 'Total Scans', eyebrow: 'All Time', path: '/attendance', icon: ScanLine, iconClass: 'bg-[#E4F7EB] text-[#17B556]', accent: 'text-[#17B556]' },
+  { key: 'totalScans', label: 'Total Scans', eyebrow: 'All Time', path: '/attendance?tab=records', icon: ScanLine, iconClass: 'bg-[#E4F7EB] text-[#17B556]', accent: 'text-[#17B556]' },
 ] as const;
 
 const locationColors = ['bg-[#17B556]', 'bg-[#B5DD17]', 'bg-[#F59E0B]', 'bg-[#EF3340]'];
@@ -123,13 +124,13 @@ export function OverviewPage() {
       <div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-xs font-semibold text-slate-500">Busiest day</p><p className="mt-2 text-2xl font-extrabold text-[#24133F]">{loading ? '—' : busiestDay ? formatDay(busiestDay.date) : 'No scans'}</p><p className="mt-1 text-xs text-slate-500">{busiestDay ? `${(busiestDay.timeIns + busiestDay.timeOuts).toLocaleString()} scans` : 'Last four days'}</p></div>
       <div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-xs font-semibold text-slate-500">Busiest checkpoint today</p><p className="mt-2 truncate text-2xl font-extrabold text-[#24133F]">{loading ? '—' : busiestLocation?.name ?? 'No scans'}</p><p className="mt-1 text-xs text-slate-500">{busiestLocation ? `${busiestLocation.scansToday.toLocaleString()} scans today` : 'No checkpoint activity'}</p></div>
     </div>
-    {selectedDay && <div role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedDay(null); }} className="fixed inset-0 z-50 flex items-center justify-center bg-[#170D29]/60 p-4">
+    {selectedDay && createPortal(<div role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedDay(null); }} className="fixed inset-0 z-[100] flex items-center justify-center bg-[#170D29]/40 p-4 backdrop-blur-md">
       <section role="dialog" aria-modal="true" aria-labelledby="day-detail-title" className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
         <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-wider text-brand-700">Attendance breakdown</p><h2 id="day-detail-title" className="mt-1 text-2xl font-extrabold text-[#24133F]">{formatDay(selectedDay.date)}</h2></div><button type="button" onClick={() => setSelectedDay(null)} aria-label="Close details" className="rounded-lg p-1 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
         <div className="mt-6 grid grid-cols-2 gap-3"><div className="rounded-xl bg-[#E4F7EB] p-4"><p className="text-xs font-semibold text-[#16883F]">Time In</p><p className="mt-1 text-2xl font-extrabold text-[#16883F]">{selectedDay.timeIns.toLocaleString()}</p></div><div className="rounded-xl bg-[#FDE8EA] p-4"><p className="text-xs font-semibold text-[#C52736]">Time Out</p><p className="mt-1 text-2xl font-extrabold text-[#C52736]">{selectedDay.timeOuts.toLocaleString()}</p></div></div>
         <p className="mt-5 border-t border-slate-200 pt-4 text-sm font-semibold text-[#24133F]">Total scans <span className="float-right">{(selectedDay.timeIns + selectedDay.timeOuts).toLocaleString()}</span></p>
-        <Link to="/attendance" onClick={() => setSelectedDay(null)} className="mt-6 block rounded-xl bg-brand-700 px-4 py-3 text-center text-sm font-bold text-white hover:bg-brand-800">View attendance records</Link>
+        <Link to="/attendance?tab=records" onClick={() => setSelectedDay(null)} className="mt-6 block rounded-xl bg-brand-700 px-4 py-3 text-center text-sm font-bold text-white hover:bg-brand-800">View attendance records</Link>
       </section>
-    </div>}
+    </div>, document.body)}
   </div>;
 }

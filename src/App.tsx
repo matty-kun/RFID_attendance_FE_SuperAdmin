@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { AuthProvider } from './features/auth';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { SuperAdminLayout } from './components/layout/SuperAdminLayout';
@@ -7,7 +7,6 @@ import { SuperAdminLayout } from './components/layout/SuperAdminLayout';
 // Domain Page Routes
 import { LoginPage } from './pages/LoginPage';
 import { EventsPage } from './pages/EventsPage';
-import { SessionsPage } from './pages/SessionsPage';
 import { LocationsPage } from './pages/LocationsPage';
 import { AttendancePage } from './pages/AttendancePage';
 import { StudentsPage } from './pages/StudentsPage';
@@ -16,6 +15,13 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { FirstLoginPasswordPage } from './pages/FirstLoginPasswordPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { AuditLogPage } from './pages/AuditLogPage';
+import { ReportsPage } from './pages/ReportsPage';
+
+function SessionsRedirect() {
+  const [params] = useSearchParams();
+  const eventId = params.get('eventId');
+  return <Navigate to={`/attendance?tab=sessions${eventId ? `&eventId=${encodeURIComponent(eventId)}` : ''}`} replace />;
+}
 
 export const App: React.FC = () => {
   return (
@@ -33,10 +39,11 @@ export const App: React.FC = () => {
               <Route path="/overview" element={<OverviewPage />} />
               <Route path="/audit-log" element={<AuditLogPage />} />
               <Route path="/events" element={<EventsPage />} />
-              <Route path="/sessions" element={<SessionsPage />} />
+              <Route path="/sessions" element={<SessionsRedirect />} />
               <Route path="/locations" element={<LocationsPage />} />
               <Route path="/attendance" element={<AttendancePage />} />
-              <Route path="/scans" element={<Navigate to="/attendance" replace />} />
+              <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/scans" element={<Navigate to="/attendance?tab=records" replace />} />
               <Route path="/students" element={<StudentsPage />} />
               <Route path="/admins" element={<AdminsPage />} />
               <Route path="*" element={<NotFoundPage />} />

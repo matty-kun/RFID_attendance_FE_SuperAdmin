@@ -3,12 +3,12 @@
 @tailwind utilities;
 
 @keyframes nav-settle {
-  from { opacity: .65; transform: translateY(3px) scale(.96); }
+  from { opacity: .35; transform: translateY(6px) scale(.92); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .animate-nav-settle { animation: nav-settle 220ms ease-out both; }
+  .animate-nav-settle { animation: nav-settle 320ms cubic-bezier(.2,.8,.2,1) both; }
 }
 
 @font-face {

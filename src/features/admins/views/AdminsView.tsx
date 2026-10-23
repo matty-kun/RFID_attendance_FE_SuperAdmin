@@ -30,9 +30,9 @@ export const AdminsView: React.FC = () => {
       {/* Top Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">System Administrators & Marshals</h1>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Admin Accounts</h1>
           <p className="text-xs text-slate-500 mt-1 font-medium">
-            Create staff logins and assign administrator roles.
+            Create admin logins and assign administrator roles.
           </p>
         </div>
         <Button
@@ -40,7 +40,7 @@ export const AdminsView: React.FC = () => {
           leftIcon={<Plus className="w-4 h-4" />}
           onClick={() => setIsModalOpen(true)}
         >
-          Add Administrator
+          Add Admin
         </Button>
       </div>
 
@@ -60,7 +60,7 @@ export const AdminsView: React.FC = () => {
         type="search"
         value={searchQuery}
         onChange={(event) => { setPage(1); setSearchQuery(event.target.value); }}
-        placeholder="Search staff by name or email…"
+        placeholder="Search admins by name or email…"
         className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm"
       />
 
@@ -69,7 +69,7 @@ export const AdminsView: React.FC = () => {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="w-4 h-4 text-brand-600" />
-            Registered Staff & Marshals ({total})
+            Registered Admins ({total})
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -77,7 +77,7 @@ export const AdminsView: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Staff Member</TableHead>
+                <TableHead>Admin</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role Tier</TableHead>
                 <TableHead>Account Created</TableHead>
@@ -133,8 +133,8 @@ export const AdminsView: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Add Staff Member"
-        description="Create a staff login with a temporary password. Share it privately; the staff member must change it after first login."
+        title="Add Admin"
+        description="Create an admin login with a temporary password. Share it privately; the admin must change it after first login."
       >
         <form onSubmit={handleCreate} className="space-y-4 mt-2">
           <Input
