@@ -1,47 +1,57 @@
+import { useRef } from 'react';
 import { NavLink } from 'react-router-dom';
-import { CalendarDays, ClipboardList, GraduationCap, LayoutDashboard, LogOut, MapPin, ShieldCheck, Users } from 'lucide-react';
-import { useAuth } from '../../features/auth';
+import { CalendarDays, ChartNoAxesColumn, ClipboardList, LayoutGrid, LogOut, MapPin, Search, UsersRound } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { useAuth } from '../../features/auth';
 
 const navigation = [
-  { name: 'Overview', path: '/overview', icon: LayoutDashboard },
-  { name: 'Events', path: '/events', icon: CalendarDays },
-  { name: 'Sessions', path: '/sessions', icon: ClipboardList },
-  { name: 'Attendance', path: '/attendance', icon: ShieldCheck },
+  { name: 'Overview', path: '/overview', icon: LayoutGrid },
+  { name: 'Events', path: '/events', icon: ClipboardList },
+  { name: 'Sessions', path: '/sessions', icon: CalendarDays },
   { name: 'Locations', path: '/locations', icon: MapPin },
-  { name: 'Students', path: '/students', icon: GraduationCap },
-  { name: 'Staff', path: '/admins', icon: Users },
+  { name: 'Attendance', path: '/attendance', icon: ChartNoAxesColumn },
+  { name: 'Students', path: '/students', icon: UsersRound },
+  { name: 'Staff', path: '/admins', icon: UsersRound },
 ] as const;
 
 export function Header() {
-  const { user, logout } = useAuth();
+  const pagesDialog = useRef<HTMLDialogElement>(null);
+  const { logout } = useAuth();
 
-  return <header className="border-b border-slate-200 bg-slate-50/95 px-4 py-4 sm:px-7">
-    <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
-      <NavLink to="/overview" className="text-[22px] font-extrabold leading-none text-slate-900">Presnt</NavLink>
-      <nav aria-label="Main navigation" className="order-3 flex w-full gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1.5 sm:order-2 sm:w-auto">
-        {navigation.map(({ name, path, icon: Icon }) => <NavLink
-          key={path}
-          to={path}
-          title={name}
-          aria-label={name}
-          className={({ isActive }) => cn(
-            'flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[12px] font-bold transition-colors focus-visible:outline-2 focus-visible:outline-brand-700',
-            isActive ? 'bg-brand-50 text-brand-700 ring-1 ring-brand-100' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-          )}
-        >
-          <Icon className="h-4 w-4" />
-          <span className={name === 'Overview' ? '' : 'sr-only lg:not-sr-only'}>{name}</span>
-        </NavLink>)}
-      </nav>
-      <div className="order-2 flex items-center gap-2 sm:order-3">
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-xs font-extrabold text-brand-700" title={user?.name || 'Super Admin'}>
-          {user?.name?.slice(0, 2).toUpperCase() || 'SA'}
-        </span>
-        <button type="button" onClick={logout} title="Sign out" aria-label="Sign out" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-brand-700">
-          <LogOut className="h-4 w-4" />
-        </button>
-      </div>
+  return <header className="relative flex min-h-[84px] flex-wrap items-center justify-between gap-2 pl-7 pr-11 py-3 md:flex-nowrap">
+    <NavLink to="/overview" className="z-10 text-[22px] font-extrabold leading-none text-[#24133F]">Presnt</NavLink>
+
+    <nav aria-label="Main navigation" className="order-3 flex max-w-full gap-1.5 overflow-x-auto rounded-xl bg-[#F2F1F5] p-1.5 md:absolute md:left-[calc(50%+32px)] md:order-2 md:-translate-x-1/2">
+      {navigation.map(({ name, path, icon: Icon }) => <NavLink
+        key={path}
+        to={path}
+        title={name}
+        aria-label={name}
+        className={({ isActive }) => cn(
+          'flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-brand-700',
+          isActive ? 'border-slate-200 bg-white text-[#24133F]' : 'border-transparent bg-white text-[#756883] hover:text-brand-700'
+        )}
+      >
+        <Icon className="h-3.5 w-3.5" />
+        {name === 'Overview' && <span>Overview</span>}
+      </NavLink>)}
+    </nav>
+
+    <div className="z-10 flex items-center gap-2">
+      <button type="button" onClick={logout} aria-label="Sign out" title="Sign out" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E0EB] bg-white text-[#756883] md:hidden"><LogOut className="h-4 w-4" /></button>
+      <button type="button" onClick={() => pagesDialog.current?.showModal()} aria-label="Find a page" title="Find a page" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E0EB] bg-white text-[#756883] hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-brand-700">
+        <Search className="h-4 w-4" />
+      </button>
     </div>
+
+    <dialog ref={pagesDialog} aria-labelledby="pages-title" className="w-[min(420px,calc(100%-32px))] rounded-2xl border border-slate-200 bg-white p-5 text-slate-900 backdrop:bg-[#24133F]/40">
+      <h2 id="pages-title" className="text-lg font-extrabold">Go to page</h2>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        {navigation.map(({ name, path, icon: Icon }) => <NavLink key={path} to={path} onClick={() => pagesDialog.current?.close()} className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold hover:border-brand-700">
+          <Icon className="h-4 w-4 text-brand-700" />{name}
+        </NavLink>)}
+      </div>
+      <button type="button" onClick={() => pagesDialog.current?.close()} className="mt-5 text-sm font-bold text-brand-700">Close</button>
+    </dialog>
   </header>;
 }
