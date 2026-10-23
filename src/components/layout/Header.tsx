@@ -19,8 +19,8 @@ const commands = [
   { name: 'Locations', path: '/locations', icon: MapPin, keywords: 'locations checkpoints page', action: '' },
   { name: 'Attendance by Day', path: '/overview#attendance-chart', icon: ChartNoAxesColumn, keywords: 'daily scans time in time out chart analytics', action: '' },
   { name: 'Checkpoint Activity', path: '/overview#locations-chart', icon: MapPin, keywords: 'locations activity today scans checkpoint chart', action: '' },
-  { name: 'Attendance Sessions', path: '/attendance?tab=sessions', icon: CalendarDays, keywords: 'schedule event session time in time out create', action: '' },
-  { name: 'Attendance Records', path: '/attendance?tab=records', icon: ClipboardList, keywords: 'scans student time in time out history', action: '' },
+  { name: 'Attendance Sessions', path: '/sessions', icon: CalendarDays, keywords: 'schedule event session time in time out create', action: '' },
+  { name: 'Attendance Records', path: '/audit-log', icon: ClipboardList, keywords: 'scans student time in time out history', action: '' },
   { name: 'Help', path: '', icon: CircleHelp, keywords: 'support guide keyboard shortcuts', action: 'help' },
   { name: 'Notifications', path: '', icon: Bell, keywords: 'alerts updates bell', action: 'notifications' },
 ];
