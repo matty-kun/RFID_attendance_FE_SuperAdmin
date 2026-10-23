@@ -15,6 +15,7 @@ import { AdminsPage } from './pages/AdminsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { FirstLoginPasswordPage } from './pages/FirstLoginPasswordPage';
 import { OverviewPage } from './pages/OverviewPage';
+import { AuditLogPage } from './pages/AuditLogPage';
 
 export const App: React.FC = () => {
   return (
@@ -30,6 +31,7 @@ export const App: React.FC = () => {
             <Route element={<SuperAdminLayout />}>
               <Route path="/" element={<Navigate to="/overview" replace />} />
               <Route path="/overview" element={<OverviewPage />} />
+              <Route path="/audit-log" element={<AuditLogPage />} />
               <Route path="/events" element={<EventsPage />} />
               <Route path="/sessions" element={<SessionsPage />} />
               <Route path="/locations" element={<LocationsPage />} />
