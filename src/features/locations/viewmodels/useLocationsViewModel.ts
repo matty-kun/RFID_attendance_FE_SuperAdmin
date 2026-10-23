@@ -10,8 +10,6 @@ export interface UseLocationsViewModelReturn {
   isSubmitting: boolean;
   name: string;
   setName: (v: string) => void;
-  roomOrFloor: string;
-  setRoomOrFloor: (v: string) => void;
   loadLocations: () => Promise<void>;
   handleCreate: (e: React.FormEvent) => Promise<void>;
 }
@@ -24,7 +22,6 @@ export const useLocationsViewModel = (): UseLocationsViewModelReturn => {
 
   // Form state
   const [name, setName] = useState('');
-  const [roomOrFloor, setRoomOrFloor] = useState('');
 
   const loadLocations = useCallback(async () => {
     setIsLoading(true);
@@ -48,12 +45,10 @@ export const useLocationsViewModel = (): UseLocationsViewModelReturn => {
     try {
       const payload: CreateLocationPayload = {
         name,
-        room_or_floor: roomOrFloor || undefined,
       };
       await locationService.createLocation(payload);
       setIsModalOpen(false);
       setName('');
-      setRoomOrFloor('');
       await loadLocations();
     } catch (err: any) {
       alert(err?.message || 'Failed to create venue');
@@ -70,8 +65,6 @@ export const useLocationsViewModel = (): UseLocationsViewModelReturn => {
     isSubmitting,
     name,
     setName,
-    roomOrFloor,
-    setRoomOrFloor,
     loadLocations,
     handleCreate,
   };
