@@ -65,35 +65,6 @@ export interface StudentRecord {
   created_at?: string;
 }
 
-export interface AttendanceRecord {
-  id: string;
-  student_id: string;
-  session_id: string;
-  location_id?: string;
-  rfid_tag_id: string;
-  type: 'time_in' | 'time_out';
-  status: 'on_time' | 'late' | 'invalid_location' | 'duplicate';
-  scanned_at: string;
-  recorded_by?: string;
-  recorded_at?: string;
-  student?: {
-    student_id?: string;
-    student_number?: string;
-    name: string;
-    course?: string;
-    course_year?: string;
-  };
-  session?: {
-    id?: string;
-    name: string;
-    date?: string;
-  };
-  location?: {
-    id?: string;
-    name: string;
-  };
-}
-
 export interface DashboardMetrics {
   totalEvents: number;
   totalSessions: number;
