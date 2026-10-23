@@ -23,6 +23,10 @@ export const adminService = {
     ),
   updateSession: (sessionId: string, payload: Partial<SessionRecord>) =>
     request.patch<SessionRecord>(`/sessions/${encodeURIComponent(sessionId)}`, payload),
+  getSessionLocations: (sessionId: string) =>
+    request.get<SessionLocations>(`/sessions/${encodeURIComponent(sessionId)}/locations`),
+  saveSessionLocations: (sessionId: string, payload: { time_in_location_ids: string[]; time_out_location_ids: string[] }) =>
+    request.put<SessionLocations>(`/sessions/${encodeURIComponent(sessionId)}/locations`, payload),
   getLocations: () => request.get<LocationRecord[]>('/locations'),
   createLocation: (payload: Partial<LocationRecord>) =>
     request.post<LocationRecord>('/locations', payload),
@@ -33,3 +37,9 @@ export const adminService = {
     request.get<AttendanceRecord[]>('/attendance/recent', { params: { limit } }),
   getMetrics: () => request.get<DashboardMetrics>('/analytics/dashboard'),
 };
+
+export interface SessionLocations {
+  session_id: string;
+  time_in_locations: Array<{ id: string; name: string }>;
+  time_out_locations: Array<{ id: string; name: string }>;
+}

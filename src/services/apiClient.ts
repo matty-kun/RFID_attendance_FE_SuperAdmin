@@ -56,4 +56,6 @@ export const request = {
     api.post(url, data) as unknown as Promise<T>,
   patch: <T>(url: string, data?: unknown): Promise<T> =>
     api.patch(url, data) as unknown as Promise<T>,
+  put: <T>(url: string, data?: unknown): Promise<T> =>
+    api.put(url, data) as unknown as Promise<T>,
 };

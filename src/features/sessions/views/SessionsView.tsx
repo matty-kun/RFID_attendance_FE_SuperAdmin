@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useSessionsViewModel } from '../viewmodels';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/common/Card';
@@ -9,10 +9,12 @@ import { Modal } from '../../../components/common/Modal';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/common/Table';
 import { Clock, Plus, Sparkles } from 'lucide-react';
 import { getEventStatus, getSessionStatus } from '../../../utils/status';
+import { SessionLocationsDialog } from './SessionLocationsDialog';
 
 export const SessionsView: React.FC = () => {
   const [searchParams] = useSearchParams();
   const initialEventId = searchParams.get('eventId') || '';
+  const [checkpointSessionId, setCheckpointSessionId] = useState<string | null>(null);
 
   const {
     sessions,
@@ -143,9 +145,10 @@ export const SessionsView: React.FC = () => {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <button type="button" onClick={() => startEdit(ses)} className="text-xs font-semibold text-brand-700 hover:underline">
-                        Edit
-                      </button>
+                      <div className="flex gap-3">
+                        <button type="button" onClick={() => startEdit(ses)} className="text-xs font-semibold text-brand-700 hover:underline">Edit</button>
+                        <button type="button" onClick={() => setCheckpointSessionId(ses.id)} className="text-xs font-semibold text-brand-700 hover:underline">Checkpoints</button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -154,6 +157,10 @@ export const SessionsView: React.FC = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {checkpointSessionId && (
+        <SessionLocationsDialog sessionId={checkpointSessionId} onClose={() => setCheckpointSessionId(null)} />
+      )}
 
       {/* Create Session Modal */}
       <Modal
