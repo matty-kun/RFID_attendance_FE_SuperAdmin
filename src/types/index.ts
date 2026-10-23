@@ -42,8 +42,6 @@ export interface SessionRecord {
 export interface LocationRecord {
   id: string;
   name: string;
-  room_or_floor?: string;
-  is_active: boolean;
   created_at?: string;
   updated_at?: string;
 }
