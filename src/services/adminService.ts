@@ -30,13 +30,15 @@ export const adminService = {
   getLocations: () => request.get<LocationRecord[]>('/locations'),
   createLocation: (payload: Partial<LocationRecord>) =>
     request.post<LocationRecord>('/locations', payload),
-  getAdmins: () => request.get<AdminRecord[]>('/admins'),
-  createAdmin: (payload: Pick<AdminRecord, 'name' | 'email' | 'role'>) =>
+  getAdmins: (page = 1, q = '') => request.get<AdminPage>('/admins', { params: { page, limit: 25, ...(q ? { q } : {}) } }),
+  createAdmin: (payload: Pick<AdminRecord, 'name' | 'email' | 'role'> & { temporary_password: string }) =>
     request.post<AdminRecord>('/admins', payload),
   getRecentScans: (limit = 15) =>
     request.get<AttendanceRecord[]>('/attendance/recent', { params: { limit } }),
   getMetrics: () => request.get<DashboardMetrics>('/analytics/dashboard'),
 };
+
+export interface AdminPage { admins: AdminRecord[]; total: number; page: number; limit: number; }
 
 export interface SessionLocations {
   session_id: string;

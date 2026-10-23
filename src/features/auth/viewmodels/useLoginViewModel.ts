@@ -29,8 +29,8 @@ export const useLoginViewModel = (): UseLoginViewModelReturn => {
     setIsLoading(true);
 
     try {
-      await login(identifier, password);
-      navigate('/');
+      const user = await login(identifier, password);
+      navigate(user.must_change_password ? '/change-password' : '/');
     } catch (err: any) {
       setError(err?.response?.data?.error?.message || err?.message || 'Invalid credentials or access denied.');
     } finally {
