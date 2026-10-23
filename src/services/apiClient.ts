@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
+import { DEV_PREVIEW_TOKEN, isDevPreview } from '../features/auth/devPreview';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
@@ -14,7 +15,7 @@ export const api = axios.create({
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('super_admin_token');
-    if (token && config.headers) {
+    if (token && token !== DEV_PREVIEW_TOKEN && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -34,8 +35,10 @@ api.interceptors.response.use(
       | undefined;
     const message = response?.error?.message || response?.message ||
       (error.response ? 'The server could not complete this request.' : 'Cannot reach the server. Check your connection and try again.');
-    window.dispatchEvent(new CustomEvent<string>('api-error', { detail: message }));
-    if (error.response?.status === 401) {
+    if (!isDevPreview()) {
+      window.dispatchEvent(new CustomEvent<string>('api-error', { detail: message }));
+    }
+    if (error.response?.status === 401 && !isDevPreview()) {
       localStorage.removeItem('super_admin_token');
       localStorage.removeItem('super_admin_user');
       if (window.location.pathname !== '/login') {

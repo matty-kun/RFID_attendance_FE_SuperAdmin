@@ -15,7 +15,7 @@ export interface UseLoginViewModelReturn {
 
 export const useLoginViewModel = (): UseLoginViewModelReturn => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, enterPreview } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -26,6 +26,15 @@ export const useLoginViewModel = (): UseLoginViewModelReturn => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (import.meta.env.DEV && !identifier.trim() && !password) {
+      enterPreview();
+      navigate('/overview');
+      return;
+    }
+    if (!identifier.trim() || !password) {
+      setError('Enter your Super Admin email and password.');
+      return;
+    }
     setIsLoading(true);
 
     try {

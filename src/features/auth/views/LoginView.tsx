@@ -32,7 +32,7 @@ export function LoginView() {
             <label htmlFor="super-admin-email" className="mb-1.5 block text-[13px] font-semibold text-[#24133F]">Super Admin Email</label>
             <div className="flex h-[50px] items-center gap-3 rounded-[14px] border-[1.2px] border-[#E5E0EB] bg-white px-4 focus-within:border-[#6D21A8]">
               <User className="h-[18px] w-[18px] shrink-0 text-[#756883]" />
-              <input id="super-admin-email" type="email" autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="Your registered email" value={identifier} onChange={(event) => { setIdentifier(event.target.value); clearError(); }} disabled={isLoading} required className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#24133F] outline-none placeholder:font-medium placeholder:text-[#A59CAC]" />
+              <input id="super-admin-email" type="email" autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="Your registered email" value={identifier} onChange={(event) => { setIdentifier(event.target.value); clearError(); }} disabled={isLoading} required={!import.meta.env.DEV} className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#24133F] outline-none placeholder:font-medium placeholder:text-[#A59CAC]" />
             </div>
           </div>
 
@@ -40,7 +40,7 @@ export function LoginView() {
             <label htmlFor="super-admin-password" className="mb-1.5 block text-[13px] font-semibold text-[#24133F]">Password</label>
             <div className="flex h-[50px] items-center gap-3 rounded-[14px] border-[1.2px] border-[#E5E0EB] bg-white px-4 focus-within:border-[#6D21A8]">
               <KeyRound className="h-[18px] w-[18px] shrink-0 text-[#756883]" />
-              <input id="super-admin-password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Enter your password" value={password} onChange={(event) => { setPassword(event.target.value); clearError(); }} disabled={isLoading} required className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#24133F] outline-none placeholder:font-medium placeholder:text-[#A59CAC]" />
+              <input id="super-admin-password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Enter your password" value={password} onChange={(event) => { setPassword(event.target.value); clearError(); }} disabled={isLoading} required={!import.meta.env.DEV} className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#24133F] outline-none placeholder:font-medium placeholder:text-[#A59CAC]" />
               <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="text-[#756883] hover:text-[#6D21A8] focus-visible:outline-2 focus-visible:outline-[#6D21A8]">
                 {showPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
               </button>
@@ -51,6 +51,8 @@ export function LoginView() {
             {isLoading ? 'Signing in…' : 'Login'}
           </button>
         </form>
+
+        {import.meta.env.DEV && <p className="mt-4 text-center text-xs font-semibold text-[#756883]">Local UI preview: leave both fields empty and click Login.</p>}
 
         <p className="mt-6 text-center text-[13px] font-semibold text-[#24133F]">Forgot Password?{' '}
           <button type="button" onClick={() => helpDialog.current?.showModal()} className="font-bold text-[#7C3AED] hover:underline focus-visible:outline-2 focus-visible:outline-[#6D21A8]">Click here</button>
