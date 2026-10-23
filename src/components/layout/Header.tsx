@@ -1,11 +1,12 @@
 import { useRef } from 'react';
 import { NavLink } from 'react-router-dom';
-import { CalendarDays, ChartNoAxesColumn, ClipboardList, LayoutGrid, LogOut, MapPin, Search, UsersRound } from 'lucide-react';
+import { CalendarDays, ChartNoAxesColumn, ClipboardList, History, LayoutGrid, LogOut, MapPin, Search, UsersRound } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../features/auth';
 
 const navigation = [
   { name: 'Overview', path: '/overview', icon: LayoutGrid },
+  { name: 'Audit Log', path: '/audit-log', icon: History },
   { name: 'Events', path: '/events', icon: ClipboardList },
   { name: 'Sessions', path: '/sessions', icon: CalendarDays },
   { name: 'Locations', path: '/locations', icon: MapPin },
@@ -31,10 +32,10 @@ export function Header() {
           'flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-brand-700',
           isActive ? 'border-slate-200 bg-white text-[#24133F]' : 'border-transparent bg-white text-[#756883] hover:text-brand-700'
         )}
-      >
+      >{({ isActive }) => <>
         <Icon className="h-3.5 w-3.5" />
-        {name === 'Overview' && <span>Overview</span>}
-      </NavLink>)}
+        {isActive && <span>{name}</span>}
+      </>}</NavLink>)}
     </nav>
 
     <div className="z-10 flex items-center gap-2">

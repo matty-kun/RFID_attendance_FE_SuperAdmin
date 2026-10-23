@@ -15,7 +15,7 @@ export function UtilityRail() {
   };
 
   return <>
-    <aside aria-label="Quick actions" className="absolute bottom-12 left-7 hidden flex-col items-center gap-2.5 md:flex">
+    <aside aria-label="Quick actions" className="fixed bottom-8 left-12 z-20 hidden flex-col items-center gap-2.5 md:flex">
       <button type="button" disabled aria-label="Notifications unavailable" title="Notifications unavailable" className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-[#756883]"><Bell className="h-3.5 w-3.5" /></button>
       <button type="button" onClick={() => open('help')} aria-label="Help" title="Help" className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-[#756883] hover:text-brand-700"><CircleHelp className="h-3.5 w-3.5" /></button>
       <button type="button" onClick={() => open('account')} aria-label="Account" title={user?.name || 'Account'} className="flex h-7 w-7 items-center justify-center rounded-full bg-[#DFE8F8] text-[10px] font-extrabold text-[#294B85]">{user?.name?.slice(0, 2).toUpperCase() || 'SA'}</button>
