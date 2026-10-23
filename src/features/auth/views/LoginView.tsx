@@ -2,7 +2,7 @@ import React from 'react';
 import { useLoginViewModel } from '../viewmodels';
 import { Button } from '../../../components/common/Button';
 import { Input } from '../../../components/common/Input';
-import { ShieldCheck, Lock, User, Sparkles } from 'lucide-react';
+import { ShieldCheck, Lock, User } from 'lucide-react';
 
 export const LoginView: React.FC = () => {
   const {
@@ -13,7 +13,6 @@ export const LoginView: React.FC = () => {
     isLoading,
     error,
     handleSubmit,
-    handleQuickDemo,
   } = useLoginViewModel();
 
   return (
@@ -71,18 +70,6 @@ export const LoginView: React.FC = () => {
           </Button>
         </form>
 
-        {/* Demo Fast-fill Pill */}
-        <div className="mt-6 pt-6 border-t border-slate-800 flex items-center justify-between">
-          <div className="text-xs text-slate-500 font-medium">Demo Mode active</div>
-          <button
-            type="button"
-            onClick={handleQuickDemo}
-            className="text-xs text-brand-400 hover:text-brand-300 font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            Quick Demo Fill
-          </button>
-        </div>
       </div>
     </div>
   );

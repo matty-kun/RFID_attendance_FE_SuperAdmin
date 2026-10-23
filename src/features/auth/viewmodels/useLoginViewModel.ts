@@ -11,14 +11,13 @@ export interface UseLoginViewModelReturn {
   error: string | null;
   clearError: () => void;
   handleSubmit: (e: React.FormEvent) => Promise<void>;
-  handleQuickDemo: () => void;
 }
 
 export const useLoginViewModel = (): UseLoginViewModelReturn => {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [identifier, setIdentifier] = useState('superadmin');
-  const [password, setPassword] = useState('password123');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,11 +38,6 @@ export const useLoginViewModel = (): UseLoginViewModelReturn => {
     }
   };
 
-  const handleQuickDemo = () => {
-    setIdentifier('superadmin');
-    setPassword('password123');
-  };
-
   return {
     identifier,
     setIdentifier,
@@ -53,6 +47,5 @@ export const useLoginViewModel = (): UseLoginViewModelReturn => {
     error,
     clearError,
     handleSubmit,
-    handleQuickDemo,
   };
 };
