@@ -19,8 +19,7 @@ export const ProtectedRoute: React.FC = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // Allow super_admin or admin
-  if (user?.role !== 'super_admin' && user?.role !== 'admin') {
+  if (user?.role !== 'super_admin') {
     return <Navigate to="/login" replace />;
   }
 
