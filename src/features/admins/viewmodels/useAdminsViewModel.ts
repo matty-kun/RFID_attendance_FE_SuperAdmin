@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AdminRecord } from '../models';
 import { adminManagementService } from '../services';
+import { isDevPreview } from '../../auth/devPreview';
+import { previewAdmins } from '../models/previewAdmins';
 
 export interface UseAdminsViewModelReturn {
   admins: AdminRecord[];
@@ -46,7 +48,10 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     setIsLoading(true);
     setError('');
     try {
-      const data = await adminManagementService.getAdmins(page, searchQuery.trim());
+      const data = isDevPreview() ? (() => {
+        const matching = previewAdmins.filter((admin) => `${admin.name} ${admin.email} ${admin.role}`.toLowerCase().includes(searchQuery.trim().toLowerCase()));
+        return { admins: matching.slice((page - 1) * 25, page * 25), total: matching.length };
+      })() : await adminManagementService.getAdmins(page, searchQuery.trim());
       setAdmins(data.admins);
       setTotal(data.total);
     } catch {
@@ -65,7 +70,12 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const newAdmin = await adminManagementService.createAdmin({ name, email, role, temporary_password: temporaryPassword });
+      const newAdmin: AdminRecord = isDevPreview() ? {
+        id: `preview-admin-${Date.now()}`,
+        auth_user_id: `preview-auth-${Date.now()}`,
+        name, email, role, created_at: new Date().toISOString(),
+      } : await adminManagementService.createAdmin({ name, email, role, temporary_password: temporaryPassword });
+      if (isDevPreview()) previewAdmins.unshift(newAdmin);
       setAdmins((prev) => [newAdmin, ...prev].slice(0, 25));
       setTotal((previous) => previous + 1);
       setIsModalOpen(false);

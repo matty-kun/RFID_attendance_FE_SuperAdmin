@@ -1,12 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAdminsViewModel } from '../viewmodels';
-import { Card, CardHeader, CardTitle, CardContent } from '../../../components/common/Card';
 import { Button } from '../../../components/common/Button';
-import { Badge } from '../../../components/common/Badge';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/common/Table';
-import { Users, Plus, ShieldAlert, Sparkles, UserCheck } from 'lucide-react';
+import { ChevronDown, Pencil, Plus, Search, Sparkles, Trash2, UserCheck } from 'lucide-react';
 
 export const AdminsView: React.FC = () => {
   const {
@@ -24,110 +21,30 @@ export const AdminsView: React.FC = () => {
     temporaryPassword, setTemporaryPassword, searchQuery, setSearchQuery, page, setPage, total, error,
     handleCreate,
   } = useAdminsViewModel();
+  const [roleFilter, setRoleFilter] = useState('all');
+  const visibleAdmins = admins.filter((admin) => roleFilter === 'all' || admin.role === roleFilter);
+  const initials = (fullName: string) => fullName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('');
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-[1120px] space-y-4 text-[#24133F]">
       {/* Top Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Admin Accounts</h1>
-          <p className="text-xs text-slate-500 mt-1 font-medium">
-            Create admin logins and assign administrator roles.
-          </p>
-        </div>
-        <Button
-          variant="primary"
-          leftIcon={<Plus className="w-4 h-4" />}
-          onClick={() => setIsModalOpen(true)}
-        >
-          Add Admin
-        </Button>
+      <div><h1 className="text-[22px] font-extrabold leading-tight">Admin Accounts</h1><p className="text-[11px] text-[#756883]">Manage admin accounts and monitor attendance access.</p></div>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex h-10 min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[310px]"><Search className="h-4 w-4" /><span className="sr-only">Search admins</span><input type="search" value={searchQuery} onChange={(event) => { setPage(1); setSearchQuery(event.target.value); }} placeholder="Search admin name or email" className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]" /></label>
+        <label className="flex h-10 items-center gap-1 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs"><span className="sr-only">Role</span><select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} className="bg-transparent font-semibold outline-none"><option value="all">All Roles</option><option value="super_admin">Super Admin</option><option value="admin">Scanner Admin</option></select><ChevronDown className="h-3 w-3 text-[#756883]" /></label>
+        <label className="flex h-10 items-center gap-1 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs" title="Account status is not available from the backend yet"><span className="sr-only">Status</span><select disabled className="bg-transparent font-semibold outline-none disabled:opacity-70"><option>All Status</option></select><ChevronDown className="h-3 w-3 text-[#756883]" /></label>
+        <div className="ml-auto"><Button variant="primary" leftIcon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>Add Admin</Button></div>
       </div>
-
-      {/* Security Info Card */}
-      <div className="p-4 rounded-2xl bg-brand-50/70 border border-brand-200/60 flex items-start gap-3">
-        <ShieldAlert className="w-5 h-5 text-brand-700 shrink-0 mt-0.5" />
-        <div className="text-xs text-brand-900 leading-relaxed">
-          <span className="font-black">Role Privilege Notice:</span> Administrators assigned the{' '}
-          <code className="font-mono bg-brand-100 text-brand-800 px-1 py-0.5 rounded font-bold">
-            super_admin
-          </code>{' '}
-          role can manage events, sessions, locations, attendance reports, students, and staff.
-        </div>
-      </div>
-
-      <input
-        type="search"
-        value={searchQuery}
-        onChange={(event) => { setPage(1); setSearchQuery(event.target.value); }}
-        placeholder="Search admins by name or email…"
-        className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm"
-      />
 
       {/* Admins Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Users className="w-4 h-4 text-brand-600" />
-            Registered Admins ({total})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {error && <p role="alert" className="px-6 pb-3 text-sm text-rose-600">{error}</p>}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Admin</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role Tier</TableHead>
-                <TableHead>Account Created</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {admins.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-slate-400 text-xs">
-                    {isLoading ? 'Loading administrators…' : error ? 'Unable to show administrators.' : 'No administrators found.'}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                admins.map((adm) => (
-                  <TableRow key={adm.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-brand-100 border border-brand-200 text-brand-800 flex items-center justify-center font-black text-xs">
-                          {adm.name.charAt(0)}
-                        </div>
-                        <span className="font-bold text-slate-800 text-sm">{adm.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs font-mono text-slate-600">{adm.email}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={adm.role === 'super_admin' ? 'purple' : 'slate'}
-                        size="sm"
-                        dot
-                      >
-                        {adm.role === 'super_admin' ? 'Super Administrator' : 'Field Marshal'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-400 font-mono">
-                      {new Date(adm.created_at).toLocaleDateString()}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-          <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3 text-xs text-slate-500">
-            <span>Page {page} of {Math.max(1, Math.ceil(total / 25))}</span>
-            <div className="flex gap-2">
-              <Button variant="secondary" size="sm" disabled={page <= 1 || isLoading} onClick={() => setPage(page - 1)}>Previous</Button>
-              <Button variant="secondary" size="sm" disabled={page * 25 >= total || isLoading} onClick={() => setPage(page + 1)}>Next</Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5 shadow-sm">
+        {error && <p role="alert" className="px-3 py-2 text-sm text-rose-600">{error}</p>}
+        <table className="w-full min-w-[630px] text-left text-xs"><thead><tr className="bg-[#F4F6FA] text-[10px] uppercase text-[#637596]"><th className="rounded-l-xl px-3 py-3 font-medium">Admin</th><th className="px-3 py-3 font-medium">Email / Account</th><th className="px-3 py-3 font-medium">Role</th><th className="rounded-r-xl px-3 py-3 font-medium"><span className="sr-only">Actions</span></th></tr></thead>
+          <tbody>{visibleAdmins.map((admin) => <tr key={admin.id} className="border-b border-[#EEF0F4] last:border-b-0 hover:bg-[#FAF8FC]"><td className="px-3 py-3"><div className="flex items-center gap-2.5"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#DFE8F8] text-[9px] font-extrabold text-[#294B85]">{initials(admin.name)}</span><span className="font-bold">{admin.name}</span></div></td><td className="px-3 py-3 text-[11px] text-[#637596]">{admin.email}</td><td className="px-3 py-3 text-[11px] font-semibold">{admin.role === 'super_admin' ? 'Super Admin' : 'Scanner Admin'}</td><td className="px-3 py-3"><div className="flex justify-end gap-3"><button type="button" disabled title="Edit is not available yet" aria-label={`Edit ${admin.name} unavailable`} className="text-[#756883] opacity-40"><Pencil className="h-4 w-4" /></button><button type="button" disabled title="Delete is not available yet" aria-label={`Delete ${admin.name} unavailable`} className="text-rose-500 opacity-40"><Trash2 className="h-4 w-4" /></button></div></td></tr>)}</tbody>
+        </table>
+        {!visibleAdmins.length && <p className="px-4 py-10 text-center text-xs text-[#756883]">{isLoading ? 'Loading admins…' : error ? 'Unable to show admins.' : 'No admins match these filters.'}</p>}
+        <div className="flex items-center justify-between gap-3 border-t border-[#EEF0F4] px-3 py-3 text-xs text-[#756883]"><span>{total.toLocaleString()} admins · Page {page} of {Math.max(1, Math.ceil(total / 25))}</span><div className="flex gap-2"><Button variant="secondary" size="sm" disabled={page <= 1 || isLoading} onClick={() => setPage(page - 1)}>Previous</Button><Button variant="secondary" size="sm" disabled={page * 25 >= total || isLoading} onClick={() => setPage(page + 1)}>Next</Button></div></div>
+      </div>
 
       {/* Create Admin Modal */}
       <Modal
@@ -185,7 +102,7 @@ export const AdminsView: React.FC = () => {
                 />
                 <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
                   <UserCheck className="w-3.5 h-3.5 text-slate-600" />
-                  Field Marshal
+                  Scanner Admin
                 </div>
                 <div className="text-[11px] text-slate-500 mt-1">
                   RFID scanner operation & attendance tap logging
