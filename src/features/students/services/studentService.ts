@@ -1,8 +1,8 @@
 import { request } from '../../../services/apiClient';
-import type { StudentRecord, RegisterStudentPayload } from '../models';
+import type { StudentRecord, StudentPage, RegisterStudentPayload } from '../models';
 
 export const studentService = {
-  getStudents: () => request.get<StudentRecord[]>('/students'),
+  getStudents: (page = 1, q = '') => request.get<StudentPage>('/students', { params: { page, limit: 25, ...(q ? { q } : {}) } }),
   registerStudent: (payload: RegisterStudentPayload) =>
     request.post<StudentRecord>('/students', payload),
 };

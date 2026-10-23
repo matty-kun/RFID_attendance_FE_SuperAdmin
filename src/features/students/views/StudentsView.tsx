@@ -16,12 +16,16 @@ export const StudentsView: React.FC = () => {
     isModalOpen,
     setIsModalOpen,
     isSubmitting,
+    isLoading,
     studentId,
     setStudentId,
     name,
     setName,
     email,
     setEmail,
+    temporaryPassword,
+    setTemporaryPassword,
+    page, setPage, total, error,
     course,
     setCourse,
     yearLevel,
@@ -38,7 +42,7 @@ export const StudentsView: React.FC = () => {
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Student Directory & RFID Cards</h1>
           <p className="text-xs text-slate-500 mt-1 font-medium">
-            Manage student records, institutional IDs, and registered physical RFID cards.
+            Create student logins and manage institutional IDs and RFID cards.
           </p>
         </div>
         <Button
@@ -55,9 +59,9 @@ export const StudentsView: React.FC = () => {
         <Search className="w-4 h-4 text-slate-400" />
         <input
           type="text"
-          placeholder="Search by student name, ID number, course, or RFID UID..."
+          placeholder="Search by name, student ID, email, course, or RFID UID..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => { setPage(1); setSearchQuery(e.target.value); }}
           className="w-full text-xs text-slate-800 placeholder:text-slate-400 bg-transparent focus:outline-none"
         />
         {searchQuery && (
@@ -75,10 +79,11 @@ export const StudentsView: React.FC = () => {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <GraduationCap className="w-4 h-4 text-brand-600" />
-            Enrolled Students ({filteredStudents.length})
+            Enrolled Students ({total})
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
+          {error && <p role="alert" className="px-6 pb-3 text-sm text-rose-600">{error}</p>}
           <Table>
             <TableHeader>
               <TableRow>
@@ -93,7 +98,7 @@ export const StudentsView: React.FC = () => {
               {filteredStudents.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-10 text-slate-400 text-xs font-semibold">
-                    No students match your query. Click "Register Student" to add.
+                    {isLoading ? 'Loading students…' : error ? 'Unable to show students.' : 'No students match your query.'}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -102,7 +107,7 @@ export const StudentsView: React.FC = () => {
                     <TableCell>
                       <div className="font-bold text-slate-900 text-sm">{st.name}</div>
                       <div className="text-[11px] text-slate-400 font-medium">
-                        {st.email || 'No email registered'}
+                        {st.email || 'No email registered'} · {st.auth_user_id ? 'Login enabled' : 'No login linked'}
                       </div>
                     </TableCell>
                     <TableCell className="text-xs font-mono font-bold text-slate-800">
@@ -135,6 +140,13 @@ export const StudentsView: React.FC = () => {
               )}
             </TableBody>
           </Table>
+          <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3 text-xs text-slate-500">
+            <span>Page {page} of {Math.max(1, Math.ceil(total / 25))}</span>
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" disabled={page <= 1 || isLoading} onClick={() => setPage(page - 1)}>Previous</Button>
+              <Button variant="secondary" size="sm" disabled={page * 25 >= total || isLoading} onClick={() => setPage(page + 1)}>Next</Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -143,7 +155,7 @@ export const StudentsView: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title="Register Student"
-        description="Add a student and link their physical RFID card badge."
+        description="Create a student login with a temporary password and optionally link an RFID card. Share the password privately; the student must change it after first login."
       >
         <form onSubmit={handleRegister} className="space-y-4 mt-2">
           <Input
@@ -163,11 +175,21 @@ export const StudentsView: React.FC = () => {
           />
 
           <Input
-            label="Email Address (Optional)"
+            label="Email Address"
             type="email"
             placeholder="e.g. roberto@university.edu"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+
+          <Input
+            label="Temporary Password"
+            type="password"
+            value={temporaryPassword}
+            onChange={(e) => setTemporaryPassword(e.target.value)}
+            minLength={12}
+            required
           />
 
           <div className="grid grid-cols-2 gap-3">
