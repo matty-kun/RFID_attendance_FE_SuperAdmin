@@ -2,9 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Nunito Sans';
+  src: url('/fonts/NunitoSans_400Regular.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  src: url('/fonts/NunitoSans_500Medium.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  src: url('/fonts/NunitoSans_600SemiBold.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  src: url('/fonts/NunitoSans_700Bold.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Nunito Sans';
+  src: url('/fonts/NunitoSans_800ExtraBold.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 800 900;
+  font-display: swap;
+}
+
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 min-h-screen selection:bg-brand-500 selection:text-white;
+    @apply bg-slate-50 text-slate-900 font-sans min-h-screen selection:bg-brand-500 selection:text-white;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
@@ -28,9 +64,9 @@
 /* Custom Tactile Button Styles */
 .btn-tactile {
   transition: all 0.15s ease-in-out;
-  box-shadow: 0 3px 0 0 rgba(107, 33, 168, 0.35);
+  box-shadow: 0 5px 0 0 #58158C;
 }
 .btn-tactile:active {
   transform: translateY(2px);
-  box-shadow: 0 1px 0 0 rgba(107, 33, 168, 0.35);
+  box-shadow: 0 1px 0 0 #58158C;
 }
