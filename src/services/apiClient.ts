@@ -1,4 +1,4 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
@@ -29,6 +29,12 @@ api.interceptors.response.use(
     return response.data?.data !== undefined ? response.data.data : response.data;
   },
   (error: AxiosError) => {
+    const response = error.response?.data as
+      | { error?: { message?: string }; message?: string }
+      | undefined;
+    const message = response?.error?.message || response?.message ||
+      (error.response ? 'The server could not complete this request.' : 'Cannot reach the server. Check your connection and try again.');
+    window.dispatchEvent(new CustomEvent<string>('api-error', { detail: message }));
     if (error.response?.status === 401) {
       localStorage.removeItem('super_admin_token');
       localStorage.removeItem('super_admin_user');
@@ -41,3 +47,11 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+// The response interceptor unwraps the backend's { success, data } envelope.
+export const request = {
+  get: <T>(url: string, config?: AxiosRequestConfig): Promise<T> =>
+    api.get(url, config) as unknown as Promise<T>,
+  post: <T>(url: string, data?: unknown): Promise<T> =>
+    api.post(url, data) as unknown as Promise<T>,
+};

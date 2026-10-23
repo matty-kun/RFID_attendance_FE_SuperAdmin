@@ -7,13 +7,6 @@ export const adminManagementService = {
   },
 
   async createAdmin(payload: CreateAdminPayload): Promise<AdminRecord> {
-    const newAdmin: AdminRecord = {
-      id: `adm-${Date.now()}`,
-      name: payload.name,
-      email: payload.email,
-      role: payload.role,
-      created_at: new Date().toISOString(),
-    };
-    return newAdmin;
+    return adminService.createAdmin(payload);
   },
 };

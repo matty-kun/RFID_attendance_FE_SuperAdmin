@@ -7,7 +7,7 @@ export const sessionService = {
     return adminService.getEvents();
   },
 
-  async getSessions(eventId?: string): Promise<SessionRecord[]> {
+  async getSessions(eventId: string): Promise<SessionRecord[]> {
     return adminService.getSessions(eventId) as Promise<SessionRecord[]>;
   },
 

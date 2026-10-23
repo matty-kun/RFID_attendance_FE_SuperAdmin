@@ -47,15 +47,15 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [evList, sesList] = await Promise.all([
-        sessionService.getEvents(),
-        sessionService.getSessions(selectedEventId || undefined),
-      ]);
+      const evList = await sessionService.getEvents();
       setEvents(evList);
       if (evList.length > 0 && !selectedEventId) {
         setSelectedEventId(evList[0].id);
+        return;
       }
-      setSessions(sesList);
+      setSessions(selectedEventId ? await sessionService.getSessions(selectedEventId) : []);
+    } catch {
+      setSessions([]);
     } finally {
       setIsLoading(false);
     }

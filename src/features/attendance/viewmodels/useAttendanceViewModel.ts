@@ -21,6 +21,8 @@ export const useAttendanceViewModel = (): UseAttendanceViewModelReturn => {
     try {
       const data = await attendanceService.getRecentAttendance(50);
       setRecords(data);
+    } catch {
+      setRecords([]);
     } finally {
       setIsLoading(false);
     }
