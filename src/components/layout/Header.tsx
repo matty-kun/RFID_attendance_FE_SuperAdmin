@@ -7,16 +7,16 @@ import { useAuth } from '../../features/auth';
 const navigation = [
   { name: 'Overview', path: '/overview', icon: LayoutGrid },
   { name: 'Audit Log', path: '/audit-log', icon: History },
-  { name: 'Events', path: '/events', icon: ClipboardList },
   { name: 'Attendance', path: '/attendance', icon: CalendarDays },
-  { name: 'Locations', path: '/locations', icon: MapPin },
-  { name: 'Reports', path: '/reports', icon: ChartNoAxesColumn },
   { name: 'Students', path: '/students', icon: UsersRound },
+  { name: 'Reports', path: '/reports', icon: ChartNoAxesColumn },
   { name: 'Admins', path: '/admins', icon: UserCog },
 ] as const;
 
 const commands = [
   ...navigation.map(({ name, path, icon }) => ({ name, path, icon, keywords: `${name} ${path} page`, action: '' })),
+  { name: 'Events', path: '/events', icon: ClipboardList, keywords: 'events schedule create event page', action: '' },
+  { name: 'Locations', path: '/locations', icon: MapPin, keywords: 'locations checkpoints page', action: '' },
   { name: 'Attendance by Day', path: '/overview#attendance-chart', icon: ChartNoAxesColumn, keywords: 'daily scans time in time out chart analytics', action: '' },
   { name: 'Checkpoint Activity', path: '/overview#locations-chart', icon: MapPin, keywords: 'locations activity today scans checkpoint chart', action: '' },
   { name: 'Attendance Sessions', path: '/attendance?tab=sessions', icon: CalendarDays, keywords: 'schedule event session time in time out create', action: '' },
