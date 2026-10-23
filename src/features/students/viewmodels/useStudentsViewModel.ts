@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { StudentRecord, RegisterStudentPayload } from '../models';
 import { studentService } from '../services';
+import { isDevPreview } from '../../auth/devPreview';
+import { previewStudents } from '../models/previewStudents';
 
 export interface UseStudentsViewModelReturn {
   students: StudentRecord[];
@@ -56,7 +58,10 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     setIsLoading(true);
     setError('');
     try {
-      const data = await studentService.getStudents(page, searchQuery.trim());
+      const data = isDevPreview() ? (() => {
+        const match = previewStudents.filter((student) => `${student.name} ${student.student_id} ${student.email} ${student.course} ${student.rfid_uid}`.toLowerCase().includes(searchQuery.trim().toLowerCase()));
+        return { students: match.slice((page - 1) * 25, page * 25), total: match.length };
+      })() : await studentService.getStudents(page, searchQuery.trim());
       setStudents(data.students);
       setTotal(data.total);
     } catch {
@@ -86,7 +91,17 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
         year_level: yearLevel,
         rfid_uid: rfidUid || undefined,
       };
-      const created = await studentService.registerStudent(payload);
+      const created: StudentRecord = isDevPreview() ? {
+        id: `preview-${Date.now()}`,
+        student_id: payload.student_id,
+        name: payload.name,
+        email: payload.email,
+        course: payload.course,
+        year_level: payload.year_level,
+        rfid_uid: payload.rfid_uid,
+        created_at: new Date().toISOString(),
+      } : await studentService.registerStudent(payload);
+      if (isDevPreview()) previewStudents.unshift(created);
       setStudents((prev) => [created, ...prev].slice(0, 25));
       setTotal((previous) => previous + 1);
       setIsModalOpen(false);
