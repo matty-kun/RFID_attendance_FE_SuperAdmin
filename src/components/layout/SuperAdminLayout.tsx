@@ -9,14 +9,18 @@ export const SuperAdminLayout: React.FC = () => {
 
   const getPageInfo = () => {
     switch (location.pathname) {
-      case '/':
-        return { title: 'Executive Overview', subtitle: 'Live event attendance and active RFID kiosk status' };
+      case '/overview':
+        return { title: 'Overview', subtitle: 'Current totals across the attendance system' };
       case '/events':
         return { title: 'Events Management', subtitle: 'Configure campus events, sports fests, and intramurals' };
       case '/sessions':
         return { title: 'Attendance Sessions', subtitle: 'Manage morning and afternoon scan time windows' };
       case '/locations':
-        return { title: 'Kiosks & Venues', subtitle: 'Hardware attendance check-in locations and gates' };
+        return { title: 'Locations', subtitle: 'Registered attendance checkpoints' };
+      case '/attendance':
+        return { title: 'Attendance Records', subtitle: 'Recorded time-in and time-out scans' };
+      case '/students':
+        return { title: 'Students', subtitle: 'Student logins and RFID cards' };
       case '/admins':
         return { title: 'Marshals & Admins', subtitle: 'Super Admin access control and officer assignments' };
       case '/scans':

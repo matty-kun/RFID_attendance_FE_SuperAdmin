@@ -96,12 +96,9 @@ export interface AttendanceRecord {
 
 export interface DashboardMetrics {
   totalEvents: number;
-  activeSessions: number;
-  totalLocations?: number;
-  totalAdmins?: number;
-  totalScansToday?: number;
-  todayScans?: number;
-  activeKiosks: number;
-  totalStudents?: number;
-  attendanceRate?: number;
+  totalSessions: number;
+  totalLocations: number;
+  totalAdmins: number;
+  totalStudents: number;
+  totalScans: number;
 }
