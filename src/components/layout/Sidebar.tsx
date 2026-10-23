@@ -9,6 +9,7 @@ import {
   GraduationCap,
   ShieldCheck,
   LogOut,
+  LayoutDashboard,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../features/auth';
@@ -17,9 +18,10 @@ export const Sidebar: React.FC = () => {
   const { user, logout } = useAuth();
 
   const navItems = [
+    { name: 'Overview', path: '/overview', icon: LayoutDashboard },
     { name: 'Events', path: '/events', icon: Calendar },
     { name: 'Sessions', path: '/sessions', icon: Clock },
-    { name: 'Locations & Kiosks', path: '/locations', icon: MapPin },
+    { name: 'Locations', path: '/locations', icon: MapPin },
     { name: 'Attendance Records', path: '/attendance', icon: Radio },
     { name: 'Students & RFID', path: '/students', icon: GraduationCap },
     { name: 'Admins & Marshals', path: '/admins', icon: Users },

@@ -14,6 +14,7 @@ import { StudentsPage } from './pages/StudentsPage';
 import { AdminsPage } from './pages/AdminsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { FirstLoginPasswordPage } from './pages/FirstLoginPasswordPage';
+import { OverviewPage } from './pages/OverviewPage';
 
 export const App: React.FC = () => {
   return (
@@ -27,7 +28,8 @@ export const App: React.FC = () => {
           {/* Protected Super Admin Tier (Mirrors Backend Domains) */}
           <Route element={<ProtectedRoute />}>
             <Route element={<SuperAdminLayout />}>
-              <Route path="/" element={<Navigate to="/events" replace />} />
+              <Route path="/" element={<Navigate to="/overview" replace />} />
+              <Route path="/overview" element={<OverviewPage />} />
               <Route path="/events" element={<EventsPage />} />
               <Route path="/sessions" element={<SessionsPage />} />
               <Route path="/locations" element={<LocationsPage />} />
