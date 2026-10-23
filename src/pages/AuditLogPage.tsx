@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { CalendarDays, Search } from 'lucide-react';
 import { useAttendanceViewModel } from '../features/attendance/viewmodels/useAttendanceViewModel';
+import { isDevPreview } from '../features/auth/devPreview';
+import { auditPreviewRecords } from './auditPreviewRecords';
 
 function formatTimestamp(timestamp: string) {
   return new Intl.DateTimeFormat('en-PH', {
@@ -13,7 +15,7 @@ export function AuditLogPage() {
   const {
     records, filterType, setFilterType, startDate, setStartDate,
     endDate, setEndDate, page, setPage, total, error, isLoading, refresh,
-  } = useAttendanceViewModel();
+  } = useAttendanceViewModel(auditPreviewRecords);
   const visibleRecords = useMemo(() => records.filter((record) => {
     const text = [record.student?.name, record.student?.student_id, record.student?.course,
       record.session?.name, record.location?.name, record.type, record.id].join(' ').toLowerCase();
@@ -23,7 +25,7 @@ export function AuditLogPage() {
 
   return <section aria-labelledby="audit-log-heading" className="mx-auto w-full max-w-[1120px] pt-1 text-[#24133F]">
     <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-      <div><h1 id="audit-log-heading" className="text-[28px] font-extrabold leading-tight">Audit Log</h1><p className="text-xs text-[#756883]">History of every recorded student time in and time out.</p></div>
+      <div><h1 id="audit-log-heading" className="text-[28px] font-extrabold leading-tight">Audit Log</h1><p className="text-xs text-[#756883]">History of every recorded student time in and time out.</p>{isDevPreview() && <p className="mt-1 text-[11px] font-bold text-brand-700">Sample attendance data · UI preview only</p>}</div>
       <button type="button" onClick={() => void refresh()} disabled={isLoading} className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 text-xs font-bold text-brand-700 hover:border-brand-700 disabled:opacity-50">Refresh</button>
     </div>
     <div className="mb-2 flex flex-wrap gap-2">
