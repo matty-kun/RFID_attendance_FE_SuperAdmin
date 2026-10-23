@@ -5,10 +5,7 @@ export interface AttendanceRecord {
   location_id: string;
   recorded_by: string;
   type: 'time_in' | 'time_out';
-  status: 'on_time' | 'late' | 'invalid_location' | 'duplicate';
   recorded_at: string;
-  scanned_at?: string;
-  rfid_tag_id?: string;
   student?: {
     id?: string;
     student_id?: string;
@@ -29,6 +26,8 @@ export interface AttendanceRecord {
 }
 
 export type AttendanceFilterType = 'all' | 'time_in' | 'time_out';
+
+export interface AttendancePage { records: AttendanceRecord[]; total: number; page: number; limit: number; }
 
 export interface ScanTelemetryPayload {
   session_id: string;
