@@ -2,9 +2,9 @@ import { request } from '../../../services/apiClient';
 import type { AttendanceRecord, AttendancePage, AttendanceFilterType, ScanTelemetryPayload } from '../models';
 
 export const attendanceService = {
-  getRecentAttendance: (page = 1, type: AttendanceFilterType = 'all', startDate = '', endDate = '') =>
+  getRecentAttendance: (page = 1, type: AttendanceFilterType = 'all', startDate = '', endDate = '', limit = 30) =>
     request.get<AttendancePage>('/attendance', { params: {
-      page, limit: 30,
+      page, limit,
       ...(type === 'all' ? {} : { type }),
       ...(startDate ? { startDate } : {}),
       ...(endDate ? { endDate } : {}),

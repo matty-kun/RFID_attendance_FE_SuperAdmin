@@ -10,18 +10,20 @@ const students = [
 ];
 
 export const auditPreviewRecords: AttendanceRecord[] = Array.from({ length: 18 }, (_, index) => {
-  const student = students[index % students.length];
-  const type = index % 3 === 0 ? 'time_out' : 'time_in';
+  const group = Math.floor(index / 2);
+  const student = students[group % students.length];
+  const type = group === 8 ? 'time_in' : group === 7 ? 'time_out' : index % 2 === 0 ? 'time_out' : 'time_in';
+  const day = new Date(Date.now() + 8 * 60 * 60 * 1000 - (Math.floor(group / 3) + 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   return {
     id: `preview-attendance-${index + 1}`,
     student_id: student.id,
-    session_id: `preview-session-${index % 2 + 1}`,
+    session_id: `preview-session-${group % 2 + 1}`,
     location_id: `preview-location-${index % 3 + 1}`,
     recorded_by: 'preview-admin',
     type,
-    recorded_at: new Date(Date.now() - index * 42 * 60 * 1000).toISOString(),
+    recorded_at: new Date(`${day}T${type === 'time_in' ? '08:00' : '17:00'}:00+08:00`).toISOString(),
     student: { student_id: student.id, name: student.name, course: student.course },
-    session: { name: index % 2 === 0 ? 'Morning Session' : 'Afternoon Session' },
+    session: { name: group % 2 === 0 ? 'Day Session' : 'Afternoon Session' },
     location: { name: ['Main Gate', 'Gymnasium', 'ETD Court'][index % 3] },
   };
 });
