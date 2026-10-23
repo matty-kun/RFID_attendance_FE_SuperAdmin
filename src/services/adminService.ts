@@ -4,7 +4,6 @@ import type {
   SessionRecord,
   LocationRecord,
   AdminRecord,
-  AttendanceRecord,
   DashboardMetrics,
 } from '../types';
 
@@ -33,8 +32,6 @@ export const adminService = {
   getAdmins: (page = 1, q = '') => request.get<AdminPage>('/admins', { params: { page, limit: 25, ...(q ? { q } : {}) } }),
   createAdmin: (payload: Pick<AdminRecord, 'name' | 'email' | 'role'> & { temporary_password: string }) =>
     request.post<AdminRecord>('/admins', payload),
-  getRecentScans: (limit = 15) =>
-    request.get<AttendanceRecord[]>('/attendance/recent', { params: { limit } }),
   getMetrics: () => request.get<DashboardMetrics>('/analytics/dashboard'),
 };
 
