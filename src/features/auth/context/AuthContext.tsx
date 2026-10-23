@@ -6,7 +6,8 @@ interface AuthContextType {
   user: SuperAdminUser | null;
   token: string | null;
   isLoading: boolean;
-  login: (identifier: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<SuperAdminUser>;
+  refreshUser: () => Promise<SuperAdminUser>;
   logout: () => void;
   isAuthenticated: boolean;
   isSuperAdmin: boolean;
@@ -45,9 +46,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { token: newToken, user: newUser } = await authService.login(identifier, password);
       setToken(newToken);
       setUser(newUser);
+      return newUser;
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const refreshUser = async () => {
+    const profile = await authService.getMe();
+    setUser(profile);
+    return profile;
   };
 
   const logout = () => {
@@ -63,6 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         token,
         isLoading,
         login,
+        refreshUser,
         logout,
         isAuthenticated: !!token && !!user,
         isSuperAdmin: user?.role === 'super_admin',

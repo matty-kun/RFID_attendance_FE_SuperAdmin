@@ -48,7 +48,7 @@ export interface LocationRecord {
 
 export interface AdminRecord {
   id: string;
-  auth_user_id?: string;
+  auth_user_id: string;
   name: string;
   email: string;
   role: AdminRole;

@@ -13,6 +13,7 @@ import { AttendancePage } from './pages/AttendancePage';
 import { StudentsPage } from './pages/StudentsPage';
 import { AdminsPage } from './pages/AdminsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { FirstLoginPasswordPage } from './pages/FirstLoginPasswordPage';
 
 export const App: React.FC = () => {
   return (
@@ -21,6 +22,7 @@ export const App: React.FC = () => {
         <Routes>
           {/* Public Authentication Route */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/change-password" element={<FirstLoginPasswordPage />} />
 
           {/* Protected Super Admin Tier (Mirrors Backend Domains) */}
           <Route element={<ProtectedRoute />}>

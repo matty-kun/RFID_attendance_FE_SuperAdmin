@@ -14,12 +14,14 @@ export const AdminsView: React.FC = () => {
     isModalOpen,
     setIsModalOpen,
     isSubmitting,
+    isLoading,
     name,
     setName,
     email,
     setEmail,
     role,
     setRole,
+    temporaryPassword, setTemporaryPassword, searchQuery, setSearchQuery, page, setPage, total, error,
     handleCreate,
   } = useAdminsViewModel();
 
@@ -30,7 +32,7 @@ export const AdminsView: React.FC = () => {
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">System Administrators & Marshals</h1>
           <p className="text-xs text-slate-500 mt-1 font-medium">
-            Manage personnel credentials, kiosk authorization levels, and super admin privileges.
+            Create staff logins and assign administrator roles.
           </p>
         </div>
         <Button
@@ -50,19 +52,28 @@ export const AdminsView: React.FC = () => {
           <code className="font-mono bg-brand-100 text-brand-800 px-1 py-0.5 rounded font-bold">
             super_admin
           </code>{' '}
-          role can create sessions, provision hardware kiosks, generate attendance reports, and promote marshals.
+          role can manage events, sessions, locations, attendance reports, students, and staff.
         </div>
       </div>
+
+      <input
+        type="search"
+        value={searchQuery}
+        onChange={(event) => { setPage(1); setSearchQuery(event.target.value); }}
+        placeholder="Search staff by name or email…"
+        className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm"
+      />
 
       {/* Admins Table */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="w-4 h-4 text-brand-600" />
-            Registered Staff & Marshals ({admins.length})
+            Registered Staff & Marshals ({total})
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
+          {error && <p role="alert" className="px-6 pb-3 text-sm text-rose-600">{error}</p>}
           <Table>
             <TableHeader>
               <TableRow>
@@ -76,7 +87,7 @@ export const AdminsView: React.FC = () => {
               {admins.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-8 text-slate-400 text-xs">
-                    No administrators found.
+                    {isLoading ? 'Loading administrators…' : error ? 'Unable to show administrators.' : 'No administrators found.'}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -108,6 +119,13 @@ export const AdminsView: React.FC = () => {
               )}
             </TableBody>
           </Table>
+          <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3 text-xs text-slate-500">
+            <span>Page {page} of {Math.max(1, Math.ceil(total / 25))}</span>
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" disabled={page <= 1 || isLoading} onClick={() => setPage(page - 1)}>Previous</Button>
+              <Button variant="secondary" size="sm" disabled={page * 25 >= total || isLoading} onClick={() => setPage(page + 1)}>Next</Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -116,7 +134,7 @@ export const AdminsView: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title="Add Staff Member"
-        description="Invite or provision an account for campus staff or event marshals."
+        description="Create a staff login with a temporary password. Share it privately; the staff member must change it after first login."
       >
         <form onSubmit={handleCreate} className="space-y-4 mt-2">
           <Input
@@ -133,6 +151,15 @@ export const AdminsView: React.FC = () => {
             placeholder="e.g. jason@university.edu"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+
+          <Input
+            label="Temporary Password"
+            type="password"
+            value={temporaryPassword}
+            onChange={(event) => setTemporaryPassword(event.target.value)}
+            minLength={12}
             required
           />
 

@@ -5,6 +5,7 @@ export interface SuperAdminUser {
   name: string;
   email: string;
   role: AdminRole;
+  must_change_password?: boolean;
   avatar_url?: string;
   created_at?: string;
 }

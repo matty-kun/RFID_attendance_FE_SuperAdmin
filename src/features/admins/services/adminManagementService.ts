@@ -1,9 +1,9 @@
 import { adminService } from '../../../services/adminService';
-import { AdminRecord, CreateAdminPayload } from '../models';
+import { AdminRecord, AdminPage, CreateAdminPayload } from '../models';
 
 export const adminManagementService = {
-  async getAdmins(): Promise<AdminRecord[]> {
-    return adminService.getAdmins() as Promise<AdminRecord[]>;
+  async getAdmins(page = 1, q = ''): Promise<AdminPage> {
+    return adminService.getAdmins(page, q);
   },
 
   async createAdmin(payload: CreateAdminPayload): Promise<AdminRecord> {
