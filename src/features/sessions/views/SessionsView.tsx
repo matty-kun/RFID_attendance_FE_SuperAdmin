@@ -8,6 +8,7 @@ import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/common/Table';
 import { Clock, Plus, Sparkles } from 'lucide-react';
+import { getEventStatus, getSessionStatus } from '../../../utils/status';
 
 export const SessionsView: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -21,6 +22,10 @@ export const SessionsView: React.FC = () => {
     isModalOpen,
     setIsModalOpen,
     isSubmitting,
+    editingSessionId,
+    formError,
+    startEdit,
+    startCreate,
     name,
     setName,
     date,
@@ -49,7 +54,7 @@ export const SessionsView: React.FC = () => {
         <Button
           variant="primary"
           leftIcon={<Plus className="w-4 h-4" />}
-          onClick={() => setIsModalOpen(true)}
+          onClick={startCreate}
           disabled={events.length === 0}
         >
           Create Session
@@ -68,7 +73,7 @@ export const SessionsView: React.FC = () => {
         >
           {events.map((ev) => (
             <option key={ev.id} value={ev.id}>
-              {ev.name} ({ev.status})
+              {ev.name} ({getEventStatus(ev.start_date, ev.end_date)})
             </option>
           ))}
         </select>
@@ -91,12 +96,13 @@ export const SessionsView: React.FC = () => {
                 <TableHead>Date</TableHead>
                 <TableHead>Time In Window</TableHead>
                 <TableHead>Time Out Window</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sessions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-slate-400 text-xs">
+                  <TableCell colSpan={6} className="text-center py-8 text-slate-400 text-xs">
                     No sessions found for this event. Click "Create Session" above.
                   </TableCell>
                 </TableRow>
@@ -112,15 +118,15 @@ export const SessionsView: React.FC = () => {
                     <TableCell>
                       <Badge
                         variant={
-                          ses.status === 'open'
+                          getSessionStatus(ses.date, ses.time_in_start, ses.time_out_end) === 'open'
                             ? 'emerald'
-                            : ses.status === 'upcoming'
+                            : getSessionStatus(ses.date, ses.time_in_start, ses.time_out_end) === 'upcoming'
                             ? 'brand'
                             : 'slate'
                         }
                         dot
                       >
-                        {ses.status}
+                        {getSessionStatus(ses.date, ses.time_in_start, ses.time_out_end)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs font-medium text-slate-600">
@@ -136,6 +142,11 @@ export const SessionsView: React.FC = () => {
                         {ses.time_out_start} - {ses.time_out_end}
                       </span>
                     </TableCell>
+                    <TableCell>
+                      <button type="button" onClick={() => startEdit(ses)} className="text-xs font-semibold text-brand-700 hover:underline">
+                        Edit
+                      </button>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -148,10 +159,11 @@ export const SessionsView: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Create Attendance Session"
+        title={editingSessionId ? 'Edit Attendance Session' : 'Create Attendance Session'}
         description="Define the scanning window hours for student check-ins."
       >
         <form onSubmit={handleCreate} className="space-y-4 mt-2">
+          {formError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs font-semibold text-rose-700">{formError}</p>}
           <Input
             label="Session Name"
             placeholder="e.g. Day 1 - Morning Assembly"

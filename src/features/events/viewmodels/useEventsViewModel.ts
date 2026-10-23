@@ -8,6 +8,7 @@ export interface UseEventsViewModelReturn {
   isModalOpen: boolean;
   setIsModalOpen: (open: boolean) => void;
   isSubmitting: boolean;
+  formError: string | null;
   name: string;
   setName: (val: string) => void;
   description: string;
@@ -25,6 +26,7 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -50,6 +52,11 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (startDate > endDate) {
+      setFormError('End date must be on or after the start date.');
+      return;
+    }
+    setFormError(null);
     setIsSubmitting(true);
     try {
       const payload: CreateEventPayload = {
@@ -78,6 +85,7 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
     isModalOpen,
     setIsModalOpen,
     isSubmitting,
+    formError,
     name,
     setName,
     description,

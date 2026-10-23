@@ -21,6 +21,8 @@ export const adminService = {
       `/events/${encodeURIComponent(eventId)}/sessions`,
       payload
     ),
+  updateSession: (sessionId: string, payload: Partial<SessionRecord>) =>
+    request.patch<SessionRecord>(`/sessions/${encodeURIComponent(sessionId)}`, payload),
   getLocations: () => request.get<LocationRecord[]>('/locations'),
   createLocation: (payload: Partial<LocationRecord>) =>
     request.post<LocationRecord>('/locations', payload),
