@@ -12,6 +12,10 @@ export interface UseSessionsViewModelReturn {
   isModalOpen: boolean;
   setIsModalOpen: (open: boolean) => void;
   isSubmitting: boolean;
+  editingSessionId: string | null;
+  formError: string | null;
+  startEdit: (session: SessionRecord) => void;
+  startCreate: () => void;
   name: string;
   setName: (v: string) => void;
   date: string;
@@ -35,6 +39,8 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -65,9 +71,39 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
     loadData();
   }, [loadData]);
 
+  const startEdit = (session: SessionRecord) => {
+    setEditingSessionId(session.id);
+    setName(session.name);
+    setDate(session.date);
+    setTimeInStart(session.time_in_start.slice(0, 5));
+    setTimeInEnd(session.time_in_end.slice(0, 5));
+    setTimeOutStart(session.time_out_start.slice(0, 5));
+    setTimeOutEnd(session.time_out_end.slice(0, 5));
+    setFormError(null);
+    setIsModalOpen(true);
+  };
+
+  const startCreate = () => {
+    setEditingSessionId(null);
+    setName('');
+    setDate('');
+    setFormError(null);
+    setIsModalOpen(true);
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEventId) return;
+    const selectedEvent = events.find((event) => event.id === selectedEventId);
+    if (selectedEvent && (date < selectedEvent.start_date || date > selectedEvent.end_date)) {
+      setFormError('Session date must be within the selected event.');
+      return;
+    }
+    if (!(timeInStart < timeInEnd && timeInEnd <= timeOutStart && timeOutStart < timeOutEnd)) {
+      setFormError('Time windows must be ordered: Time In, then Time Out.');
+      return;
+    }
+    setFormError(null);
     setIsSubmitting(true);
     try {
       const payload: CreateSessionPayload = {
@@ -78,8 +114,13 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
         time_out_start: `${timeOutStart}:00`,
         time_out_end: `${timeOutEnd}:00`,
       };
-      await sessionService.createSession(selectedEventId, payload);
+      if (editingSessionId) {
+        await sessionService.updateSession(editingSessionId, payload);
+      } else {
+        await sessionService.createSession(selectedEventId, payload);
+      }
       setIsModalOpen(false);
+      setEditingSessionId(null);
       setName('');
       setDate('');
       await loadData();
@@ -99,6 +140,10 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
     isModalOpen,
     setIsModalOpen,
     isSubmitting,
+    editingSessionId,
+    formError,
+    startEdit,
+    startCreate,
     name,
     setName,
     date,

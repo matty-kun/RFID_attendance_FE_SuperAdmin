@@ -8,6 +8,7 @@ import { Modal } from '../../../components/common/Modal';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/common/Table';
 import { Plus, Calendar, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getEventStatus } from '../../../utils/status';
 
 export const EventsView: React.FC = () => {
   const {
@@ -15,6 +16,7 @@ export const EventsView: React.FC = () => {
     isModalOpen,
     setIsModalOpen,
     isSubmitting,
+    formError,
     name,
     setName,
     description,
@@ -83,15 +85,15 @@ export const EventsView: React.FC = () => {
                     <TableCell>
                       <Badge
                         variant={
-                          ev.status === 'ongoing'
+                          getEventStatus(ev.start_date, ev.end_date) === 'ongoing'
                             ? 'emerald'
-                            : ev.status === 'upcoming'
+                            : getEventStatus(ev.start_date, ev.end_date) === 'upcoming'
                             ? 'brand'
                             : 'slate'
                         }
                         dot
                       >
-                        {ev.status}
+                        {getEventStatus(ev.start_date, ev.end_date)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs font-medium text-slate-600">
@@ -124,6 +126,7 @@ export const EventsView: React.FC = () => {
         description="Add a new campus-wide event to track RFID attendance sessions."
       >
         <form onSubmit={handleCreate} className="space-y-4 mt-2">
+          {formError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs font-semibold text-rose-700">{formError}</p>}
           <Input
             label="Event Name"
             placeholder="e.g. Foundation Day 2026"

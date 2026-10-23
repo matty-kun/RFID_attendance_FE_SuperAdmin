@@ -16,7 +16,7 @@ export interface EventRecord {
   description: string | null;
   start_date: string;
   end_date: string;
-  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+  status?: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   created_by?: string;
   created_at?: string;
   updated_at?: string;
@@ -31,7 +31,7 @@ export interface SessionRecord {
   time_in_end: string;
   time_out_start: string;
   time_out_end: string;
-  status: 'upcoming' | 'open' | 'closed';
+  status?: 'upcoming' | 'open' | 'closed';
   event?: {
     name: string;
   };
