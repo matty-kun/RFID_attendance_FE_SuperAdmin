@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { CalendarDays, ChartNoAxesColumn, ClipboardList, History, LayoutGrid, LogOut, MapPin, Search, UsersRound } from 'lucide-react';
+import { Bell, CalendarDays, ChartNoAxesColumn, CircleHelp, ClipboardList, History, LayoutGrid, LogOut, MapPin, Search, UsersRound } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../features/auth';
 
@@ -15,6 +15,14 @@ const navigation = [
   { name: 'Staff', path: '/admins', icon: UsersRound },
 ] as const;
 
+const commands = [
+  ...navigation.map(({ name, path, icon }) => ({ name, path, icon, keywords: `${name} ${path} page`, action: '' })),
+  { name: 'Attendance by Day', path: '/overview#attendance-chart', icon: ChartNoAxesColumn, keywords: 'daily scans time in time out chart analytics', action: '' },
+  { name: 'Checkpoint Activity', path: '/overview#locations-chart', icon: MapPin, keywords: 'locations activity today scans checkpoint chart', action: '' },
+  { name: 'Help', path: '', icon: CircleHelp, keywords: 'support guide keyboard shortcuts', action: 'help' },
+  { name: 'Notifications', path: '', icon: Bell, keywords: 'alerts updates bell', action: 'notifications' },
+];
+
 export function Header() {
   const pagesDialog = useRef<HTMLDialogElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
@@ -22,7 +30,8 @@ export function Header() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const matchingPages = navigation.filter(({ name, path }) => `${name} ${path}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const matchingPages = commands.filter(({ name, keywords }) => `${name} ${keywords}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const shortcutLabel = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K';
 
   const openPalette = () => {
     setQuery('');
@@ -31,9 +40,14 @@ export function Header() {
     requestAnimationFrame(() => searchInput.current?.focus());
   };
 
-  const goToPage = (path: string) => {
+  const runCommand = (command: (typeof commands)[number]) => {
     pagesDialog.current?.close();
-    navigate(path);
+    if (command.action) window.dispatchEvent(new CustomEvent('presnt:open-utility', { detail: command.action }));
+    else if (command.path.includes('#')) {
+      const [path, hash] = command.path.split('#');
+      navigate(path);
+      requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+    } else navigate(command.path);
   };
 
   useEffect(() => {
@@ -69,27 +83,27 @@ export function Header() {
 
     <div className="z-10 flex items-center gap-2">
       <button type="button" onClick={logout} aria-label="Sign out" title="Sign out" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E0EB] bg-white text-[#756883] md:hidden"><LogOut className="h-4 w-4" /></button>
-      <button type="button" onClick={openPalette} aria-label="Open command palette" title="Search pages (Ctrl+K)" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E0EB] bg-white text-[#756883] hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-brand-700">
-        <Search className="h-4 w-4" />
+      <button type="button" onClick={openPalette} aria-label="Open command palette" title={`Search everything (${shortcutLabel})`} className="flex h-8 items-center justify-center gap-2 rounded-lg border border-[#E5E0EB] bg-white px-2 text-[#756883] hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-brand-700">
+        <Search className="h-4 w-4" /><kbd className="hidden text-[10px] font-semibold lg:inline">{shortcutLabel}</kbd>
       </button>
     </div>
 
-    <dialog ref={pagesDialog} aria-label="Command palette" onClick={(event) => { if (event.target === pagesDialog.current) pagesDialog.current?.close(); }} className="w-[min(520px,calc(100%-32px))] overflow-hidden rounded-2xl border border-[#E5E0EB] bg-white p-0 text-[#24133F] shadow-2xl backdrop:bg-[#24133F]/40">
-      <div className="flex items-center gap-3 border-b border-[#E5E0EB] px-4 py-3">
-        <Search className="h-5 w-5 text-[#756883]" />
+    <dialog ref={pagesDialog} aria-label="Command palette" onClick={(event) => { if (event.target === pagesDialog.current) pagesDialog.current?.close(); }} className="w-[min(560px,calc(100%-32px))] overflow-hidden rounded-2xl border border-[#4B365F] bg-[#211333] p-0 text-white shadow-2xl backdrop:bg-[#10091D]/70">
+      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-4">
+        <Search className="h-5 w-5 text-[#C9B8DE]" />
         <input ref={searchInput} value={query} onChange={(event) => { setQuery(event.target.value); setSelectedIndex(0); }} onKeyDown={(event) => {
           if (event.key === 'ArrowDown') { event.preventDefault(); setSelectedIndex((index) => Math.min(index + 1, matchingPages.length - 1)); }
           if (event.key === 'ArrowUp') { event.preventDefault(); setSelectedIndex((index) => Math.max(index - 1, 0)); }
-          if (event.key === 'Enter' && matchingPages.length) { event.preventDefault(); goToPage(matchingPages[selectedIndex]?.path ?? matchingPages[0].path); }
-        }} aria-label="Search pages" aria-controls="command-results" aria-activedescendant={matchingPages.length ? `command-result-${selectedIndex}` : undefined} role="combobox" aria-expanded="true" aria-autocomplete="list" placeholder="Search pages..." className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#A59AAB]" />
-        <kbd className="rounded border border-[#E5E0EB] px-1.5 py-0.5 text-[10px] text-[#756883]">Esc</kbd>
+          if (event.key === 'Enter' && matchingPages.length) { event.preventDefault(); runCommand(matchingPages[selectedIndex] ?? matchingPages[0]); }
+        }} aria-label="Search commands" aria-controls="command-results" aria-activedescendant={matchingPages.length ? `command-result-${selectedIndex}` : undefined} role="combobox" aria-expanded="true" aria-autocomplete="list" placeholder="Search pages, charts, help, notifications..." className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[#9B89B0]" />
+        <kbd className="rounded border border-white/20 px-1.5 py-0.5 text-[10px] text-[#C9B8DE]">Esc</kbd>
       </div>
-      <div id="command-results" role="listbox" aria-label="Pages" className="max-h-80 overflow-y-auto p-2">
-        {matchingPages.length ? matchingPages.map(({ name, path, icon: Icon }, index) => <button id={`command-result-${index}`} role="option" aria-selected={selectedIndex === index} type="button" key={path} onMouseEnter={() => setSelectedIndex(index)} onClick={() => goToPage(path)} className={cn('flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold', selectedIndex === index ? 'bg-[#F2F1F5] text-brand-700' : 'hover:bg-[#F7F6F9]')}>
-          <Icon className="h-4 w-4" />{name}<span className="ml-auto text-[11px] font-normal text-[#A59AAB]">{path}</span>
-        </button>) : <p className="px-3 py-6 text-center text-sm text-[#756883]">No matching pages</p>}
+      <div id="command-results" role="listbox" aria-label="Commands" className="max-h-80 overflow-y-auto p-2">
+        {matchingPages.length ? matchingPages.map((command, index) => <button id={`command-result-${index}`} role="option" aria-selected={selectedIndex === index} type="button" key={`${command.name}-${command.path}`} onMouseEnter={() => setSelectedIndex(index)} onClick={() => runCommand(command)} className={cn('flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors', selectedIndex === index ? 'bg-[#6F249D] text-white' : 'text-[#E5D8F2] hover:bg-white/10')}>
+          <command.icon className="h-4 w-4" />{command.name}<span className="ml-auto text-[11px] font-normal text-[#BAA9C9]">{command.path || 'Quick action'}</span>
+        </button>) : <p className="px-3 py-6 text-center text-sm text-[#BAA9C9]">No matching commands</p>}
       </div>
-      <div className="border-t border-[#E5E0EB] px-4 py-2 text-[11px] text-[#756883]">↑ ↓ to select · Enter to open · Ctrl+K to toggle</div>
+      <div className="border-t border-white/10 px-4 py-2 text-[11px] text-[#BAA9C9]">↑ ↓ to select · Enter to open · {shortcutLabel} to toggle</div>
     </dialog>
   </header>;
 }
