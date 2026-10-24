@@ -166,16 +166,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     });
   };
 
-  const applySlotDuration = (hoursToAdd: number) => {
-    const [h, m] = editingTimeSlot.start.split(':').map(Number);
-    const totalMinutes = (h || 0) * 60 + (m || 0) + Math.round(hoursToAdd * 60);
-    const newH = Math.floor(totalMinutes / 60) % 24;
-    const newM = totalMinutes % 60;
-    setEditingTimeSlot((prev) => ({
-      ...prev,
-      end: `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`,
-    }));
-  };
+
 
   const handleSaveSlotTime = () => {
     const { sessionType, slot, start, end } = editingTimeSlot;
@@ -1252,30 +1243,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 }}
               />
 
-              {/* Quick duration presets */}
-              <div>
-                <p className="text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-1.5">
-                  Or set window duration from start
-                </p>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {[
-                    { label: '1 hr', val: 1 },
-                    { label: '1.5 hrs', val: 1.5 },
-                    { label: '2 hrs', val: 2 },
-                    { label: '2.5 hrs', val: 2.5 },
-                    { label: '3 hrs', val: 3 },
-                  ].map((p) => (
-                    <button
-                      key={p.label}
-                      type="button"
-                      onClick={() => applySlotDuration(p.val)}
-                      className="rounded-xl border border-[#E5E0EB] bg-[#FAF8FB] hover:border-[#451475] hover:bg-[#F3EDFB] px-2.5 py-1 text-[11px] font-semibold text-[#451475] transition-colors"
-                    >
-                      +{p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+
 
               {/* Formatted live preview */}
               <div className="rounded-2xl border border-[#451475]/15 bg-[#FAF7FD] p-3 shadow-2xs">
