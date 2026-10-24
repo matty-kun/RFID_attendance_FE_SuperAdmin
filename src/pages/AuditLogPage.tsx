@@ -1,62 +1,274 @@
 import { useMemo, useState } from 'react';
-import { CalendarDays, Search } from 'lucide-react';
-import { useAttendanceViewModel } from '../features/attendance/viewmodels/useAttendanceViewModel';
-import { isDevPreview } from '../features/auth/devPreview';
-import { auditPreviewRecords } from './auditPreviewRecords';
+import { Check, ChevronDown, Search, Users } from 'lucide-react';
+import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
+import { Button } from '../components/common/Button';
+import { auditLogRecords } from './auditPreviewRecords';
 
 function formatTimestamp(timestamp: string) {
-  return new Intl.DateTimeFormat('en-PH', {
-    dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila',
-  }).format(new Date(timestamp));
-}
-
-function initials(name: string) {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('') || '?';
+  const date = new Date(timestamp);
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  const day = date.getDate();
+  const time = date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+  return `${month} ${day} · ${time}`;
 }
 
 export function AuditLogPage() {
   const [search, setSearch] = useState('');
-  const {
-    records, filterType, setFilterType, startDate, setStartDate,
-    endDate, setEndDate, page, setPage, total, error, isLoading,
-  } = useAttendanceViewModel(auditPreviewRecords);
-  const visibleRecords = useMemo(() => records.filter((record) => {
-    const text = [record.student?.name, record.student?.student_id, record.student?.course,
-      record.session?.name, record.location?.name, record.type, record.id].join(' ').toLowerCase();
-    return text.includes(search.trim().toLowerCase());
-  }), [records, search]);
-  const pageCount = Math.max(1, Math.ceil(total / 30));
+  const [startDate, setStartDate] = useState('2026-09-29');
+  const [endDate, setEndDate] = useState('2026-10-02');
+  const [actionFilter, setActionFilter] = useState('all');
+  const [userFilter, setUserFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
-  return <section aria-labelledby="audit-log-heading" className="mx-auto w-full max-w-[1120px] pt-1 text-[#24133F]">
-    <div className="mb-4">
-      <h1 id="audit-log-heading" className="text-[28px] font-extrabold leading-tight">Audit Log</h1>
-      <p className="text-xs text-[#756883]">History of every recorded student time in and time out.</p>
-      {isDevPreview() && <p className="mt-1 text-[11px] font-bold text-brand-700">Sample attendance data · UI preview only</p>}
-    </div>
-    <div className="mb-2 flex flex-wrap gap-2">
-      <label className="flex min-h-10 min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883]">
-        <Search className="h-4 w-4 shrink-0" /><span className="sr-only">Search records on this page</span>
-        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search this page" className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]" />
-      </label>
-      <label className="flex min-h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs"><CalendarDays className="h-4 w-4 text-[#756883]" />From<input type="date" value={startDate} max={endDate || undefined} onChange={(event) => setStartDate(event.target.value)} className="bg-transparent outline-none" /></label>
-      <label className="flex min-h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs">To<input type="date" value={endDate} min={startDate || undefined} onChange={(event) => setEndDate(event.target.value)} className="bg-transparent outline-none" /></label>
-      <label className="flex min-h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs"><span className="sr-only">Attendance type</span><select value={filterType} onChange={(event) => setFilterType(event.target.value as typeof filterType)} className="bg-transparent outline-none"><option value="all">All Scans</option><option value="time_in">Time In</option><option value="time_out">Time Out</option></select></label>
-    </div>
-    <div className="overflow-x-auto rounded-xl border border-[#E5E0EB] bg-white px-2 pb-4 pt-2 sm:px-3">
-      {error && <p role="alert" className="px-3 py-3 text-sm text-rose-700">{error}</p>}
-      <table className="w-full min-w-[800px] border-separate border-spacing-0 text-left text-xs">
-        <thead className="text-[10px] uppercase text-[#637596]"><tr className="bg-[#F4F6FA]">
-          <th scope="col" className="rounded-l-2xl px-3 py-3 font-medium">Date / Time</th><th scope="col" className="px-3 py-3 font-medium">Student</th><th scope="col" className="px-3 py-3 font-medium">Attendance</th><th scope="col" className="px-3 py-3 font-medium">Session</th><th scope="col" className="rounded-r-2xl px-3 py-3 font-medium">Checkpoint</th>
-        </tr></thead>
-        <tbody>{visibleRecords.map((record) => <tr key={record.id} className="h-[58px]">
-          <td className="whitespace-nowrap px-3 text-[11px] text-[#637596]">{formatTimestamp(record.recorded_at)}</td>
-          <td className="px-3"><div className="flex items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#DFE8F8] text-[10px] font-extrabold text-[#294B85]" aria-hidden="true">{record.student?.avatar_url ? <img src={record.student.avatar_url} alt="" className="h-full w-full object-cover" /> : initials(record.student?.name ?? '')}</span><span><span className="block font-bold">{record.student?.name ?? 'Unknown student'}</span><span className="text-[10px] text-[#637596]">{record.student?.student_id ?? record.student_id}</span></span></div></td>
-          <td className="whitespace-nowrap px-3"><span className={`inline-block rounded-xl px-3 py-1.5 text-[11px] font-semibold ${record.type === 'time_in' ? 'bg-[#E4F7EB] text-[#16883F]' : 'bg-[#FDE8EA] text-[#C52736]'}`}>{record.type === 'time_in' ? 'Time In' : 'Time Out'}</span></td>
-          <td className="px-3 text-[11px]">{record.session?.name ?? 'Unknown session'}</td><td className="px-3 text-[11px]">{record.location?.name ?? 'Unknown checkpoint'}</td>
-        </tr>)}</tbody>
-      </table>
-      {!visibleRecords.length && <div className="px-4 py-14 text-center text-sm text-[#756883]">{isLoading ? 'Loading attendance history…' : error ? 'Unable to show attendance history.' : search && records.length ? 'No records on this page match your search.' : 'No attendance records found.'}</div>}
-      <div className="mt-3 flex items-center justify-between border-t border-[#E5E0EB] px-3 pt-3 text-xs text-[#756883]"><span>{total.toLocaleString()} records · Page {page} of {pageCount}</span><div className="flex gap-2"><button type="button" onClick={() => setPage(page - 1)} disabled={page <= 1 || isLoading} className="rounded-lg border border-[#E5E0EB] px-3 py-1.5 font-bold disabled:opacity-40">Previous</button><button type="button" onClick={() => setPage(page + 1)} disabled={page >= pageCount || isLoading} className="rounded-lg border border-[#E5E0EB] px-3 py-1.5 font-bold disabled:opacity-40">Next</button></div></div>
-    </div>
-  </section>;
+  // Extract unique actions & users for filters
+  const uniqueActions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const record of auditLogRecords) {
+      map.set(record.action, record.actionLabel);
+    }
+    return Array.from(map.entries());
+  }, []);
+
+  const uniqueUsers = useMemo(() => {
+    return Array.from(new Set(auditLogRecords.map((r) => r.user.name))).sort();
+  }, []);
+
+  // Filtered entries
+  const filtered = useMemo(() => {
+    return auditLogRecords.filter((record) => {
+      // Date filter
+      if (startDate && record.timestamp.slice(0, 10) < startDate) return false;
+      if (endDate && record.timestamp.slice(0, 10) > endDate) return false;
+
+      // Action filter
+      if (actionFilter !== 'all' && record.action !== actionFilter) return false;
+
+      // User filter
+      if (userFilter !== 'all' && record.user.name !== userFilter) return false;
+
+      // Search query
+      if (search.trim()) {
+        const query = search.toLowerCase();
+        const matchesDate = formatTimestamp(record.timestamp).toLowerCase().includes(query);
+        const matchesUser = record.user.name.toLowerCase().includes(query);
+        const matchesAction = record.actionLabel.toLowerCase().includes(query);
+        const matchesDesc = record.description.toLowerCase().includes(query);
+        const matchesRecord = record.relatedRecord.toLowerCase().includes(query);
+        return matchesDate || matchesUser || matchesAction || matchesDesc || matchesRecord;
+      }
+
+      return true;
+    });
+  }, [search, startDate, endDate, actionFilter, userFilter]);
+
+  const total = filtered.length;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  return (
+    <section aria-labelledby="audit-log-heading" className="mx-auto w-full max-w-[1120px] pt-1 text-[#24133F]">
+      {/* Title & Subtitle Matching Figma Mockup */}
+      <div className="mb-4">
+        <h1 id="audit-log-heading" className="text-[26px] font-extrabold leading-tight tracking-tight">
+          Audit Log
+        </h1>
+        <p className="text-xs text-[#756883] mt-0.5">
+          Every change and decision, recorded
+        </p>
+      </div>
+
+      {/* Filter Bar Matching Figma Mockup */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {/* Search Input */}
+        <label className="flex h-10 min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[320px]">
+          <Search className="h-4 w-4 shrink-0" />
+          <span className="sr-only">Search Audit Log</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            placeholder="Search Date, user, action or record"
+            className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
+          />
+        </label>
+
+        {/* Calendar Component */}
+        <CalendarDatePicker
+          startDate={startDate}
+          endDate={endDate}
+          onChange={(range) => {
+            setStartDate(range.startDate);
+            setEndDate(range.endDate);
+            setPage(1);
+          }}
+        />
+
+        {/* Action Filter */}
+        <label className="flex h-10 items-center gap-1.5 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs text-[#24133F]">
+          <Check className="h-4 w-4 text-[#756883]" />
+          <span className="sr-only">Action</span>
+          <select
+            value={actionFilter}
+            onChange={(e) => {
+              setActionFilter(e.target.value);
+              setPage(1);
+            }}
+            className="bg-transparent font-semibold outline-none text-xs cursor-pointer"
+          >
+            <option value="all">All Actions</option>
+            {uniqueActions.map(([key, label]) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="h-3 w-3 text-[#756883]" />
+        </label>
+
+        {/* User Filter */}
+        <label className="flex h-10 items-center gap-1.5 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs text-[#24133F]">
+          <Users className="h-4 w-4 text-[#756883]" />
+          <span className="sr-only">User</span>
+          <select
+            value={userFilter}
+            onChange={(e) => {
+              setUserFilter(e.target.value);
+              setPage(1);
+            }}
+            className="bg-transparent font-semibold outline-none text-xs cursor-pointer"
+          >
+            <option value="all">All Users</option>
+            {uniqueUsers.map((user) => (
+              <option key={user} value={user}>
+                {user}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="h-3 w-3 text-[#756883]" />
+        </label>
+      </div>
+
+      {/* Audit Log Table Matching Figma Mockup */}
+      <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5 shadow-sm">
+        <table className="w-full min-w-[760px] text-left text-xs">
+          <thead>
+            <tr className="bg-[#F4F6FA] text-[10px] uppercase text-[#637596]">
+              <th scope="col" className="rounded-l-xl px-3.5 py-3 font-semibold">
+                Date / Time
+              </th>
+              <th scope="col" className="px-3.5 py-3 font-semibold">
+                User / Admin
+              </th>
+              <th scope="col" className="px-3.5 py-3 font-semibold">
+                Action
+              </th>
+              <th scope="col" className="px-3.5 py-3 font-semibold">
+                Description
+              </th>
+              <th scope="col" className="rounded-r-xl px-3.5 py-3 font-semibold text-right sm:text-left">
+                Related Record
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-12 text-center text-xs text-[#756883]">
+                  No audit log entries match the selected filters or date range.
+                </td>
+              </tr>
+            ) : (
+              visible.map((entry) => (
+                <tr
+                  key={entry.id}
+                  className="border-b border-[#EEF0F4] last:border-b-0 hover:bg-[#FAF8FC] transition-colors"
+                >
+                  {/* Date / Time */}
+                  <td className="whitespace-nowrap px-3.5 py-3.5 text-[12px] text-[#637596] font-medium">
+                    {formatTimestamp(entry.timestamp)}
+                  </td>
+
+                  {/* User / Admin */}
+                  <td className="px-3.5 py-3.5">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold ${
+                          entry.user.avatarBg || 'bg-[#DFE8F8]'
+                        } ${entry.user.avatarColor || 'text-[#294B85]'}`}
+                        aria-hidden="true"
+                      >
+                        {entry.user.initials}
+                      </span>
+                      <span className="font-bold text-[13px] text-[#24133F]">
+                        {entry.user.name}
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Action Pill Badge */}
+                  <td className="px-3.5 py-3.5">
+                    <span
+                      className={`inline-block px-3 py-1 rounded-full text-[11px] font-bold shadow-sm whitespace-nowrap ${entry.badgeClass}`}
+                    >
+                      {entry.actionLabel}
+                    </span>
+                  </td>
+
+                  {/* Description */}
+                  <td className="px-3.5 py-3.5 text-[12px] text-[#24133F] font-medium max-w-xs">
+                    {entry.description}
+                  </td>
+
+                  {/* Related Record Badge */}
+                  <td className="px-3.5 py-3.5 text-right sm:text-left">
+                    <span
+                      title={`Audited Entity Reference ID: ${entry.relatedRecord}`}
+                      className="inline-block px-2.5 py-1 rounded-lg bg-[#F1F5F9] text-[#334155] font-mono text-[11px] font-bold tracking-tight border border-slate-200/60 select-all cursor-default"
+                    >
+                      {entry.relatedRecord}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+
+        {/* Pagination Footer */}
+        <div className="flex items-center justify-between border-t border-[#EEF0F4] px-3.5 pt-3 text-xs text-[#756883]">
+          <span>
+            {total.toLocaleString()} log entries · Page {page} of {pageCount}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page >= pageCount}
+              onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
+
+export default AuditLogPage;
