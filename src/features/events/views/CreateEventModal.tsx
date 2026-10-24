@@ -646,48 +646,36 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 ))}
               </div>
 
-              {/* Day header & Session Toggles */}
+              {/* Day Schedule Header */}
               <div className="border-t border-[#F1EEF4] pt-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-xs font-bold text-[#24133F]">Day 1 - October 2, 2026</h4>
-                    <p className="text-[11px] text-[#756883]">Enable one, multiple, or all for this day.</p>
+                    <p className="text-[11px] text-[#756883]">Configure sessions and attendance windows for this day.</p>
                   </div>
-                  <button type="button" className="text-xs font-bold text-[#451475] hover:underline">
-                    Select all
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allOn = morningEnabled && afternoonEnabled && eveningEnabled;
+                      setMorningEnabled(!allOn);
+                      setAfternoonEnabled(!allOn);
+                      setEveningEnabled(!allOn);
+                    }}
+                    className="text-xs font-bold text-[#451475] hover:underline"
+                  >
+                    {morningEnabled && afternoonEnabled && eveningEnabled ? 'Deselect all' : 'Select all'}
                   </button>
-                </div>
-
-                <div className="mt-3 flex items-center gap-3">
-                  {[
-                    { label: 'Morning', state: morningEnabled, setter: setMorningEnabled },
-                    { label: 'Afternoon', state: afternoonEnabled, setter: setAfternoonEnabled },
-                    { label: 'Evening', state: eveningEnabled, setter: setEveningEnabled },
-                  ].map((chip) => (
-                    <button
-                      key={chip.label}
-                      type="button"
-                      onClick={() => chip.setter(!chip.state)}
-                      className={`flex items-center gap-2 rounded-2xl border px-4 py-2 text-xs font-bold transition-colors ${
-                        chip.state
-                          ? 'border-[#451475] bg-[#FAF7FD] text-[#451475]'
-                          : 'border-[#E5E0EB] bg-white text-[#756883]'
-                      }`}
-                    >
-                      <span>{chip.label}</span>
-                      <Checkbox checked={chip.state} onChange={() => {}} />
-                    </button>
-                  ))}
                 </div>
               </div>
 
-              {/* Session Accordions */}
+              {/* Session Cards (Direct inline toggle in card header) */}
               {[
                 {
                   type: 'Morning' as const,
                   label: 'Morning Session',
                   badge: 'Both (IN + OUT)',
                   enabled: morningEnabled,
+                  setEnabled: setMorningEnabled,
                   expanded: morningExpanded,
                   setExpanded: setMorningExpanded,
                   slot: morningSlot,
@@ -697,6 +685,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   label: 'Afternoon Session',
                   badge: 'Both (IN + OUT)',
                   enabled: afternoonEnabled,
+                  setEnabled: setAfternoonEnabled,
                   expanded: afternoonExpanded,
                   setExpanded: setAfternoonExpanded,
                   slot: afternoonSlot,
@@ -706,36 +695,74 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   label: 'Evening Session',
                   badge: 'Both (IN + OUT)',
                   enabled: eveningEnabled,
+                  setEnabled: setEveningEnabled,
                   expanded: eveningExpanded,
                   setExpanded: setEveningExpanded,
                   slot: eveningSlot,
                 },
-              ].map(
-                (session) =>
-                  session.enabled && (
-                    <div key={session.type} className="rounded-2xl border border-[#E5E0EB] bg-white p-4 shadow-xs">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-[#24133F]">{session.label}</span>
+              ].map((session) => (
+                <div
+                  key={session.type}
+                  className={`rounded-2xl border transition-all duration-200 ${
+                    session.enabled
+                      ? 'border-[#E5E0EB] bg-white p-4 shadow-xs'
+                      : 'border-[#F1EEF4] bg-[#FAF8FB]/60 p-3.5 opacity-75'
+                  }`}
+                >
+                  {/* Card Header with Direct Checkbox Toggle */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={session.enabled}
+                        onChange={(e) => {
+                          const isChecked = (e.target as HTMLInputElement).checked;
+                          session.setEnabled(isChecked);
+                          if (isChecked && !session.expanded) {
+                            session.setExpanded(true);
+                          }
+                        }}
+                      />
+                      <div className="flex items-center gap-2">
+                        <span
+                          onClick={() => session.setEnabled(!session.enabled)}
+                          className={`text-xs font-bold cursor-pointer select-none transition-colors ${
+                            session.enabled ? 'text-[#24133F]' : 'text-[#756883]'
+                          }`}
+                        >
+                          {session.label}
+                        </span>
+                        {session.enabled && (
                           <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-[#756883]">
                             {session.badge}
                           </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="rounded-full bg-[#EBF3FF] px-2.5 py-0.5 text-[10px] font-bold text-[#3B82F6]">
-                            Selected
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => session.setExpanded(!session.expanded)}
-                            className="rounded p-1 text-[#756883] hover:text-[#24133F] transition-colors"
-                          >
-                            {session.expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                          </button>
-                        </div>
+                        )}
                       </div>
+                    </div>
 
-                      {session.expanded && (
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold transition-all ${
+                          session.enabled
+                            ? 'bg-[#EBF3FF] text-[#3B82F6]'
+                            : 'bg-slate-100 text-slate-400'
+                        }`}
+                      >
+                        {session.enabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                      {session.enabled && (
+                        <button
+                          type="button"
+                          onClick={() => session.setExpanded(!session.expanded)}
+                          className="rounded p-1 text-[#756883] hover:text-[#24133F] transition-colors"
+                          aria-label={session.expanded ? 'Collapse session' : 'Expand session'}
+                        >
+                          {session.expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {session.enabled && session.expanded && (
                         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                           {/* IN Slot Card */}
                           <div className="rounded-2xl border border-[#F1EEF4] bg-[#FAF8FB]/50 p-3.5 space-y-2.5">
