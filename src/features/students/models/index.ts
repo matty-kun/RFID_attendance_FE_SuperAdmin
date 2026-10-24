@@ -11,13 +11,37 @@ export interface StudentRecord {
   updated_at?: string;
 }
 
-export interface StudentPage { students: StudentRecord[]; total: number; page: number; limit: number; }
+export interface StudentPage {
+  students: StudentRecord[];
+  total: number;
+  page: number;
+  limit: number;
+}
 
 export interface RegisterStudentPayload {
   student_id: string;
   name: string;
   email: string;
-  temporary_password: string;
+  temporary_password?: string;
+  course?: string;
+  year_level?: number;
+  rfid_uid?: string;
+}
+
+export interface InventoryCard {
+  id: string;
+  cardNumber: number;
+  uid: string;
+  status: 'unassigned' | 'assigned';
+  assignedToStudentId?: string | null;
+  assignedToStudentName?: string | null;
+  registeredAt: string;
+}
+
+export interface BulkImportStudentRow {
+  student_id: string;
+  name: string;
+  email?: string;
   course?: string;
   year_level?: number;
   rfid_uid?: string;
