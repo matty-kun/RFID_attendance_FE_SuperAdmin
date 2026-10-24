@@ -23,7 +23,7 @@ function toYMD(date: Date): string {
 }
 
 function formatDisplayRange(start?: string, end?: string): string {
-  if (!start && !end) return 'Select Date Range';
+  if (!start && !end) return 'All Dates';
   if (start && !end) {
     const d = new Date(`${start}T00:00:00`);
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -243,7 +243,7 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
               onClick={() => setPreset('all')}
               className="rounded-lg px-2 py-1 text-[11px] font-semibold text-[#756883] hover:bg-[#F4F6FA] hover:text-[#24133F]"
             >
-              All Time
+              All Dates
             </button>
             <button
               type="button"

@@ -20,6 +20,7 @@ import {
 import { useToast } from '../context';
 import { Button } from '../components/common/Button';
 import { Dropdown } from '../components/common/Dropdown';
+import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { CreateEventModal } from '../features/events/views/CreateEventModal';
 import { DeleteConfirmationModal } from '../components/common/DeleteConfirmationModal';
 import { EditTimeWindowDrawer } from '../features/events/views/EditTimeWindowDrawer';
@@ -218,6 +219,18 @@ function parseTimeWindow(tw: string): { start: string; end: string } {
 
 
 
+function parseDateStrToYMD(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  } catch {
+    return '';
+  }
+}
+
 export function AttendancePage() {
   const { showToast } = useToast();
   const [eventData, setEventData] = useState<EventData | null>(initialEvent);
@@ -229,7 +242,7 @@ export function AttendancePage() {
   // Filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState('all');
+  const [dateRange, setDateRange] = useState<{ start?: string; end?: string }>({});
 
   // Modals state
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
@@ -476,15 +489,21 @@ export function AttendancePage() {
     showFeedback(`Event "${newEvent.name}" published successfully!`, 'success');
   };
 
-  const isSearching = Boolean(search.trim()) || statusFilter !== 'all' || dateFilter !== 'all';
+  const hasDateFilter = Boolean(dateRange.start || dateRange.end);
+  const isSearching = Boolean(search.trim()) || statusFilter !== 'all' || hasDateFilter;
 
   const filteredDays = useMemo(() => {
     if (!eventData) return [];
     return eventData.days
       .map((day) => {
-        const matchesDate =
-          dateFilter === 'all' ||
-          day.dateStr.toLowerCase().includes(dateFilter.toLowerCase());
+        const matchesDate = (() => {
+          if (!dateRange.start && !dateRange.end) return true;
+          const dayYMD = parseDateStrToYMD(day.dateStr);
+          if (!dayYMD) return true;
+          if (dateRange.start && !dateRange.end) return dayYMD === dateRange.start;
+          if (dateRange.start && dateRange.end) return dayYMD >= dateRange.start && dayYMD <= dateRange.end;
+          return true;
+        })();
 
         const visibleSessions = day.sessions.filter((s) => {
           const matchesSearch =
@@ -511,7 +530,7 @@ export function AttendancePage() {
         };
       })
       .filter((day) => day.matchesDate && (!isSearching || day.visibleSessions.length > 0));
-  }, [eventData, search, statusFilter, dateFilter, isSearching]);
+  }, [eventData, search, statusFilter, dateRange, isSearching]);
 
   return (
     <div className="mx-auto w-full max-w-[1180px] space-y-6 text-[#24133F]">
@@ -559,17 +578,15 @@ export function AttendancePage() {
             ]}
           />
 
-          <Dropdown
-            value={dateFilter}
-            onChange={setDateFilter}
-            buttonClassName="h-10 rounded-xl"
-            options={[
-              { value: 'all', label: 'All Dates' },
-              { value: 'october 2', label: 'Oct 2, 2026' },
-              { value: 'october 3', label: 'Oct 3, 2026' },
-              { value: 'october 4', label: 'Oct 4, 2026' },
-              { value: 'october 5', label: 'Oct 5, 2026' },
-            ]}
+          <CalendarDatePicker
+            startDate={dateRange.start}
+            endDate={dateRange.end}
+            onChange={(range) => {
+              setDateRange({
+                start: range.startDate || undefined,
+                end: range.endDate || undefined,
+              });
+            }}
           />
         </div>
 
@@ -910,7 +927,7 @@ export function AttendancePage() {
                   onClick={() => {
                     setSearch('');
                     setStatusFilter('all');
-                    setDateFilter('all');
+                    setDateRange({});
                   }}
                   className="mt-4 px-4 py-1.5 rounded-xl text-xs font-bold text-[#451475] bg-[#FAF7FD] border border-[#E9DDF8] hover:bg-[#F3EDFB] transition-colors"
                 >
