@@ -93,9 +93,9 @@ export const RegisterActionsDropdown: React.FC<RegisterActionsDropdownProps> = (
           aria-label="Registration and RFID actions"
           className="absolute right-0 top-[calc(100%+8px)] z-50 w-80 rounded-2xl border border-[#E5E0EB] bg-white p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-150 text-[#24133F]"
         >
-          <div className="px-3 py-1.5 border-b border-[#F0E8FC] mb-1.5 flex items-center justify-between">
-            <span className="text-[10px] uppercase font-bold text-[#756883] tracking-wider">
-              Registration &amp; RFID Tools
+          <div className="px-3 py-1.5 border-b border-[#F0E8FC] mb-1 flex items-center justify-between">
+            <span className="text-xs font-semibold text-[#756883]">
+              Registration &amp; RFID tools
             </span>
           </div>
 
@@ -157,9 +157,6 @@ export const RegisterActionsDropdown: React.FC<RegisterActionsDropdownProps> = (
                 <p className="text-[11px] text-[#756883] line-clamp-1">Upload roster file with auto-pairing</p>
               </div>
             </button>
-
-            {/* Separator */}
-            <div className="border-t border-[#F0E8FC] my-1" />
 
             {/* 4. Auto-Pair Available Cards */}
             <button
