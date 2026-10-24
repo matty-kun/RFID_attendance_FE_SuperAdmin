@@ -132,15 +132,15 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
           {/* Stepper (Only visible during creation, not in success modal) */}
           {!isPublished && (
-            <div className="mt-6 flex items-center justify-between px-4">
+            <div className="mt-6 overflow-x-auto">
+              <div className="grid min-w-[600px] grid-cols-5 px-4">
               {stepTitles.map((title, idx) => {
                 const stepNum = idx + 1;
                 const isComplete = currentStep > stepNum;
                 const isActive = currentStep === stepNum;
 
                 return (
-                  <div key={title} className="flex flex-1 items-center">
-                    <div className="flex flex-col items-center">
+                  <div key={title} className="relative flex flex-col items-center text-center">
                       <div
                         className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-colors ${
                           isComplete
@@ -159,10 +159,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       >
                         {title}
                       </span>
-                    </div>
                     {idx < stepTitles.length - 1 && (
                       <div
-                        className={`mx-2 mb-4 h-[2px] flex-1 transition-colors ${
+                        className={`absolute left-[calc(50%+1.5rem)] top-4 h-[2px] w-[calc(100%-3rem)] transition-colors ${
                           currentStep > stepNum ? 'bg-[#A855F7]' : 'bg-[#E5E0EB]'
                         }`}
                       />
@@ -170,6 +169,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   </div>
                 );
               })}
+              </div>
             </div>
           )}
         </div>
