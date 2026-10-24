@@ -104,7 +104,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     outOfficers: [{ id: 'adm-1', name: 'Ako si batman', initials: 'AB', role: 'Admin', location: 'Gymnasium', status: 'Online' }],
   });
 
-  // Time Window Edit Modal State
+  // Time Window Edit Modal State (with Start & End tabs)
+  const [activeTimeField, setActiveTimeField] = useState<'start' | 'end'>('start');
   const [editingTimeSlot, setEditingTimeSlot] = useState<{
     isOpen: boolean;
     sessionType: 'Morning' | 'Afternoon' | 'Evening';
@@ -155,6 +156,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     currentTimeStr: string
   ) => {
     const parsed = parseSlotTime(currentTimeStr);
+    setActiveTimeField('start');
     setEditingTimeSlot({
       isOpen: true,
       sessionType,
@@ -1188,33 +1190,72 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             </div>
 
             <div className="mt-4 space-y-4">
-              <div className="text-center">
-                <h4 className="text-sm font-bold text-[#24133F]">What time works?</h4>
-                <p className="text-xs text-[#756883]">
-                  Select the start time for the {editingTimeSlot.sessionType} {editingTimeSlot.slot} window.
-                </p>
+              {/* Dual Start / End Tab Toggle */}
+              <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#F6F4F8] p-1.5 border border-[#E5E0EB]">
+                <button
+                  type="button"
+                  onClick={() => setActiveTimeField('start')}
+                  className={`flex flex-col items-center justify-center rounded-xl py-2 px-3 transition-all ${
+                    activeTimeField === 'start'
+                      ? 'bg-white text-[#451475] shadow-xs font-bold'
+                      : 'text-[#756883] hover:text-[#24133F] font-semibold'
+                  }`}
+                >
+                  <span className="text-[10px] uppercase tracking-wider">Start Window</span>
+                  <span className="text-sm font-bold mt-0.5">
+                    {editingTimeSlot.start ? formatSlotTimeWindow(editingTimeSlot.start, editingTimeSlot.start).split('-')[0].trim() : 'Select'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTimeField('end')}
+                  className={`flex flex-col items-center justify-center rounded-xl py-2 px-3 transition-all ${
+                    activeTimeField === 'end'
+                      ? 'bg-white text-[#451475] shadow-xs font-bold'
+                      : 'text-[#756883] hover:text-[#24133F] font-semibold'
+                  }`}
+                >
+                  <span className="text-[10px] uppercase tracking-wider">End Window</span>
+                  <span className="text-sm font-bold mt-0.5">
+                    {editingTimeSlot.end ? formatSlotTimeWindow(editingTimeSlot.end, editingTimeSlot.end).split('-')[0].trim() : 'Select'}
+                  </span>
+                </button>
               </div>
 
               {/* Grid-based TimePicker component (Calendly / Deel style) */}
               <TimePicker
-                value={editingTimeSlot.start}
+                label={`Select ${activeTimeField === 'start' ? 'Start' : 'End'} Time`}
+                value={activeTimeField === 'start' ? editingTimeSlot.start : editingTimeSlot.end}
                 onChange={(val) => {
-                  const [h, m] = val.split(':').map(Number);
-                  const totalMinutes = h * 60 + m + 90; // default 1.5 hr duration
-                  const newH = Math.floor(totalMinutes / 60) % 24;
-                  const newM = totalMinutes % 60;
-                  setEditingTimeSlot((prev) => ({
-                    ...prev,
-                    start: val,
-                    end: `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`,
-                  }));
+                  if (activeTimeField === 'start') {
+                    // Update start time
+                    setEditingTimeSlot((prev) => {
+                      const next = { ...prev, start: val };
+                      // If new start is >= end, auto-advance end by 1.5 hrs
+                      if (val >= prev.end) {
+                        const [h, m] = val.split(':').map(Number);
+                        const totalMinutes = h * 60 + m + 90;
+                        const newH = Math.floor(totalMinutes / 60) % 24;
+                        const newM = totalMinutes % 60;
+                        next.end = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+                      }
+                      return next;
+                    });
+                  } else {
+                    // Update end time
+                    setEditingTimeSlot((prev) => ({
+                      ...prev,
+                      end: val,
+                    }));
+                  }
                 }}
               />
 
               {/* Quick duration presets */}
               <div>
                 <p className="text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-1.5">
-                  Set Window Duration
+                  Or set window duration from start
                 </p>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {[
