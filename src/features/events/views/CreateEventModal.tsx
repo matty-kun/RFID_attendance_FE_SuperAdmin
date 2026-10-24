@@ -17,8 +17,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Checkbox } from '../../../components/common/Checkbox';
-import { TimePicker } from '../../../components/common/TimePicker';
 import { toast } from '../../../context';
+import { EditTimeWindowDrawer } from './EditTimeWindowDrawer';
 import {
   AssignOfficersDrawer,
   type AssignedOfficer,
@@ -169,7 +169,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   };
 
   // Time Window Edit Modal State (with Start & End tabs)
-  const [activeTimeField, setActiveTimeField] = useState<'start' | 'end'>('start');
   const [editingTimeSlot, setEditingTimeSlot] = useState<{
     isOpen: boolean;
     sessionType: 'Morning' | 'Afternoon' | 'Evening';
@@ -204,15 +203,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     }
   };
 
-  const formatSlotTimeWindow = (start24: string, end24: string) => {
-    const to12 = (t: string) => {
-      const [h, m] = t.split(':').map(Number);
-      const period = (h || 0) >= 12 ? 'PM' : 'AM';
-      const hr = (h || 0) % 12 || 12;
-      return `${hr}:${String(m || 0).padStart(2, '0')} ${period}`;
-    };
-    return `${to12(start24)} - ${to12(end24)}`;
-  };
+
 
   const handleOpenEditTimeSlot = (
     sessionType: 'Morning' | 'Afternoon' | 'Evening',
@@ -220,7 +211,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     currentTimeStr: string
   ) => {
     const parsed = parseSlotTime(currentTimeStr);
-    setActiveTimeField('start');
     setEditingTimeSlot({
       isOpen: true,
       sessionType,
@@ -232,9 +222,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
 
 
-  const handleSaveSlotTime = () => {
-    const { sessionType, slot, start, end } = editingTimeSlot;
-    const formatted = formatSlotTimeWindow(start, end);
+  const handleSaveSlotTime = (_start: string, _end: string, formatted: string) => {
+    const { sessionType, slot } = editingTimeSlot;
     const updateSlot = (s: SessionTimeSlot): SessionTimeSlot => ({
       ...s,
       [slot === 'IN' ? 'inTime' : 'outTime']: formatted,
@@ -1222,126 +1211,17 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         </div>
       </div>
 
-      {/* Edit Time Window Modal */}
-      {editingTimeSlot.isOpen && (
-        <div
-          role="presentation"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) {
-              setEditingTimeSlot((prev) => ({ ...prev, isOpen: false }));
-            }
-          }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#170D29]/40 p-4 backdrop-blur-xs animate-in fade-in duration-150"
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="w-full max-w-sm rounded-[24px] border border-[#E5E0EB] bg-white p-5 shadow-2xl animate-in zoom-in-95 duration-150"
-          >
-            <div className="flex items-center justify-between border-b border-[#F1EEF4] pb-3">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-[#451475]" />
-                <h3 className="text-sm font-bold text-[#24133F]">
-                  Edit {editingTimeSlot.sessionType} ({editingTimeSlot.slot}) Window
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditingTimeSlot((prev) => ({ ...prev, isOpen: false }))}
-                className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F]"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-4">
-              {/* Dual Start / End Tab Toggle */}
-              <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#F6F4F8] p-1.5 border border-[#E5E0EB]">
-                <button
-                  type="button"
-                  onClick={() => setActiveTimeField('start')}
-                  className={`flex flex-col items-center justify-center rounded-xl py-2 px-3 transition-all ${
-                    activeTimeField === 'start'
-                      ? 'bg-white text-[#451475] shadow-xs font-bold'
-                      : 'text-[#756883] hover:text-[#24133F] font-semibold'
-                  }`}
-                >
-                  <span className="text-[10px] uppercase tracking-wider">Start Window</span>
-                  <span className="text-sm font-bold mt-0.5">
-                    {editingTimeSlot.start ? formatSlotTimeWindow(editingTimeSlot.start, editingTimeSlot.start).split('-')[0].trim() : 'Select'}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTimeField('end')}
-                  className={`flex flex-col items-center justify-center rounded-xl py-2 px-3 transition-all ${
-                    activeTimeField === 'end'
-                      ? 'bg-white text-[#451475] shadow-xs font-bold'
-                      : 'text-[#756883] hover:text-[#24133F] font-semibold'
-                  }`}
-                >
-                  <span className="text-[10px] uppercase tracking-wider">End Window</span>
-                  <span className="text-sm font-bold mt-0.5">
-                    {editingTimeSlot.end ? formatSlotTimeWindow(editingTimeSlot.end, editingTimeSlot.end).split('-')[0].trim() : 'Select'}
-                  </span>
-                </button>
-              </div>
-
-              {/* Grid-based TimePicker component (Calendly / Deel style) */}
-              <TimePicker
-                label={`Select ${activeTimeField === 'start' ? 'Start' : 'End'} Time`}
-                value={activeTimeField === 'start' ? editingTimeSlot.start : editingTimeSlot.end}
-                onChange={(val) => {
-                  if (activeTimeField === 'start') {
-                    // Update start time
-                    setEditingTimeSlot((prev) => {
-                      const next = { ...prev, start: val };
-                      // If new start is >= end, auto-advance end by 1.5 hrs
-                      if (val >= prev.end) {
-                        const [h, m] = val.split(':').map(Number);
-                        const totalMinutes = h * 60 + m + 90;
-                        const newH = Math.floor(totalMinutes / 60) % 24;
-                        const newM = totalMinutes % 60;
-                        next.end = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
-                      }
-                      return next;
-                    });
-                  } else {
-                    // Update end time
-                    setEditingTimeSlot((prev) => ({
-                      ...prev,
-                      end: val,
-                    }));
-                  }
-                }}
-              />
-
-
-
-
-            </div>
-
-            {/* Modal actions */}
-            <div className="mt-5 flex items-center justify-end gap-2 border-t border-[#F1EEF4] pt-3">
-              <button
-                type="button"
-                onClick={() => setEditingTimeSlot((prev) => ({ ...prev, isOpen: false }))}
-                className="rounded-xl border border-[#E5E0EB] px-4 py-2 text-xs font-bold text-[#756883] hover:bg-slate-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveSlotTime}
-                className="rounded-xl bg-[#451475] px-4 py-2 text-xs font-bold text-white hover:bg-[#38105F] transition-colors shadow-xs"
-              >
-                Save Window
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Edit Time Window Drawer */}
+      <EditTimeWindowDrawer
+        isOpen={editingTimeSlot.isOpen}
+        onClose={() => setEditingTimeSlot((prev) => ({ ...prev, isOpen: false }))}
+        sessionTitle={`${editingTimeSlot.sessionType} Session`}
+        windowType={editingTimeSlot.slot}
+        dateStr={`Day ${selectedDayTab} · ${formatDateDisplay(startDate)}`}
+        initialStart={editingTimeSlot.start}
+        initialEnd={editingTimeSlot.end}
+        onSave={handleSaveSlotTime}
+      />
 
       {/* Assign Officers Drawer */}
       <AssignOfficersDrawer

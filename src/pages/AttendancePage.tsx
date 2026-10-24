@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import {
   Calendar,
   ChevronDown,
@@ -16,15 +15,14 @@ import {
   CheckCircle2,
   Trash2,
   X,
-  Check,
   RotateCcw,
 } from 'lucide-react';
 import { useToast } from '../context';
 import { Button } from '../components/common/Button';
 import { Dropdown } from '../components/common/Dropdown';
-import { TimePicker } from '../components/common/TimePicker';
 import { CreateEventModal } from '../features/events/views/CreateEventModal';
 import { DeleteConfirmationModal } from '../components/common/DeleteConfirmationModal';
+import { EditTimeWindowDrawer } from '../features/events/views/EditTimeWindowDrawer';
 import {
   AssignOfficersDrawer,
   type AssignedOfficer,
@@ -218,45 +216,7 @@ function parseTimeWindow(tw: string): { start: string; end: string } {
   }
 }
 
-function to12Display(t24: string): string {
-  try {
-    const [hStr, mStr] = t24.split(':');
-    let h = parseInt(hStr, 10);
-    const m = mStr ? mStr.padStart(2, '0') : '00';
-    if (isNaN(h)) h = 8;
-    const period = h >= 12 ? 'PM' : 'AM';
-    h = h % 12;
-    if (h === 0) h = 12;
-    return `${h}:${m} ${period}`;
-  } catch {
-    return t24;
-  }
-}
 
-function formatTimeWindow(start24: string, end24: string): string {
-  try {
-    const to12 = (t24: string) => {
-      const [hStr, mStr] = t24.split(':');
-      let h = parseInt(hStr, 10);
-      const m = mStr ? mStr.padStart(2, '0') : '00';
-      if (isNaN(h)) h = 8;
-      const period = h >= 12 ? 'PM' : 'AM';
-      h = h % 12;
-      if (h === 0) h = 12;
-      return { time: `${h}:${m}`, period };
-    };
-
-    const s = to12(start24);
-    const e = to12(end24);
-
-    if (s.period === e.period) {
-      return `${s.time} - ${e.time} ${e.period}`;
-    }
-    return `${s.time} ${s.period} - ${e.time} ${e.period}`;
-  } catch {
-    return `${start24} - ${end24}`;
-  }
-}
 
 export function AttendancePage() {
   const { showToast } = useToast();
@@ -332,7 +292,6 @@ export function AttendancePage() {
   const [editingTimeSession, setEditingTimeSession] = useState<{ dayId: string; session: SessionItem } | null>(null);
   const [startTimeInput, setStartTimeInput] = useState('07:00');
   const [endTimeInput, setEndTimeInput] = useState('09:00');
-  const [activeTimeField, setActiveTimeField] = useState<'start' | 'end'>('start');
   const [deletingSessionInfo, setDeletingSessionInfo] = useState<{ dayId: string; session: SessionItem } | null>(null);
 
   const handleToggleSessionComplete = (dayId: string, session: SessionItem) => {
@@ -391,7 +350,6 @@ export function AttendancePage() {
         showFeedback(`"${session.name}" restored to ${prior}`, 'success');
       });
     }
-    setActiveTimeField('start');
     setOpenMenuSessionId(null);
   };
 
@@ -403,10 +361,9 @@ export function AttendancePage() {
     setOpenMenuSessionId(null);
   };
 
-  const handleSaveEditTime = () => {
+  const handleSaveEditTime = (_start: string, _end: string, formatted: string) => {
     if (!editingTimeSession) return;
     const targetSessionId = editingTimeSession.session.id;
-    const formatted = formatTimeWindow(startTimeInput, endTimeInput);
     setEventData((prev) => !prev ? prev : ({
       ...prev,
       days: prev.days.map((d) =>
@@ -1011,114 +968,17 @@ export function AttendancePage() {
         />
       )}
 
-      {/* Edit Session Time Window Modal (Matching Create Session TimePicker) */}
-      {editingTimeSession &&
-        createPortal(
-          <div
-            role="presentation"
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget) setEditingTimeSession(null);
-            }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-[#170D29]/40 p-4 backdrop-blur-xs animate-in fade-in duration-150"
-          >
-            <div
-              role="dialog"
-              aria-modal="true"
-              className="w-full max-w-sm rounded-[24px] border border-[#E5E0EB] bg-white p-5 shadow-2xl animate-in zoom-in-95 duration-150"
-            >
-              <div className="flex items-center justify-between border-b border-[#F1EEF4] pb-3">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-[#451475]" />
-                  <h3 className="text-sm font-bold text-[#24133F]">
-                    Edit {editingTimeSession.session.name} Window
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setEditingTimeSession(null)}
-                  className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F]"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="mt-4 space-y-4">
-                {/* Dual Start / End Tab Toggle */}
-                <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#F6F4F8] p-1.5 border border-[#E5E0EB]">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTimeField('start')}
-                    className={`flex flex-col items-center justify-center rounded-xl py-2 px-3 transition-all ${
-                      activeTimeField === 'start'
-                        ? 'bg-white text-[#451475] shadow-xs font-bold'
-                        : 'text-[#756883] hover:text-[#24133F] font-semibold'
-                    }`}
-                  >
-                    <span className="text-[10px] uppercase tracking-wider">Start Window</span>
-                    <span className="text-sm font-bold mt-0.5">
-                      {startTimeInput ? to12Display(startTimeInput) : 'Select'}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTimeField('end')}
-                    className={`flex flex-col items-center justify-center rounded-xl py-2 px-3 transition-all ${
-                      activeTimeField === 'end'
-                        ? 'bg-white text-[#451475] shadow-xs font-bold'
-                        : 'text-[#756883] hover:text-[#24133F] font-semibold'
-                    }`}
-                  >
-                    <span className="text-[10px] uppercase tracking-wider">End Window</span>
-                    <span className="text-sm font-bold mt-0.5">
-                      {endTimeInput ? to12Display(endTimeInput) : 'Select'}
-                    </span>
-                  </button>
-                </div>
-
-                {/* Grid-based TimePicker component (Calendly / Deel style) */}
-                <TimePicker
-                  label={`Select ${activeTimeField === 'start' ? 'Start' : 'End'} Time`}
-                  value={activeTimeField === 'start' ? startTimeInput : endTimeInput}
-                  onChange={(val) => {
-                    if (activeTimeField === 'start') {
-                      setStartTimeInput(val);
-                      if (val >= endTimeInput) {
-                        const [h, m] = val.split(':').map(Number);
-                        const totalMinutes = (h || 0) * 60 + (m || 0) + 90;
-                        const newH = Math.floor(totalMinutes / 60) % 24;
-                        const newM = totalMinutes % 60;
-                        setEndTimeInput(`${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`);
-                      }
-                    } else {
-                      setEndTimeInput(val);
-                    }
-                  }}
-                />
-              </div>
-
-              {/* Modal actions */}
-              <div className="mt-5 flex items-center justify-end gap-2 border-t border-[#F1EEF4] pt-3">
-                <button
-                  type="button"
-                  onClick={() => setEditingTimeSession(null)}
-                  className="rounded-xl border border-[#E5E0EB] px-4 py-2 text-xs font-bold text-[#756883] hover:bg-slate-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveEditTime}
-                  className="flex items-center gap-1.5 rounded-xl bg-[#7026B7] px-4 py-2 text-xs font-bold text-white hover:bg-[#631FA4] shadow-[0_4px_0_0_#451475] active:translate-y-[2px] active:shadow-none transition-all"
-                >
-                  <Check className="h-3.5 w-3.5" />
-                  Save Window
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
+      {/* Edit Session Time Window Drawer */}
+      <EditTimeWindowDrawer
+        isOpen={Boolean(editingTimeSession)}
+        onClose={() => setEditingTimeSession(null)}
+        sessionTitle={editingTimeSession ? `${editingTimeSession.session.name}` : ''}
+        windowType="Session"
+        dateStr={eventData?.days.find((d) => d.dayId === editingTimeSession?.dayId)?.dateStr}
+        initialStart={startTimeInput}
+        initialEnd={endTimeInput}
+        onSave={handleSaveEditTime}
+      />
 
       {/* Delete Event Confirmation Modal */}
       <DeleteConfirmationModal
