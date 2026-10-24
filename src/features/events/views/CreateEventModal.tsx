@@ -7,7 +7,6 @@ import {
   MapPin,
   Pencil,
   Send,
-  ShieldCheck,
   X,
   Check,
   ChevronDown,
@@ -1057,19 +1056,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       </div>
                     )
                   )}
-                </div>
-              </div>
-
-              {/* Publication Readiness Banner */}
-              <div className="rounded-2xl border border-emerald-200 bg-[#E4F7EB]/70 p-4 text-xs font-semibold text-[#16883F] flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#10B981] text-white shrink-0">
-                    <ShieldCheck className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-[#16883F]">Ready to Publish!</h5>
-                    <p className="text-[11px] text-[#16883F]/80">All event information, dates, and attendance sessions are validated.</p>
-                  </div>
                 </div>
               </div>
             </div>
