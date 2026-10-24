@@ -504,24 +504,41 @@ export function AttendancePage() {
     showFeedback(`Event "${newEvent.name}" published successfully!`, 'success');
   };
 
-  const filteredDays = useMemo(() => {
-    return eventData.days.filter((day) => {
-      const matchesDate = dateFilter === 'all' || day.dateStr.toLowerCase().includes(dateFilter.toLowerCase());
-      const matchesSearch =
-        search === '' ||
-        day.dayLabel.toLowerCase().includes(search.toLowerCase()) ||
-        day.sessions.some(
-          (s) =>
-            s.name.toLowerCase().includes(search.toLowerCase()) ||
-            s.officers.some((o) => o.name.toLowerCase().includes(search.toLowerCase()))
-        );
-      const matchesStatus =
-        statusFilter === 'all' ||
-        day.sessions.some((s) => s.status.toLowerCase() === statusFilter.toLowerCase());
+  const isSearching = Boolean(search.trim()) || statusFilter !== 'all' || dateFilter !== 'all';
 
-      return matchesDate && matchesSearch && matchesStatus;
-    });
-  }, [eventData, search, statusFilter, dateFilter]);
+  const filteredDays = useMemo(() => {
+    return eventData.days
+      .map((day) => {
+        const matchesDate =
+          dateFilter === 'all' ||
+          day.dateStr.toLowerCase().includes(dateFilter.toLowerCase());
+
+        const visibleSessions = day.sessions.filter((s) => {
+          const matchesSearch =
+            search.trim() === '' ||
+            day.dayLabel.toLowerCase().includes(search.toLowerCase()) ||
+            s.name.toLowerCase().includes(search.toLowerCase()) ||
+            s.officers.some(
+              (o) =>
+                o.name.toLowerCase().includes(search.toLowerCase()) ||
+                o.location.toLowerCase().includes(search.toLowerCase())
+            );
+
+          const matchesStatus =
+            statusFilter === 'all' ||
+            s.status.toLowerCase() === statusFilter.toLowerCase();
+
+          return matchesSearch && matchesStatus;
+        });
+
+        return {
+          ...day,
+          visibleSessions,
+          matchesDate,
+        };
+      })
+      .filter((day) => day.matchesDate && (!isSearching || day.visibleSessions.length > 0));
+  }, [eventData, search, statusFilter, dateFilter, isSearching]);
 
   return (
     <div className="mx-auto w-full max-w-[1180px] space-y-6 text-[#24133F]">
@@ -546,21 +563,31 @@ export function AttendancePage() {
 
       {/* Filter Bar (No tabs on top!) */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[260px] flex-1 sm:max-w-xs">
+        <div className="relative w-64 sm:w-72">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#756883]" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search"
-            className="w-full rounded-full border border-[#E5E0EB] bg-white py-2 pl-10 pr-4 text-xs text-[#24133F] placeholder-[#9E93A9] focus:border-[#451475] focus:outline-none transition-colors"
+            className="w-full rounded-2xl border border-[#E5E0EB] bg-white py-2 pl-9 pr-8 text-xs text-[#24133F] placeholder-[#9E93A9] focus:border-[#C4B5FD] focus:ring-2 focus:ring-[#F3E8FF] focus:outline-none transition-all shadow-xs"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-[#756883] hover:text-[#24133F] hover:bg-slate-100 transition-colors"
+              title="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
         <Dropdown
           value={statusFilter}
           onChange={setStatusFilter}
-          buttonClassName="rounded-full px-4"
+          buttonClassName="rounded-2xl px-3.5"
           options={[
             { value: 'all', label: 'All Status' },
             { value: 'active', label: 'Active' },
@@ -572,7 +599,7 @@ export function AttendancePage() {
         <Dropdown
           value={dateFilter}
           onChange={setDateFilter}
-          buttonClassName="rounded-full px-4"
+          buttonClassName="rounded-2xl px-3.5"
           options={[
             { value: 'all', label: 'All Dates' },
             { value: 'october 2', label: 'Oct 2, 2026' },
@@ -620,7 +647,7 @@ export function AttendancePage() {
           }`}
         >
           {filteredDays.map((day) => {
-            const isDayOpen = expandedDayId === day.dayId;
+            const isDayOpen = isSearching || expandedDayId === day.dayId;
 
             return (
               <div
@@ -640,7 +667,8 @@ export function AttendancePage() {
                       <h3 className="text-xs font-bold text-[#24133F]">{day.dayLabel}</h3>
                       {!isDayOpen && (
                         <p className="text-[10px] text-[#756883]">
-                          Morning, afternoon, evening · {day.sessions.length} Sessions
+                          Morning, afternoon, evening · {day.visibleSessions.length}{' '}
+                          {day.visibleSessions.length === 1 ? 'Session' : 'Sessions'}
                         </p>
                       )}
                     </div>
@@ -649,7 +677,8 @@ export function AttendancePage() {
                   <div className="flex items-center gap-2">
                     {isDayOpen ? (
                       <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-[#756883]">
-                        {day.sessions.length} sessions
+                        {day.visibleSessions.length}{' '}
+                        {day.visibleSessions.length === 1 ? 'session' : 'sessions'}
                       </span>
                     ) : (
                       <div className="flex items-center gap-2">
@@ -683,7 +712,7 @@ export function AttendancePage() {
                       : 'max-h-0 opacity-0 p-0 pointer-events-none'
                   }`}
                 >
-                  {day.sessions.map((session) => (
+                  {day.visibleSessions.map((session) => (
                         <div
                           key={session.id}
                           className={`rounded-2xl border bg-white p-4 shadow-sm transition-all duration-300 ${
@@ -855,6 +884,27 @@ export function AttendancePage() {
                 </div>
               );
             })}
+
+            {filteredDays.length === 0 && (
+              <div className="py-12 text-center bg-white rounded-2xl border border-[#E5E0EB] p-8">
+                <Search className="h-8 w-8 text-[#9E93A9] mx-auto mb-2 opacity-50" />
+                <p className="text-sm font-bold text-[#24133F]">No sessions found</p>
+                <p className="text-xs text-[#756883] mt-1">
+                  No attendance sessions match your search or filters.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('');
+                    setStatusFilter('all');
+                    setDateFilter('all');
+                  }}
+                  className="mt-4 px-4 py-1.5 rounded-xl text-xs font-bold text-[#451475] bg-[#FAF7FD] border border-[#E9DDF8] hover:bg-[#F3EDFB] transition-colors"
+                >
+                  Clear search & filters
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
