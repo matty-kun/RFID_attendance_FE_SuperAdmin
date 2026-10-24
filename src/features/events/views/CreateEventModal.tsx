@@ -72,7 +72,29 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     }
   };
 
-  // Step 3 state
+  // Step 3 state: dynamically generate days based on selected dates
+  const eventDaysList = useMemo(() => {
+    if (!startDate || !endDate) return [{ num: 1, label: 'Day 1', shortDate: 'Oct 2', fullDate: 'October 2, 2026' }];
+    const d1 = new Date(`${startDate}T00:00:00`);
+    const d2 = new Date(`${endDate}T00:00:00`);
+    const diffTime = d2.getTime() - d1.getTime();
+    const count = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
+
+    return Array.from({ length: count }, (_, i) => {
+      const curDate = new Date(d1);
+      curDate.setDate(d1.getDate() + i);
+      const shortMonth = curDate.toLocaleDateString('en-US', { month: 'short' });
+      const dayNum = curDate.getDate();
+      const fullDate = curDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      return {
+        num: i + 1,
+        label: `Day ${i + 1}`,
+        shortDate: `${shortMonth} ${dayNum}`,
+        fullDate,
+      };
+    });
+  }, [startDate, endDate]);
+
   const [selectedDayTab, setSelectedDayTab] = useState<number>(1);
   const [morningEnabled, setMorningEnabled] = useState(true);
   const [afternoonEnabled, setAfternoonEnabled] = useState(true);
@@ -623,34 +645,41 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 <p className="text-xs text-[#756883]">Configure the attendance sessions for each day of your event.</p>
               </div>
 
-              {/* Day pill selectors */}
-              <div className="flex items-center gap-2">
-                {[
-                  { num: 1, label: 'Day 1 · Oct 2' },
-                  { num: 2, label: 'Day 2 · Oct 3' },
-                  { num: 3, label: 'Day 3 · Oct 4' },
-                  { num: 4, label: 'Day 4 · Oct 5' },
-                ].map((d) => (
-                  <button
-                    key={d.num}
-                    type="button"
-                    onClick={() => setSelectedDayTab(d.num)}
-                    className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
-                      selectedDayTab === d.num
-                        ? 'bg-[#E9D5FF] text-[#6D21A8]'
-                        : 'bg-white border border-[#E5E0EB] text-[#756883] hover:bg-slate-50'
-                    }`}
-                  >
-                    {d.label}
-                  </button>
-                ))}
+              {/* Unified Segmented Day Selector Bar (Apple/Linear style) */}
+              <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB] p-1.5 shadow-2xs">
+                <div className="flex items-center gap-1.5 overflow-x-auto">
+                  {eventDaysList.map((d) => {
+                    const isSelected = selectedDayTab === d.num;
+                    return (
+                      <button
+                        key={d.num}
+                        type="button"
+                        onClick={() => setSelectedDayTab(d.num)}
+                        className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs transition-all whitespace-nowrap ${
+                          isSelected
+                            ? 'bg-[#451475] text-white font-bold shadow-xs'
+                            : 'bg-transparent text-[#756883] font-semibold hover:text-[#24133F] hover:bg-white/80'
+                        }`}
+                      >
+                        <span>{d.label}</span>
+                        <span className={`text-[10px] rounded-md px-1.5 py-0.2 font-medium ${
+                          isSelected ? 'bg-white/20 text-white' : 'bg-slate-200/60 text-[#756883]'
+                        }`}>
+                          {d.shortDate}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Day Schedule Header */}
-              <div className="border-t border-[#F1EEF4] pt-3">
+              {/* Day Schedule Header (Dynamic based on selected tab) */}
+              <div className="pt-1">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-xs font-bold text-[#24133F]">Day 1 - October 2, 2026</h4>
+                    <h4 className="text-xs font-bold text-[#24133F]">
+                      Day {selectedDayTab} - {eventDaysList.find((d) => d.num === selectedDayTab)?.fullDate || 'October 2, 2026'}
+                    </h4>
                     <p className="text-[11px] text-[#756883]">Configure sessions and attendance windows for this day.</p>
                   </div>
                   <button
