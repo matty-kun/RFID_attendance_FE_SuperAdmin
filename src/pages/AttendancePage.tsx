@@ -437,6 +437,11 @@ export function AttendancePage() {
     if (!deletingSessionInfo) return;
     const deletedSession = deletingSessionInfo.session;
     const targetDayId = deletingSessionInfo.dayId;
+    const targetDay = eventData.days.find((d) => d.dayId === targetDayId);
+    const originalIndex = targetDay
+      ? targetDay.sessions.findIndex((s) => s.id === deletedSession.id)
+      : -1;
+
     setEventData((prev) => ({
       ...prev,
       days: prev.days.map((d) =>
@@ -452,11 +457,16 @@ export function AttendancePage() {
     showFeedback(`"${deletedSession.name}" deleted`, 'delete', 'Undo', () => {
       setEventData((prev) => ({
         ...prev,
-        days: prev.days.map((d) =>
-          d.dayId === targetDayId
-            ? { ...d, sessions: [...d.sessions, deletedSession] }
-            : d
-        ),
+        days: prev.days.map((d) => {
+          if (d.dayId !== targetDayId) return d;
+          const nextSessions = [...d.sessions];
+          if (originalIndex >= 0 && originalIndex <= nextSessions.length) {
+            nextSessions.splice(originalIndex, 0, deletedSession);
+          } else {
+            nextSessions.push(deletedSession);
+          }
+          return { ...d, sessions: nextSessions };
+        }),
       }));
       triggerHighlight(deletedSession.id);
       showFeedback(`Restored "${deletedSession.name}"`, 'success');
