@@ -103,6 +103,92 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     outOfficers: [{ id: 'adm-1', name: 'Ako si batman', initials: 'AB', role: 'Admin', location: 'Gymnasium', status: 'Online' }],
   });
 
+  // Time Window Edit Modal State
+  const [editingTimeSlot, setEditingTimeSlot] = useState<{
+    isOpen: boolean;
+    sessionType: 'Morning' | 'Afternoon' | 'Evening';
+    slot: 'IN' | 'OUT';
+    start: string;
+    end: string;
+  }>({
+    isOpen: false,
+    sessionType: 'Morning',
+    slot: 'IN',
+    start: '07:00',
+    end: '08:30',
+  });
+
+  const parseSlotTime = (windowStr: string) => {
+    try {
+      const parts = windowStr.split('-').map((s) => s.trim());
+      const to24 = (t: string) => {
+        const [time, period] = t.split(' ');
+        const [h, m] = time.split(':').map(Number);
+        let hr = h;
+        if (period?.toUpperCase() === 'PM' && hr < 12) hr += 12;
+        if (period?.toUpperCase() === 'AM' && hr === 12) hr = 0;
+        return `${String(hr).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
+      };
+      return {
+        start: parts[0] ? to24(parts[0]) : '07:00',
+        end: parts[1] ? to24(parts[1]) : '08:30',
+      };
+    } catch {
+      return { start: '07:00', end: '08:30' };
+    }
+  };
+
+  const formatSlotTimeWindow = (start24: string, end24: string) => {
+    const to12 = (t: string) => {
+      const [h, m] = t.split(':').map(Number);
+      const period = (h || 0) >= 12 ? 'PM' : 'AM';
+      const hr = (h || 0) % 12 || 12;
+      return `${hr}:${String(m || 0).padStart(2, '0')} ${period}`;
+    };
+    return `${to12(start24)} - ${to12(end24)}`;
+  };
+
+  const handleOpenEditTimeSlot = (
+    sessionType: 'Morning' | 'Afternoon' | 'Evening',
+    slot: 'IN' | 'OUT',
+    currentTimeStr: string
+  ) => {
+    const parsed = parseSlotTime(currentTimeStr);
+    setEditingTimeSlot({
+      isOpen: true,
+      sessionType,
+      slot,
+      start: parsed.start,
+      end: parsed.end,
+    });
+  };
+
+  const applySlotDuration = (hoursToAdd: number) => {
+    const [h, m] = editingTimeSlot.start.split(':').map(Number);
+    const totalMinutes = (h || 0) * 60 + (m || 0) + Math.round(hoursToAdd * 60);
+    const newH = Math.floor(totalMinutes / 60) % 24;
+    const newM = totalMinutes % 60;
+    setEditingTimeSlot((prev) => ({
+      ...prev,
+      end: `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`,
+    }));
+  };
+
+  const handleSaveSlotTime = () => {
+    const { sessionType, slot, start, end } = editingTimeSlot;
+    const formatted = formatSlotTimeWindow(start, end);
+    const updateSlot = (s: SessionTimeSlot): SessionTimeSlot => ({
+      ...s,
+      [slot === 'IN' ? 'inTime' : 'outTime']: formatted,
+    });
+
+    if (sessionType === 'Morning') setMorningSlot(updateSlot);
+    if (sessionType === 'Afternoon') setAfternoonSlot(updateSlot);
+    if (sessionType === 'Evening') setEveningSlot(updateSlot);
+
+    setEditingTimeSlot((prev) => ({ ...prev, isOpen: false }));
+  };
+
   // Drawer state for assigning officers
   const [drawerConfig, setDrawerConfig] = useState<{
     isOpen: boolean;
@@ -664,9 +750,15 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                 <span className="h-2 w-2 rounded-full bg-emerald-600" />
                                 Check-in Window
                               </span>
-                              <span className="rounded-lg bg-white border border-[#E5E0EB] px-2 py-0.5 text-[11px] font-semibold text-[#24133F]">
-                                {session.slot.inTime}
-                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditTimeSlot(session.type, 'IN', session.slot.inTime)}
+                                className="group flex items-center gap-1.5 rounded-lg bg-white hover:bg-[#FAF7FD] border border-[#E5E0EB] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#24133F] hover:text-[#451475] transition-all shadow-xs"
+                                title="Click to edit check-in window"
+                              >
+                                <span>{session.slot.inTime}</span>
+                                <Pencil className="h-3 w-3 text-[#756883] group-hover:text-[#451475] transition-colors" />
+                              </button>
                             </div>
 
                             <div className="flex flex-wrap items-center gap-1.5 pt-1">
@@ -723,9 +815,15 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                 <span className="h-2 w-2 rounded-full bg-[#3B82F6]" />
                                 Check-out Window
                               </span>
-                              <span className="rounded-lg bg-white border border-[#E5E0EB] px-2 py-0.5 text-[11px] font-semibold text-[#24133F]">
-                                {session.slot.outTime}
-                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditTimeSlot(session.type, 'OUT', session.slot.outTime)}
+                                className="group flex items-center gap-1.5 rounded-lg bg-white hover:bg-[#FAF7FD] border border-[#E5E0EB] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#24133F] hover:text-[#451475] transition-all shadow-xs"
+                                title="Click to edit check-out window"
+                              >
+                                <span>{session.slot.outTime}</span>
+                                <Pencil className="h-3 w-3 text-[#756883] group-hover:text-[#451475] transition-colors" />
+                              </button>
                             </div>
 
                             <div className="flex flex-wrap items-center gap-1.5 pt-1">
@@ -1053,6 +1151,127 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         </div>
       </div>
       </div>
+
+      {/* Edit Time Window Modal */}
+      {editingTimeSlot.isOpen && (
+        <div
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setEditingTimeSlot((prev) => ({ ...prev, isOpen: false }));
+            }
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#170D29]/40 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-sm rounded-[24px] border border-[#E5E0EB] bg-white p-5 shadow-2xl animate-in zoom-in-95 duration-150"
+          >
+            <div className="flex items-center justify-between border-b border-[#F1EEF4] pb-3">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-[#451475]" />
+                <h3 className="text-sm font-bold text-[#24133F]">
+                  Edit {editingTimeSlot.sessionType} ({editingTimeSlot.slot}) Window
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingTimeSlot((prev) => ({ ...prev, isOpen: false }))}
+                className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              {/* Structured Start and End Time inputs */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#24133F] mb-1">Start Time</label>
+                  <input
+                    type="time"
+                    value={editingTimeSlot.start}
+                    onChange={(e) =>
+                      setEditingTimeSlot((prev) => ({ ...prev, start: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-[#E5E0EB] text-xs font-semibold text-[#24133F] focus:outline-none focus:border-[#451475] bg-white shadow-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#24133F] mb-1">End Time</label>
+                  <input
+                    type="time"
+                    value={editingTimeSlot.end}
+                    onChange={(e) =>
+                      setEditingTimeSlot((prev) => ({ ...prev, end: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-[#E5E0EB] text-xs font-semibold text-[#24133F] focus:outline-none focus:border-[#451475] bg-white shadow-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Quick duration presets */}
+              <div>
+                <p className="text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-1.5">
+                  Quick duration presets
+                </p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[
+                    { label: '1 hr', val: 1 },
+                    { label: '1.5 hrs', val: 1.5 },
+                    { label: '2 hrs', val: 2 },
+                    { label: '2.5 hrs', val: 2.5 },
+                    { label: '3 hrs', val: 3 },
+                  ].map((p) => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => applySlotDuration(p.val)}
+                      className="rounded-lg border border-[#E5E0EB] bg-[#FAF8FB] px-2.5 py-1 text-[11px] font-semibold text-[#451475] hover:bg-[#F3EDFB] transition-colors"
+                    >
+                      +{p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Formatted live preview */}
+              <div className="rounded-xl border border-[#451475]/15 bg-[#FAF7FD] p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#756883]">
+                  Active Scanning Window Preview
+                </span>
+                <div className="mt-1 flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#451475]">
+                    {formatSlotTimeWindow(editingTimeSlot.start, editingTimeSlot.end)}
+                  </span>
+                  <span className="rounded-md bg-purple-100/70 px-2 py-0.5 text-[10px] font-semibold text-[#451475]">
+                    Active
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal actions */}
+            <div className="mt-5 flex items-center justify-end gap-2 border-t border-[#F1EEF4] pt-3">
+              <button
+                type="button"
+                onClick={() => setEditingTimeSlot((prev) => ({ ...prev, isOpen: false }))}
+                className="rounded-xl border border-[#E5E0EB] px-4 py-2 text-xs font-bold text-[#756883] hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveSlotTime}
+                className="rounded-xl bg-[#451475] px-4 py-2 text-xs font-bold text-white hover:bg-[#38105F] transition-colors shadow-xs"
+              >
+                Save Window
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Assign Officers Drawer */}
       <AssignOfficersDrawer
