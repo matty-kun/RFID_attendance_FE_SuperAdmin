@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CalendarDays, Download, Search } from 'lucide-react';
+import { AlertCircle, Download, Search } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { Dropdown } from '../components/common/Dropdown';
+import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { attendanceService } from '../features/attendance/services/attendanceService';
 import type { AttendanceRecord } from '../features/attendance/models';
 import { isDevPreview } from '../features/auth/devPreview';
@@ -140,8 +141,14 @@ export function ReportsPage() {
     <div><h1 className="text-[23px] font-extrabold leading-tight">Reports &amp; Exports</h1><p className="text-xs text-[#756883]">Attendance activity for selected dates and filters.</p>{isDevPreview() && <p className="mt-1 text-[11px] font-bold text-brand-700">Sample attendance data · UI preview only</p>}</div>
     {error && <p role="alert" className="flex items-center gap-2 rounded-xl bg-rose-50 p-3 text-sm text-rose-700"><AlertCircle className="h-4 w-4" />{error}</p>}
     <div className="flex flex-wrap items-center gap-2">
-      <label className="flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs"><CalendarDays className="h-4 w-4 text-[#756883]" /><span className="sr-only">From</span><input type="date" value={startDate} max={endDate} onChange={(event) => setStartDate(event.target.value)} className="bg-transparent outline-none" /></label>
-      <label className="flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs"><span className="sr-only">To</span><input type="date" value={endDate} min={startDate} onChange={(event) => setEndDate(event.target.value)} className="bg-transparent outline-none" /></label>
+      <CalendarDatePicker
+        startDate={startDate}
+        endDate={endDate}
+        onChange={(range) => {
+          if (range.startDate) setStartDate(range.startDate);
+          if (range.endDate) setEndDate(range.endDate);
+        }}
+      />
       {([['Session', session, setSession, sessions], ['Course', course, setCourse, courses], ['Type', type, setType, ['time_in', 'time_out']], ['Location', location, setLocation, locations]] as const).map(([label, value, setter, options]) => (
         <Dropdown
           key={label}
