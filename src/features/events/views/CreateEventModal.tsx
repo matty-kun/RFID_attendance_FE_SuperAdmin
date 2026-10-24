@@ -874,33 +874,33 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                             Location ({session.rows.length})
                           </p>
 
-                          {/* Rows Container */}
-                          <div className="rounded-2xl border border-[#E5E0EB] divide-y divide-[#F1EEF4] overflow-hidden bg-white">
+                          {/* Rows Container (Strictly inline, single line with smooth horizontal scroll) */}
+                          <div className="rounded-2xl border border-[#E5E0EB] divide-y divide-[#F1EEF4] overflow-x-auto bg-white">
                             {session.rows.map((row) => (
                               <div
                                 key={row.id}
-                                className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 p-3.5 hover:bg-[#FAF8FB]/40 transition-colors"
+                                className="flex items-center min-w-[720px] gap-4 px-4 py-3 hover:bg-[#FAF8FB]/40 transition-colors whitespace-nowrap"
                               >
-                                {/* Left: Location Icon & Clickable/Editable Location Dropdown */}
-                                <div className="flex items-center gap-2.5 min-w-[180px]">
+                                {/* 1. Location Icon & Clickable/Editable Location Dropdown */}
+                                <div className="flex items-center gap-2.5 w-[200px] shrink-0">
                                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#FAF7FD] border border-[#E9DDF8] text-[#451475]">
                                     <MapPin className="h-4 w-4" />
                                   </div>
-                                  <div className="w-44">
+                                  <div className="flex-1 min-w-0">
                                     <Dropdown
                                       value={row.locationName}
                                       onChange={(newLoc) =>
                                         handleUpdateLocationName(session.type, row.id, newLoc)
                                       }
                                       options={availableLocationOptions.map((l) => ({ value: l, label: l }))}
-                                      buttonClassName="py-1 px-2.5 text-xs font-bold bg-white border border-[#E5E0EB] hover:border-[#451475] rounded-xl shadow-2xs"
+                                      buttonClassName="py-1 px-2.5 text-xs font-bold bg-white border border-[#E5E0EB] hover:border-[#451475] rounded-xl shadow-2xs w-full"
                                     />
                                   </div>
                                   {session.rows.length > 1 && (
                                     <button
                                       type="button"
                                       onClick={() => handleRemoveLocationRow(session.type, row.id)}
-                                      className="text-[10px] text-slate-400 hover:text-[#EF3340] transition-colors p-1"
+                                      className="text-[10px] text-slate-400 hover:text-[#EF3340] transition-colors p-1 shrink-0"
                                       title="Remove location"
                                     >
                                       <X className="h-3.5 w-3.5" />
@@ -908,55 +908,33 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                   )}
                                 </div>
 
-                                {/* Right: IN & OUT Slots */}
-                                <div className="flex flex-wrap items-center gap-4 lg:gap-6 flex-1 justify-end">
-                                  {/* IN Slot */}
-                                  {session.coverage !== 'OUT ONLY' && (
-                                    <div className="flex items-center gap-2.5">
-                                      <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600">
-                                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
-                                        IN
-                                      </div>
+                                {/* 2. IN Slot (Time Pill + Assign Officer) */}
+                                {session.coverage !== 'OUT ONLY' && (
+                                  <div className="flex items-center gap-2.5 shrink-0">
+                                    <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 shrink-0">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                                      IN
+                                    </div>
 
-                                      {/* Clickable Time Pill */}
-                                      <button
-                                        type="button"
-                                        onClick={() => handleOpenEditTimeSlot(session.type, row.id, 'IN', row.inTime)}
-                                        className="flex items-center gap-1.5 rounded-full border border-[#E5E0EB] bg-[#FAF8FB] hover:bg-white hover:border-[#451475] px-3 py-1 text-xs font-semibold text-[#24133F] transition-all shadow-2xs group"
-                                        title="Click to edit check-in window"
-                                      >
-                                        <span>{row.inTime}</span>
-                                        <Clock className="h-3.5 w-3.5 text-[#756883] group-hover:text-[#451475] transition-colors" />
-                                      </button>
+                                    {/* Clickable Time Pill */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditTimeSlot(session.type, row.id, 'IN', row.inTime)}
+                                      className="flex items-center gap-1.5 rounded-full border border-[#E5E0EB] bg-[#FAF8FB] hover:bg-white hover:border-[#451475] px-3 py-1 text-xs font-semibold text-[#24133F] transition-all shadow-2xs group shrink-0"
+                                      title="Click to edit check-in window"
+                                    >
+                                      <span>{row.inTime}</span>
+                                      <Clock className="h-3.5 w-3.5 text-[#756883] group-hover:text-[#451475] transition-colors" />
+                                    </button>
 
-                                      {/* Assigned Officers / Assign Button */}
-                                      <div className="flex items-center gap-1">
-                                        <span className="text-[10px] font-medium text-[#756883] mr-0.5">
-                                          Assign Officer
-                                        </span>
-                                        {row.inOfficers.map((off) => (
-                                          <button
-                                            key={off.id}
-                                            type="button"
-                                            onClick={() =>
-                                              handleOpenAssignDrawer(
-                                                session.type,
-                                                row.id,
-                                                row.locationName,
-                                                'IN',
-                                                row.inTime,
-                                                row.inOfficers
-                                              )
-                                            }
-                                            className="flex items-center gap-1.5 rounded-full border border-[#E5E0EB] bg-white hover:border-[#451475] px-2.5 py-0.5 text-xs font-semibold text-[#24133F] transition-colors shadow-2xs"
-                                            title="Click to manage officer"
-                                          >
-                                            <span className="h-2 w-2 rounded-full bg-slate-300" />
-                                            <span>{off.name}</span>
-                                          </button>
-                                        ))}
-
+                                    {/* Assign Officer Label & Chips */}
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <span className="text-[10px] font-medium text-[#756883]">
+                                        Assign Officer
+                                      </span>
+                                      {row.inOfficers.map((off) => (
                                         <button
+                                          key={off.id}
                                           type="button"
                                           onClick={() =>
                                             handleOpenAssignDrawer(
@@ -968,62 +946,62 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                               row.inOfficers
                                             )
                                           }
-                                          className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-[#756883] text-[#756883] hover:border-[#451475] hover:text-[#451475] transition-colors"
-                                          title="Add/Assign Officer"
+                                          className="flex items-center gap-1.5 rounded-full border border-[#E5E0EB] bg-white hover:border-[#451475] px-2.5 py-0.5 text-xs font-semibold text-[#24133F] transition-colors shadow-2xs shrink-0"
+                                          title="Click to manage officer"
                                         >
-                                          <Plus className="h-3 w-3" />
+                                          <span className="h-2 w-2 rounded-full bg-slate-300" />
+                                          <span>{off.name}</span>
                                         </button>
-                                      </div>
-                                    </div>
-                                  )}
+                                      ))}
 
-                                  {/* OUT Slot */}
-                                  {session.coverage !== 'IN ONLY' && (
-                                    <div className="flex items-center gap-2.5">
-                                      <div className="flex items-center gap-1 text-[11px] font-bold text-[#3B82F6]">
-                                        <span className="h-1.5 w-1.5 rounded-full bg-[#3B82F6]" />
-                                        OUT
-                                      </div>
-
-                                      {/* Clickable Time Pill */}
                                       <button
                                         type="button"
-                                        onClick={() => handleOpenEditTimeSlot(session.type, row.id, 'OUT', row.outTime)}
-                                        className="flex items-center gap-1.5 rounded-full border border-[#E5E0EB] bg-[#FAF8FB] hover:bg-white hover:border-[#451475] px-3 py-1 text-xs font-semibold text-[#24133F] transition-all shadow-2xs group"
-                                        title="Click to edit check-out window"
+                                        onClick={() =>
+                                          handleOpenAssignDrawer(
+                                            session.type,
+                                            row.id,
+                                            row.locationName,
+                                            'IN',
+                                            row.inTime,
+                                            row.inOfficers
+                                          )
+                                        }
+                                        className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-[#756883] text-[#756883] hover:border-[#451475] hover:text-[#451475] transition-colors shrink-0"
+                                        title="Add/Assign Officer"
                                       >
-                                        <span>{row.outTime}</span>
-                                        <Clock className="h-3.5 w-3.5 text-[#756883] group-hover:text-[#451475] transition-colors" />
+                                        <Plus className="h-3 w-3" />
                                       </button>
+                                    </div>
+                                  </div>
+                                )}
 
-                                      {/* Assigned Officers / Assign Button */}
-                                      <div className="flex items-center gap-1">
-                                        <span className="text-[10px] font-medium text-[#756883] mr-0.5">
-                                          Assign Officer
-                                        </span>
-                                        {row.outOfficers.map((off) => (
-                                          <button
-                                            key={off.id}
-                                            type="button"
-                                            onClick={() =>
-                                              handleOpenAssignDrawer(
-                                                session.type,
-                                                row.id,
-                                                row.locationName,
-                                                'OUT',
-                                                row.outTime,
-                                                row.outOfficers
-                                              )
-                                            }
-                                            className="flex items-center gap-1.5 rounded-full border border-[#E5E0EB] bg-white hover:border-[#451475] px-2.5 py-0.5 text-xs font-semibold text-[#24133F] transition-colors shadow-2xs"
-                                            title="Click to manage officer"
-                                          >
-                                            <span className="h-2 w-2 rounded-full bg-slate-300" />
-                                            <span>{off.name}</span>
-                                          </button>
-                                        ))}
+                                {/* 3. OUT Slot (Time Pill + Assign Officer) */}
+                                {session.coverage !== 'IN ONLY' && (
+                                  <div className="flex items-center gap-2.5 shrink-0">
+                                    <div className="flex items-center gap-1 text-[11px] font-bold text-[#3B82F6] shrink-0">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-[#3B82F6]" />
+                                      OUT
+                                    </div>
 
+                                    {/* Clickable Time Pill */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditTimeSlot(session.type, row.id, 'OUT', row.outTime)}
+                                      className="flex items-center gap-1.5 rounded-full border border-[#E5E0EB] bg-[#FAF8FB] hover:bg-white hover:border-[#451475] px-3 py-1 text-xs font-semibold text-[#24133F] transition-all shadow-2xs group shrink-0"
+                                      title="Click to edit check-out window"
+                                    >
+                                      <span>{row.outTime}</span>
+                                      <Clock className="h-3.5 w-3.5 text-[#756883] group-hover:text-[#451475] transition-colors" />
+                                    </button>
+
+                                    {/* Assign Officer Label & Chips */}
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <span className="text-[10px] font-medium text-[#756883]">
+                                        Assign Officer
+                                      </span>
+                                      {row.outOfficers.map((off) => (
                                         <button
+                                          key={off.id}
                                           type="button"
                                           onClick={() =>
                                             handleOpenAssignDrawer(
@@ -1035,15 +1013,34 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                               row.outOfficers
                                             )
                                           }
-                                          className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-[#756883] text-[#756883] hover:border-[#451475] hover:text-[#451475] transition-colors"
-                                          title="Add/Assign Officer"
+                                          className="flex items-center gap-1.5 rounded-full border border-[#E5E0EB] bg-white hover:border-[#451475] px-2.5 py-0.5 text-xs font-semibold text-[#24133F] transition-colors shadow-2xs shrink-0"
+                                          title="Click to manage officer"
                                         >
-                                          <Plus className="h-3 w-3" />
+                                          <span className="h-2 w-2 rounded-full bg-slate-300" />
+                                          <span>{off.name}</span>
                                         </button>
-                                      </div>
+                                      ))}
+
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleOpenAssignDrawer(
+                                            session.type,
+                                            row.id,
+                                            row.locationName,
+                                            'OUT',
+                                            row.outTime,
+                                            row.outOfficers
+                                          )
+                                        }
+                                        className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-[#756883] text-[#756883] hover:border-[#451475] hover:text-[#451475] transition-colors shrink-0"
+                                        title="Add/Assign Officer"
+                                      >
+                                        <Plus className="h-3 w-3" />
+                                      </button>
                                     </div>
-                                  )}
-                                </div>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
