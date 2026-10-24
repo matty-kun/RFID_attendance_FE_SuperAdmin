@@ -220,7 +220,7 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs font-semibold text-[#24133F] hover:border-brand-700 transition-colors focus-visible:outline-2 focus-visible:outline-brand-700 shadow-sm"
+        className="flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs font-semibold text-[#24133F] hover:border-brand-700 transition-colors focus-visible:outline-2 focus-visible:outline-brand-700"
         aria-haspopup="dialog"
         aria-expanded={isOpen}
       >

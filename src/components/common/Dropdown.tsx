@@ -74,7 +74,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         className={cn(
-          'flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs font-semibold text-[#24133F] shadow-sm transition-colors hover:border-brand-700 focus-visible:outline-2 focus-visible:outline-brand-700 disabled:opacity-50 disabled:cursor-not-allowed select-none',
+          'flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs font-semibold text-[#24133F] transition-colors hover:border-brand-700 focus-visible:outline-2 focus-visible:outline-brand-700 disabled:opacity-50 disabled:cursor-not-allowed select-none',
           isOpen && 'border-brand-700 ring-2 ring-brand-100',
           buttonClassName
         )}

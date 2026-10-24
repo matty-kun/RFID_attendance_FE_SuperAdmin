@@ -75,7 +75,7 @@ export const SessionsView: React.FC = () => {
       </div>
 
       {/* Sessions Table */}
-      <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5 shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5">
         <table className="w-full min-w-[720px] text-left text-xs">
           <thead>
             <tr className="bg-[#F4F6FA] text-[10px] uppercase text-[#637596]">

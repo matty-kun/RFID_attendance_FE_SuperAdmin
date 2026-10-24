@@ -617,7 +617,7 @@ export function AttendancePage() {
 
       {/* Event Accordion Container (Cite Festival) */}
       {eventData ? (
-        <div className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-sm">
+        <div className="rounded-[24px] border border-[#E5E0EB] bg-white p-6">
           {/* Main Event Header (Divider line only shown when rolled down/expanded) */}
           <div
             className={`flex items-center justify-between transition-all ${
@@ -697,7 +697,7 @@ export function AttendancePage() {
             return (
               <div
                 key={day.dayId}
-                className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden transition-all shadow-sm"
+                className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden transition-all"
               >
                 {/* Day Header Row */}
                 <div
@@ -760,9 +760,9 @@ export function AttendancePage() {
                   {day.visibleSessions.map((session) => (
                         <div
                           key={session.id}
-                          className={`rounded-2xl border bg-white p-4 shadow-sm transition-colors duration-200 ${
+                          className={`rounded-2xl border bg-white p-4 transition-colors duration-200 ${
                             highlightedSessionId === session.id
-                              ? 'border-[#451475] ring-2 ring-[#451475]/25 shadow-md'
+                              ? 'border-[#451475] ring-2 ring-[#451475]/25'
                               : 'border-[#E5E0EB]'
                           }`}
                         >
@@ -885,7 +885,7 @@ export function AttendancePage() {
                               {session.officers.slice(0, 3).map((officer) => (
                                 <div
                                   key={officer.id}
-                                  className="flex items-center gap-2 rounded-full border border-[#E5E0EB] bg-white py-1 pl-1.5 pr-3 shadow-xs"
+                                  className="flex items-center gap-2 rounded-full border border-[#E5E0EB] bg-white py-1 pl-1.5 pr-3"
                                 >
                                   <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#E9D5FF] text-[10px] font-bold text-[#6D21A8]">
                                     {officer.initials}
@@ -954,7 +954,7 @@ export function AttendancePage() {
         </div>
       ) : (
         /* Empty State when Event is deleted */
-        <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-[#E5E0EB] bg-white p-12 text-center shadow-xs">
+        <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-[#E5E0EB] bg-white p-12 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F6F4F8] text-[#756883] mb-3">
             <Calendar className="h-7 w-7 text-[#756883]" />
           </div>
@@ -1043,7 +1043,7 @@ export function AttendancePage() {
                       type="time"
                       value={startTimeInput}
                       onChange={(e) => setStartTimeInput(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-[#E5E0EB] text-xs font-semibold text-[#24133F] focus:outline-none focus:border-[#451475] bg-white shadow-xs"
+                      className="w-full px-3 py-2 rounded-xl border border-[#E5E0EB] text-xs font-semibold text-[#24133F] focus:outline-none focus:border-[#451475] bg-white"
                     />
                   </div>
                   <div>
@@ -1052,7 +1052,7 @@ export function AttendancePage() {
                       type="time"
                       value={endTimeInput}
                       onChange={(e) => setEndTimeInput(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-[#E5E0EB] text-xs font-semibold text-[#24133F] focus:outline-none focus:border-[#451475] bg-white shadow-xs"
+                      className="w-full px-3 py-2 rounded-xl border border-[#E5E0EB] text-xs font-semibold text-[#24133F] focus:outline-none focus:border-[#451475] bg-white"
                     />
                   </div>
                 </div>

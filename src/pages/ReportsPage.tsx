@@ -302,7 +302,7 @@ export function ReportsPage() {
       {/* Row 1: Attendance Trend (Card 1) & Session Breakdown (Card 2) */}
       <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
         {/* Card 1: Attendance Trend */}
-        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-sm">
+        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6">
           <div>
             <h2 className="text-lg font-bold text-[#24133F]">Attendance Trend</h2>
             <p className="text-xs text-[#756883] mt-0.5">Present, Late and Absent Per Day</p>
@@ -349,7 +349,7 @@ export function ReportsPage() {
         </section>
 
         {/* Card 2: Session Breakdown */}
-        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-sm">
+        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6">
           <div>
             <h2 className="text-lg font-bold text-[#24133F]">Session Breakdown</h2>
             <p className="text-xs text-[#756883] mt-0.5">Present, Late and Absent Per Day</p>
@@ -391,7 +391,7 @@ export function ReportsPage() {
       {/* Row 2: Checkpoints (Card 3), Issues (Card 4), Course Breakdown (Card 5) */}
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         {/* Card 3: Checkpoints */}
-        <section className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-sm flex flex-col justify-between">
+        <section className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 flex flex-col justify-between">
           <div>
             <h2 className="text-lg font-bold text-[#24133F]">Checkpoints</h2>
             <p className="text-xs text-[#756883] mt-0.5">Present, Late and Absent Per Day</p>
@@ -422,7 +422,7 @@ export function ReportsPage() {
         </section>
 
         {/* Card 4: Issues */}
-        <section className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-sm flex flex-col justify-between">
+        <section className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 flex flex-col justify-between">
           <div>
             <h2 className="text-lg font-bold text-[#24133F]">Issues</h2>
 
@@ -454,7 +454,7 @@ export function ReportsPage() {
         </section>
 
         {/* Card 5: Course Breakdown */}
-        <section className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-sm flex flex-col justify-between">
+        <section className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 flex flex-col justify-between">
           <div>
             <h2 className="text-lg font-bold text-[#24133F]">Course Breakdown</h2>
 
@@ -485,7 +485,7 @@ export function ReportsPage() {
       </div>
 
       {/* Row 3: Student Attendance Records (Card 6) */}
-      <section className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-sm">
+      <section className="rounded-[24px] border border-[#E5E0EB] bg-white p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-[#24133F]">Student Attendance Records</h2>

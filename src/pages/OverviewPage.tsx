@@ -91,7 +91,7 @@ export function OverviewPage() {
         <section
           id="attendance-chart"
           aria-labelledby="attendance-chart-title"
-          className="flex min-h-[300px] flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-sm"
+          className="flex min-h-[300px] flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6"
         >
           <h2 id="attendance-chart-title" className="text-lg font-bold text-[#24133F]">
             Attendance by Day
