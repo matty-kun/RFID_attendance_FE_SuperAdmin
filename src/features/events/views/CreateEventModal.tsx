@@ -366,33 +366,55 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       const isEnd = dayStr === endDate;
                       const inRange = startDate && endDate && dayStr > startDate && dayStr < endDate;
 
+                                            const hasRange = startDate && endDate && startDate !== endDate;
+
                       cells.push(
-                        <button
-                          key={day}
-                          type="button"
-                          onClick={() => {
-                            if (!startDate || (startDate && endDate && startDate !== endDate)) {
-                              setStartDate(dayStr);
-                              setEndDate(dayStr);
-                            } else if (startDate && (!endDate || startDate === endDate)) {
-                              if (dayStr < startDate) {
-                                setEndDate(startDate);
+                        <div key={day} className="relative flex h-9 items-center justify-center py-0.5">
+                          {/* Seamless continuous range background strip */}
+                          {hasRange && (
+                            <>
+                              {/* Background for start date: right half filled */}
+                              {isStart && (
+                                <div className="absolute right-0 top-0.5 bottom-0.5 left-1/2 bg-[#E9D5FF]/60" />
+                              )}
+                              {/* Background for in-between dates: full width */}
+                              {inRange && (
+                                <div className="absolute inset-x-0 top-0.5 bottom-0.5 bg-[#E9D5FF]/60" />
+                              )}
+                              {/* Background for end date: left half filled */}
+                              {isEnd && (
+                                <div className="absolute left-0 top-0.5 bottom-0.5 right-1/2 bg-[#E9D5FF]/60" />
+                              )}
+                            </>
+                          )}
+
+                          {/* Date button circle */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!startDate || (startDate && endDate && startDate !== endDate)) {
                                 setStartDate(dayStr);
-                              } else {
                                 setEndDate(dayStr);
+                              } else if (startDate && (!endDate || startDate === endDate)) {
+                                if (dayStr < startDate) {
+                                  setEndDate(startDate);
+                                  setStartDate(dayStr);
+                                } else {
+                                  setEndDate(dayStr);
+                                }
                               }
-                            }
-                          }}
-                          className={`relative flex h-8 items-center justify-center text-xs font-semibold transition-colors ${
-                            isStart || isEnd
-                              ? 'rounded-full bg-[#451475] font-bold text-white shadow-xs z-10'
-                              : inRange
-                              ? 'bg-[#E9D5FF]/60 text-[#451475]'
-                              : 'text-[#24133F] hover:bg-white rounded-full'
-                          }`}
-                        >
-                          {day}
-                        </button>
+                            }}
+                            className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+                              isStart || isEnd
+                                ? 'bg-[#451475] font-bold text-white shadow-xs'
+                                : inRange
+                                ? 'text-[#451475] hover:bg-[#D8B4FE]/40'
+                                : 'text-[#24133F] hover:bg-white'
+                            }`}
+                          >
+                            {day}
+                          </button>
+                        </div>
                       );
                     }
                     return cells;
