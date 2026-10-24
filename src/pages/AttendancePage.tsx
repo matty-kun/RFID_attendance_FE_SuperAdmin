@@ -563,23 +563,23 @@ export function AttendancePage() {
 
       {/* Filter Bar (No tabs on top!) */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative w-64 sm:w-72">
+        <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#756883]" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search"
-            className="w-full rounded-2xl border border-[#E5E0EB] bg-white py-2 pl-9 pr-8 text-xs text-[#24133F] placeholder-[#9E93A9] focus:border-[#C4B5FD] focus:ring-2 focus:ring-[#F3E8FF] focus:outline-none transition-all shadow-xs"
+            className="w-56 md:w-64 pl-9 pr-4 py-1.5 rounded-full border border-[#E5E0EB] text-xs text-[#24133F] placeholder-[#756883] focus:outline-none focus:border-[#24133F] transition-colors bg-white"
           />
           {search && (
             <button
               type="button"
               onClick={() => setSearch('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-[#756883] hover:text-[#24133F] hover:bg-slate-100 transition-colors"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-[#756883] hover:text-[#24133F]"
               title="Clear search"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3 w-3" />
             </button>
           )}
         </div>
@@ -587,7 +587,7 @@ export function AttendancePage() {
         <Dropdown
           value={statusFilter}
           onChange={setStatusFilter}
-          buttonClassName="rounded-2xl px-3.5"
+          buttonClassName="h-[33px] py-1.5 px-3.5 rounded-full"
           options={[
             { value: 'all', label: 'All Status' },
             { value: 'active', label: 'Active' },
@@ -599,7 +599,7 @@ export function AttendancePage() {
         <Dropdown
           value={dateFilter}
           onChange={setDateFilter}
-          buttonClassName="rounded-2xl px-3.5"
+          buttonClassName="h-[33px] py-1.5 px-3.5 rounded-full"
           options={[
             { value: 'all', label: 'All Dates' },
             { value: 'october 2', label: 'Oct 2, 2026' },
