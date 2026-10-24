@@ -402,7 +402,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       <div
         role="dialog"
         aria-modal="true"
-        className="flex max-h-[90vh] w-full max-w-3xl flex-col justify-between overflow-hidden rounded-[24px] border border-[#E5E0EB] bg-white shadow-2xl animate-in zoom-in-95 duration-200"
+        className="flex max-h-[90vh] w-full max-w-5xl flex-col justify-between overflow-hidden rounded-[24px] border border-[#E5E0EB] bg-white shadow-2xl animate-in zoom-in-95 duration-200"
       >
         {/* Header */}
         <div className="border-b border-[#F1EEF4] px-6 py-5">
@@ -978,8 +978,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                 {/* 3. OUT Slot (Time Pill + Assign Officer) */}
                                 {session.coverage !== 'IN ONLY' && (
                                   <div className="flex items-center gap-2.5 shrink-0">
-                                    <div className="flex items-center gap-1 text-[11px] font-bold text-[#3B82F6] shrink-0">
-                                      <span className="h-1.5 w-1.5 rounded-full bg-[#3B82F6]" />
+                                    <div className="flex items-center gap-1 text-[11px] font-bold text-[#EF3340] shrink-0">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-[#EF3340]" />
                                       OUT
                                     </div>
 
