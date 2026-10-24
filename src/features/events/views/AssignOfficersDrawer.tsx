@@ -282,8 +282,8 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search admin or ID"
-                className="w-full rounded-xl border border-[#E5E0EB] py-2 pl-9 pr-4 text-xs text-[#24133F] placeholder-[#756883] focus:border-[#24133F] focus:outline-none"
+                placeholder="Search"
+                className="w-full rounded-full border border-[#E5E0EB] bg-white py-2 pl-9 pr-4 text-xs text-[#24133F] placeholder-[#9E93A9] focus:border-[#451475] focus:outline-none transition-colors"
               />
             </div>
 
