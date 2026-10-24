@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertCircle, ChevronRight, Pencil, Search, Trash2, X, Check } from 'lucide-react';
 import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
+import { DeleteConfirmationModal } from '../components/common/DeleteConfirmationModal';
 import { attendanceService } from '../features/attendance/services/attendanceService';
 import type { AttendanceRecord } from '../features/attendance/models';
 import { isDevPreview } from '../features/auth/devPreview';
@@ -94,6 +96,9 @@ export function ReportsPage() {
   const [editStatus, setEditStatus] = useState<'Completed' | 'Missing Out' | 'No Record'>('Completed');
   const [editTimeIn, setEditTimeIn] = useState('');
   const [editTimeOut, setEditTimeOut] = useState('');
+
+  // Delete Modal State
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -215,11 +220,11 @@ export function ReportsPage() {
     setEditingRecord(null);
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this attendance record?')) {
-      setStudentRecordsList((prev) => prev.filter((item) => item.id !== id));
-      setSelected((prev) => prev.filter((item) => item !== id));
-    }
+  const handleDeleteConfirm = () => {
+    if (!deletingId) return;
+    setStudentRecordsList((prev) => prev.filter((item) => item.id !== deletingId));
+    setSelected((prev) => prev.filter((id) => id !== deletingId));
+    setDeletingId(null);
   };
 
   return (
@@ -506,7 +511,7 @@ export function ReportsPage() {
                     aria-label="Select all students"
                     checked={filteredStudents.length > 0 && selected.length === filteredStudents.length}
                     onChange={(e) => setSelected(e.target.checked ? filteredStudents.map((r) => r.id) : [])}
-                    className="w-4 h-4 rounded border-gray-300 text-[#24133F] focus:ring-0 cursor-pointer"
+                    className="w-4 h-4 rounded border-[#D1CBD8] text-[#451475] accent-[#451475] focus:ring-[#451475] focus:ring-offset-0 cursor-pointer"
                   />
                 </th>
                 <th className="py-3 font-medium">Name</th>
@@ -532,7 +537,7 @@ export function ReportsPage() {
                           e.target.checked ? [...prev, record.id] : prev.filter((id) => id !== record.id)
                         )
                       }
-                      className="w-4 h-4 rounded border-gray-300 text-[#24133F] focus:ring-0 cursor-pointer"
+                      className="w-4 h-4 rounded border-[#D1CBD8] text-[#451475] accent-[#451475] focus:ring-[#451475] focus:ring-offset-0 cursor-pointer"
                     />
                   </td>
                   <td className="py-3 font-medium">
@@ -576,7 +581,7 @@ export function ReportsPage() {
                       <button
                         type="button"
                         title="Delete record"
-                        onClick={() => handleDelete(record.id)}
+                        onClick={() => setDeletingId(record.id)}
                         className="p-1 text-[#EF4444] hover:text-red-700 transition-colors rounded hover:bg-rose-50"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -596,12 +601,23 @@ export function ReportsPage() {
         </div>
       </section>
 
-      {/* Edit Record Modal */}
-      {editingRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-[#E5E0EB]">
+      {/* Edit Record Modal (with modern clean glass blur backdrop) */}
+      {editingRecord && createPortal(
+        <div
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setEditingRecord(null);
+          }}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#170D29]/40 p-4 backdrop-blur-md animate-in fade-in duration-200"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-modal-title"
+            className="w-full max-w-md rounded-[24px] bg-white p-6 shadow-2xl border border-[#E5E0EB] animate-in zoom-in-95 duration-200"
+          >
             <div className="flex items-center justify-between pb-4 border-b border-[#F1EEF4]">
-              <h3 className="text-base font-bold text-[#24133F]">Edit Attendance Record</h3>
+              <h3 id="edit-modal-title" className="text-base font-bold text-[#24133F]">Edit Attendance Record</h3>
               <button
                 type="button"
                 onClick={() => setEditingRecord(null)}
@@ -684,8 +700,17 @@ export function ReportsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={Boolean(deletingId)}
+        onClose={() => setDeletingId(null)}
+        onConfirm={handleDeleteConfirm}
+        itemName={studentRecordsList.find((r) => r.id === deletingId)?.name}
+      />
     </div>
   );
 }
