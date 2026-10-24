@@ -7,6 +7,8 @@ import { RapidCardScanDrawer } from './RapidCardScanDrawer';
 import { BulkStudentImportModal } from './BulkStudentImportModal';
 import { RegisterActionsDropdown } from './RegisterActionsDropdown';
 import { CardPoolDrawer } from './CardPoolDrawer';
+import { StudentProfileDrawer } from './StudentProfileDrawer';
+import type { StudentRecord } from '../models';
 import {
   Search,
   Zap,
@@ -47,6 +49,7 @@ export const StudentsView: React.FC = () => {
   } = useStudentsViewModel();
 
   const [isCardPoolOpen, setIsCardPoolOpen] = useState(false);
+  const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<StudentRecord | null>(null);
   const [courseFilter, setCourseFilter] = useState('all');
   const [rfidFilter, setRfidFilter] = useState('all');
 
@@ -68,6 +71,12 @@ export const StudentsView: React.FC = () => {
       (courseFilter === 'all' || student.course === courseFilter) &&
       (rfidFilter === 'all' || (rfidFilter === 'verified' ? Boolean(student.rfid_uid) : !student.rfid_uid))
   );
+
+  // Keep active profile student synced with latest student data (e.g. after unlink/link)
+  const activeProfileStudent = useMemo(() => {
+    if (!selectedStudentForProfile) return null;
+    return students.find((s) => s.id === selectedStudentForProfile.id) || selectedStudentForProfile;
+  }, [selectedStudentForProfile, students]);
 
   const yearLabel = (year?: number | null) =>
     year ? `${year}${year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} Year` : '—';
@@ -225,14 +234,20 @@ export const StudentsView: React.FC = () => {
             </thead>
             <tbody>
               {visibleStudents.map((student) => (
-                <tr key={student.id} className="border-b border-[#E9EDF4] last:border-b-0 hover:bg-[#FAF8FC]">
+                <tr
+                  key={student.id}
+                  onClick={() => setSelectedStudentForProfile(student)}
+                  className="border-b border-[#E9EDF4] last:border-b-0 hover:bg-[#FAF8FC] cursor-pointer transition-colors group"
+                >
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2.5">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#DFE8F8] text-[10px] font-extrabold text-[#294B85]">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#DFE8F8] text-[10px] font-extrabold text-[#294B85] group-hover:scale-105 transition-transform">
                         {initials(student.name)}
                       </span>
                       <div>
-                        <p className="font-bold text-[#24133F] leading-snug">{student.name}</p>
+                        <p className="font-bold text-[#24133F] leading-snug group-hover:text-[#7026B7] transition-colors">
+                          {student.name}
+                        </p>
                         <p className="text-[10px] font-mono text-[#756883]">{student.student_id}</p>
                       </div>
                     </div>
@@ -269,7 +284,10 @@ export const StudentsView: React.FC = () => {
                     {student.rfid_uid ? (
                       <button
                         type="button"
-                        onClick={() => handleUnlinkCard(student.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUnlinkCard(student.id);
+                        }}
                         title="Unlink RFID Card"
                         aria-label={`Unlink RFID card from ${student.name}`}
                         className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-1 rounded-lg transition-colors"
@@ -282,7 +300,10 @@ export const StudentsView: React.FC = () => {
                         {unassignedCards.length > 0 && (
                           <button
                             type="button"
-                            onClick={() => handleQuickPair(student.id, unassignedCards[0].uid)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleQuickPair(student.id, unassignedCards[0].uid);
+                            }}
                             title={`Pair with card #${unassignedCards[0].cardNumber}`}
                             className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition-colors"
                           >
@@ -292,7 +313,10 @@ export const StudentsView: React.FC = () => {
                         )}
                         <button
                           type="button"
-                          onClick={() => setIsRapidScanOpen(true)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsRapidScanOpen(true);
+                          }}
                           title="Scan with USB reader"
                           className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7026B7] bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-1 rounded-lg transition-colors"
                         >
@@ -360,6 +384,17 @@ export const StudentsView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Slide-in Drawer: Student Profile & Scan History */}
+      <StudentProfileDrawer
+        isOpen={Boolean(selectedStudentForProfile)}
+        onClose={() => setSelectedStudentForProfile(null)}
+        student={activeProfileStudent}
+        availableCards={unassignedCards}
+        onUnlinkCard={handleUnlinkCard}
+        onQuickPair={handleQuickPair}
+        onOpenRapidScan={() => setIsRapidScanOpen(true)}
+      />
 
       {/* Slide-in Drawer: Card Inventory Pool */}
       <CardPoolDrawer
