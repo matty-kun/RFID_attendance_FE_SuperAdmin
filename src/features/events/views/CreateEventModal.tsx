@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Calendar,
@@ -12,6 +12,8 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Plus,
 } from 'lucide-react';
 import { Checkbox } from '../../../components/common/Checkbox';
@@ -35,8 +37,28 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [eventDescription, setEventDescription] = useState(
     'CITE Fest is an annual department festival that celebrates the talents, creativity, and teamwork of CITE students through various academic, sports, and recreational activities. It promotes camaraderie, collaboration, and school spirit among students and faculty.'
   );
-  const [startDate] = useState('2026-10-02');
-  const [endDate] = useState('2026-10-05');
+  const [startDate, setStartDate] = useState('2026-10-02');
+  const [endDate, setEndDate] = useState('2026-10-05');
+  const [calendarMonth, setCalendarMonth] = useState(9); // 9 = October
+  const [calendarYear, setCalendarYear] = useState(2026);
+
+  const calculatedDays = useMemo(() => {
+    if (!startDate || !endDate) return 1;
+    const d1 = new Date(`${startDate}T00:00:00`);
+    const d2 = new Date(`${endDate}T00:00:00`);
+    const diffTime = d2.getTime() - d1.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    return diffDays > 0 ? diffDays : 1;
+  }, [startDate, endDate]);
+
+  const formatDateDisplay = (dateStr: string) => {
+    try {
+      const d = new Date(`${dateStr}T00:00:00`);
+      return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
 
   // Step 3 state
   const [selectedDayTab, setSelectedDayTab] = useState<number>(1);
@@ -49,7 +71,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   if (!isOpen) return null;
 
-  const daysCount = 4; // October 2 to October 5
+  const daysCount = calculatedDays;
 
   const resetForm = () => {
     setCurrentStep(1);
@@ -140,33 +162,41 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 const isActive = currentStep === stepNum;
 
                 return (
-                  <div key={title} className="relative flex flex-col items-center text-center">
+                  <button
+                    key={title}
+                    type="button"
+                    onClick={() => setCurrentStep(stepNum)}
+                    className="group relative flex flex-col items-center text-center cursor-pointer focus:outline-none"
+                    title={`Go to step ${stepNum}: ${title}`}
+                  >
                       <div
-                        className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                        className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ease-out transform group-hover:scale-105 ${
                           isComplete
-                            ? 'bg-[#A855F7] text-white'
+                            ? 'bg-[#A855F7] text-white shadow-sm'
                             : isActive
-                            ? 'bg-[#A855F7] text-white ring-4 ring-[#A855F7]/20'
-                            : 'bg-[#F3E8FF] text-[#A855F7]'
+                            ? 'bg-[#A855F7] text-white ring-4 ring-[#A855F7]/25 scale-110 shadow-md'
+                            : 'bg-[#F3E8FF] text-[#A855F7] group-hover:bg-[#E9D5FF]'
                         }`}
                       >
                         {isComplete ? <Check className="h-4 w-4 stroke-[2.5]" /> : stepNum}
                       </div>
                       <span
-                        className={`mt-1.5 whitespace-nowrap text-[11px] font-medium ${
-                          isActive || isComplete ? 'font-semibold text-[#24133F]' : 'text-[#756883]'
+                        className={`mt-1.5 whitespace-nowrap text-[11px] font-medium transition-colors duration-200 ${
+                          isActive || isComplete ? 'font-bold text-[#24133F]' : 'text-[#756883] group-hover:text-[#24133F]'
                         }`}
                       >
                         {title}
                       </span>
                     {idx < stepTitles.length - 1 && (
-                      <div
-                        className={`absolute left-[calc(50%+1.5rem)] top-6 h-[2px] w-[calc(100%-3rem)] transition-colors ${
-                          currentStep > stepNum ? 'bg-[#A855F7]' : 'bg-[#E5E0EB]'
-                        }`}
-                      />
+                      <div className="absolute left-[calc(50%+1.5rem)] top-6 h-[2px] w-[calc(100%-3rem)] bg-[#E5E0EB] overflow-hidden pointer-events-none">
+                        <div
+                          className={`h-full bg-[#A855F7] transition-all duration-500 ease-out ${
+                            currentStep > stepNum ? 'w-full' : 'w-0'
+                          }`}
+                        />
+                      </div>
                     )}
-                  </div>
+                  </button>
                 );
               })}
               </div>
@@ -238,31 +268,144 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 <p className="text-[11px] font-semibold text-[#756883]">Step 2 of 5</p>
                 <h3 className="text-lg font-bold text-[#24133F]">Event Dates</h3>
                 <p className="text-xs text-[#756883]">
-                  Set the start and end date for your event. The system will automatically calculate the number of days.
+                  Select the start and end date for your event using the interactive calendar below.
                 </p>
               </div>
 
+              {/* Date Inputs Row */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-[#24133F]">Start Date</label>
-                  <div className="mt-1.5 flex items-center justify-between rounded-2xl border border-[#E5E0EB] px-4 py-2.5 text-xs text-[#24133F]">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-[#756883]" />
-                      <span>October 2, 2026</span>
-                    </div>
-                    <ChevronDown className="h-4 w-4 text-[#756883]" />
+                  <label className="block text-xs font-bold text-[#24133F] mb-1.5">Start Date</label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setStartDate(val);
+                        if (val > endDate) setEndDate(val);
+                      }}
+                      className="w-full rounded-2xl border border-[#E5E0EB] px-4 py-2.5 text-xs font-semibold text-[#24133F] focus:border-[#451475] focus:outline-none bg-white shadow-xs cursor-pointer"
+                    />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#24133F]">End Date</label>
-                  <div className="mt-1.5 flex items-center justify-between rounded-2xl border border-[#E5E0EB] px-4 py-2.5 text-xs text-[#24133F]">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-[#756883]" />
-                      <span>October 5, 2026</span>
-                    </div>
-                    <ChevronDown className="h-4 w-4 text-[#756883]" />
+                  <label className="block text-xs font-bold text-[#24133F] mb-1.5">End Date</label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={endDate}
+                      min={startDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full rounded-2xl border border-[#E5E0EB] px-4 py-2.5 text-xs font-semibold text-[#24133F] focus:border-[#451475] focus:outline-none bg-white shadow-xs cursor-pointer"
+                    />
                   </div>
+                </div>
+              </div>
+
+              {/* Interactive Calendar Month View */}
+              <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB]/60 p-4">
+                <div className="flex items-center justify-between pb-3 border-b border-[#F1EEF4]">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-[#451475]" />
+                    <span className="text-xs font-bold text-[#24133F]">
+                      {new Date(calendarYear, calendarMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (calendarMonth === 0) {
+                          setCalendarMonth(11);
+                          setCalendarYear((y) => y - 1);
+                        } else {
+                          setCalendarMonth((m) => m - 1);
+                        }
+                      }}
+                      className="rounded-lg p-1 text-[#756883] hover:bg-white hover:text-[#24133F] transition-colors"
+                      aria-label="Previous month"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (calendarMonth === 11) {
+                          setCalendarMonth(0);
+                          setCalendarYear((y) => y + 1);
+                        } else {
+                          setCalendarMonth((m) => m + 1);
+                        }
+                      }}
+                      className="rounded-lg p-1 text-[#756883] hover:bg-white hover:text-[#24133F] transition-colors"
+                      aria-label="Next month"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Day headers */}
+                <div className="mt-3 grid grid-cols-7 text-center text-[10px] font-bold text-[#756883]">
+                  {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+                    <div key={d} className="py-1">
+                      {d}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Day cells */}
+                <div className="grid grid-cols-7 text-center text-xs">
+                  {(() => {
+                    const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+                    const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+                    const cells = [];
+
+                    // Blank leading days
+                    for (let i = 0; i < firstDay; i++) {
+                      cells.push(<div key={`blank-${i}`} className="h-8" />);
+                    }
+
+                    // Days in month
+                    for (let day = 1; day <= daysInMonth; day++) {
+                      const dayStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                      const isStart = dayStr === startDate;
+                      const isEnd = dayStr === endDate;
+                      const inRange = startDate && endDate && dayStr > startDate && dayStr < endDate;
+
+                      cells.push(
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => {
+                            if (!startDate || (startDate && endDate && startDate !== endDate)) {
+                              setStartDate(dayStr);
+                              setEndDate(dayStr);
+                            } else if (startDate && (!endDate || startDate === endDate)) {
+                              if (dayStr < startDate) {
+                                setEndDate(startDate);
+                                setStartDate(dayStr);
+                              } else {
+                                setEndDate(dayStr);
+                              }
+                            }
+                          }}
+                          className={`relative flex h-8 items-center justify-center text-xs font-semibold transition-colors ${
+                            isStart || isEnd
+                              ? 'rounded-full bg-[#451475] font-bold text-white shadow-xs z-10'
+                              : inRange
+                              ? 'bg-[#E9D5FF]/60 text-[#451475]'
+                              : 'text-[#24133F] hover:bg-white rounded-full'
+                          }`}
+                        >
+                          {day}
+                        </button>
+                      );
+                    }
+                    return cells;
+                  })()}
                 </div>
               </div>
 
@@ -273,8 +416,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 </div>
                 <div>
                   <p className="text-xs font-medium text-[#756883]">Event Duration</p>
-                  <p className="text-base font-extrabold text-[#24133F]">4 days</p>
-                  <p className="text-[11px] text-[#756883]">From October 2, 2026 to October 5, 2026</p>
+                  <p className="text-base font-extrabold text-[#24133F]">
+                    {calculatedDays} {calculatedDays === 1 ? 'day' : 'days'}
+                  </p>
+                  <p className="text-[11px] text-[#756883]">
+                    From {formatDateDisplay(startDate)} to {formatDateDisplay(endDate)}
+                  </p>
                 </div>
               </div>
             </div>
