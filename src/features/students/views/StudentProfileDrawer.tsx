@@ -228,10 +228,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   const yearLabel = (year?: number | null) =>
     year ? `${year}${year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} Year` : '—';
 
-  const totalRecorded = scans.filter((s) => s.status !== 'missed').length;
-  const onTimeCount = scans.filter((s) => s.status === 'on_time').length;
-  const onTimePercent = totalRecorded > 0 ? Math.round((onTimeCount / totalRecorded) * 100) : 0;
-
   if (!student) return null;
 
   return (
@@ -241,24 +237,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       title="Student Profile & Scans"
       description="Academic credentials, card status, and event attendance timeline."
       maxWidth="2xl"
-      footer={
-        <div className="flex items-center justify-between w-full">
-          <p className="text-xs text-[#756883]">
-            {student.rfid_uid ? (
-              <span>Active RFID card · {scans.length} scans recorded</span>
-            ) : (
-              <span className="text-amber-700 font-medium">No card assigned</span>
-            )}
-          </p>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-[#756883] hover:text-[#24133F] transition-colors"
-          >
-            Close
-          </button>
-        </div>
-      }
     >
       <div className="space-y-4">
         {/* Unified Identity & RFID Card Card (Zero nested boxes) */}
@@ -285,19 +263,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                 )}
               </div>
             </div>
-
-            {/* Attendance Performance Score */}
-            {student.rfid_uid && totalRecorded > 0 && (
-              <div className="text-right shrink-0">
-                <p className="text-xs font-medium text-[#756883]">On-time rate</p>
-                <p className="text-xl font-bold text-[#16883F] tabular-nums mt-0.5 leading-none">
-                  {onTimePercent}%
-                </p>
-                <p className="text-[11px] text-[#A59AAB] mt-1">
-                  {onTimeCount}/{totalRecorded} on time
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Integrated RFID Credential Bar (1px hairline divider) */}
@@ -305,10 +270,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             {student.rfid_uid ? (
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 text-[11px] font-semibold text-[#16883F]">
-                    <i className="h-1.5 w-1.5 rounded-full bg-[#17B556]" />
-                    Linked card
-                  </span>
+                  <span className="text-xs text-[#756883]">Card UID:</span>
                   <span className="font-mono text-xs font-bold text-[#24133F] tracking-tight">
                     {student.rfid_uid}
                   </span>
@@ -336,12 +298,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               </div>
             ) : (
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-                <div className="flex items-center gap-2 text-xs text-[#756883]">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                    No card linked
-                  </span>
-                  <span>Pair a card to enable event scanning</span>
-                </div>
+                <span className="text-xs text-[#756883]">No RFID card linked to student</span>
 
                 <div className="flex items-center gap-2 self-end sm:self-auto">
                   {availableCards.length > 0 && (
