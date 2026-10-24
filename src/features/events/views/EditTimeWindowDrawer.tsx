@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Clock, Calendar, Check, Info } from 'lucide-react';
+import { X, Clock, Calendar, Check } from 'lucide-react';
 import { TimePicker } from '../../../components/common/TimePicker';
 
 export interface EditTimeWindowDrawerProps {
@@ -193,15 +193,6 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
             onChange={handleTimeChange}
           />
 
-          {/* Info Notice */}
-          <div className="flex items-start gap-2 rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs text-[#756883]">
-            <Info className="h-4 w-4 text-[#756883] shrink-0 mt-0.5" />
-            <p>
-              Attendees will only be marked present if their RFID cards are tapped between{' '}
-              <strong className="text-[#24133F] font-bold">{formatTo12(start)}</strong> and{' '}
-              <strong className="text-[#24133F] font-bold">{formatTo12(end)}</strong>.
-            </p>
-          </div>
         </div>
 
         {/* Footer */}
