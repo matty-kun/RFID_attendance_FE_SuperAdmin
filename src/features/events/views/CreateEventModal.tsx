@@ -17,6 +17,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { Checkbox } from '../../../components/common/Checkbox';
+import { TimePicker } from '../../../components/common/TimePicker';
 import {
   AssignOfficersDrawer,
   type AssignedOfficer,
@@ -756,6 +757,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                 className="group flex items-center gap-1.5 rounded-lg bg-white hover:bg-[#FAF7FD] border border-[#E5E0EB] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#24133F] hover:text-[#451475] transition-all shadow-xs"
                                 title="Click to edit check-in window"
                               >
+                                <Clock className="h-3 w-3 text-[#451475]" />
                                 <span>{session.slot.inTime}</span>
                                 <Pencil className="h-3 w-3 text-[#756883] group-hover:text-[#451475] transition-colors" />
                               </button>
@@ -821,6 +823,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                 className="group flex items-center gap-1.5 rounded-lg bg-white hover:bg-[#FAF7FD] border border-[#E5E0EB] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#24133F] hover:text-[#451475] transition-all shadow-xs"
                                 title="Click to edit check-out window"
                               >
+                                <Clock className="h-3 w-3 text-[#3B82F6]" />
                                 <span>{session.slot.outTime}</span>
                                 <Pencil className="h-3 w-3 text-[#756883] group-hover:text-[#451475] transition-colors" />
                               </button>
@@ -1185,30 +1188,18 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             </div>
 
             <div className="mt-4 space-y-4">
-              {/* Structured Start and End Time inputs */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-[#24133F] mb-1">Start Time</label>
-                  <input
-                    type="time"
-                    value={editingTimeSlot.start}
-                    onChange={(e) =>
-                      setEditingTimeSlot((prev) => ({ ...prev, start: e.target.value }))
-                    }
-                    className="w-full px-3 py-2 rounded-xl border border-[#E5E0EB] text-xs font-semibold text-[#24133F] focus:outline-none focus:border-[#451475] bg-white shadow-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-[#24133F] mb-1">End Time</label>
-                  <input
-                    type="time"
-                    value={editingTimeSlot.end}
-                    onChange={(e) =>
-                      setEditingTimeSlot((prev) => ({ ...prev, end: e.target.value }))
-                    }
-                    className="w-full px-3 py-2 rounded-xl border border-[#E5E0EB] text-xs font-semibold text-[#24133F] focus:outline-none focus:border-[#451475] bg-white shadow-xs"
-                  />
-                </div>
+              {/* TimePicker components */}
+              <div className="space-y-3">
+                <TimePicker
+                  label="Start Time"
+                  value={editingTimeSlot.start}
+                  onChange={(val) => setEditingTimeSlot((prev) => ({ ...prev, start: val }))}
+                />
+                <TimePicker
+                  label="End Time"
+                  value={editingTimeSlot.end}
+                  onChange={(val) => setEditingTimeSlot((prev) => ({ ...prev, end: val }))}
+                />
               </div>
 
               {/* Quick duration presets */}

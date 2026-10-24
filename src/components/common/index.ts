@@ -9,3 +9,4 @@ export * from './Dropdown';
 export * from './ExportButton';
 export * from './DeleteConfirmationModal';
 export * from './Checkbox';
+export * from './TimePicker';
