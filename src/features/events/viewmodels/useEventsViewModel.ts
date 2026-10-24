@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { EventRecord, CreateEventPayload } from '../models';
 import { eventService } from '../services';
+import { toast } from '../../../context';
 
 export interface UseEventsViewModelReturn {
   events: EventRecord[];
@@ -66,6 +67,7 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
         end_date: endDate,
       };
       await eventService.createEvent(payload);
+      toast.success(`Event "${name}" created successfully`);
       setIsModalOpen(false);
       setName('');
       setDescription('');
@@ -73,7 +75,7 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
       setEndDate('');
       await loadEvents();
     } catch (err: any) {
-      alert(err?.message || 'Failed to create event');
+      toast.error(err?.message || 'Failed to create event');
     } finally {
       setIsSubmitting(false);
     }

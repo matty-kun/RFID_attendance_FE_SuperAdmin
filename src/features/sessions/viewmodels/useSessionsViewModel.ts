@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { SessionRecord, CreateSessionPayload } from '../models';
 import { EventRecord } from '../../../types';
 import { sessionService } from '../services';
+import { toast } from '../../../context';
 
 export interface UseSessionsViewModelReturn {
   sessions: SessionRecord[];
@@ -116,8 +117,10 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
       };
       if (editingSessionId) {
         await sessionService.updateSession(editingSessionId, payload);
+        toast.success(`Session "${name}" updated successfully`);
       } else {
         await sessionService.createSession(selectedEventId, payload);
+        toast.success(`Session "${name}" created successfully`);
       }
       setIsModalOpen(false);
       setEditingSessionId(null);
@@ -125,7 +128,7 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
       setDate('');
       await loadData();
     } catch (err: any) {
-      alert(err?.message || 'Failed to create session');
+      toast.error(err?.message || (editingSessionId ? 'Failed to update session' : 'Failed to create session'));
     } finally {
       setIsSubmitting(false);
     }

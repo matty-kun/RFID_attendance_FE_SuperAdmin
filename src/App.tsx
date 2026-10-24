@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './features/auth';
+import { ToastProvider } from './context/ToastContext';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { SuperAdminLayout } from './components/layout/SuperAdminLayout';
 
@@ -22,7 +23,8 @@ export const App: React.FC = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
+        <ToastProvider>
+          <Routes>
           {/* Public Authentication Route */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/change-password" element={<FirstLoginPasswordPage />} />
@@ -48,6 +50,7 @@ export const App: React.FC = () => {
           {/* Catch-all redirect */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   );

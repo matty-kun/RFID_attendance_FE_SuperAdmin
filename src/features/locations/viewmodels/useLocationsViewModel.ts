@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { LocationRecord, CreateLocationPayload } from '../models';
 import { locationService } from '../services';
+import { toast } from '../../../context';
 
 export interface UseLocationsViewModelReturn {
   locations: LocationRecord[];
@@ -47,11 +48,12 @@ export const useLocationsViewModel = (): UseLocationsViewModelReturn => {
         name,
       };
       await locationService.createLocation(payload);
+      toast.success(`Venue "${name}" created successfully`);
       setIsModalOpen(false);
       setName('');
       await loadLocations();
     } catch (err: any) {
-      alert(err?.message || 'Failed to create venue');
+      toast.error(err?.message || 'Failed to create venue');
     } finally {
       setIsSubmitting(false);
     }

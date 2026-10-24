@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Checkbox } from '../../../components/common/Checkbox';
 import { TimePicker } from '../../../components/common/TimePicker';
+import { toast } from '../../../context';
 import {
   AssignOfficersDrawer,
   type AssignedOfficer,
@@ -277,6 +278,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         endDate,
         daysCount,
       });
+    } else {
+      toast.success(`Event "${eventName}" published successfully!`);
     }
     handleCloseModal();
   };

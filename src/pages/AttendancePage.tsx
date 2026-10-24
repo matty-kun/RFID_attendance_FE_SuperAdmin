@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Calendar,
@@ -18,9 +18,8 @@ import {
   X,
   Check,
   RotateCcw,
-  AlertTriangle,
-  Info,
 } from 'lucide-react';
+import { useToast } from '../context';
 import { Dropdown } from '../components/common/Dropdown';
 import { CreateEventModal } from '../features/events/views/CreateEventModal';
 import { DeleteConfirmationModal } from '../components/common/DeleteConfirmationModal';
@@ -243,6 +242,7 @@ function formatTimeWindow(start24: string, end24: string): string {
 }
 
 export function AttendancePage() {
+  const { showToast } = useToast();
   const [eventData, setEventData] = useState<EventData>(initialEvent);
   const [isEventExpanded, setIsEventExpanded] = useState(true);
   const [expandedDayId, setExpandedDayId] = useState<string>('d1');
@@ -264,15 +264,8 @@ export function AttendancePage() {
     setAssigningSession({ dayId, session, dateStr });
   };
 
-  // Feedback Toast & Card Highlight States
+  // Toast Feedback & Card Highlight States
   const [highlightedSessionId, setHighlightedSessionId] = useState<string | null>(null);
-  const [feedbackToast, setFeedbackToast] = useState<{
-    id: string;
-    message: string;
-    type: 'success' | 'delete' | 'warning' | 'info';
-    actionLabel?: string;
-    onAction?: () => void;
-  } | null>(null);
 
   const triggerHighlight = (sessionId: string) => {
     setHighlightedSessionId(sessionId);
@@ -287,22 +280,8 @@ export function AttendancePage() {
     actionLabel?: string,
     onAction?: () => void
   ) => {
-    setFeedbackToast({
-      id: Math.random().toString(),
-      message,
-      type,
-      actionLabel,
-      onAction,
-    });
+    showToast(message, { type, actionLabel, onAction });
   };
-
-  useEffect(() => {
-    if (!feedbackToast) return;
-    const timer = setTimeout(() => {
-      setFeedbackToast(null);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [feedbackToast]);
 
   const handleSaveAssignedOfficers = (updatedOfficers: AssignedOfficer[]) => {
     if (!assigningSession) return;
@@ -1063,60 +1042,6 @@ export function AttendancePage() {
                 </button>
               </div>
             </div>
-          </div>,
-          document.body
-        )}
-
-      {/* Unified Action Feedback Toast (Figma Pill Design: Solid Saturated Colors, White Text & Icons) */}
-      {feedbackToast &&
-        createPortal(
-          <div
-            className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-full px-5 py-3 shadow-xl text-white animate-in slide-in-from-bottom-4 duration-200 ${
-              feedbackToast.type === 'delete'
-                ? 'bg-[#EF3340]'
-                : feedbackToast.type === 'warning'
-                ? 'bg-[#F59E0B]'
-                : feedbackToast.type === 'info'
-                ? 'bg-[#3B82F6]'
-                : 'bg-[#17B556]'
-            }`}
-          >
-            {feedbackToast.type === 'delete' ? (
-              <X className="h-4 w-4 shrink-0 text-white stroke-[2.5]" />
-            ) : feedbackToast.type === 'warning' ? (
-              <AlertTriangle className="h-4 w-4 shrink-0 text-white stroke-[2.5]" />
-            ) : feedbackToast.type === 'info' ? (
-              <Info className="h-4 w-4 shrink-0 text-white stroke-[2.5]" />
-            ) : (
-              <Check className="h-4 w-4 shrink-0 text-white stroke-[2.5]" />
-            )}
-
-            <span className="text-xs font-semibold leading-tight text-white whitespace-nowrap">
-              {feedbackToast.message}
-            </span>
-
-            {feedbackToast.actionLabel && feedbackToast.onAction && (
-              <button
-                type="button"
-                onClick={() => {
-                  feedbackToast.onAction?.();
-                  setFeedbackToast(null);
-                }}
-                className="ml-2 flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-bold text-white hover:bg-white/30 active:scale-95 transition-all shadow-2xs"
-              >
-                <RotateCcw className="h-3 w-3 stroke-[2.5]" />
-                {feedbackToast.actionLabel}
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setFeedbackToast(null)}
-              className="ml-1 p-1 rounded-full text-white/80 hover:text-white hover:bg-white/15 transition-colors"
-              aria-label="Dismiss notification"
-            >
-              <X className="h-3.5 w-3.5 stroke-[2.5]" />
-            </button>
           </div>,
           document.body
         )}
