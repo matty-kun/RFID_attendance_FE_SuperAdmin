@@ -243,7 +243,9 @@ function formatTimeWindow(start24: string, end24: string): string {
 
 export function AttendancePage() {
   const { showToast } = useToast();
-  const [eventData, setEventData] = useState<EventData>(initialEvent);
+  const [eventData, setEventData] = useState<EventData | null>(initialEvent);
+  const [isEventMenuOpen, setIsEventMenuOpen] = useState(false);
+  const [isDeletingEvent, setIsDeletingEvent] = useState(false);
   const [isEventExpanded, setIsEventExpanded] = useState(true);
   const [expandedDayId, setExpandedDayId] = useState<string>('d1');
 
@@ -287,7 +289,7 @@ export function AttendancePage() {
     if (!assigningSession) return;
     const targetSessionId = assigningSession.session.id;
     const targetSessionName = assigningSession.session.name;
-    setEventData((prev) => ({
+    setEventData((prev) => !prev ? prev : ({
       ...prev,
       days: prev.days.map((d) =>
         d.dayId === assigningSession.dayId
@@ -319,7 +321,7 @@ export function AttendancePage() {
     if (session.status === 'Completed') {
       // Reopen session
       const revertStatus = session.previousStatus || 'Active';
-      setEventData((prev) => ({
+      setEventData((prev) => !prev ? prev : ({
         ...prev,
         days: prev.days.map((d) =>
           d.dayId === dayId
@@ -337,7 +339,7 @@ export function AttendancePage() {
     } else {
       // Mark as completed
       const prior = session.status;
-      setEventData((prev) => ({
+      setEventData((prev) => !prev ? prev : ({
         ...prev,
         days: prev.days.map((d) =>
           d.dayId === dayId
@@ -354,7 +356,7 @@ export function AttendancePage() {
       }));
       triggerHighlight(session.id);
       showFeedback(`"${session.name}" marked as completed`, 'info', 'Undo', () => {
-        setEventData((prev) => ({
+        setEventData((prev) => !prev ? prev : ({
           ...prev,
           days: prev.days.map((d) =>
             d.dayId === dayId
@@ -394,7 +396,7 @@ export function AttendancePage() {
     if (!editingTimeSession) return;
     const targetSessionId = editingTimeSession.session.id;
     const formatted = formatTimeWindow(startTimeInput, endTimeInput);
-    setEventData((prev) => ({
+    setEventData((prev) => !prev ? prev : ({
       ...prev,
       days: prev.days.map((d) =>
         d.dayId === editingTimeSession.dayId
@@ -418,12 +420,12 @@ export function AttendancePage() {
     if (!deletingSessionInfo) return;
     const deletedSession = deletingSessionInfo.session;
     const targetDayId = deletingSessionInfo.dayId;
-    const targetDay = eventData.days.find((d) => d.dayId === targetDayId);
+    const targetDay = eventData?.days.find((d) => d.dayId === targetDayId);
     const originalIndex = targetDay
       ? targetDay.sessions.findIndex((s) => s.id === deletedSession.id)
       : -1;
 
-    setEventData((prev) => ({
+    setEventData((prev) => !prev ? prev : ({
       ...prev,
       days: prev.days.map((d) =>
         d.dayId === targetDayId
@@ -436,7 +438,7 @@ export function AttendancePage() {
     }));
     setDeletingSessionInfo(null);
     showFeedback(`"${deletedSession.name}" deleted`, 'delete', 'Undo', () => {
-      setEventData((prev) => ({
+      setEventData((prev) => !prev ? prev : ({
         ...prev,
         days: prev.days.map((d) => {
           if (d.dayId !== targetDayId) return d;
@@ -455,10 +457,10 @@ export function AttendancePage() {
   };
 
   const handleCopyFromDay1 = (targetDayId: string) => {
-    const day1 = eventData.days.find((d) => d.dayId === 'd1');
+    const day1 = eventData?.days.find((d) => d.dayId === 'd1');
     if (!day1) return;
 
-    setEventData((prev) => ({
+    setEventData((prev) => !prev ? prev : ({
       ...prev,
       days: prev.days.map((d) =>
         d.dayId === targetDayId
@@ -475,11 +477,22 @@ export function AttendancePage() {
       ),
     }));
     setExpandedDayId(targetDayId);
-    const targetDay = eventData.days.find((d) => d.dayId === targetDayId);
+    const targetDay = eventData?.days.find((d) => d.dayId === targetDayId);
     showFeedback(
       `Copied schedule from Day 1 to ${targetDay ? targetDay.dayLabel.split('-')[0].trim() : 'Day'}`,
       'success'
     );
+  };
+
+  const handleConfirmDeleteEvent = () => {
+    if (!eventData) return;
+    const deletedEvent = eventData;
+    setEventData(null);
+    setIsDeletingEvent(false);
+    showFeedback(`Event "${deletedEvent.name}" deleted`, 'delete', 'Undo', () => {
+      setEventData(deletedEvent);
+      showFeedback(`Restored "${deletedEvent.name}"`, 'success');
+    });
   };
 
   const handleEventPublished = (newEvent: any) => {
@@ -498,6 +511,7 @@ export function AttendancePage() {
   const isSearching = Boolean(search.trim()) || statusFilter !== 'all' || dateFilter !== 'all';
 
   const filteredDays = useMemo(() => {
+    if (!eventData) return [];
     return eventData.days
       .map((day) => {
         const matchesDate =
@@ -602,34 +616,74 @@ export function AttendancePage() {
       </div>
 
       {/* Event Accordion Container (Cite Festival) */}
-      <div className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-sm">
-        {/* Main Event Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-[#F1EEF4]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#F6F4F8] text-[#451475]">
-              <Calendar className="h-5 w-5" />
+      {eventData ? (
+        <div className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-sm">
+          {/* Main Event Header (Divider line only shown when rolled down/expanded) */}
+          <div
+            className={`flex items-center justify-between transition-all ${
+              isEventExpanded ? 'pb-4 border-b border-[#F1EEF4]' : ''
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#F6F4F8] text-[#451475]">
+                <Calendar className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-[#24133F]">{eventData.name}</h2>
+                <p className="text-xs text-[#756883]">{eventData.dateRange}</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base font-bold text-[#24133F]">{eventData.name}</h2>
-              <p className="text-xs text-[#756883]">{eventData.dateRange}</p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-[#10B981]">
-              <span className="h-2 w-2 rounded-full bg-[#10B981]" />
-              Ongoing
-            </span>
-            <button
-              type="button"
-              onClick={() => setIsEventExpanded(!isEventExpanded)}
-              aria-label="Toggle event days"
-              className="rounded-lg p-1 text-[#756883] hover:bg-slate-100"
-            >
-              {isEventExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-            </button>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-[#10B981]">
+                <span className="h-2 w-2 rounded-full bg-[#10B981]" />
+                Ongoing
+              </span>
+
+              {/* Event Actions Kebab Menu */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsEventMenuOpen(!isEventMenuOpen)}
+                  className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F] transition-colors"
+                  aria-label="Event options"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+
+                {isEventMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-20"
+                      onClick={() => setIsEventMenuOpen(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-1 z-30 w-36 rounded-xl border border-[#E5E0EB] bg-white p-1 shadow-lg animate-in fade-in zoom-in-95 duration-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEventMenuOpen(false);
+                          setIsDeletingEvent(true);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Delete Event</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsEventExpanded(!isEventExpanded)}
+                aria-label="Toggle event days"
+                className="rounded-lg p-1 text-[#756883] hover:bg-slate-100"
+              >
+                {isEventExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </button>
+            </div>
           </div>
-        </div>
 
         {/* Event Days Content */}
         <div
@@ -898,6 +952,26 @@ export function AttendancePage() {
             )}
           </div>
         </div>
+      ) : (
+        /* Empty State when Event is deleted */
+        <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-[#E5E0EB] bg-white p-12 text-center shadow-xs">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F6F4F8] text-[#756883] mb-3">
+            <Calendar className="h-7 w-7 text-[#756883]" />
+          </div>
+          <h3 className="text-base font-bold text-[#24133F]">No Event Active</h3>
+          <p className="mt-1 max-w-sm text-xs text-[#756883]">
+            There is currently no event published. Create a new event to configure schedules and sessions.
+          </p>
+          <button
+            type="button"
+            onClick={() => setIsCreateEventOpen(true)}
+            className="mt-4 flex items-center gap-2 rounded-2xl bg-[#451475] px-5 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_0_#2B0C4A] hover:bg-[#38105F] active:translate-y-[2px] active:shadow-none transition-all"
+          >
+            <Plus className="h-4 w-4" />
+            Create Event
+          </button>
+        </div>
+      )}
 
       {/* 5-Step Create Event Flow Modal */}
       <CreateEventModal
@@ -1045,6 +1119,14 @@ export function AttendancePage() {
           </div>,
           document.body
         )}
+
+      {/* Delete Event Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={isDeletingEvent}
+        onClose={() => setIsDeletingEvent(false)}
+        onConfirm={handleConfirmDeleteEvent}
+        itemName={eventData ? eventData.name : 'this event'}
+      />
 
       {/* Delete Session Confirmation Modal */}
       <DeleteConfirmationModal
