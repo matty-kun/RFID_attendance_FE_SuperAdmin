@@ -18,6 +18,8 @@ import {
   X,
   Check,
   RotateCcw,
+  AlertTriangle,
+  Info,
 } from 'lucide-react';
 import { Dropdown } from '../components/common/Dropdown';
 import { CreateEventModal } from '../features/events/views/CreateEventModal';
@@ -267,7 +269,7 @@ export function AttendancePage() {
   const [feedbackToast, setFeedbackToast] = useState<{
     id: string;
     message: string;
-    type: 'success' | 'info' | 'delete';
+    type: 'success' | 'delete' | 'warning' | 'info';
     actionLabel?: string;
     onAction?: () => void;
   } | null>(null);
@@ -276,12 +278,12 @@ export function AttendancePage() {
     setHighlightedSessionId(sessionId);
     setTimeout(() => {
       setHighlightedSessionId((current) => (current === sessionId ? null : current));
-    }, 1800);
+    }, 1200);
   };
 
   const showFeedback = (
     message: string,
-    type: 'success' | 'info' | 'delete' = 'success',
+    type: 'success' | 'delete' | 'warning' | 'info' = 'success',
     actionLabel?: string,
     onAction?: () => void
   ) => {
@@ -725,9 +727,9 @@ export function AttendancePage() {
                   {day.visibleSessions.map((session) => (
                         <div
                           key={session.id}
-                          className={`rounded-2xl border bg-white p-4 shadow-sm transition-all duration-300 ${
+                          className={`rounded-2xl border bg-white p-4 shadow-sm transition-colors duration-200 ${
                             highlightedSessionId === session.id
-                              ? 'border-[#451475] ring-2 ring-[#451475]/25 shadow-md scale-[1.008]'
+                              ? 'border-[#451475] ring-2 ring-[#451475]/25 shadow-md'
                               : 'border-[#E5E0EB]'
                           }`}
                         >
@@ -1065,18 +1067,42 @@ export function AttendancePage() {
           document.body
         )}
 
-      {/* Unified Action Feedback Toast (White mode Presnt theme) */}
+      {/* Unified Action Feedback Toast (Green, Red, Yellow, Blue states with no pulse) */}
       {feedbackToast &&
         createPortal(
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full border border-[#E5E0EB] bg-white px-4 py-2.5 text-[#24133F] shadow-xl animate-in slide-in-from-bottom-5 duration-200">
+          <div
+            className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border px-4 py-3 shadow-xl animate-in slide-in-from-bottom-4 duration-200 ${
+              feedbackToast.type === 'delete'
+                ? 'border-red-200 bg-red-50 text-red-900'
+                : feedbackToast.type === 'warning'
+                ? 'border-amber-200 bg-amber-50 text-amber-900'
+                : feedbackToast.type === 'info'
+                ? 'border-blue-200 bg-blue-50 text-blue-900'
+                : 'border-emerald-200 bg-emerald-50 text-emerald-900'
+            }`}
+          >
             {feedbackToast.type === 'delete' ? (
-              <Trash2 className="h-4 w-4 text-[#EF4444] shrink-0" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-red-100 text-red-600 shrink-0">
+                <Trash2 className="h-4 w-4" />
+              </div>
+            ) : feedbackToast.type === 'warning' ? (
+              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-amber-100 text-amber-600 shrink-0">
+                <AlertTriangle className="h-4 w-4" />
+              </div>
+            ) : feedbackToast.type === 'info' ? (
+              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-blue-100 text-blue-600 shrink-0">
+                <Info className="h-4 w-4" />
+              </div>
             ) : (
-              <CheckCircle2 className="h-4 w-4 text-[#10B981] shrink-0" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 shrink-0">
+                <CheckCircle2 className="h-4 w-4" />
+              </div>
             )}
-            <span className="text-xs font-semibold text-[#24133F]">
+
+            <span className="text-xs font-bold leading-tight">
               {feedbackToast.message}
             </span>
+
             {feedbackToast.actionLabel && feedbackToast.onAction && (
               <button
                 type="button"
@@ -1084,16 +1110,17 @@ export function AttendancePage() {
                   feedbackToast.onAction?.();
                   setFeedbackToast(null);
                 }}
-                className="ml-1 flex items-center gap-1.5 rounded-full border border-[#E9DDF8] bg-[#FAF7FD] px-3 py-1 text-xs font-bold text-[#451475] hover:bg-[#F3EDFB] active:scale-95 transition-all shadow-xs"
+                className="ml-2 flex items-center gap-1.5 rounded-xl border border-red-300 bg-white px-3 py-1 text-xs font-bold text-red-700 hover:bg-red-50 active:scale-95 transition-all shadow-2xs"
               >
                 <RotateCcw className="h-3 w-3" />
                 {feedbackToast.actionLabel}
               </button>
             )}
+
             <button
               type="button"
               onClick={() => setFeedbackToast(null)}
-              className="p-1 rounded-full text-[#756883] hover:text-[#24133F] hover:bg-slate-100 transition-colors"
+              className="ml-1 p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-black/5 transition-colors"
               aria-label="Dismiss notification"
             >
               <X className="h-3.5 w-3.5" />

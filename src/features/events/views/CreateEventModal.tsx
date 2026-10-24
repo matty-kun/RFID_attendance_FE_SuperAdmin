@@ -1188,24 +1188,33 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             </div>
 
             <div className="mt-4 space-y-4">
-              {/* TimePicker components */}
-              <div className="space-y-3">
-                <TimePicker
-                  label="Start Time"
-                  value={editingTimeSlot.start}
-                  onChange={(val) => setEditingTimeSlot((prev) => ({ ...prev, start: val }))}
-                />
-                <TimePicker
-                  label="End Time"
-                  value={editingTimeSlot.end}
-                  onChange={(val) => setEditingTimeSlot((prev) => ({ ...prev, end: val }))}
-                />
+              <div className="text-center">
+                <h4 className="text-sm font-bold text-[#24133F]">What time works?</h4>
+                <p className="text-xs text-[#756883]">
+                  Select the start time for the {editingTimeSlot.sessionType} {editingTimeSlot.slot} window.
+                </p>
               </div>
+
+              {/* Grid-based TimePicker component (Calendly / Deel style) */}
+              <TimePicker
+                value={editingTimeSlot.start}
+                onChange={(val) => {
+                  const [h, m] = val.split(':').map(Number);
+                  const totalMinutes = h * 60 + m + 90; // default 1.5 hr duration
+                  const newH = Math.floor(totalMinutes / 60) % 24;
+                  const newM = totalMinutes % 60;
+                  setEditingTimeSlot((prev) => ({
+                    ...prev,
+                    start: val,
+                    end: `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`,
+                  }));
+                }}
+              />
 
               {/* Quick duration presets */}
               <div>
                 <p className="text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-1.5">
-                  Quick duration presets
+                  Set Window Duration
                 </p>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {[
@@ -1219,7 +1228,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       key={p.label}
                       type="button"
                       onClick={() => applySlotDuration(p.val)}
-                      className="rounded-lg border border-[#E5E0EB] bg-[#FAF8FB] px-2.5 py-1 text-[11px] font-semibold text-[#451475] hover:bg-[#F3EDFB] transition-colors"
+                      className="rounded-xl border border-[#E5E0EB] bg-[#FAF8FB] hover:border-[#451475] hover:bg-[#F3EDFB] px-2.5 py-1 text-[11px] font-semibold text-[#451475] transition-colors"
                     >
                       +{p.label}
                     </button>
@@ -1228,15 +1237,15 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               </div>
 
               {/* Formatted live preview */}
-              <div className="rounded-xl border border-[#451475]/15 bg-[#FAF7FD] p-3">
+              <div className="rounded-2xl border border-[#451475]/15 bg-[#FAF7FD] p-3 shadow-2xs">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#756883]">
-                  Active Scanning Window Preview
+                  Selected Scanning Window
                 </span>
                 <div className="mt-1 flex items-center justify-between">
                   <span className="text-xs font-bold text-[#451475]">
                     {formatSlotTimeWindow(editingTimeSlot.start, editingTimeSlot.end)}
                   </span>
-                  <span className="rounded-md bg-purple-100/70 px-2 py-0.5 text-[10px] font-semibold text-[#451475]">
+                  <span className="rounded-full bg-purple-100/70 px-2.5 py-0.5 text-[10px] font-semibold text-[#451475]">
                     Active
                   </span>
                 </div>
