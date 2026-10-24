@@ -41,7 +41,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   onPublished,
 }) => {
   const [currentStep, setCurrentStep] = useState<number>(1);
-  const [isPublished, setIsPublished] = useState<boolean>(false);
 
   // Form State
   const [eventName, setEventName] = useState('CITE FESTIVAL');
@@ -255,7 +254,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const resetForm = () => {
     setCurrentStep(1);
-    setIsPublished(false);
   };
 
   const handleNext = () => {
@@ -271,7 +269,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   };
 
   const handlePublish = () => {
-    setIsPublished(true);
     if (onPublished) {
       onPublished({
         name: eventName,
@@ -281,6 +278,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         daysCount,
       });
     }
+    handleCloseModal();
   };
 
   const handleCloseModal = () => {
@@ -332,9 +330,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             </button>
           </div>
 
-          {/* Stepper (Only visible during creation, not in success modal) */}
-          {!isPublished && (
-            <div className="mt-4 overflow-x-auto py-1">
+          {/* Stepper */}
+          <div className="mt-4 overflow-x-auto py-1">
               <div className="grid min-w-[500px] grid-cols-4 px-4 pt-2 pb-1">
               {stepTitles.map((title, idx) => {
                 const stepNum = idx + 1;
@@ -381,27 +378,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               })}
               </div>
             </div>
-          )}
+          
         </div>
 
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
-          {/* Published Celebration State (Image 1 from user) */}
-          {isPublished ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#10B981] text-white shadow-lg">
-                <Check className="h-8 w-8 stroke-[3]" />
-              </div>
-              <div className="mt-4 flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-[#10B981]">
-                <span className="h-2 w-2 rounded-full bg-[#10B981]" />
-                Live
-              </div>
-              <h3 className="mt-3 text-xl font-bold text-[#24133F]">{eventName} is published</h3>
-              <p className="mt-1 max-w-sm text-xs text-[#756883]">
-                Attendance sessions are now open for scanning. Admins and students can view this event.
-              </p>
-            </div>
-          ) : currentStep === 1 ? (
+          {currentStep === 1 ? (
             /* STEP 1: EVENT DETAILS */
             <div className="space-y-4">
               <div>
@@ -1064,25 +1046,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
         {/* Modal Footer */}
         <div className="border-t border-[#F1EEF4] px-6 py-4">
-          {isPublished ? (
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={resetForm}
-                className="rounded-2xl border border-[#E5E0EB] px-5 py-2.5 text-xs font-bold text-[#24133F] hover:bg-slate-50 transition-colors"
-              >
-                Create another
-              </button>
-              <button
-                type="button"
-                onClick={handleCloseModal}
-                className="rounded-2xl bg-[#451475] px-6 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_0_#2B0C4A] hover:bg-[#38105F] active:translate-y-[2px] active:shadow-none transition-all"
-              >
-                View Event
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between">
               {currentStep > 1 ? (
                 <button
                   type="button"
@@ -1129,9 +1093,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 </div>
               )}
             </div>
-          )}
+          </div>
         </div>
-      </div>
       </div>
 
       {/* Edit Time Window Modal */}
