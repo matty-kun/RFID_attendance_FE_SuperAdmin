@@ -365,25 +365,41 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       const isStart = dayStr === startDate;
                       const isEnd = dayStr === endDate;
                       const inRange = startDate && endDate && dayStr > startDate && dayStr < endDate;
+                      const hasRange = startDate && endDate && startDate !== endDate;
 
-                                            const hasRange = startDate && endDate && startDate !== endDate;
+                      // Check day of week for rounding row ends (0 = Sunday, 6 = Saturday)
+                      const dayOfWeek = (firstDay + day - 1) % 7;
+                      const isRowStart = dayOfWeek === 0;
+                      const isRowEnd = dayOfWeek === 6;
 
                       cells.push(
                         <div key={day} className="relative flex h-9 items-center justify-center py-0.5">
                           {/* Seamless continuous range background strip */}
                           {hasRange && (
                             <>
-                              {/* Background for start date: right half filled */}
+                              {/* Background for start date: right half filled, rounded if on Saturday */}
                               {isStart && (
-                                <div className="absolute right-0 top-0.5 bottom-0.5 left-1/2 bg-[#E9D5FF]/60" />
+                                <div className={`absolute right-0 top-0.5 bottom-0.5 left-1/2 bg-[#E9D5FF]/60 ${
+                                  isRowEnd ? 'rounded-r-full' : ''
+                                }`} />
                               )}
-                              {/* Background for in-between dates: full width */}
+                              {/* Background for in-between dates: full width, rounded on row edges */}
                               {inRange && (
-                                <div className="absolute inset-x-0 top-0.5 bottom-0.5 bg-[#E9D5FF]/60" />
+                                <div className={`absolute inset-x-0 top-0.5 bottom-0.5 bg-[#E9D5FF]/60 ${
+                                  isRowStart && isRowEnd
+                                    ? 'rounded-full'
+                                    : isRowStart
+                                    ? 'rounded-l-full'
+                                    : isRowEnd
+                                    ? 'rounded-r-full'
+                                    : ''
+                                }`} />
                               )}
-                              {/* Background for end date: left half filled */}
+                              {/* Background for end date: left half filled, rounded if on Sunday */}
                               {isEnd && (
-                                <div className="absolute left-0 top-0.5 bottom-0.5 right-1/2 bg-[#E9D5FF]/60" />
+                                <div className={`absolute left-0 top-0.5 bottom-0.5 right-1/2 bg-[#E9D5FF]/60 ${
+                                  isRowStart ? 'rounded-l-full' : ''
+                                }`} />
                               )}
                             </>
                           )}
