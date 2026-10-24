@@ -350,77 +350,85 @@ export function AttendancePage() {
         </div>
 
         {/* Event Days Content */}
-        {isEventExpanded && (
-          <div className="mt-5 space-y-4">
-            {filteredDays.map((day) => {
-              const isDayOpen = expandedDayId === day.dayId;
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            isEventExpanded ? 'max-h-[3500px] opacity-100 mt-5 space-y-4' : 'max-h-0 opacity-0 pointer-events-none'
+          }`}
+        >
+          {filteredDays.map((day) => {
+            const isDayOpen = expandedDayId === day.dayId;
 
-              return (
+            return (
+              <div
+                key={day.dayId}
+                className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden transition-all shadow-sm"
+              >
+                {/* Day Header Row */}
                 <div
-                  key={day.dayId}
-                  className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden transition-all shadow-sm"
+                  onClick={() => setExpandedDayId(isDayOpen ? '' : day.dayId)}
+                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50/60 transition-colors"
                 >
-                  {/* Day Header Row */}
-                  <div
-                    onClick={() => setExpandedDayId(isDayOpen ? '' : day.dayId)}
-                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50/60 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-[#756883]">
-                        <Calendar className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-xs font-bold text-[#24133F]">{day.dayLabel}</h3>
-                        {!isDayOpen && (
-                          <p className="text-[10px] text-[#756883]">
-                            Morning, afternoon, evening · {day.sessions.length} Sessions
-                          </p>
-                        )}
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-[#756883]">
+                      <Calendar className="h-4 w-4" />
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      {isDayOpen ? (
-                        <>
-                          <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-[#756883]">
-                            {day.sessions.length} sessions
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => e.stopPropagation()}
-                            className="rounded p-1 text-[#756883] hover:text-[#24133F]"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                        </>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          {day.dayId !== 'd1' && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCopyFromDay1(day.dayId);
-                              }}
-                              className="hidden sm:flex items-center gap-1 rounded-xl border border-dashed border-[#451475]/40 bg-[#FAF7FD] px-2.5 py-1 text-[11px] font-bold text-[#451475] hover:bg-[#F3EDFB] transition-colors"
-                            >
-                              <Copy className="h-3 w-3" />
-                              Copy from Day 1
-                            </button>
-                          )}
-                          <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-[#756883]">
-                            {day.status === 'Not Started' ? 'Not Started' : 'Configured'}
-                          </span>
-                          <ChevronRight className="h-4 w-4 text-[#756883]" />
-                        </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-[#24133F]">{day.dayLabel}</h3>
+                      {!isDayOpen && (
+                        <p className="text-[10px] text-[#756883]">
+                          Morning, afternoon, evening · {day.sessions.length} Sessions
+                        </p>
                       )}
                     </div>
                   </div>
 
-                  {/* Day Sessions List (Expanded) */}
-                  {isDayOpen && (
-                    <div className="border-t border-[#F1EEF4] p-4 space-y-3 bg-[#FAF8FB]/40">
-                      {day.sessions.map((session) => (
+                  <div className="flex items-center gap-2">
+                    {isDayOpen ? (
+                      <>
+                        <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-[#756883]">
+                          {day.sessions.length} sessions
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => e.stopPropagation()}
+                          className="rounded p-1 text-[#756883] hover:text-[#24133F]"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        {day.dayId !== 'd1' && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyFromDay1(day.dayId);
+                            }}
+                            className="hidden sm:flex items-center gap-1 rounded-xl border border-dashed border-[#451475]/40 bg-[#FAF7FD] px-2.5 py-1 text-[11px] font-bold text-[#451475] hover:bg-[#F3EDFB] transition-colors"
+                          >
+                            <Copy className="h-3 w-3" />
+                            Copy from Day 1
+                          </button>
+                        )}
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-[#756883]">
+                          {day.status === 'Not Started' ? 'Not Started' : 'Configured'}
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-[#756883]" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Day Sessions List (Expanded with smooth sliding animation) */}
+                <div
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    isDayOpen
+                      ? 'max-h-[1600px] opacity-100 border-t border-[#F1EEF4] p-4 space-y-3 bg-[#FAF8FB]/40'
+                      : 'max-h-0 opacity-0 p-0 pointer-events-none'
+                  }`}
+                >
+                  {day.sessions.map((session) => (
                         <div
                           key={session.id}
                           className="rounded-2xl border border-[#E5E0EB] bg-white p-4 shadow-sm"
@@ -508,13 +516,11 @@ export function AttendancePage() {
                         </div>
                       ))}
                     </div>
-                  )}
                 </div>
               );
             })}
           </div>
-        )}
-      </div>
+        </div>
 
       {/* 5-Step Create Event Flow Modal */}
       <CreateEventModal

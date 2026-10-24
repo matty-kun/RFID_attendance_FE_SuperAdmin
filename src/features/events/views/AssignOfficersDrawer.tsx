@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Search, Calendar, MapPin, Check } from 'lucide-react';
 import { Checkbox } from '../../../components/common/Checkbox';
@@ -62,6 +62,21 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
   const [search, setSearch] = useState('');
   const [selectedToAdd, setSelectedToAdd] = useState<{ [adminId: string]: string }>({}); // adminId -> location
 
+  const [isRendered, setIsRendered] = useState(isOpen);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsRendered(true);
+      const rAF = requestAnimationFrame(() => setIsVisible(true));
+      return () => cancelAnimationFrame(rAF);
+    } else {
+      setIsVisible(false);
+      const timer = setTimeout(() => setIsRendered(false), 260);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   const filteredAdmins = useMemo(() => {
     const assignedIds = new Set(assigned.map((a) => a.id));
     return defaultAdminPool.filter(
@@ -71,7 +86,7 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
     );
   }, [assigned, search]);
 
-  if (!isOpen) return null;
+  if (!isRendered) return null;
 
   const handleRemoveAssigned = (id: string) => {
     setAssigned((prev) => prev.filter((a) => a.id !== id));
@@ -122,13 +137,17 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 flex justify-end bg-[#170D29]/40 backdrop-blur-md animate-in fade-in duration-200"
+      className={`fixed inset-0 z-50 flex justify-end bg-[#170D29]/40 backdrop-blur-md transition-opacity duration-250 ease-out ${
+        isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+      }`}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="assign-officers-title"
-        className="flex h-full w-full max-w-md flex-col justify-between border-l border-[#E5E0EB] bg-white shadow-2xl animate-in slide-in-from-right duration-200"
+        className={`flex h-full w-full max-w-md flex-col justify-between border-l border-[#E5E0EB] bg-white shadow-2xl transform transition-transform duration-250 ease-out ${
+          isVisible ? 'translate-x-0' : 'translate-x-full'
+        }`}
       >
         {/* Header */}
         <div className="border-b border-[#F1EEF4] p-6">
