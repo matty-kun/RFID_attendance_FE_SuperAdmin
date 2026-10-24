@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { cn } from '../../../utils/cn';
 import {
   Calendar,
   Clock,
@@ -44,7 +45,26 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   onClose,
   onPublished,
 }) => {
+  const [isMounted, setIsMounted] = useState(isOpen);
+  const [isVisible, setIsVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState<number>(1);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isOpen) {
+      setIsMounted(true);
+      const rAF = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setIsVisible(true));
+      });
+      return () => cancelAnimationFrame(rAF);
+    } else {
+      setIsVisible(false);
+      timer = setTimeout(() => {
+        setIsMounted(false);
+      }, 180);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   // Form State
   const [eventName, setEventName] = useState('CITE FESTIVAL');
@@ -281,7 +301,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setDrawerConfig((prev) => ({ ...prev, isOpen: false }));
   };
 
-  if (!isOpen) return null;
+  if (!isMounted) return null;
 
   const daysCount = calculatedDays;
 
@@ -332,16 +352,22 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     <>
       <div
         role="presentation"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) handleCloseModal();
-      }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#170D29]/40 p-4 backdrop-blur-md animate-in fade-in duration-200"
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="flex max-h-[90vh] w-full max-w-3xl flex-col justify-between overflow-hidden rounded-[24px] border border-[#E5E0EB] bg-white shadow-2xl animate-in zoom-in-95 duration-200"
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) handleCloseModal();
+        }}
+        className={cn(
+          'fixed inset-0 z-[100] flex items-center justify-center bg-[#170D29]/40 p-4 backdrop-blur-md transition-opacity duration-180 ease-out',
+          isVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        )}
       >
+        <div
+          role="dialog"
+          aria-modal="true"
+          className={cn(
+            'flex max-h-[90vh] w-full max-w-3xl flex-col justify-between overflow-hidden rounded-[24px] border border-[#E5E0EB] bg-white shadow-2xl transition-all duration-180 cubic-bezier(0.16,1,0.3,1)',
+            isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'
+          )}
+        >
         {/* Header */}
         <div className="border-b border-[#F1EEF4] px-6 py-5">
           <div className="flex items-center justify-between">

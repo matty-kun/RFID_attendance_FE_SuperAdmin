@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Trash2, X } from 'lucide-react';
+import { cn } from '../../utils/cn';
 
 export interface DeleteConfirmationModalProps {
   isOpen: boolean;
@@ -25,6 +26,26 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
   cancelLabel = 'Cancel',
   isDeleting = false,
 }) => {
+  const [isMounted, setIsMounted] = useState(isOpen);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isOpen) {
+      setIsMounted(true);
+      const rAF = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setIsVisible(true));
+      });
+      return () => cancelAnimationFrame(rAF);
+    } else {
+      setIsVisible(false);
+      timer = setTimeout(() => {
+        setIsMounted(false);
+      }, 180);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) onClose();
@@ -33,7 +54,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isMounted) return null;
 
   return createPortal(
     <div
@@ -41,13 +62,19 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-[#170D29]/40 p-4 backdrop-blur-md animate-in fade-in duration-200"
+      className={cn(
+        'fixed inset-0 z-[100] flex items-center justify-center bg-[#170D29]/40 p-4 backdrop-blur-md transition-opacity duration-180 ease-out',
+        isVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+      )}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="delete-modal-title"
-        className="w-full max-w-md rounded-[24px] bg-white p-6 shadow-2xl border border-[#E5E0EB] animate-in zoom-in-95 duration-200"
+        className={cn(
+          'w-full max-w-md rounded-[24px] bg-white p-6 shadow-2xl border border-[#E5E0EB] transition-all duration-180 cubic-bezier(0.16,1,0.3,1)',
+          isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'
+        )}
       >
         <div className="flex items-start justify-between">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-[#EF4444] border border-[#FEE2E2]">
@@ -68,22 +95,24 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
             {title}
           </h3>
           <p className="mt-2 text-xs leading-relaxed text-[#756883]">
-            {description || (
+            {description ? (
+              description
+            ) : itemName ? (
               <>
-                Are you sure you want to delete{' '}
-                {itemName ? <strong className="text-[#24133F] font-semibold">{itemName}</strong> : 'this record'}?
-                This action is permanent and cannot be undone.
+                Are you sure you want to delete <span className="font-bold text-[#24133F]">{itemName}</span>? This action cannot be undone.
               </>
+            ) : (
+              'Are you sure you want to proceed with this deletion? This action cannot be undone.'
             )}
           </p>
         </div>
 
-        <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-[#F1EEF4]">
+        <div className="mt-6 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
             disabled={isDeleting}
-            className="px-5 py-2.5 rounded-2xl text-xs font-bold text-[#24133F] border border-[#E5E0EB] bg-white hover:bg-slate-50 transition-colors"
+            className="rounded-xl border border-[#E5E0EB] px-4 py-2.5 text-xs font-semibold text-[#756883] hover:bg-slate-50 transition-colors disabled:opacity-50"
           >
             {cancelLabel}
           </button>
@@ -91,7 +120,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
             type="button"
             onClick={onConfirm}
             disabled={isDeleting}
-            className="px-5 py-2.5 rounded-2xl text-xs font-bold text-white bg-[#EF4444] shadow-[0_4px_0_0_#B91C1C] hover:bg-[#DC2626] active:translate-y-[3px] active:shadow-none transition-all disabled:opacity-50"
+            className="rounded-xl bg-[#EF4444] px-5 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_0_#991B1B] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50"
           >
             {isDeleting ? 'Deleting...' : confirmLabel}
           </button>
