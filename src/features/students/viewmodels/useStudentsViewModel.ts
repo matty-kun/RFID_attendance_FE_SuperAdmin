@@ -338,14 +338,17 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     const student = students.find((s) => s.id === studentId);
     if (!student || !student.rfid_uid) return;
 
-    const cardUid = student.rfid_uid;
+    const previousUid = student.rfid_uid;
+    const studentName = student.name;
+
+    // Unlink card
     setStudents((prev) =>
       prev.map((s) => (s.id === studentId ? { ...s, rfid_uid: null } : s))
     );
 
     setInventoryCards((prev) =>
       prev.map((c) =>
-        c.uid.toUpperCase() === cardUid.toUpperCase()
+        c.uid.toUpperCase() === previousUid.toUpperCase()
           ? {
               ...c,
               status: 'unassigned',
@@ -356,7 +359,32 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
       )
     );
 
-    toast.info(`Card unlinked from ${student.name}. Card returned to unassigned inventory pool.`);
+    // Toast with instant Undo action
+    toast.show(`Card unlinked from ${studentName}`, {
+      type: 'info',
+      duration: 6000,
+      actionLabel: 'Undo',
+      onAction: () => {
+        setStudents((prev) =>
+          prev.map((s) => (s.id === studentId ? { ...s, rfid_uid: previousUid } : s))
+        );
+
+        setInventoryCards((prev) =>
+          prev.map((c) =>
+            c.uid.toUpperCase() === previousUid.toUpperCase()
+              ? {
+                  ...c,
+                  status: 'assigned',
+                  assignedToStudentId: studentId,
+                  assignedToStudentName: studentName,
+                }
+              : c
+          )
+        );
+
+        toast.success(`Restored card link to ${studentName}`);
+      },
+    });
   };
 
   return {
