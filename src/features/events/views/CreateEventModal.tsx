@@ -23,12 +23,16 @@ import {
   type AssignedOfficer,
 } from './AssignOfficersDrawer';
 
-export interface SessionTimeSlot {
+export interface LocationSessionRow {
+  id: string;
+  locationName: string;
   inTime: string;
   inOfficers: AssignedOfficer[];
   outTime: string;
   outOfficers: AssignedOfficer[];
 }
+
+export type SessionCoverageType = 'Both (IN + OUT)' | 'IN ONLY' | 'OUT ONLY';
 
 export interface CreateEventModalProps {
   isOpen: boolean;
@@ -82,38 +86,65 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [afternoonExpanded, setAfternoonExpanded] = useState(true);
   const [eveningExpanded, setEveningExpanded] = useState(true);
 
-  // Dynamic session slots & officers
-  const [morningSlot, setMorningSlot] = useState<SessionTimeSlot>({
-    inTime: '7:00 - 8:30 AM',
-    inOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'Cite Building', status: 'Online' }],
-    outTime: '12:00 - 1:30 PM',
-    outOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'Cite Building', status: 'Online' }],
-  });
+  // Coverage types per session (Both, IN only, OUT only)
+  const [morningCoverage, setMorningCoverage] = useState<SessionCoverageType>('Both (IN + OUT)');
+  const [afternoonCoverage, setAfternoonCoverage] = useState<SessionCoverageType>('Both (IN + OUT)');
+  const [eveningCoverage, setEveningCoverage] = useState<SessionCoverageType>('Both (IN + OUT)');
 
-  const [afternoonSlot, setAfternoonSlot] = useState<SessionTimeSlot>({
-    inTime: '1:00 - 2:30 PM',
-    inOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'Cite Building', status: 'Online' }],
-    outTime: '5:00 - 6:30 PM',
-    outOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'Cite Building', status: 'Online' }],
-  });
+  // Location Rows per session
+  const [morningLocations, setMorningLocations] = useState<LocationSessionRow[]>([
+    {
+      id: 'm-loc-1',
+      locationName: 'CITE Building',
+      inTime: '7:00–8:30 AM',
+      inOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'CITE Building', status: 'Online' }],
+      outTime: '12:00–1:30 PM',
+      outOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'CITE Building', status: 'Online' }],
+    },
+    {
+      id: 'm-loc-2',
+      locationName: 'JBB Building',
+      inTime: '7:00–8:30 AM',
+      inOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'JBB Building', status: 'Online' }],
+      outTime: '12:00–1:30 PM',
+      outOfficers: [],
+    },
+  ]);
 
-  const [eveningSlot, setEveningSlot] = useState<SessionTimeSlot>({
-    inTime: '6:00 - 7:30 PM',
-    inOfficers: [{ id: 'adm-1', name: 'Ako si batman', initials: 'AB', role: 'Admin', location: 'Gymnasium', status: 'Online' }],
-    outTime: '9:00 - 10:30 PM',
-    outOfficers: [{ id: 'adm-1', name: 'Ako si batman', initials: 'AB', role: 'Admin', location: 'Gymnasium', status: 'Online' }],
-  });
+  const [afternoonLocations, setAfternoonLocations] = useState<LocationSessionRow[]>([
+    {
+      id: 'a-loc-1',
+      locationName: 'CITE Building',
+      inTime: '1:00–2:30 PM',
+      inOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'CITE Building', status: 'Online' }],
+      outTime: '5:00–6:30 PM',
+      outOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'CITE Building', status: 'Online' }],
+    },
+  ]);
+
+  const [eveningLocations, setEveningLocations] = useState<LocationSessionRow[]>([
+    {
+      id: 'e-loc-1',
+      locationName: 'Gymnasium',
+      inTime: '6:00–7:30 PM',
+      inOfficers: [{ id: 'adm-1', name: 'Ako si batman', initials: 'AB', role: 'Admin', location: 'Gymnasium', status: 'Online' }],
+      outTime: '9:00–10:30 PM',
+      outOfficers: [{ id: 'adm-1', name: 'Ako si batman', initials: 'AB', role: 'Admin', location: 'Gymnasium', status: 'Online' }],
+    },
+  ]);
 
   // Time Window Edit Modal State
   const [editingTimeSlot, setEditingTimeSlot] = useState<{
     isOpen: boolean;
     sessionType: 'Morning' | 'Afternoon' | 'Evening';
+    rowId: string;
     slot: 'IN' | 'OUT';
     start: string;
     end: string;
   }>({
     isOpen: false,
     sessionType: 'Morning',
+    rowId: '',
     slot: 'IN',
     start: '07:00',
     end: '08:30',
@@ -151,6 +182,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const handleOpenEditTimeSlot = (
     sessionType: 'Morning' | 'Afternoon' | 'Evening',
+    rowId: string,
     slot: 'IN' | 'OUT',
     currentTimeStr: string
   ) => {
@@ -158,6 +190,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setEditingTimeSlot({
       isOpen: true,
       sessionType,
+      rowId,
       slot,
       start: parsed.start,
       end: parsed.end,
@@ -176,16 +209,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   };
 
   const handleSaveSlotTime = () => {
-    const { sessionType, slot, start, end } = editingTimeSlot;
+    const { sessionType, rowId, slot, start, end } = editingTimeSlot;
     const formatted = formatSlotTimeWindow(start, end);
-    const updateSlot = (s: SessionTimeSlot): SessionTimeSlot => ({
-      ...s,
-      [slot === 'IN' ? 'inTime' : 'outTime']: formatted,
-    });
+    const updateRows = (rows: LocationSessionRow[]): LocationSessionRow[] =>
+      rows.map((r) =>
+        r.id === rowId ? { ...r, [slot === 'IN' ? 'inTime' : 'outTime']: formatted } : r
+      );
 
-    if (sessionType === 'Morning') setMorningSlot(updateSlot);
-    if (sessionType === 'Afternoon') setAfternoonSlot(updateSlot);
-    if (sessionType === 'Evening') setEveningSlot(updateSlot);
+    if (sessionType === 'Morning') setMorningLocations(updateRows);
+    if (sessionType === 'Afternoon') setAfternoonLocations(updateRows);
+    if (sessionType === 'Evening') setEveningLocations(updateRows);
 
     setEditingTimeSlot((prev) => ({ ...prev, isOpen: false }));
   };
@@ -194,12 +227,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [drawerConfig, setDrawerConfig] = useState<{
     isOpen: boolean;
     sessionType: 'Morning' | 'Afternoon' | 'Evening';
+    rowId: string;
+    locationName: string;
     slot: 'IN' | 'OUT';
     sessionTime: string;
     initialOfficers: AssignedOfficer[];
   }>({
     isOpen: false,
     sessionType: 'Morning',
+    rowId: '',
+    locationName: '',
     slot: 'IN',
     sessionTime: '',
     initialOfficers: [],
@@ -207,6 +244,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const handleOpenAssignDrawer = (
     sessionType: 'Morning' | 'Afternoon' | 'Evening',
+    rowId: string,
+    locationName: string,
     slot: 'IN' | 'OUT',
     timeStr: string,
     officers: AssignedOfficer[]
@@ -214,6 +253,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setDrawerConfig({
       isOpen: true,
       sessionType,
+      rowId,
+      locationName,
       slot,
       sessionTime: timeStr,
       initialOfficers: officers,
@@ -221,18 +262,38 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   };
 
   const handleSaveAssignedOfficers = (assigned: AssignedOfficer[]) => {
-    const { sessionType, slot } = drawerConfig;
+    const { sessionType, rowId, slot, locationName } = drawerConfig;
 
-    const updateSlot = (s: SessionTimeSlot): SessionTimeSlot => ({
-      ...s,
-      [slot === 'IN' ? 'inOfficers' : 'outOfficers']: assigned,
-    });
+    const formatted = assigned.map((off) => ({
+      ...off,
+      location: off.location || locationName,
+    }));
 
-    if (sessionType === 'Morning') setMorningSlot(updateSlot);
-    if (sessionType === 'Afternoon') setAfternoonSlot(updateSlot);
-    if (sessionType === 'Evening') setEveningSlot(updateSlot);
+    const updateRows = (rows: LocationSessionRow[]): LocationSessionRow[] =>
+      rows.map((r) =>
+        r.id === rowId ? { ...r, [slot === 'IN' ? 'inOfficers' : 'outOfficers']: formatted } : r
+      );
+
+    if (sessionType === 'Morning') setMorningLocations(updateRows);
+    if (sessionType === 'Afternoon') setAfternoonLocations(updateRows);
+    if (sessionType === 'Evening') setEveningLocations(updateRows);
 
     setDrawerConfig((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const handleAddLocationRow = (sessionType: 'Morning' | 'Afternoon' | 'Evening') => {
+    const newRow: LocationSessionRow = {
+      id: `${sessionType.toLowerCase()}-loc-${Date.now()}`,
+      locationName: 'ETD Court',
+      inTime: sessionType === 'Evening' ? '6:00–7:30 PM' : '7:00–8:30 AM',
+      inOfficers: [],
+      outTime: sessionType === 'Evening' ? '9:00–10:30 PM' : '12:00–1:30 PM',
+      outOfficers: [],
+    };
+
+    if (sessionType === 'Morning') setMorningLocations((prev) => [...prev, newRow]);
+    if (sessionType === 'Afternoon') setAfternoonLocations((prev) => [...prev, newRow]);
+    if (sessionType === 'Evening') setEveningLocations((prev) => [...prev, newRow]);
   };
 
   if (!isOpen) return null;
@@ -688,46 +749,64 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 </div>
               </div>
 
-              {/* Session Accordions */}
+              {/* Session Accordions (Location-Based Rows) */}
               {[
                 {
                   type: 'Morning' as const,
                   label: 'Morning Session',
-                  badge: 'Both (IN + OUT)',
+                  coverage: morningCoverage,
+                  setCoverage: setMorningCoverage,
                   enabled: morningEnabled,
                   expanded: morningExpanded,
                   setExpanded: setMorningExpanded,
-                  slot: morningSlot,
+                  rows: morningLocations,
+                  setRows: setMorningLocations,
                 },
                 {
                   type: 'Afternoon' as const,
                   label: 'Afternoon Session',
-                  badge: 'Both (IN + OUT)',
+                  coverage: afternoonCoverage,
+                  setCoverage: setAfternoonCoverage,
                   enabled: afternoonEnabled,
                   expanded: afternoonExpanded,
                   setExpanded: setAfternoonExpanded,
-                  slot: afternoonSlot,
+                  rows: afternoonLocations,
+                  setRows: setAfternoonLocations,
                 },
                 {
                   type: 'Evening' as const,
                   label: 'Evening Session',
-                  badge: 'Both (IN + OUT)',
+                  coverage: eveningCoverage,
+                  setCoverage: setEveningCoverage,
                   enabled: eveningEnabled,
                   expanded: eveningExpanded,
                   setExpanded: setEveningExpanded,
-                  slot: eveningSlot,
+                  rows: eveningLocations,
+                  setRows: setEveningLocations,
                 },
               ].map(
                 (session) =>
                   session.enabled && (
                     <div key={session.type} className="rounded-2xl border border-[#E5E0EB] bg-white p-4 shadow-xs">
+                      {/* Accordion Header */}
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-[#24133F]">{session.label}</span>
-                          <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-[#756883]">
-                            {session.badge}
-                          </span>
+                        <div className="flex items-center gap-2.5">
+                          <h4 className="text-sm font-bold text-[#24133F]">{session.label}</h4>
+                          {/* Coverage Dropdown Chip */}
+                          <div className="relative">
+                            <select
+                              value={session.coverage}
+                              onChange={(e) => session.setCoverage(e.target.value as SessionCoverageType)}
+                              className="appearance-none rounded-lg bg-[#FAF8FB] border border-[#E5E0EB] pl-2.5 pr-6 py-0.5 text-[11px] font-semibold text-[#756883] hover:text-[#24133F] hover:bg-slate-100 focus:outline-none cursor-pointer"
+                            >
+                              <option value="Both (IN + OUT)">Both (IN + OUT)</option>
+                              <option value="IN ONLY">IN ONLY</option>
+                              <option value="OUT ONLY">OUT ONLY</option>
+                            </select>
+                            <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-[#756883]" />
+                          </div>
                         </div>
+
                         <div className="flex items-center gap-2">
                           <span className="rounded-full bg-[#EBF3FF] px-2.5 py-0.5 text-[10px] font-bold text-[#3B82F6]">
                             Selected
@@ -743,138 +822,177 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       </div>
 
                       {session.expanded && (
-                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                          {/* IN Slot Card */}
-                          <div className="rounded-2xl border border-[#F1EEF4] bg-[#FAF8FB]/50 p-3.5 space-y-2.5">
-                            <div className="flex items-center justify-between">
-                              <span className="flex items-center gap-1 font-bold text-emerald-600 text-xs">
-                                <span className="h-2 w-2 rounded-full bg-emerald-600" />
-                                Check-in Window
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditTimeSlot(session.type, 'IN', session.slot.inTime)}
-                                className="group flex items-center gap-1.5 rounded-lg bg-white hover:bg-[#FAF7FD] border border-[#E5E0EB] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#24133F] hover:text-[#451475] transition-all shadow-xs"
-                                title="Click to edit check-in window"
-                              >
-                                <Clock className="h-3 w-3 text-[#451475]" />
-                                <span>{session.slot.inTime}</span>
-                                <Pencil className="h-3 w-3 text-[#756883] group-hover:text-[#451475] transition-colors" />
-                              </button>
-                            </div>
+                        <div className="mt-3 space-y-3 pt-1">
+                          <p className="text-[11px] font-semibold text-[#756883]">
+                            Location ({session.rows.length})
+                          </p>
 
-                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                              {session.slot.inOfficers.map((off: AssignedOfficer) => (
-                                <button
-                                  key={off.id}
-                                  type="button"
-                                  onClick={() =>
-                                    handleOpenAssignDrawer(
-                                      session.type,
-                                      'IN',
-                                      session.slot.inTime,
-                                      session.slot.inOfficers
-                                    )
-                                  }
-                                  className="group flex items-center gap-1.5 rounded-full bg-white border border-[#E5E0EB] hover:border-[#451475] pl-1.5 pr-2.5 py-1 text-[11px] font-semibold text-[#24133F] transition-colors shadow-2xs"
-                                  title="Click to view/change assignment"
-                                >
-                                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#E9D5FF] text-[9px] font-bold text-[#6D21A8]">
-                                    {off.initials}
+                          {/* Rows Container */}
+                          <div className="rounded-2xl border border-[#E5E0EB] divide-y divide-[#F1EEF4] overflow-hidden bg-white">
+                            {session.rows.map((row) => (
+                              <div
+                                key={row.id}
+                                className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 p-3.5 hover:bg-[#FAF8FB]/40 transition-colors"
+                              >
+                                {/* Left: Location Icon & Name */}
+                                <div className="flex items-center gap-3 min-w-[150px]">
+                                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#FAF7FD] border border-[#E9DDF8] text-[#451475]">
+                                    <MapPin className="h-4 w-4" />
                                   </div>
-                                  <span>{off.name}</span>
-                                  {off.location && (
-                                    <span className="flex items-center gap-0.5 rounded-full bg-[#FAF7FD] text-[9px] font-medium text-[#451475] px-1.5 py-0.2">
-                                      <MapPin className="h-2.5 w-2.5 text-[#451475]" />
-                                      {off.location}
-                                    </span>
-                                  )}
-                                </button>
-                              ))}
+                                  <span className="text-xs font-bold text-[#24133F]">
+                                    {row.locationName}
+                                  </span>
+                                </div>
 
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleOpenAssignDrawer(
-                                    session.type,
-                                    'IN',
-                                    session.slot.inTime,
-                                    session.slot.inOfficers
-                                  )
-                                }
-                                className="flex items-center gap-1 rounded-full border border-dashed border-[#756883] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#756883] hover:text-[#451475] hover:bg-[#FAF7FD] transition-colors"
-                              >
-                                <Plus className="h-3.5 w-3.5" />
-                                <span>Assign Officers</span>
-                              </button>
-                            </div>
+                                {/* Right: IN & OUT Slots */}
+                                <div className="flex flex-wrap items-center gap-4 lg:gap-6 flex-1 justify-end">
+                                  {/* IN Slot */}
+                                  {session.coverage !== 'OUT ONLY' && (
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                                        IN
+                                      </div>
+
+                                      {/* Clickable Time Pill */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenEditTimeSlot(session.type, row.id, 'IN', row.inTime)}
+                                        className="flex items-center gap-1.5 rounded-full border border-[#E5E0EB] bg-[#FAF8FB] hover:bg-white hover:border-[#451475] px-3 py-1 text-xs font-semibold text-[#24133F] transition-all shadow-2xs group"
+                                        title="Click to edit check-in window"
+                                      >
+                                        <span>{row.inTime}</span>
+                                        <Clock className="h-3.5 w-3.5 text-[#756883] group-hover:text-[#451475] transition-colors" />
+                                      </button>
+
+                                      {/* Assigned Officers / Assign Button */}
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-[10px] font-medium text-[#756883] mr-0.5">
+                                          Assign Officer
+                                        </span>
+                                        {row.inOfficers.map((off) => (
+                                          <button
+                                            key={off.id}
+                                            type="button"
+                                            onClick={() =>
+                                              handleOpenAssignDrawer(
+                                                session.type,
+                                                row.id,
+                                                row.locationName,
+                                                'IN',
+                                                row.inTime,
+                                                row.inOfficers
+                                              )
+                                            }
+                                            className="flex items-center gap-1.5 rounded-full border border-[#E5E0EB] bg-white hover:border-[#451475] px-2.5 py-0.5 text-xs font-semibold text-[#24133F] transition-colors shadow-2xs"
+                                            title="Click to manage officer"
+                                          >
+                                            <span className="h-2 w-2 rounded-full bg-slate-300" />
+                                            <span>{off.name}</span>
+                                          </button>
+                                        ))}
+
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleOpenAssignDrawer(
+                                              session.type,
+                                              row.id,
+                                              row.locationName,
+                                              'IN',
+                                              row.inTime,
+                                              row.inOfficers
+                                            )
+                                          }
+                                          className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-[#756883] text-[#756883] hover:border-[#451475] hover:text-[#451475] transition-colors"
+                                          title="Add/Assign Officer"
+                                        >
+                                          <Plus className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* OUT Slot */}
+                                  {session.coverage !== 'IN ONLY' && (
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="flex items-center gap-1 text-[11px] font-bold text-[#3B82F6]">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-[#3B82F6]" />
+                                        OUT
+                                      </div>
+
+                                      {/* Clickable Time Pill */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenEditTimeSlot(session.type, row.id, 'OUT', row.outTime)}
+                                        className="flex items-center gap-1.5 rounded-full border border-[#E5E0EB] bg-[#FAF8FB] hover:bg-white hover:border-[#451475] px-3 py-1 text-xs font-semibold text-[#24133F] transition-all shadow-2xs group"
+                                        title="Click to edit check-out window"
+                                      >
+                                        <span>{row.outTime}</span>
+                                        <Clock className="h-3.5 w-3.5 text-[#756883] group-hover:text-[#451475] transition-colors" />
+                                      </button>
+
+                                      {/* Assigned Officers / Assign Button */}
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-[10px] font-medium text-[#756883] mr-0.5">
+                                          Assign Officer
+                                        </span>
+                                        {row.outOfficers.map((off) => (
+                                          <button
+                                            key={off.id}
+                                            type="button"
+                                            onClick={() =>
+                                              handleOpenAssignDrawer(
+                                                session.type,
+                                                row.id,
+                                                row.locationName,
+                                                'OUT',
+                                                row.outTime,
+                                                row.outOfficers
+                                              )
+                                            }
+                                            className="flex items-center gap-1.5 rounded-full border border-[#E5E0EB] bg-white hover:border-[#451475] px-2.5 py-0.5 text-xs font-semibold text-[#24133F] transition-colors shadow-2xs"
+                                            title="Click to manage officer"
+                                          >
+                                            <span className="h-2 w-2 rounded-full bg-slate-300" />
+                                            <span>{off.name}</span>
+                                          </button>
+                                        ))}
+
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleOpenAssignDrawer(
+                                              session.type,
+                                              row.id,
+                                              row.locationName,
+                                              'OUT',
+                                              row.outTime,
+                                              row.outOfficers
+                                            )
+                                          }
+                                          className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-[#756883] text-[#756883] hover:border-[#451475] hover:text-[#451475] transition-colors"
+                                          title="Add/Assign Officer"
+                                        >
+                                          <Plus className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
                           </div>
 
-                          {/* OUT Slot Card */}
-                          <div className="rounded-2xl border border-[#F1EEF4] bg-[#FAF8FB]/50 p-3.5 space-y-2.5">
-                            <div className="flex items-center justify-between">
-                              <span className="flex items-center gap-1 font-bold text-[#3B82F6] text-xs">
-                                <span className="h-2 w-2 rounded-full bg-[#3B82F6]" />
-                                Check-out Window
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditTimeSlot(session.type, 'OUT', session.slot.outTime)}
-                                className="group flex items-center gap-1.5 rounded-lg bg-white hover:bg-[#FAF7FD] border border-[#E5E0EB] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#24133F] hover:text-[#451475] transition-all shadow-xs"
-                                title="Click to edit check-out window"
-                              >
-                                <Clock className="h-3 w-3 text-[#3B82F6]" />
-                                <span>{session.slot.outTime}</span>
-                                <Pencil className="h-3 w-3 text-[#756883] group-hover:text-[#451475] transition-colors" />
-                              </button>
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                              {session.slot.outOfficers.map((off: AssignedOfficer) => (
-                                <button
-                                  key={off.id}
-                                  type="button"
-                                  onClick={() =>
-                                    handleOpenAssignDrawer(
-                                      session.type,
-                                      'OUT',
-                                      session.slot.outTime,
-                                      session.slot.outOfficers
-                                    )
-                                  }
-                                  className="group flex items-center gap-1.5 rounded-full bg-white border border-[#E5E0EB] hover:border-[#451475] pl-1.5 pr-2.5 py-1 text-[11px] font-semibold text-[#24133F] transition-colors shadow-2xs"
-                                  title="Click to view/change assignment"
-                                >
-                                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#E9D5FF] text-[9px] font-bold text-[#6D21A8]">
-                                    {off.initials}
-                                  </div>
-                                  <span>{off.name}</span>
-                                  {off.location && (
-                                    <span className="flex items-center gap-0.5 rounded-full bg-[#FAF7FD] text-[9px] font-medium text-[#451475] px-1.5 py-0.2">
-                                      <MapPin className="h-2.5 w-2.5 text-[#451475]" />
-                                      {off.location}
-                                    </span>
-                                  )}
-                                </button>
-                              ))}
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleOpenAssignDrawer(
-                                    session.type,
-                                    'OUT',
-                                    session.slot.outTime,
-                                    session.slot.outOfficers
-                                  )
-                                }
-                                className="flex items-center gap-1 rounded-full border border-dashed border-[#756883] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#756883] hover:text-[#451475] hover:bg-[#FAF7FD] transition-colors"
-                              >
-                                <Plus className="h-3.5 w-3.5" />
-                                <span>Assign Officers</span>
-                              </button>
-                            </div>
-                          </div>
+                          {/* Add location button */}
+                          <button
+                            type="button"
+                            onClick={() => handleAddLocationRow(session.type)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3.5 py-1.5 text-xs font-bold text-[#24133F] hover:bg-slate-50 transition-colors shadow-2xs"
+                          >
+                            <Plus className="h-3.5 w-3.5 text-[#451475]" />
+                            <span>Add location</span>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -1268,7 +1386,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       <AssignOfficersDrawer
         isOpen={drawerConfig.isOpen}
         onClose={() => setDrawerConfig((prev) => ({ ...prev, isOpen: false }))}
-        sessionName={`${drawerConfig.sessionType} Session (${drawerConfig.slot})`}
+        sessionName={`${drawerConfig.sessionType} - ${drawerConfig.slot} (${drawerConfig.locationName})`}
         sessionTime={drawerConfig.sessionTime}
         sessionDate={formatDateDisplay(startDate)}
         initialAssigned={drawerConfig.initialOfficers}
