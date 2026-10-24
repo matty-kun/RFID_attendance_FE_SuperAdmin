@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Checkbox } from '../../../components/common/Checkbox';
 import { TimePicker } from '../../../components/common/TimePicker';
+import { Dropdown } from '../../../components/common/Dropdown';
 import {
   AssignOfficersDrawer,
   type AssignedOfficer,
@@ -33,6 +34,18 @@ export interface LocationSessionRow {
 }
 
 export type SessionCoverageType = 'Both (IN + OUT)' | 'IN ONLY' | 'OUT ONLY';
+
+const availableLocationOptions = [
+  'CITE Building',
+  'JBB Building',
+  'CR ETD',
+  'ETD Court',
+  'CITE 4th floor',
+  'Gymnasium',
+  'RSB Lobby',
+  'Primera',
+  'Field',
+];
 
 export interface CreateEventModalProps {
   isOpen: boolean;
@@ -281,10 +294,34 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setDrawerConfig((prev) => ({ ...prev, isOpen: false }));
   };
 
-  const handleAddLocationRow = (sessionType: 'Morning' | 'Afternoon' | 'Evening') => {
+  const handleUpdateLocationName = (
+    sessionType: 'Morning' | 'Afternoon' | 'Evening',
+    rowId: string,
+    newLocName: string
+  ) => {
+    const updateRows = (rows: LocationSessionRow[]) =>
+      rows.map((r) => (r.id === rowId ? { ...r, locationName: newLocName } : r));
+
+    if (sessionType === 'Morning') setMorningLocations(updateRows);
+    if (sessionType === 'Afternoon') setAfternoonLocations(updateRows);
+    if (sessionType === 'Evening') setEveningLocations(updateRows);
+  };
+
+  const handleRemoveLocationRow = (
+    sessionType: 'Morning' | 'Afternoon' | 'Evening',
+    rowId: string
+  ) => {
+    const updateRows = (rows: LocationSessionRow[]) => rows.filter((r) => r.id !== rowId);
+    if (sessionType === 'Morning') setMorningLocations(updateRows);
+    if (sessionType === 'Afternoon') setAfternoonLocations(updateRows);
+    if (sessionType === 'Evening') setEveningLocations(updateRows);
+  };
+
+  const handleAddLocationRow = (sessionType: 'Morning' | 'Afternoon' | 'Evening', locName?: string) => {
+    const defaultName = locName || 'Gymnasium';
     const newRow: LocationSessionRow = {
       id: `${sessionType.toLowerCase()}-loc-${Date.now()}`,
-      locationName: 'ETD Court',
+      locationName: defaultName,
       inTime: sessionType === 'Evening' ? '6:00–7:30 PM' : '7:00–8:30 AM',
       inOfficers: [],
       outTime: sessionType === 'Evening' ? '9:00–10:30 PM' : '12:00–1:30 PM',
@@ -834,14 +871,31 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                 key={row.id}
                                 className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 p-3.5 hover:bg-[#FAF8FB]/40 transition-colors"
                               >
-                                {/* Left: Location Icon & Name */}
-                                <div className="flex items-center gap-3 min-w-[150px]">
+                                {/* Left: Location Icon & Clickable/Editable Location Dropdown */}
+                                <div className="flex items-center gap-2.5 min-w-[180px]">
                                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#FAF7FD] border border-[#E9DDF8] text-[#451475]">
                                     <MapPin className="h-4 w-4" />
                                   </div>
-                                  <span className="text-xs font-bold text-[#24133F]">
-                                    {row.locationName}
-                                  </span>
+                                  <div className="w-44">
+                                    <Dropdown
+                                      value={row.locationName}
+                                      onChange={(newLoc) =>
+                                        handleUpdateLocationName(session.type, row.id, newLoc)
+                                      }
+                                      options={availableLocationOptions.map((l) => ({ value: l, label: l }))}
+                                      buttonClassName="py-1 px-2.5 text-xs font-bold bg-white border border-[#E5E0EB] hover:border-[#451475] rounded-xl shadow-2xs"
+                                    />
+                                  </div>
+                                  {session.rows.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveLocationRow(session.type, row.id)}
+                                      className="text-[10px] text-slate-400 hover:text-[#EF3340] transition-colors p-1"
+                                      title="Remove location"
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </button>
+                                  )}
                                 </div>
 
                                 {/* Right: IN & OUT Slots */}
@@ -984,15 +1038,20 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                             ))}
                           </div>
 
-                          {/* Add location button */}
-                          <button
-                            type="button"
-                            onClick={() => handleAddLocationRow(session.type)}
-                            className="inline-flex items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3.5 py-1.5 text-xs font-bold text-[#24133F] hover:bg-slate-50 transition-colors shadow-2xs"
-                          >
-                            <Plus className="h-3.5 w-3.5 text-[#451475]" />
-                            <span>Add location</span>
-                          </button>
+                          {/* Add location button with quick picker */}
+                          <div className="flex items-center gap-2">
+                            <Dropdown
+                              value=""
+                              onChange={(pickedLoc) => {
+                                if (pickedLoc) handleAddLocationRow(session.type, pickedLoc);
+                              }}
+                              options={availableLocationOptions
+                                .filter((loc) => !session.rows.some((r) => r.locationName === loc))
+                                .map((l) => ({ value: l, label: l }))}
+                              placeholder="+ Add location"
+                              buttonClassName="py-1.5 px-3.5 text-xs font-bold text-[#451475] bg-white border border-[#E5E0EB] hover:border-[#451475] rounded-xl shadow-2xs gap-2"
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1306,15 +1365,58 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             </div>
 
             <div className="mt-4 space-y-4">
-              {/* TimePicker components */}
-              <div className="space-y-3">
+              {/* Quick Start Time Grid (Deel/Calendly aesthetic) */}
+              <div>
+                <p className="text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-1.5">
+                  Quick Select Start Time
+                </p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { label: '7:00 AM', val: '07:00' },
+                    { label: '7:30 AM', val: '07:30' },
+                    { label: '8:00 AM', val: '08:00' },
+                    { label: '12:00 PM', val: '12:00' },
+                    { label: '1:00 PM', val: '13:00' },
+                    { label: '5:30 PM', val: '17:30' },
+                  ].map((slot) => {
+                    const isSelected = editingTimeSlot.start === slot.val;
+                    return (
+                      <button
+                        key={slot.val}
+                        type="button"
+                        onClick={() => {
+                          const [h, m] = slot.val.split(':').map(Number);
+                          const totalMinutes = h * 60 + m + 90; // default 1.5 hr
+                          const newH = Math.floor(totalMinutes / 60) % 24;
+                          const newM = totalMinutes % 60;
+                          setEditingTimeSlot((prev) => ({
+                            ...prev,
+                            start: slot.val,
+                            end: `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`,
+                          }));
+                        }}
+                        className={`rounded-xl border py-2 text-center text-xs font-bold transition-all shadow-2xs ${
+                          isSelected
+                            ? 'border-[#451475] bg-[#451475] text-white shadow-xs'
+                            : 'border-[#E5E0EB] bg-white text-[#24133F] hover:border-[#451475] hover:bg-[#FAF7FD]'
+                        }`}
+                      >
+                        {slot.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Exact Time Pickers */}
+              <div className="space-y-2.5">
                 <TimePicker
-                  label="Start Time"
+                  label="Exact Start Time"
                   value={editingTimeSlot.start}
                   onChange={(val) => setEditingTimeSlot((prev) => ({ ...prev, start: val }))}
                 />
                 <TimePicker
-                  label="End Time"
+                  label="Exact End Time"
                   value={editingTimeSlot.end}
                   onChange={(val) => setEditingTimeSlot((prev) => ({ ...prev, end: val }))}
                 />
@@ -1323,7 +1425,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               {/* Quick duration presets */}
               <div>
                 <p className="text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-1.5">
-                  Quick duration presets
+                  Set Window Duration
                 </p>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {[
@@ -1337,7 +1439,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       key={p.label}
                       type="button"
                       onClick={() => applySlotDuration(p.val)}
-                      className="rounded-lg border border-[#E5E0EB] bg-[#FAF8FB] px-2.5 py-1 text-[11px] font-semibold text-[#451475] hover:bg-[#F3EDFB] transition-colors"
+                      className="rounded-xl border border-[#E5E0EB] bg-[#FAF8FB] hover:border-[#451475] hover:bg-[#F3EDFB] px-2.5 py-1 text-[11px] font-semibold text-[#451475] transition-colors"
                     >
                       +{p.label}
                     </button>
@@ -1345,17 +1447,17 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 </div>
               </div>
 
-              {/* Formatted live preview */}
-              <div className="rounded-xl border border-[#451475]/15 bg-[#FAF7FD] p-3">
+              {/* Live Preview Summary */}
+              <div className="rounded-2xl border border-[#451475]/15 bg-[#FAF7FD] p-3 shadow-2xs">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#756883]">
-                  Active Scanning Window Preview
+                  Selected Scanning Window
                 </span>
                 <div className="mt-1 flex items-center justify-between">
                   <span className="text-xs font-bold text-[#451475]">
                     {formatSlotTimeWindow(editingTimeSlot.start, editingTimeSlot.end)}
                   </span>
-                  <span className="rounded-md bg-purple-100/70 px-2 py-0.5 text-[10px] font-semibold text-[#451475]">
-                    Active
+                  <span className="rounded-full bg-purple-100/70 px-2.5 py-0.5 text-[10px] font-semibold text-[#451475]">
+                    Ready to scan
                   </span>
                 </div>
               </div>
