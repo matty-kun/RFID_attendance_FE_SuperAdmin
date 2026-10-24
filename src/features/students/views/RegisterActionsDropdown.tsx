@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, ChevronDown, UserPlus, Zap, UploadCloud, Link as LinkIcon } from 'lucide-react';
+import { Plus, ChevronDown, UserPlus, Zap, UploadCloud, Link as LinkIcon, Radio } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 
 export interface RegisterActionsDropdownProps {
@@ -7,6 +7,7 @@ export interface RegisterActionsDropdownProps {
   onRapidScan: () => void;
   onBulkImport: () => void;
   onAutoPair: () => void;
+  onOpenCardPool?: () => void;
   pairableCount: number;
   className?: string;
 }
@@ -16,6 +17,7 @@ export const RegisterActionsDropdown: React.FC<RegisterActionsDropdownProps> = (
   onRapidScan,
   onBulkImport,
   onAutoPair,
+  onOpenCardPool,
   pairableCount,
   className,
 }) => {
@@ -197,6 +199,24 @@ export const RegisterActionsDropdown: React.FC<RegisterActionsDropdownProps> = (
                 </p>
               </div>
             </button>
+
+            {/* 5. View Card Inventory Pool */}
+            {onOpenCardPool && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => handleSelect(onOpenCardPool)}
+                className="flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left hover:bg-[#FAF8FC] transition-colors"
+              >
+                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-[#7026B7]">
+                  <Radio className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-[#24133F]">Card Inventory Pool</p>
+                  <p className="text-[11px] text-[#756883] line-clamp-1">View &amp; manage physical RFID card stock</p>
+                </div>
+              </button>
+            )}
           </div>
         </div>
       )}

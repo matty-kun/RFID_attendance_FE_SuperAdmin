@@ -6,18 +6,15 @@ import { AddStudentDrawer } from './AddStudentDrawer';
 import { RapidCardScanDrawer } from './RapidCardScanDrawer';
 import { BulkStudentImportModal } from './BulkStudentImportModal';
 import { RegisterActionsDropdown } from './RegisterActionsDropdown';
+import { CardPoolDrawer } from './CardPoolDrawer';
 import {
-  BookOpen,
   Search,
-  UsersRound,
   Zap,
   Link as LinkIcon,
   Unlink,
   Radio,
-  Clock,
 } from 'lucide-react';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
-import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
 
 export const StudentsView: React.FC = () => {
   const {
@@ -49,11 +46,9 @@ export const StudentsView: React.FC = () => {
     handleUnlinkCard,
   } = useStudentsViewModel();
 
-  const [activeTab, setActiveTab] = useState<'students' | 'inventory'>('students');
+  const [isCardPoolOpen, setIsCardPoolOpen] = useState(false);
   const [courseFilter, setCourseFilter] = useState('all');
   const [rfidFilter, setRfidFilter] = useState('all');
-  const [inventoryFilter, setInventoryFilter] = useState<'all' | 'unassigned' | 'assigned'>('all');
-  const [inventorySearchQuery, setInventorySearchQuery] = useState('');
 
   // Stats calculation
   const verifiedCount = useMemo(() => students.filter((s) => Boolean(s.rfid_uid)).length, [students]);
@@ -73,24 +68,6 @@ export const StudentsView: React.FC = () => {
       (courseFilter === 'all' || student.course === courseFilter) &&
       (rfidFilter === 'all' || (rfidFilter === 'verified' ? Boolean(student.rfid_uid) : !student.rfid_uid))
   );
-
-  const visibleInventoryCards = useMemo(() => {
-    return inventoryCards.filter((card) => {
-      const matchesFilter =
-        inventoryFilter === 'all' ||
-        (inventoryFilter === 'unassigned' && card.status === 'unassigned') ||
-        (inventoryFilter === 'assigned' && card.status === 'assigned');
-
-      const q = inventorySearchQuery.trim().toLowerCase();
-      const matchesSearch =
-        !q ||
-        card.uid.toLowerCase().includes(q) ||
-        String(card.cardNumber).includes(q) ||
-        (card.assignedToStudentName && card.assignedToStudentName.toLowerCase().includes(q));
-
-      return matchesFilter && matchesSearch;
-    });
-  }, [inventoryCards, inventoryFilter, inventorySearchQuery]);
 
   const yearLabel = (year?: number | null) =>
     year ? `${year}${year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} Year` : '—';
@@ -120,6 +97,7 @@ export const StudentsView: React.FC = () => {
           onRapidScan={() => setIsRapidScanOpen(true)}
           onBulkImport={() => setIsBulkImportOpen(true)}
           onAutoPair={handleAutoPairSequential}
+          onOpenCardPool={() => setIsCardPoolOpen(true)}
           pairableCount={pairableCount}
         />
       </div>
@@ -164,8 +142,20 @@ export const StudentsView: React.FC = () => {
           </p>
         </div>
 
-        <div className="p-4 sm:p-5">
-          <p className="text-xs font-medium text-[#756883]">Card pool ready</p>
+        {/* Interactive KPI Card: Card Pool Stock */}
+        <button
+          type="button"
+          onClick={() => setIsCardPoolOpen(true)}
+          className="p-4 sm:p-5 text-left transition-colors hover:bg-[#FAF8FC] group rounded-b-2xl lg:rounded-b-none lg:rounded-r-2xl cursor-pointer"
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-[#756883] group-hover:text-[#7026B7] transition-colors">
+              Card pool stock
+            </p>
+            <span className="text-[11px] font-semibold text-[#7026B7] opacity-80 group-hover:opacity-100 transition-opacity">
+              View pool &rarr;
+            </span>
+          </div>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-bold tracking-tight text-[#7026B7] tabular-nums">
               {unassignedCards.length.toLocaleString()}
@@ -177,338 +167,207 @@ export const StudentsView: React.FC = () => {
           <p className="text-[11px] text-[#A59AAB] mt-0.5">
             {pairableCount > 0 ? `${pairableCount} ready to auto-pair` : 'Available to assign'}
           </p>
+        </button>
+      </div>
+
+      {/* Main Student Section (No tabs, clean table focus) */}
+      <div className="space-y-3">
+        {/* Controls Bar */}
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[310px]">
+            <Search className="h-4 w-4" />
+            <span className="sr-only">Search students</span>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => {
+                setPage(1);
+                setSearchQuery(event.target.value);
+              }}
+              placeholder="Search by name, ID or RFID…"
+              className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
+            />
+          </label>
+
+          <Dropdown
+            value={courseFilter}
+            onChange={(val) => setCourseFilter(val)}
+            options={[
+              { value: 'all', label: 'All Courses' },
+              ...courses.map((c) => ({ value: c, label: c })),
+            ]}
+          />
+
+          <Dropdown
+            value={rfidFilter}
+            onChange={(val) => setRfidFilter(val)}
+            options={[
+              { value: 'all', label: 'All RFID status' },
+              { value: 'verified', label: 'Assigned / Verified' },
+              { value: 'no-card', label: 'Unassigned (No card)' },
+            ]}
+          />
         </div>
-      </div>
 
-      {/* Main Tabs: Quiet underline navigation on 1px border */}
-      <div className="flex items-center gap-6 border-b border-[#E5E0EB]">
-        <button
-          type="button"
-          onClick={() => setActiveTab('students')}
-          className={`pb-3 text-xs font-semibold border-b-2 -mb-[1px] transition-all flex items-center gap-1.5 ${
-            activeTab === 'students'
-              ? 'border-[#7026B7] text-[#7026B7]'
-              : 'border-transparent text-[#756883] hover:text-[#24133F]'
-          }`}
-        >
-          <span>Students roster</span>
-          <span className="text-[11px] text-[#A59AAB] font-normal">({total})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('inventory')}
-          className={`pb-3 text-xs font-semibold border-b-2 -mb-[1px] transition-all flex items-center gap-1.5 ${
-            activeTab === 'inventory'
-              ? 'border-[#7026B7] text-[#7026B7]'
-              : 'border-transparent text-[#756883] hover:text-[#24133F]'
-          }`}
-        >
-          <span>Card inventory pool</span>
-          <span className="text-[11px] text-[#A59AAB] font-normal">({inventoryCards.length})</span>
-        </button>
-      </div>
-
-      {/* TAB 1: Students Roster */}
-      {activeTab === 'students' && (
-        <div className="space-y-3">
-          {/* Controls Bar */}
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[310px]">
-              <Search className="h-4 w-4" />
-              <span className="sr-only">Search students</span>
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(event) => {
-                  setPage(1);
-                  setSearchQuery(event.target.value);
-                }}
-                placeholder="Search by name, ID or RFID…"
-                className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
-              />
-            </label>
-
-            <Dropdown
-              value={courseFilter}
-              onChange={(val) => setCourseFilter(val)}
-              icon={<BookOpen className="h-4 w-4" />}
-              options={[
-                { value: 'all', label: 'All Courses' },
-                ...courses.map((c) => ({ value: c, label: c })),
-              ]}
-            />
-
-            <Dropdown
-              value={rfidFilter}
-              onChange={(val) => setRfidFilter(val)}
-              icon={<UsersRound className="h-4 w-4" />}
-              options={[
-                { value: 'all', label: 'All RFID status' },
-                { value: 'verified', label: 'Assigned / Verified' },
-                { value: 'no-card', label: 'Unassigned (No card)' },
-              ]}
-            />
-          </div>
-
-          {/* Students Table */}
-          <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5">
-            {error && <p role="alert" className="px-3 py-2 text-sm text-rose-600">{error}</p>}
-            <table className="w-full min-w-[760px] text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#E9EDF4] text-xs font-medium text-[#756883]">
-                  <th className="px-3 py-3">Student</th>
-                  <th className="px-3 py-3">Course</th>
-                  <th className="px-3 py-3">Year level</th>
-                  <th className="px-3 py-3">RFID card</th>
-                  <th className="px-3 py-3">Status</th>
-                  <th className="px-3 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleStudents.map((student) => (
-                  <tr key={student.id} className="border-b border-[#E9EDF4] last:border-b-0 hover:bg-[#FAF8FC]">
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#DFE8F8] text-[10px] font-extrabold text-[#294B85]">
-                          {initials(student.name)}
-                        </span>
-                        <div>
-                          <p className="font-bold text-[#24133F] leading-snug">{student.name}</p>
-                          <p className="text-[10px] font-mono text-[#756883]">{student.student_id}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 font-semibold text-[#24133F]">{student.course || '—'}</td>
-                    <td className="px-3 py-3 text-[#756883]">{yearLabel(student.year_level)}</td>
-                    <td className="px-3 py-3">
-                      {student.rfid_uid ? (
-                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-900 font-mono text-[11px] font-semibold">
-                          <Radio className="w-3 h-3 text-[#7026B7]" />
-                          {student.rfid_uid}
-                        </div>
-                      ) : (
-                        <span className="text-[#A59AAB] text-[11px] italic">No card linked</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1 font-semibold ${
-                          student.rfid_uid
-                            ? 'bg-[#E4F7EB] text-[#16883F]'
-                            : 'bg-[#FFF2DE] text-[#E58A00]'
-                        }`}
-                      >
-                        <i
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            student.rfid_uid ? 'bg-[#17B556]' : 'bg-[#F59E0B]'
-                          }`}
-                        />
-                        {student.rfid_uid ? 'Verified' : 'No card'}
+        {/* Students Table */}
+        <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5">
+          {error && <p role="alert" className="px-3 py-2 text-sm text-rose-600">{error}</p>}
+          <table className="w-full min-w-[760px] text-left text-xs">
+            <thead>
+              <tr className="border-b border-[#E9EDF4] text-xs font-medium text-[#756883]">
+                <th className="px-3 py-3">Student</th>
+                <th className="px-3 py-3">Course</th>
+                <th className="px-3 py-3">Year level</th>
+                <th className="px-3 py-3">RFID card</th>
+                <th className="px-3 py-3">Status</th>
+                <th className="px-3 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleStudents.map((student) => (
+                <tr key={student.id} className="border-b border-[#E9EDF4] last:border-b-0 hover:bg-[#FAF8FC]">
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#DFE8F8] text-[10px] font-extrabold text-[#294B85]">
+                        {initials(student.name)}
                       </span>
-                    </td>
-                    <td className="px-3 py-3 text-right">
-                      {student.rfid_uid ? (
-                        <button
-                          type="button"
-                          onClick={() => handleUnlinkCard(student.id)}
-                          title="Unlink RFID Card"
-                          aria-label={`Unlink RFID card from ${student.name}`}
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-1 rounded-lg transition-colors"
-                        >
-                          <Unlink className="w-3 h-3" />
-                          Unlink
-                        </button>
-                      ) : (
-                        <div className="flex items-center justify-end gap-1.5">
-                          {unassignedCards.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => handleQuickPair(student.id, unassignedCards[0].uid)}
-                              title={`Pair with card #${unassignedCards[0].cardNumber}`}
-                              className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition-colors"
-                            >
-                              <LinkIcon className="w-3 h-3" />
-                              Pair Pool #{unassignedCards[0].cardNumber}
-                            </button>
-                          )}
+                      <div>
+                        <p className="font-bold text-[#24133F] leading-snug">{student.name}</p>
+                        <p className="text-[10px] font-mono text-[#756883]">{student.student_id}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 font-semibold text-[#24133F]">{student.course || '—'}</td>
+                  <td className="px-3 py-3 text-[#756883]">{yearLabel(student.year_level)}</td>
+                  <td className="px-3 py-3">
+                    {student.rfid_uid ? (
+                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-900 font-mono text-[11px] font-semibold">
+                        <Radio className="w-3 h-3 text-[#7026B7]" />
+                        {student.rfid_uid}
+                      </div>
+                    ) : (
+                      <span className="text-[#A59AAB] text-[11px] italic">No card linked</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-3">
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1 font-semibold ${
+                        student.rfid_uid
+                          ? 'bg-[#E4F7EB] text-[#16883F]'
+                          : 'bg-[#FFF2DE] text-[#E58A00]'
+                      }`}
+                    >
+                      <i
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          student.rfid_uid ? 'bg-[#17B556]' : 'bg-[#F59E0B]'
+                        }`}
+                      />
+                      {student.rfid_uid ? 'Verified' : 'No card'}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-right">
+                    {student.rfid_uid ? (
+                      <button
+                        type="button"
+                        onClick={() => handleUnlinkCard(student.id)}
+                        title="Unlink RFID Card"
+                        aria-label={`Unlink RFID card from ${student.name}`}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-1 rounded-lg transition-colors"
+                      >
+                        <Unlink className="w-3 h-3" />
+                        Unlink
+                      </button>
+                    ) : (
+                      <div className="flex items-center justify-end gap-1.5">
+                        {unassignedCards.length > 0 && (
                           <button
                             type="button"
-                            onClick={() => setIsRapidScanOpen(true)}
-                            title="Scan with USB reader"
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7026B7] bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-1 rounded-lg transition-colors"
+                            onClick={() => handleQuickPair(student.id, unassignedCards[0].uid)}
+                            title={`Pair with card #${unassignedCards[0].cardNumber}`}
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition-colors"
                           >
-                            <Zap className="w-3 h-3" />
-                            Scan Tap
+                            <LinkIcon className="w-3 h-3" />
+                            Pair Pool #{unassignedCards[0].cardNumber}
                           </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setIsRapidScanOpen(true)}
+                          title="Scan with USB reader"
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7026B7] bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-1 rounded-lg transition-colors"
+                        >
+                          <Zap className="w-3 h-3" />
+                          Scan Tap
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-            {!visibleStudents.length && (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <img
-                  src={hawiQuestionImg}
-                  alt="No students found"
-                  className="w-24 h-24 object-contain mb-3"
-                />
-                <p className="text-sm font-bold text-[#24133F]">
-                  {isLoading ? 'Loading students…' : error ? 'Unable to load students.' : 'No students found'}
-                </p>
-                <p className="text-xs text-[#756883] max-w-xs mt-1">
-                  {searchQuery || courseFilter !== 'all' || rfidFilter !== 'all'
-                    ? 'Try clearing or relaxing your filters.'
-                    : 'Get started by adding a student or importing a bulk CSV roster.'}
-                </p>
-                {!isLoading && !searchQuery && courseFilter === 'all' && (
-                  <div className="flex items-center gap-2 mt-4">
-                    <Button variant="primary" size="sm" onClick={() => setIsAddDrawerOpen(true)}>
-                      + Add Student
-                    </Button>
-                    <Button variant="secondary" size="sm" onClick={() => setIsBulkImportOpen(true)}>
-                      Bulk Import CSV
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
+          {!visibleStudents.length && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <img
+                src={hawiQuestionImg}
+                alt="No students found"
+                className="w-24 h-24 object-contain mb-3"
+              />
+              <p className="text-sm font-bold text-[#24133F]">
+                {isLoading ? 'Loading students…' : error ? 'Unable to load students.' : 'No students found'}
+              </p>
+              <p className="text-xs text-[#756883] max-w-xs mt-1">
+                {searchQuery || courseFilter !== 'all' || rfidFilter !== 'all'
+                  ? 'Try clearing or relaxing your filters.'
+                  : 'Get started by adding a student or importing a bulk CSV roster.'}
+              </p>
+              {!isLoading && !searchQuery && courseFilter === 'all' && (
+                <div className="flex items-center gap-2 mt-4">
+                  <Button variant="primary" size="sm" onClick={() => setIsAddDrawerOpen(true)}>
+                    + Add Student
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => setIsBulkImportOpen(true)}>
+                    Bulk Import CSV
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
 
-            <div className="flex items-center justify-between gap-3 border-t border-[#E9EDF4] px-3 py-3 text-xs text-[#756883]">
-              <span>
-                {total.toLocaleString()} students · Page {page} of {Math.max(1, Math.ceil(total / 25))}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={page <= 1 || isLoading}
-                  onClick={() => setPage(page - 1)}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={page * 25 >= total || isLoading}
-                  onClick={() => setPage(page + 1)}
-                >
-                  Next
-                </Button>
-              </div>
+          <div className="flex items-center justify-between gap-3 border-t border-[#E9EDF4] px-3 py-3 text-xs text-[#756883]">
+            <span>
+              {total.toLocaleString()} students · Page {page} of {Math.max(1, Math.ceil(total / 25))}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={page <= 1 || isLoading}
+                onClick={() => setPage(page - 1)}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={page * 25 >= total || isLoading}
+                onClick={() => setPage(page + 1)}
+              >
+                Next
+              </Button>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* TAB 2: Card Inventory Pool */}
-      {activeTab === 'inventory' && (
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[310px]">
-              <Search className="h-4 w-4" />
-              <span className="sr-only">Search pool cards</span>
-              <input
-                type="search"
-                value={inventorySearchQuery}
-                onChange={(e) => setInventorySearchQuery(e.target.value)}
-                placeholder="Search by card UID or student…"
-                className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
-              />
-            </label>
-
-            <Dropdown
-              value={inventoryFilter}
-              onChange={(val) => setInventoryFilter(val as 'all' | 'unassigned' | 'assigned')}
-              options={[
-                { value: 'all', label: `All pool cards (${inventoryCards.length})` },
-                { value: 'unassigned', label: `Unassigned (${unassignedCards.length})` },
-                { value: 'assigned', label: `Assigned (${inventoryCards.length - unassignedCards.length})` },
-              ]}
-            />
-          </div>
-
-          <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5">
-            <table className="w-full min-w-[640px] text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#E9EDF4] text-xs font-medium text-[#756883]">
-                  <th className="px-3 py-3">Batch</th>
-                  <th className="px-3 py-3">Card UID</th>
-                  <th className="px-3 py-3">Added time</th>
-                  <th className="px-3 py-3">Status</th>
-                  <th className="px-3 py-3">Assigned student</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleInventoryCards.map((card) => (
-                  <tr key={card.uid} className="border-b border-[#E9EDF4] last:border-b-0 hover:bg-[#FAF8FC]">
-                    <td className="px-3 py-3 font-extrabold text-[#7026B7]">
-                      #{card.cardNumber || '—'}
-                    </td>
-                    <td className="px-3 py-3 font-mono font-bold text-[#24133F]">
-                      <div className="inline-flex items-center gap-1.5">
-                        <Radio className="w-3.5 h-3.5 text-[#7026B7]" />
-                        {card.uid}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-[#756883]">
-                      <div className="flex items-center gap-1 text-[11px]">
-                        <Clock className="w-3 h-3 text-[#A59AAB]" />
-                        {new Date(card.registeredAt).toLocaleDateString()} · {new Date(card.registeredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1 font-semibold ${
-                          card.status === 'unassigned'
-                            ? 'bg-purple-50 text-[#7026B7]'
-                            : 'bg-[#E4F7EB] text-[#16883F]'
-                        }`}
-                      >
-                        <i
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            card.status === 'unassigned' ? 'bg-[#7026B7]' : 'bg-[#17B556]'
-                          }`}
-                        />
-                        {card.status === 'unassigned' ? 'Available in Pool' : 'Assigned'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 font-semibold text-[#24133F]">
-                      {card.assignedToStudentName ? (
-                        <span>{card.assignedToStudentName}</span>
-                      ) : (
-                        <span className="text-slate-400 font-normal italic">None (Ready to assign)</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {!visibleInventoryCards.length && (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <img
-                  src={hawiTapCardImg}
-                  alt="No inventory cards"
-                  className="w-24 h-24 object-contain mb-3"
-                />
-                <p className="text-sm font-bold text-[#24133F]">No cards in this view</p>
-                <p className="text-xs text-[#756883] max-w-xs mt-1">
-                  Connect your USB RFID scanner and use Rapid Scanner to swipe cards continuously into the pool.
-                </p>
-                <div className="mt-4">
-                  <Button variant="primary" size="sm" onClick={() => setIsRapidScanOpen(true)}>
-                    ⚡ Open Rapid Scanner
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Slide-in Drawer: Card Inventory Pool */}
+      <CardPoolDrawer
+        isOpen={isCardPoolOpen}
+        onClose={() => setIsCardPoolOpen(false)}
+        inventoryCards={inventoryCards}
+        onOpenRapidScan={() => setIsRapidScanOpen(true)}
+      />
 
       {/* Slide-in Drawer: Add Single Student */}
       <AddStudentDrawer
