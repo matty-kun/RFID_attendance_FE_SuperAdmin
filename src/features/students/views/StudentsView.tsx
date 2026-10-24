@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { useStudentsViewModel } from '../viewmodels';
 import { Button } from '../../../components/common/Button';
+import { Dropdown } from '../../../components/common/Dropdown';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
-import { BookOpen, ChevronDown, CreditCard, Pencil, Plus, Search, Sparkles, Trash2, UsersRound } from 'lucide-react';
+import { BookOpen, CreditCard, Pencil, Plus, Search, Sparkles, Trash2, UsersRound } from 'lucide-react';
 
 export const StudentsView: React.FC = () => {
   const {
@@ -47,8 +48,25 @@ export const StudentsView: React.FC = () => {
 
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[310px]"><Search className="h-4 w-4" /><span className="sr-only">Search students</span><input type="search" value={searchQuery} onChange={(event) => { setPage(1); setSearchQuery(event.target.value); }} placeholder="Search" className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]" /></label>
-        <label className="flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs"><BookOpen className="h-4 w-4 text-[#756883]" /><span className="sr-only">Course</span><select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="max-w-28 bg-transparent font-semibold outline-none"><option value="all">All Courses</option>{courses.map((course) => <option key={course} value={course}>{course}</option>)}</select><ChevronDown className="h-3 w-3 text-[#756883]" /></label>
-        <label className="flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs"><UsersRound className="h-4 w-4 text-[#756883]" /><span className="sr-only">RFID status</span><select value={rfidFilter} onChange={(event) => setRfidFilter(event.target.value)} className="max-w-28 bg-transparent font-semibold outline-none"><option value="all">RFID Status</option><option value="verified">Verified</option><option value="no-card">No card</option></select><ChevronDown className="h-3 w-3 text-[#756883]" /></label>
+        <Dropdown
+          value={courseFilter}
+          onChange={(val) => setCourseFilter(val)}
+          icon={<BookOpen className="h-4 w-4" />}
+          options={[
+            { value: 'all', label: 'All Courses' },
+            ...courses.map((c) => ({ value: c, label: c })),
+          ]}
+        />
+        <Dropdown
+          value={rfidFilter}
+          onChange={(val) => setRfidFilter(val)}
+          icon={<UsersRound className="h-4 w-4" />}
+          options={[
+            { value: 'all', label: 'RFID Status' },
+            { value: 'verified', label: 'Verified' },
+            { value: 'no-card', label: 'No card' },
+          ]}
+        />
         <div className="ml-auto"><Button variant="primary" leftIcon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>Add Student</Button></div>
       </div>
 

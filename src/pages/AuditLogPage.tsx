@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Check, ChevronDown, Search, Users } from 'lucide-react';
+import { Check, Search, Users } from 'lucide-react';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
+import { Dropdown } from '../components/common/Dropdown';
 import { Button } from '../components/common/Button';
 import { auditLogRecords } from './auditPreviewRecords';
 
@@ -111,49 +112,33 @@ export function AuditLogPage() {
           }}
         />
 
-        {/* Action Filter */}
-        <label className="flex h-10 items-center gap-1.5 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs text-[#24133F]">
-          <Check className="h-4 w-4 text-[#756883]" />
-          <span className="sr-only">Action</span>
-          <select
-            value={actionFilter}
-            onChange={(e) => {
-              setActionFilter(e.target.value);
-              setPage(1);
-            }}
-            className="bg-transparent font-semibold outline-none text-xs cursor-pointer"
-          >
-            <option value="all">All Actions</option>
-            {uniqueActions.map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="h-3 w-3 text-[#756883]" />
-        </label>
+        {/* Action Dropdown Filter */}
+        <Dropdown
+          value={actionFilter}
+          onChange={(val) => {
+            setActionFilter(val);
+            setPage(1);
+          }}
+          icon={<Check className="h-4 w-4" />}
+          options={[
+            { value: 'all', label: 'All Actions' },
+            ...uniqueActions.map(([key, label]) => ({ value: key, label })),
+          ]}
+        />
 
-        {/* User Filter */}
-        <label className="flex h-10 items-center gap-1.5 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs text-[#24133F]">
-          <Users className="h-4 w-4 text-[#756883]" />
-          <span className="sr-only">User</span>
-          <select
-            value={userFilter}
-            onChange={(e) => {
-              setUserFilter(e.target.value);
-              setPage(1);
-            }}
-            className="bg-transparent font-semibold outline-none text-xs cursor-pointer"
-          >
-            <option value="all">All Users</option>
-            {uniqueUsers.map((user) => (
-              <option key={user} value={user}>
-                {user}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="h-3 w-3 text-[#756883]" />
-        </label>
+        {/* User Dropdown Filter */}
+        <Dropdown
+          value={userFilter}
+          onChange={(val) => {
+            setUserFilter(val);
+            setPage(1);
+          }}
+          icon={<Users className="h-4 w-4" />}
+          options={[
+            { value: 'all', label: 'All Users' },
+            ...uniqueUsers.map((user) => ({ value: user, label: user })),
+          ]}
+        />
       </div>
 
       {/* Audit Log Table Matching Figma Mockup */}

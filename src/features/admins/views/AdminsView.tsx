@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useAdminsViewModel } from '../viewmodels';
 import { Button } from '../../../components/common/Button';
+import { Dropdown } from '../../../components/common/Dropdown';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
-import { ChevronDown, Pencil, Plus, Search, Sparkles, Trash2, UserCheck } from 'lucide-react';
+import { Pencil, Plus, Search, Sparkles, Trash2, UserCheck } from 'lucide-react';
 
 export const AdminsView: React.FC = () => {
   const {
@@ -31,8 +32,21 @@ export const AdminsView: React.FC = () => {
       <div><h1 className="text-[22px] font-extrabold leading-tight">Admin Accounts</h1><p className="text-[11px] text-[#756883]">Manage admin accounts and monitor attendance access.</p></div>
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex h-10 min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[310px]"><Search className="h-4 w-4" /><span className="sr-only">Search admins</span><input type="search" value={searchQuery} onChange={(event) => { setPage(1); setSearchQuery(event.target.value); }} placeholder="Search admin name or email" className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]" /></label>
-        <label className="flex h-10 items-center gap-1 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs"><span className="sr-only">Role</span><select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} className="bg-transparent font-semibold outline-none"><option value="all">All Roles</option><option value="super_admin">Super Admin</option><option value="admin">Scanner Admin</option></select><ChevronDown className="h-3 w-3 text-[#756883]" /></label>
-        <label className="flex h-10 items-center gap-1 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs" title="Account status is not available from the backend yet"><span className="sr-only">Status</span><select disabled className="bg-transparent font-semibold outline-none disabled:opacity-70"><option>All Status</option></select><ChevronDown className="h-3 w-3 text-[#756883]" /></label>
+        <Dropdown
+          value={roleFilter}
+          onChange={(val) => setRoleFilter(val)}
+          options={[
+            { value: 'all', label: 'All Roles' },
+            { value: 'super_admin', label: 'Super Admin' },
+            { value: 'admin', label: 'Scanner Admin' },
+          ]}
+        />
+        <Dropdown
+          value="all"
+          disabled
+          onChange={() => {}}
+          options={[{ value: 'all', label: 'All Status' }]}
+        />
         <div className="ml-auto"><Button variant="primary" leftIcon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>Add Admin</Button></div>
       </div>
 

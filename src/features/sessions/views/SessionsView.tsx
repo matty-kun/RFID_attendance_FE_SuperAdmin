@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useSessionsViewModel } from '../viewmodels';
 import { Button } from '../../../components/common/Button';
+import { Dropdown } from '../../../components/common/Dropdown';
 import { Badge } from '../../../components/common/Badge';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
-import { ChevronDown, Clock, MapPin, Pencil, Plus, Sparkles } from 'lucide-react';
+import { Clock, MapPin, Pencil, Plus, Sparkles } from 'lucide-react';
 import { getEventStatus, getSessionStatus } from '../../../utils/status';
 import { SessionLocationsDialog } from './SessionLocationsDialog';
 
@@ -53,21 +54,14 @@ export const SessionsView: React.FC = () => {
 
       {/* Toolbar / Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs">
-          <span className="font-bold text-[#756883]">Event:</span>
-          <select
-            value={selectedEventId}
-            onChange={(e) => setSelectedEventId(e.target.value)}
-            className="bg-transparent font-semibold text-[#24133F] outline-none max-w-xs"
-          >
-            {events.map((ev) => (
-              <option key={ev.id} value={ev.id}>
-                {ev.name} ({getEventStatus(ev.start_date, ev.end_date)})
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="h-3 w-3 text-[#756883]" />
-        </label>
+        <Dropdown
+          value={selectedEventId}
+          onChange={(val) => setSelectedEventId(val)}
+          options={events.map((ev) => ({
+            value: ev.id,
+            label: `${ev.name} (${getEventStatus(ev.start_date, ev.end_date)})`,
+          }))}
+        />
         <div className="ml-auto">
           <Button
             variant="primary"

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CalendarDays, ChevronDown, Download, Search } from 'lucide-react';
+import { AlertCircle, CalendarDays, Download, Search } from 'lucide-react';
 import { Button } from '../components/common/Button';
+import { Dropdown } from '../components/common/Dropdown';
 import { attendanceService } from '../features/attendance/services/attendanceService';
 import type { AttendanceRecord } from '../features/attendance/models';
 import { isDevPreview } from '../features/auth/devPreview';
@@ -141,7 +142,20 @@ export function ReportsPage() {
     <div className="flex flex-wrap items-center gap-2">
       <label className="flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs"><CalendarDays className="h-4 w-4 text-[#756883]" /><span className="sr-only">From</span><input type="date" value={startDate} max={endDate} onChange={(event) => setStartDate(event.target.value)} className="bg-transparent outline-none" /></label>
       <label className="flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs"><span className="sr-only">To</span><input type="date" value={endDate} min={startDate} onChange={(event) => setEndDate(event.target.value)} className="bg-transparent outline-none" /></label>
-      {([['Session', session, setSession, sessions], ['Course', course, setCourse, courses], ['Type', type, setType, ['time_in', 'time_out']], ['Location', location, setLocation, locations]] as const).map(([label, value, setter, options]) => <label key={label} className="flex h-10 items-center gap-1 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs"><span className="sr-only">{label}</span><select value={value} onChange={(event) => setter(event.target.value)} className="max-w-32 bg-transparent font-semibold outline-none"><option value="all">All {label === 'Type' ? 'Attendance Types' : `${label}s`}</option>{options.map((option) => <option key={option} value={option}>{option === 'time_in' ? 'Time In' : option === 'time_out' ? 'Time Out' : option}</option>)}</select><ChevronDown className="h-3 w-3 text-[#756883]" /></label>)}
+      {([['Session', session, setSession, sessions], ['Course', course, setCourse, courses], ['Type', type, setType, ['time_in', 'time_out']], ['Location', location, setLocation, locations]] as const).map(([label, value, setter, options]) => (
+        <Dropdown
+          key={label}
+          value={value}
+          onChange={(val) => setter(val)}
+          options={[
+            { value: 'all', label: `All ${label === 'Type' ? 'Types' : `${label}s`}` },
+            ...options.map((opt) => ({
+              value: opt,
+              label: opt === 'time_in' ? 'Time In' : opt === 'time_out' ? 'Time Out' : opt,
+            })),
+          ]}
+        />
+      ))}
       <Button
         variant="primary"
         className="ml-auto"
