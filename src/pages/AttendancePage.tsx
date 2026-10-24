@@ -1067,39 +1067,31 @@ export function AttendancePage() {
           document.body
         )}
 
-      {/* Unified Action Feedback Toast (Green, Red, Yellow, Blue states with no pulse) */}
+      {/* Unified Action Feedback Toast (Figma Pill Design: Solid Saturated Colors, White Text & Icons) */}
       {feedbackToast &&
         createPortal(
           <div
-            className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border px-4 py-3 shadow-xl animate-in slide-in-from-bottom-4 duration-200 ${
+            className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-full px-5 py-3 shadow-xl text-white animate-in slide-in-from-bottom-4 duration-200 ${
               feedbackToast.type === 'delete'
-                ? 'border-red-200 bg-red-50 text-red-900'
+                ? 'bg-[#EF3340]'
                 : feedbackToast.type === 'warning'
-                ? 'border-amber-200 bg-amber-50 text-amber-900'
+                ? 'bg-[#F59E0B]'
                 : feedbackToast.type === 'info'
-                ? 'border-blue-200 bg-blue-50 text-blue-900'
-                : 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                ? 'bg-[#3B82F6]'
+                : 'bg-[#17B556]'
             }`}
           >
             {feedbackToast.type === 'delete' ? (
-              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-red-100 text-red-600 shrink-0">
-                <Trash2 className="h-4 w-4" />
-              </div>
+              <X className="h-4 w-4 shrink-0 text-white stroke-[2.5]" />
             ) : feedbackToast.type === 'warning' ? (
-              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-amber-100 text-amber-600 shrink-0">
-                <AlertTriangle className="h-4 w-4" />
-              </div>
+              <AlertTriangle className="h-4 w-4 shrink-0 text-white stroke-[2.5]" />
             ) : feedbackToast.type === 'info' ? (
-              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-blue-100 text-blue-600 shrink-0">
-                <Info className="h-4 w-4" />
-              </div>
+              <Info className="h-4 w-4 shrink-0 text-white stroke-[2.5]" />
             ) : (
-              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 shrink-0">
-                <CheckCircle2 className="h-4 w-4" />
-              </div>
+              <Check className="h-4 w-4 shrink-0 text-white stroke-[2.5]" />
             )}
 
-            <span className="text-xs font-bold leading-tight">
+            <span className="text-xs font-semibold leading-tight text-white whitespace-nowrap">
               {feedbackToast.message}
             </span>
 
@@ -1110,9 +1102,9 @@ export function AttendancePage() {
                   feedbackToast.onAction?.();
                   setFeedbackToast(null);
                 }}
-                className="ml-2 flex items-center gap-1.5 rounded-xl border border-red-300 bg-white px-3 py-1 text-xs font-bold text-red-700 hover:bg-red-50 active:scale-95 transition-all shadow-2xs"
+                className="ml-2 flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-bold text-white hover:bg-white/30 active:scale-95 transition-all shadow-2xs"
               >
-                <RotateCcw className="h-3 w-3" />
+                <RotateCcw className="h-3 w-3 stroke-[2.5]" />
                 {feedbackToast.actionLabel}
               </button>
             )}
@@ -1120,10 +1112,10 @@ export function AttendancePage() {
             <button
               type="button"
               onClick={() => setFeedbackToast(null)}
-              className="ml-1 p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-black/5 transition-colors"
+              className="ml-1 p-1 rounded-full text-white/80 hover:text-white hover:bg-white/15 transition-colors"
               aria-label="Dismiss notification"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3.5 w-3.5 stroke-[2.5]" />
             </button>
           </div>,
           document.body
