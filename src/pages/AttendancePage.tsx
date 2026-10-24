@@ -28,6 +28,7 @@ import {
   AssignOfficersDrawer,
   type AssignedOfficer,
 } from '../features/events/views/AssignOfficersDrawer';
+import hawiQuestionImg from '../assets/illustrations/Hawi Question.png';
 
 interface SessionItem {
   id: string;
@@ -916,11 +917,15 @@ export function AttendancePage() {
             })}
 
             {filteredDays.length === 0 && (
-              <div className="py-12 text-center bg-white rounded-2xl border border-[#E5E0EB] p-8">
-                <Search className="h-8 w-8 text-[#9E93A9] mx-auto mb-2 opacity-50" />
+              <div className="py-12 text-center bg-white rounded-2xl border border-[#E5E0EB] p-8 flex flex-col items-center justify-center">
+                <img
+                  src={hawiQuestionImg}
+                  alt="Hawi Question"
+                  className="h-28 w-28 sm:h-36 sm:w-36 object-contain mx-auto mb-3"
+                />
                 <p className="text-sm font-bold text-[#24133F]">No sessions found</p>
-                <p className="text-xs text-[#756883] mt-1">
-                  No attendance sessions match your search or filters.
+                <p className="text-xs text-[#756883] mt-1 max-w-xs mx-auto">
+                  No attendance sessions match your search or date filters.
                 </p>
                 <button
                   type="button"
@@ -929,7 +934,7 @@ export function AttendancePage() {
                     setStatusFilter('all');
                     setDateRange({});
                   }}
-                  className="mt-4 px-4 py-1.5 rounded-xl text-xs font-bold text-[#451475] bg-[#FAF7FD] border border-[#E9DDF8] hover:bg-[#F3EDFB] transition-colors"
+                  className="mt-4 px-4 py-1.5 rounded-xl text-xs font-bold text-[#7026B7] bg-[#FAF7FD] border border-[#E9DDF8] hover:bg-[#F3EDFB] transition-colors"
                 >
                   Clear search & filters
                 </button>
@@ -940,9 +945,11 @@ export function AttendancePage() {
       ) : (
         /* Empty State when Event is deleted */
         <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-[#E5E0EB] bg-white p-12 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F6F4F8] text-[#756883] mb-3">
-            <Calendar className="h-7 w-7 text-[#756883]" />
-          </div>
+          <img
+            src={hawiQuestionImg}
+            alt="No Event"
+            className="h-32 w-32 sm:h-40 sm:w-40 object-contain mx-auto mb-4"
+          />
           <h3 className="text-base font-bold text-[#24133F]">No Event Active</h3>
           <p className="mt-1 max-w-sm text-xs text-[#756883]">
             There is currently no event published. Create a new event to configure schedules and sessions.
