@@ -6,6 +6,7 @@ export interface TimePickerProps {
   onChange: (value: string) => void;
   label?: string;
   className?: string;
+  gridContainerClassName?: string;
 }
 
 // 30-minute intervals throughout 24 hours (2:00 AM, 2:30 AM ... 11:30 PM)
@@ -25,17 +26,23 @@ export const TimePicker: React.FC<TimePickerProps> = ({
   onChange,
   label,
   className,
+  gridContainerClassName,
 }) => {
   return (
     <div className={cn('space-y-2', className)}>
       {label && (
-        <label className="block text-xs font-bold uppercase tracking-wider text-[#756883]">
+        <label className="block text-xs font-bold uppercase tracking-wider text-[#756883] shrink-0">
           {label}
         </label>
       )}
 
       {/* 3-column scrollable grid matching Calendly/Deel style */}
-      <div className="max-h-56 overflow-y-auto rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB]/40 p-2.5">
+      <div
+        className={cn(
+          'max-h-56 overflow-y-auto rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB]/40 p-2.5',
+          gridContainerClassName
+        )}
+      >
         <div className="grid grid-cols-3 gap-2">
           {TIME_SLOTS.map((slot) => {
             const isSelected = value === slot.val;

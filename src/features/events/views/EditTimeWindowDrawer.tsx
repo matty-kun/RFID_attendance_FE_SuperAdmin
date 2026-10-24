@@ -152,9 +152,9 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 space-y-6 overflow-y-auto p-6">
+        <div className="flex-1 flex flex-col space-y-4 p-6 min-h-0 overflow-hidden">
           {/* Dual Start / End Tab Toggle */}
-          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#F6F4F8] p-1.5 border border-[#E5E0EB]">
+          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#F6F4F8] p-1.5 border border-[#E5E0EB] shrink-0">
             <button
               type="button"
               onClick={() => setActiveTab('start')}
@@ -191,6 +191,8 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
             label={`Select ${activeTab === 'start' ? 'Start' : 'End'} Time`}
             value={activeTab === 'start' ? start : end}
             onChange={handleTimeChange}
+            className="flex-1 flex flex-col min-h-0"
+            gridContainerClassName="flex-1 min-h-[360px] max-h-none"
           />
 
         </div>
