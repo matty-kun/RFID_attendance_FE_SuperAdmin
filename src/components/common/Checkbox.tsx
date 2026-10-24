@@ -1,4 +1,5 @@
 import React from 'react';
+import { Check } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 export interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
@@ -34,15 +35,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
           )}
         >
           {checked && (
-            <svg
-              className="h-2.5 w-2.5 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-            </svg>
+            <Check className="h-2.5 w-2.5 text-white stroke-[2.5]" />
           )}
         </div>
         {label && <span className="text-xs text-[#24133F]">{label}</span>}
