@@ -11,9 +11,15 @@ import {
   Search,
   Users,
   MapPin,
+  Pencil,
+  CheckCircle2,
+  Trash2,
+  X,
+  Check,
 } from 'lucide-react';
 import { Dropdown } from '../components/common/Dropdown';
 import { CreateEventModal } from '../features/events/views/CreateEventModal';
+import { DeleteConfirmationModal } from '../components/common/DeleteConfirmationModal';
 import {
   AssignOfficersDrawer,
   type AssignedOfficer,
@@ -207,6 +213,71 @@ export function AttendancePage() {
     }));
   };
 
+  // Session action menus & edit modal state
+  const [openMenuSessionId, setOpenMenuSessionId] = useState<string | null>(null);
+  const [editingTimeSession, setEditingTimeSession] = useState<{ dayId: string; session: SessionItem } | null>(null);
+  const [newTimeWindow, setNewTimeWindow] = useState('');
+  const [deletingSessionInfo, setDeletingSessionInfo] = useState<{ dayId: string; session: SessionItem } | null>(null);
+
+  const handleCloseSession = (dayId: string, sessionId: string) => {
+    setEventData((prev) => ({
+      ...prev,
+      days: prev.days.map((d) =>
+        d.dayId === dayId
+          ? {
+              ...d,
+              sessions: d.sessions.map((s) =>
+                s.id === sessionId ? { ...s, status: 'Completed' } : s
+              ),
+            }
+          : d
+      ),
+    }));
+    setOpenMenuSessionId(null);
+  };
+
+  const handleOpenEditTime = (dayId: string, session: SessionItem) => {
+    setEditingTimeSession({ dayId, session });
+    setNewTimeWindow(session.timeWindow);
+    setOpenMenuSessionId(null);
+  };
+
+  const handleSaveEditTime = () => {
+    if (!editingTimeSession) return;
+    setEventData((prev) => ({
+      ...prev,
+      days: prev.days.map((d) =>
+        d.dayId === editingTimeSession.dayId
+          ? {
+              ...d,
+              sessions: d.sessions.map((s) =>
+                s.id === editingTimeSession.session.id
+                  ? { ...s, timeWindow: newTimeWindow }
+                  : s
+              ),
+            }
+          : d
+      ),
+    }));
+    setEditingTimeSession(null);
+  };
+
+  const handleConfirmDeleteSession = () => {
+    if (!deletingSessionInfo) return;
+    setEventData((prev) => ({
+      ...prev,
+      days: prev.days.map((d) =>
+        d.dayId === deletingSessionInfo.dayId
+          ? {
+              ...d,
+              sessions: d.sessions.filter((s) => s.id !== deletingSessionInfo.session.id),
+            }
+          : d
+      ),
+    }));
+    setDeletingSessionInfo(null);
+  };
+
   const handleCopyFromDay1 = (targetDayId: string) => {
     const day1 = eventData.days.find((d) => d.dayId === 'd1');
     if (!day1) return;
@@ -384,18 +455,9 @@ export function AttendancePage() {
 
                   <div className="flex items-center gap-2">
                     {isDayOpen ? (
-                      <>
-                        <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-[#756883]">
-                          {day.sessions.length} sessions
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => e.stopPropagation()}
-                          className="rounded p-1 text-[#756883] hover:text-[#24133F]"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </button>
-                      </>
+                      <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-[#756883]">
+                        {day.sessions.length} sessions
+                      </span>
                     ) : (
                       <div className="flex items-center gap-2">
                         {day.dayId !== 'd1' && (
@@ -450,17 +512,77 @@ export function AttendancePage() {
                                     ? 'bg-[#10B981]'
                                     : session.status === 'Upcoming'
                                     ? 'bg-[#3B82F6]'
+                                    : session.status === 'Completed'
+                                    ? 'bg-emerald-700'
                                     : 'bg-slate-400'
                                 }`}
                               >
                                 {session.status}
                               </span>
-                              <button
-                                type="button"
-                                className="rounded p-1 text-[#756883] hover:text-[#24133F]"
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </button>
+
+                              {/* Session Action Menu */}
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuSessionId(openMenuSessionId === session.id ? null : session.id);
+                                  }}
+                                  className="rounded-lg p-1 text-[#756883] hover:text-[#24133F] hover:bg-slate-100 transition-colors"
+                                  title="Session actions"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </button>
+
+                                {openMenuSessionId === session.id && (
+                                  <>
+                                    <div
+                                      className="fixed inset-0 z-40"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenMenuSessionId(null);
+                                      }}
+                                    />
+                                    <div className="absolute right-0 top-full mt-1.5 z-50 w-48 rounded-2xl border border-[#E5E0EB] bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-150 text-xs">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleOpenEditTime(day.dayId, session);
+                                        }}
+                                        className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 font-semibold text-[#24133F] hover:bg-slate-50 transition-colors"
+                                      >
+                                        <Pencil className="h-3.5 w-3.5 text-[#756883]" />
+                                        Edit time window
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleCloseSession(day.dayId, session.id);
+                                        }}
+                                        className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 font-semibold text-[#24133F] hover:bg-slate-50 transition-colors"
+                                      >
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-[#10B981]" />
+                                        Mark as completed
+                                      </button>
+                                      <div className="my-1 border-t border-[#F1EEF4]" />
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setDeletingSessionInfo({ dayId: day.dayId, session });
+                                          setOpenMenuSessionId(null);
+                                        }}
+                                        className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 font-semibold text-[#EF4444] hover:bg-rose-50 transition-colors"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5 text-[#EF4444]" />
+                                        Delete session
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
 
@@ -548,6 +670,65 @@ export function AttendancePage() {
           onSave={handleSaveAssignedOfficers}
         />
       )}
+
+      {/* Edit Session Time Window Modal */}
+      {editingTimeSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#170D29]/40 p-4 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-sm rounded-[24px] bg-white p-6 shadow-2xl border border-[#E5E0EB] animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-[#F1EEF4]">
+              <h3 className="text-sm font-bold text-[#24133F]">Edit Session Time</h3>
+              <button
+                type="button"
+                onClick={() => setEditingTimeSession(null)}
+                className="p-1 rounded-lg text-[#756883] hover:text-[#24133F]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-4 space-y-3">
+              <div>
+                <p className="text-xs font-bold text-[#24133F]">{editingTimeSession.session.name}</p>
+                <p className="text-[11px] text-[#756883]">Update active scanning window for this session</p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#756883] mb-1">Time Window</label>
+                <input
+                  type="text"
+                  value={newTimeWindow}
+                  onChange={(e) => setNewTimeWindow(e.target.value)}
+                  placeholder="e.g. 7:00 - 9:30 AM"
+                  className="w-full px-3 py-2 rounded-xl border border-[#E5E0EB] text-xs text-[#24133F] focus:outline-none focus:border-[#451475]"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-2 pt-3 border-t border-[#F1EEF4]">
+              <button
+                type="button"
+                onClick={() => setEditingTimeSession(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#756883] hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEditTime}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#451475] shadow-[0_4px_0_0_#2B0C4A] hover:bg-[#38105F] active:translate-y-[2px] active:shadow-none transition-all"
+              >
+                <Check className="h-3.5 w-3.5" />
+                Save Time
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Session Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={Boolean(deletingSessionInfo)}
+        onClose={() => setDeletingSessionInfo(null)}
+        onConfirm={handleConfirmDeleteSession}
+        itemName={deletingSessionInfo ? `${deletingSessionInfo.session.name}` : 'this session'}
+      />
     </div>
   );
 }
