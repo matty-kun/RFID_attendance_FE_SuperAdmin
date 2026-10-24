@@ -260,7 +260,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   };
 
   const handleNext = () => {
-    if (currentStep < 5) {
+    if (currentStep < 4) {
       setCurrentStep((prev) => prev + 1);
     }
   };
@@ -293,8 +293,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     'Event Details',
     'Event Dates',
     'Add Sessions',
-    'Review Schedule',
-    'Publish Event',
+    'Review & Publish',
   ];
 
   return createPortal(
@@ -337,7 +336,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           {/* Stepper (Only visible during creation, not in success modal) */}
           {!isPublished && (
             <div className="mt-4 overflow-x-auto py-1">
-              <div className="grid min-w-[600px] grid-cols-5 px-4 pt-2 pb-1">
+              <div className="grid min-w-[500px] grid-cols-4 px-4 pt-2 pb-1">
               {stepTitles.map((title, idx) => {
                 const stepNum = idx + 1;
                 const isComplete = currentStep > stepNum;
@@ -407,7 +406,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             /* STEP 1: EVENT DETAILS */
             <div className="space-y-4">
               <div>
-                <p className="text-[11px] font-semibold text-[#756883]">step 1 to 5</p>
+                <p className="text-[11px] font-semibold text-[#756883]">Step 1 of 4</p>
                 <h3 className="text-lg font-bold text-[#24133F]">Event Details</h3>
                 <p className="text-xs text-[#756883]">Provide the basic information about your event</p>
               </div>
@@ -447,7 +446,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             /* STEP 2: EVENT DATES */
             <div className="space-y-5">
               <div>
-                <p className="text-[11px] font-semibold text-[#756883]">Step 2 of 5</p>
+                <p className="text-[11px] font-semibold text-[#756883]">Step 2 of 4</p>
                 <h3 className="text-lg font-bold text-[#24133F]">Event Dates</h3>
                 <p className="text-xs text-[#756883]">
                   Select the start and end date for your event using the interactive calendar below.
@@ -640,7 +639,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             /* STEP 3: ADD SESSIONS */
             <div className="space-y-5">
               <div>
-                <p className="text-[11px] font-semibold text-[#756883]">Step 3 of 5</p>
+                <p className="text-[11px] font-semibold text-[#756883]">Step 3 of 4</p>
                 <h3 className="text-lg font-bold text-[#24133F]">Add sessions</h3>
                 <p className="text-xs text-[#756883]">Configure the attendance sessions for each day of your event.</p>
               </div>
@@ -928,13 +927,13 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   )
               )}
             </div>
-          ) : currentStep === 4 ? (
-            /* STEP 4: REVIEW SCHEDULE */
+          ) : (
+            /* STEP 4: REVIEW & PUBLISH */
             <div className="space-y-5">
               <div>
-                <p className="text-[11px] font-semibold text-[#756883]">Step 4 of 5</p>
-                <h3 className="text-lg font-bold text-[#24133F]">Review Schedule</h3>
-                <p className="text-xs text-[#756883]">Check all the details before publishing your event.</p>
+                <p className="text-[11px] font-semibold text-[#756883]">Step 4 of 4</p>
+                <h3 className="text-lg font-bold text-[#24133F]">Review & Publish</h3>
+                <p className="text-xs text-[#756883]">Check all details before publishing your event.</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -1060,70 +1059,17 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   )}
                 </div>
               </div>
-            </div>
-          ) : (
-            /* STEP 5: PUBLISH EVENT */
-            <div className="space-y-5">
-              <div>
-                <p className="text-[11px] font-semibold text-[#756883]">Step 5 of 5</p>
-                <h3 className="text-lg font-bold text-[#24133F]">Publish Event</h3>
-                <p className="text-xs text-[#756883]">
-                  Confirm and publish your event. Once published, it will be available for all users.
-                </p>
-              </div>
 
-              {/* 4 Summary Cards */}
-              <div className="grid grid-cols-4 gap-3">
-                <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3.5">
-                  <p className="text-[10px] text-[#756883]">Event name</p>
-                  <p className="mt-1 truncate text-xs font-bold text-[#24133F]">{eventName}</p>
-                </div>
-                <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3.5">
-                  <p className="text-[10px] text-[#756883]">Date Range</p>
-                  <p className="mt-1 text-xs font-bold text-[#24133F]">October 2 - 5, 2026</p>
-                </div>
-                <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3.5">
-                  <p className="text-[10px] text-[#756883]">Duration</p>
-                  <p className="mt-1 text-xs font-bold text-[#24133F]">4 days</p>
-                </div>
-                <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3.5">
-                  <p className="text-[10px] text-[#756883]">Total Sessions</p>
-                  <p className="mt-1 text-xs font-bold text-[#24133F]">12 Sessions</p>
-                </div>
-              </div>
-
-              {/* Publication Readiness Card */}
-              <div className="rounded-2xl border border-[#E5E0EB] bg-white p-5">
+              {/* Publication Readiness Banner */}
+              <div className="rounded-2xl border border-emerald-200 bg-[#E4F7EB]/70 p-4 text-xs font-semibold text-[#16883F] flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-[#451475]">
-                    <ShieldCheck className="h-5 w-5" />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#10B981] text-white shrink-0">
+                    <ShieldCheck className="h-4 w-4" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-[#24133F]">Publication Readiness</h4>
-                    <p className="text-xs text-[#756883]">Make sure all requirements are met before publishing</p>
+                    <h5 className="font-bold text-[#16883F]">Ready to Publish!</h5>
+                    <p className="text-[11px] text-[#16883F]/80">All event information, dates, and attendance sessions are validated.</p>
                   </div>
-                </div>
-
-                <div className="mt-4 space-y-2.5">
-                  {[
-                    'Event details and description configured',
-                    'Event schedule and dates validated',
-                    'Sessions created with designated IN/OUT windows',
-                    'Checkpoint locations and admin officers assigned',
-                    'No schedule conflicts detected across facilities',
-                  ].map((req) => (
-                    <div key={req} className="flex items-center gap-2.5 text-xs text-[#24133F]">
-                      <div className="flex h-4 w-4 items-center justify-center rounded-full bg-[#10B981] text-white">
-                        <Check className="h-2.5 w-2.5 stroke-[3]" />
-                      </div>
-                      <span>{req}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-5 rounded-2xl bg-[#E4F7EB] p-3 text-xs font-bold text-[#16883F] flex items-center gap-2">
-                  <Check className="h-4 w-4" />
-                  Ready to Publish! All required event details are complete. No schedule conflicts detected.
                 </div>
               </div>
             </div>
@@ -1169,7 +1115,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 </button>
               )}
 
-              {currentStep < 5 ? (
+              {currentStep < 4 ? (
                 <button
                   type="button"
                   onClick={handleNext}
