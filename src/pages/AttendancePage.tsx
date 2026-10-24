@@ -5,6 +5,7 @@ import {
   ChevronRight,
   ChevronUp,
   Clock,
+  Copy,
   MoreVertical,
   Plus,
   Search,
@@ -206,6 +207,29 @@ export function AttendancePage() {
     }));
   };
 
+  const handleCopyFromDay1 = (targetDayId: string) => {
+    const day1 = eventData.days.find((d) => d.dayId === 'd1');
+    if (!day1) return;
+
+    setEventData((prev) => ({
+      ...prev,
+      days: prev.days.map((d) =>
+        d.dayId === targetDayId
+          ? {
+              ...d,
+              status: 'Upcoming',
+              sessions: day1.sessions.map((s, idx) => ({
+                ...s,
+                id: `${targetDayId}-s-${idx + 1}`,
+                status: 'Upcoming',
+              })),
+            }
+          : d
+      ),
+    }));
+    setExpandedDayId(targetDayId);
+  };
+
   const handleEventPublished = (newEvent: any) => {
     // Add published event
     setEventData({
@@ -266,7 +290,7 @@ export function AttendancePage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search student or ID"
+            placeholder="Search event, session, or admin"
             className="w-full rounded-2xl border border-[#E5E0EB] bg-white py-2 pl-10 pr-4 text-xs text-[#24133F] placeholder-[#756883] focus:border-[#451475] focus:outline-none transition-colors"
           />
         </div>
@@ -370,12 +394,25 @@ export function AttendancePage() {
                           </button>
                         </>
                       ) : (
-                        <>
+                        <div className="flex items-center gap-2">
+                          {day.dayId !== 'd1' && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyFromDay1(day.dayId);
+                              }}
+                              className="hidden sm:flex items-center gap-1 rounded-xl border border-dashed border-[#451475]/40 bg-[#FAF7FD] px-2.5 py-1 text-[11px] font-bold text-[#451475] hover:bg-[#F3EDFB] transition-colors"
+                            >
+                              <Copy className="h-3 w-3" />
+                              Copy from Day 1
+                            </button>
+                          )}
                           <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-[#756883]">
-                            Not Started
+                            {day.status === 'Not Started' ? 'Not Started' : 'Configured'}
                           </span>
                           <ChevronRight className="h-4 w-4 text-[#756883]" />
-                        </>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -427,7 +464,7 @@ export function AttendancePage() {
                             </div>
 
                             <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                              {session.officers.map((officer) => (
+                              {session.officers.slice(0, 3).map((officer) => (
                                 <div
                                   key={officer.id}
                                   className="flex items-center gap-2 rounded-full border border-[#E5E0EB] bg-white py-1 pl-1.5 pr-3 shadow-xs"
@@ -446,6 +483,16 @@ export function AttendancePage() {
                                   </div>
                                 </div>
                               ))}
+
+                              {session.officers.length > 3 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenAssign(day.dayId, session, day.dateStr)}
+                                  className="rounded-full bg-purple-100 px-2.5 py-1 text-[10px] font-bold text-[#451475] hover:bg-purple-200 transition-colors"
+                                >
+                                  +{session.officers.length - 3} more
+                                </button>
+                              )}
 
                               {/* Add Officers Pill Button */}
                               <button
