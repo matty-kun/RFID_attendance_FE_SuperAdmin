@@ -645,9 +645,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 <p className="text-xs text-[#756883]">Configure the attendance sessions for each day of your event.</p>
               </div>
 
-              {/* Unified Segmented Day Selector Bar (Apple/Linear style) */}
+              {/* Unified Segmented Day Selector Bar (Balanced & Centered with equal-width tabs) */}
               <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB] p-1.5 shadow-2xs">
-                <div className="flex items-center gap-1.5 overflow-x-auto">
+                <div className="grid grid-flow-col auto-cols-fr gap-1.5 overflow-x-auto">
                   {eventDaysList.map((d) => {
                     const isSelected = selectedDayTab === d.num;
                     return (
@@ -655,7 +655,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                         key={d.num}
                         type="button"
                         onClick={() => setSelectedDayTab(d.num)}
-                        className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs transition-all whitespace-nowrap ${
+                        className={`flex items-center justify-center gap-2 rounded-xl py-2 px-3 text-xs transition-all whitespace-nowrap ${
                           isSelected
                             ? 'bg-[#451475] text-white font-bold shadow-xs'
                             : 'bg-transparent text-[#756883] font-semibold hover:text-[#24133F] hover:bg-white/80'
