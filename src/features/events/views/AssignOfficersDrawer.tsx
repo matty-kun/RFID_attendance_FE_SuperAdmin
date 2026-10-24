@@ -199,7 +199,7 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
                   sessionStatus === 'Active'
                     ? 'bg-[#10B981]'
                     : sessionStatus === 'Upcoming'
-                    ? 'bg-[#3B82F6]'
+                    ? 'bg-[#F59E0B]'
                     : 'bg-slate-400'
                 }`}
               >

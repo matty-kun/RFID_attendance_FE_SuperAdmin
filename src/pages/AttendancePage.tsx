@@ -793,7 +793,7 @@ export function AttendancePage() {
                                   session.status === 'Active'
                                     ? 'bg-[#10B981]'
                                     : session.status === 'Upcoming'
-                                    ? 'bg-[#3B82F6]'
+                                    ? 'bg-[#F59E0B]'
                                     : session.status === 'Completed'
                                     ? 'bg-emerald-700'
                                     : 'bg-slate-400'
