@@ -1245,20 +1245,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
 
 
-              {/* Formatted live preview */}
-              <div className="rounded-2xl border border-[#451475]/15 bg-[#FAF7FD] p-3 shadow-2xs">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#756883]">
-                  Selected Scanning Window
-                </span>
-                <div className="mt-1 flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#451475]">
-                    {formatSlotTimeWindow(editingTimeSlot.start, editingTimeSlot.end)}
-                  </span>
-                  <span className="rounded-full bg-purple-100/70 px-2.5 py-0.5 text-[10px] font-semibold text-[#451475]">
-                    Active
-                  </span>
-                </div>
-              </div>
+
             </div>
 
             {/* Modal actions */}
