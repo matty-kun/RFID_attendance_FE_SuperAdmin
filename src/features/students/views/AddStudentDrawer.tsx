@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Drawer } from '../../../components/common/Drawer';
+import { Dropdown } from '../../../components/common/Dropdown';
 import { Input } from '../../../components/common/Input';
 import { soundManager } from '../../../utils/audioFeedback';
 import { toast } from '../../../context';
@@ -31,6 +32,36 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
   const [selectedInventoryUid, setSelectedInventoryUid] = useState('');
 
   const scannerInputRef = useRef<HTMLInputElement>(null);
+
+  const courseOptions = useMemo(
+    () => [
+      { value: 'BS Information Technology', label: 'BS Information Technology' },
+      { value: 'BS Computer Science', label: 'BS Computer Science' },
+      { value: 'BS Information Systems', label: 'BS Information Systems' },
+      { value: 'BS Computer Engineering', label: 'BS Computer Engineering' },
+      { value: 'BS Business Administration', label: 'BS Business Administration' },
+    ],
+    []
+  );
+
+  const yearLevelOptions = useMemo(
+    () => [
+      { value: '1', label: '1st Year' },
+      { value: '2', label: '2nd Year' },
+      { value: '3', label: '3rd Year' },
+      { value: '4', label: '4th Year' },
+    ],
+    []
+  );
+
+  const inventoryOptions = useMemo(
+    () =>
+      availableCards.map((card) => ({
+        value: card.uid,
+        label: `Card #${card.cardNumber} · ${card.uid}`,
+      })),
+    [availableCards]
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -224,17 +255,14 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
             <div className="space-y-1.5">
               {availableCards.length > 0 ? (
                 <>
-                  <select
+                  <Dropdown
                     value={selectedInventoryUid}
-                    onChange={(e) => setSelectedInventoryUid(e.target.value)}
-                    className="w-full rounded-xl border border-[#E5E0EB] bg-white px-3 py-2.5 text-xs font-mono font-semibold text-[#24133F] focus:border-[#7026B7] focus:outline-none"
-                  >
-                    {availableCards.map((card) => (
-                      <option key={card.id} value={card.uid}>
-                        Card #{card.cardNumber} · {card.uid}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setSelectedInventoryUid(val)}
+                    options={inventoryOptions}
+                    placeholder="Select card from pool"
+                    className="w-full"
+                    buttonClassName="w-full h-10 px-3 text-xs font-mono font-bold text-[#24133F]"
+                  />
                   <p className="text-[11px] text-[#756883]">
                     Selected card will be linked upon registration.
                   </p>
@@ -284,33 +312,28 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
               <label className="block text-xs font-semibold text-[#24133F]">
                 Academic program
               </label>
-              <select
+              <Dropdown
                 value={course}
-                onChange={(e) => setCourse(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-[#E5E0EB] text-xs font-medium text-[#24133F] bg-white focus:outline-none focus:border-[#7026B7]"
-              >
-                <option value="BS Information Technology">BS Information Technology</option>
-                <option value="BS Computer Science">BS Computer Science</option>
-                <option value="BS Information Systems">BS Information Systems</option>
-                <option value="BS Computer Engineering">BS Computer Engineering</option>
-                <option value="BS Business Administration">BS Business Administration</option>
-              </select>
+                onChange={(val) => setCourse(val)}
+                options={courseOptions}
+                placeholder="Select program"
+                className="w-full"
+                buttonClassName="w-full h-10 px-3 text-xs font-medium text-[#24133F]"
+              />
             </div>
 
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-[#24133F]">
                 Year level
               </label>
-              <select
-                value={yearLevel}
-                onChange={(e) => setYearLevel(Number(e.target.value))}
-                className="w-full px-3 py-2.5 rounded-xl border border-[#E5E0EB] text-xs font-medium text-[#24133F] bg-white focus:outline-none focus:border-[#7026B7]"
-              >
-                <option value={1}>1st Year</option>
-                <option value={2}>2nd Year</option>
-                <option value={3}>3rd Year</option>
-                <option value={4}>4th Year</option>
-              </select>
+              <Dropdown
+                value={String(yearLevel)}
+                onChange={(val) => setYearLevel(Number(val))}
+                options={yearLevelOptions}
+                placeholder="Select year"
+                className="w-full"
+                buttonClassName="w-full h-10 px-3 text-xs font-medium text-[#24133F]"
+              />
             </div>
           </div>
         </div>
