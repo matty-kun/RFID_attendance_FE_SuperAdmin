@@ -949,24 +949,22 @@ export function AttendancePage() {
       />
 
       {/* Assign Officers Drawer (With location per officer) */}
-      {assigningSession && (
-        <AssignOfficersDrawer
-          isOpen={Boolean(assigningSession)}
-          onClose={() => setAssigningSession(null)}
-          sessionName={assigningSession.session.name}
-          sessionTime={assigningSession.session.timeWindow}
-          sessionDate={assigningSession.dateStr}
-          sessionStatus={
-            assigningSession.session.status === 'Active'
-              ? 'Active'
-              : assigningSession.session.status === 'Upcoming'
-              ? 'Upcoming'
-              : 'Completed'
-          }
-          initialAssigned={assigningSession.session.officers}
-          onSave={handleSaveAssignedOfficers}
-        />
-      )}
+      <AssignOfficersDrawer
+        isOpen={Boolean(assigningSession)}
+        onClose={() => setAssigningSession(null)}
+        sessionName={assigningSession?.session.name || ''}
+        sessionTime={assigningSession?.session.timeWindow || ''}
+        sessionDate={assigningSession?.dateStr || ''}
+        sessionStatus={
+          assigningSession?.session.status === 'Active'
+            ? 'Active'
+            : assigningSession?.session.status === 'Upcoming'
+            ? 'Upcoming'
+            : 'Completed'
+        }
+        initialAssigned={assigningSession?.session.officers || []}
+        onSave={handleSaveAssignedOfficers}
+      />
 
       {/* Edit Session Time Window Drawer */}
       <EditTimeWindowDrawer
