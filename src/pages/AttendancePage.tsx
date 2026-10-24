@@ -953,18 +953,18 @@ export function AttendancePage() {
           document.body
         )}
 
-      {/* Undo Notification Toast */}
+      {/* Undo Notification Toast (White mode Presnt theme) */}
       {toastUndo &&
         createPortal(
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-[#24133F]/20 bg-[#24133F] px-4 py-3 text-white shadow-2xl animate-in slide-in-from-bottom-5 duration-200">
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full border border-[#E5E0EB] bg-white px-4 py-2.5 text-[#24133F] shadow-xl animate-in slide-in-from-bottom-5 duration-200">
             <CheckCircle2 className="h-4 w-4 text-[#10B981] shrink-0" />
-            <span className="text-xs font-semibold">
+            <span className="text-xs font-semibold text-[#24133F]">
               &quot;{toastUndo.sessionName}&quot; marked as completed
             </span>
             <button
               type="button"
               onClick={handleUndoMarkComplete}
-              className="ml-2 flex items-center gap-1.5 rounded-xl bg-white/20 px-3 py-1 text-xs font-bold text-white hover:bg-white/30 active:scale-95 transition-all"
+              className="ml-1 flex items-center gap-1.5 rounded-full border border-[#E9DDF8] bg-[#FAF7FD] px-3 py-1 text-xs font-bold text-[#451475] hover:bg-[#F3EDFB] active:scale-95 transition-all shadow-xs"
             >
               <RotateCcw className="h-3 w-3" />
               Undo
@@ -972,7 +972,7 @@ export function AttendancePage() {
             <button
               type="button"
               onClick={() => setToastUndo(null)}
-              className="ml-1 p-1 rounded-lg text-white/60 hover:text-white"
+              className="p-1 rounded-full text-[#756883] hover:text-[#24133F] hover:bg-slate-100 transition-colors"
               aria-label="Dismiss notification"
             >
               <X className="h-3.5 w-3.5" />
