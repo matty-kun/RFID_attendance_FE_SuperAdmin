@@ -750,9 +750,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                 className="group flex items-center gap-1.5 rounded-lg bg-white hover:bg-[#FAF7FD] border border-[#E5E0EB] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#24133F] hover:text-[#451475] transition-all shadow-xs"
                                 title="Click to edit check-in window"
                               >
-                                <Clock className="h-3 w-3 text-[#451475]" />
+                                <Clock className="h-3.5 w-3.5 text-[#451475]" />
                                 <span>{session.slot.inTime}</span>
-                                <Pencil className="h-3 w-3 text-[#756883] group-hover:text-[#451475] transition-colors" />
                               </button>
                             </div>
 
@@ -806,19 +805,18 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                           {/* OUT Slot Card */}
                           <div className="rounded-2xl border border-[#F1EEF4] bg-[#FAF8FB]/50 p-3.5 space-y-2.5">
                             <div className="flex items-center justify-between">
-                              <span className="flex items-center gap-1 font-bold text-[#3B82F6] text-xs">
-                                <span className="h-2 w-2 rounded-full bg-[#3B82F6]" />
+                              <span className="flex items-center gap-1 font-bold text-[#EF3340] text-xs">
+                                <span className="h-2 w-2 rounded-full bg-[#EF3340]" />
                                 Check-out Window
                               </span>
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditTimeSlot(session.type, 'OUT', session.slot.outTime)}
-                                className="group flex items-center gap-1.5 rounded-lg bg-white hover:bg-[#FAF7FD] border border-[#E5E0EB] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#24133F] hover:text-[#451475] transition-all shadow-xs"
+                                className="group flex items-center gap-1.5 rounded-lg bg-white hover:bg-[#FAF7FD] border border-[#E5E0EB] hover:border-[#EF3340] px-2.5 py-1 text-[11px] font-semibold text-[#24133F] hover:text-[#EF3340] transition-all shadow-xs"
                                 title="Click to edit check-out window"
                               >
-                                <Clock className="h-3 w-3 text-[#3B82F6]" />
+                                <Clock className="h-3.5 w-3.5 text-[#EF3340]" />
                                 <span>{session.slot.outTime}</span>
-                                <Pencil className="h-3 w-3 text-[#756883] group-hover:text-[#451475] transition-colors" />
                               </button>
                             </div>
 
