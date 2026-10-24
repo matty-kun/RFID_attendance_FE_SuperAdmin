@@ -8,3 +8,4 @@ export * from './CalendarDatePicker';
 export * from './Dropdown';
 export * from './ExportButton';
 export * from './DeleteConfirmationModal';
+export * from './Checkbox';

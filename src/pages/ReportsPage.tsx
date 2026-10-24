@@ -5,6 +5,7 @@ import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
 import { DeleteConfirmationModal } from '../components/common/DeleteConfirmationModal';
+import { Checkbox } from '../components/common/Checkbox';
 import { attendanceService } from '../features/attendance/services/attendanceService';
 import type { AttendanceRecord } from '../features/attendance/models';
 import { isDevPreview } from '../features/auth/devPreview';
@@ -506,12 +507,10 @@ export function ReportsPage() {
             <thead>
               <tr className="text-[#756883] font-medium">
                 <th className="w-10 py-3">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     aria-label="Select all students"
                     checked={filteredStudents.length > 0 && selected.length === filteredStudents.length}
                     onChange={(e) => setSelected(e.target.checked ? filteredStudents.map((r) => r.id) : [])}
-                    className="w-4 h-4 rounded border-[#D1CBD8] text-[#451475] accent-[#451475] focus:ring-[#451475] focus:ring-offset-0 cursor-pointer"
                   />
                 </th>
                 <th className="py-3 font-medium">Name</th>
@@ -528,8 +527,7 @@ export function ReportsPage() {
               {filteredStudents.map((record) => (
                 <tr key={record.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="py-3">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       aria-label={`Select ${record.name}`}
                       checked={selected.includes(record.id)}
                       onChange={(e) =>
@@ -537,7 +535,6 @@ export function ReportsPage() {
                           e.target.checked ? [...prev, record.id] : prev.filter((id) => id !== record.id)
                         )
                       }
-                      className="w-4 h-4 rounded border-[#D1CBD8] text-[#451475] accent-[#451475] focus:ring-[#451475] focus:ring-offset-0 cursor-pointer"
                     />
                   </td>
                   <td className="py-3 font-medium">
