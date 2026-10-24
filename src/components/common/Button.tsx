@@ -22,19 +22,19 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    'inline-flex items-center justify-center font-bold select-none transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:ring-offset-2';
+    'inline-flex items-center justify-center font-bold select-none transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:ring-offset-2';
 
   const variants = {
     primary:
-      'bg-brand-700 hover:bg-brand-800 text-white shadow-[0_3px_0_0_#58158C] hover:-translate-y-0.5 active:translate-y-[2px] active:shadow-none',
+      'bg-brand-700 hover:bg-brand-800 text-white shadow-[0_3px_0_0_#58158C] active:translate-y-[2px] active:shadow-none',
     secondary:
-      'bg-white hover:bg-[#F7F6F9] text-[#24133F] border border-[#E5E0EB] shadow-sm hover:-translate-y-0.5 active:translate-y-[2px]',
+      'bg-white hover:bg-[#F7F6F9] text-[#24133F] border border-[#E5E0EB] shadow-sm active:translate-y-[1px]',
     danger:
-      'bg-[#EF3340] hover:bg-[#D92734] text-white shadow-[0_3px_0_0_#B91C2A] hover:-translate-y-0.5 active:translate-y-[2px] active:shadow-none',
+      'bg-[#EF3340] hover:bg-[#D92734] text-white shadow-[0_3px_0_0_#B91C2A] active:translate-y-[2px] active:shadow-none',
     success:
-      'bg-[#17B556] hover:bg-[#12953B] text-white shadow-[0_3px_0_0_#0E7A2E] hover:-translate-y-0.5 active:translate-y-[2px] active:shadow-none',
+      'bg-[#17B556] hover:bg-[#12953B] text-white shadow-[0_3px_0_0_#0E7A2E] active:translate-y-[2px] active:shadow-none',
     outline:
-      'bg-transparent hover:bg-brand-50 text-brand-700 border border-brand-700 hover:-translate-y-0.5 active:translate-y-[2px]',
+      'bg-transparent hover:bg-brand-50 text-brand-700 border border-brand-700 active:translate-y-[1px]',
     ghost:
       'bg-transparent hover:bg-brand-50 text-brand-700 active:bg-brand-100',
   };
