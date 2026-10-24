@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Search, Calendar, MapPin, Check } from 'lucide-react';
 import { Checkbox } from '../../../components/common/Checkbox';
+import { Dropdown, type DropdownOption } from '../../../components/common/Dropdown';
 
 export interface AssignedOfficer {
   id: string;
@@ -86,10 +87,26 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
     );
   }, [assigned, search]);
 
+  const locationOptions: DropdownOption[] = useMemo(
+    () =>
+      availableLocations.map((loc) => ({
+        value: loc,
+        label: loc,
+        icon: <MapPin className="h-3 w-3 text-[#451475]" />,
+      })),
+    []
+  );
+
   if (!isRendered) return null;
 
   const handleRemoveAssigned = (id: string) => {
     setAssigned((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const handleChangeAssignedLocation = (officerId: string, location: string) => {
+    setAssigned((prev) =>
+      prev.map((o) => (o.id === officerId ? { ...o, location } : o))
+    );
   };
 
   const handleToggleSelect = (adminId: string) => {
@@ -111,7 +128,7 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
     }));
   };
 
-  const handleAssignSelected = () => {
+  const handleSaveAll = () => {
     const newAssigned: AssignedOfficer[] = [];
     for (const [adminId, loc] of Object.entries(selectedToAdd)) {
       const found = defaultAdminPool.find((a) => a.id === adminId);
@@ -130,6 +147,9 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
   };
 
   const totalSelectedCount = Object.keys(selectedToAdd).length;
+  const hasChanges =
+    totalSelectedCount > 0 ||
+    JSON.stringify(assigned) !== JSON.stringify(initialAssigned);
 
   return createPortal(
     <div
@@ -209,12 +229,15 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-[#24133F]">{officer.name}</p>
-                      <div className="mt-0.5 flex items-center gap-2">
+                      <div className="mt-1 flex items-center gap-2">
                         <span className="text-[10px] text-[#756883]">{officer.role}</span>
-                        <span className="flex items-center gap-1 rounded-md bg-purple-50 px-1.5 py-0.5 text-[10px] font-medium text-[#451475]">
-                          <MapPin className="h-2.5 w-2.5" />
-                          {officer.location}
-                        </span>
+                        <Dropdown
+                          value={officer.location}
+                          onChange={(newLoc) => handleChangeAssignedLocation(officer.id, newLoc)}
+                          options={locationOptions}
+                          buttonClassName="h-6 px-2 py-0 text-[10px] font-semibold text-[#451475] bg-[#F5F0FB] border border-[#E9DDF8] hover:bg-[#EDE3FA] rounded-md shadow-none gap-1"
+                          menuClassName="min-w-[170px]"
+                        />
                       </div>
                     </div>
                   </div>
@@ -304,21 +327,21 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
                       </span>
                     </div>
 
-                    {/* Location picker if checked (Addresses user comment "add location to officer") */}
+                    {/* Location picker if checked (Custom styled Dropdown) */}
                     {isChecked && (
-                      <div className="mt-2.5 flex items-center gap-2 border-t border-[#F1EEF4] pt-2">
-                        <span className="text-[10px] font-medium text-[#756883]">Assign to location:</span>
-                        <select
+                      <div className="mt-2.5 flex items-center justify-between border-t border-[#F1EEF4] pt-2">
+                        <span className="text-[11px] font-medium text-[#756883] flex items-center gap-1.5">
+                          <MapPin className="h-3 w-3 text-[#756883]" />
+                          Assign checkpoint:
+                        </span>
+                        <Dropdown
                           value={selectedLocation}
-                          onChange={(e) => handleChangeLocation(admin.id, e.target.value)}
-                          className="rounded-lg border border-[#E5E0EB] bg-white px-2 py-1 text-[11px] font-semibold text-[#24133F] focus:outline-none"
-                        >
-                          {availableLocations.map((loc) => (
-                            <option key={loc} value={loc}>
-                              {loc}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(newLoc) => handleChangeLocation(admin.id, newLoc)}
+                          options={locationOptions}
+                          buttonClassName="h-7 px-2.5 text-[11px] font-semibold text-[#24133F] rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
+                          menuClassName="min-w-[190px] z-50"
+                          align="right"
+                        />
                       </div>
                     )}
                   </div>
@@ -347,12 +370,12 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
             </button>
             <button
               type="button"
-              onClick={handleAssignSelected}
-              disabled={totalSelectedCount === 0}
+              onClick={handleSaveAll}
+              disabled={!hasChanges}
               className="flex items-center gap-1.5 rounded-xl bg-[#451475] px-4 py-2 text-xs font-bold text-white shadow-[0_4px_0_0_#2B0C4A] hover:bg-[#38105F] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50"
             >
               <Check className="h-3.5 w-3.5" />
-              Assign Officers
+              {totalSelectedCount > 0 ? `Assign (${totalSelectedCount}) Officers` : 'Save Changes'}
             </button>
           </div>
         </div>

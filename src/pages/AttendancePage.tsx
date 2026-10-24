@@ -590,7 +590,10 @@ export function AttendancePage() {
                           <div className="mt-3.5 border-t border-[#F1EEF4] pt-3">
                             <div className="flex items-center gap-1.5 text-[11px] text-[#756883]">
                               <Users className="h-3.5 w-3.5" />
-                              <span>{session.officers.length} officer assigned</span>
+                              <span>
+                                {session.officers.length}{' '}
+                                {session.officers.length === 1 ? 'officer' : 'officers'} assigned
+                              </span>
                             </div>
 
                             <div className="mt-2.5 flex flex-wrap items-center gap-2">
