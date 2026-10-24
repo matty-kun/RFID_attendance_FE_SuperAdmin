@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserPlus, CreditCard, Sparkles, Check, Radio } from 'lucide-react';
+import { CreditCard, Sparkles, Check, Radio } from 'lucide-react';
 import { Drawer } from '../../../components/common/Drawer';
 import { Input } from '../../../components/common/Input';
 import { soundManager } from '../../../utils/audioFeedback';
@@ -84,9 +84,8 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
-      title="Register Student"
-      description="Create student profile and assign an RFID card before release"
-      icon={<UserPlus className="h-5 w-5" />}
+      title="Register student"
+      description="Create student profile and assign an RFID card before release."
       footer={
         <div className="flex items-center justify-end gap-3">
           <button
