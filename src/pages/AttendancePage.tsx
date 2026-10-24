@@ -262,8 +262,50 @@ export function AttendancePage() {
     setAssigningSession({ dayId, session, dateStr });
   };
 
+  // Feedback Toast & Card Highlight States
+  const [highlightedSessionId, setHighlightedSessionId] = useState<string | null>(null);
+  const [feedbackToast, setFeedbackToast] = useState<{
+    id: string;
+    message: string;
+    type: 'success' | 'info' | 'delete';
+    actionLabel?: string;
+    onAction?: () => void;
+  } | null>(null);
+
+  const triggerHighlight = (sessionId: string) => {
+    setHighlightedSessionId(sessionId);
+    setTimeout(() => {
+      setHighlightedSessionId((current) => (current === sessionId ? null : current));
+    }, 1800);
+  };
+
+  const showFeedback = (
+    message: string,
+    type: 'success' | 'info' | 'delete' = 'success',
+    actionLabel?: string,
+    onAction?: () => void
+  ) => {
+    setFeedbackToast({
+      id: Math.random().toString(),
+      message,
+      type,
+      actionLabel,
+      onAction,
+    });
+  };
+
+  useEffect(() => {
+    if (!feedbackToast) return;
+    const timer = setTimeout(() => {
+      setFeedbackToast(null);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [feedbackToast]);
+
   const handleSaveAssignedOfficers = (updatedOfficers: AssignedOfficer[]) => {
     if (!assigningSession) return;
+    const targetSessionId = assigningSession.session.id;
+    const targetSessionName = assigningSession.session.name;
     setEventData((prev) => ({
       ...prev,
       days: prev.days.map((d) =>
@@ -271,7 +313,7 @@ export function AttendancePage() {
           ? {
               ...d,
               sessions: d.sessions.map((s) =>
-                s.id === assigningSession.session.id
+                s.id === targetSessionId
                   ? { ...s, officers: updatedOfficers }
                   : s
               ),
@@ -279,6 +321,10 @@ export function AttendancePage() {
           : d
       ),
     }));
+    triggerHighlight(targetSessionId);
+    showFeedback(
+      `Assigned ${updatedOfficers.length} officer${updatedOfficers.length === 1 ? '' : 's'} to ${targetSessionName}`
+    );
   };
 
   // Session action menus & edit modal state
@@ -287,22 +333,6 @@ export function AttendancePage() {
   const [startTimeInput, setStartTimeInput] = useState('07:00');
   const [endTimeInput, setEndTimeInput] = useState('09:00');
   const [deletingSessionInfo, setDeletingSessionInfo] = useState<{ dayId: string; session: SessionItem } | null>(null);
-
-  // Undo notification state
-  const [toastUndo, setToastUndo] = useState<{
-    dayId: string;
-    sessionId: string;
-    sessionName: string;
-    previousStatus: 'Active' | 'Upcoming' | 'Not Started';
-  } | null>(null);
-
-  useEffect(() => {
-    if (!toastUndo) return;
-    const timer = setTimeout(() => {
-      setToastUndo(null);
-    }, 6000);
-    return () => clearTimeout(timer);
-  }, [toastUndo]);
 
   const handleToggleSessionComplete = (dayId: string, session: SessionItem) => {
     if (session.status === 'Completed') {
@@ -321,7 +351,8 @@ export function AttendancePage() {
             : d
         ),
       }));
-      setToastUndo(null);
+      triggerHighlight(session.id);
+      showFeedback(`"${session.name}" reopened as ${revertStatus}`, 'success');
     } else {
       // Mark as completed
       const prior = session.status;
@@ -340,34 +371,26 @@ export function AttendancePage() {
             : d
         ),
       }));
-      setToastUndo({
-        dayId,
-        sessionId: session.id,
-        sessionName: session.name,
-        previousStatus: prior,
+      triggerHighlight(session.id);
+      showFeedback(`"${session.name}" marked as completed`, 'info', 'Undo', () => {
+        setEventData((prev) => ({
+          ...prev,
+          days: prev.days.map((d) =>
+            d.dayId === dayId
+              ? {
+                  ...d,
+                  sessions: d.sessions.map((s) =>
+                    s.id === session.id ? { ...s, status: prior } : s
+                  ),
+                }
+              : d
+          ),
+        }));
+        triggerHighlight(session.id);
+        showFeedback(`"${session.name}" restored to ${prior}`, 'success');
       });
     }
     setOpenMenuSessionId(null);
-  };
-
-  const handleUndoMarkComplete = () => {
-    if (!toastUndo) return;
-    setEventData((prev) => ({
-      ...prev,
-      days: prev.days.map((d) =>
-        d.dayId === toastUndo.dayId
-          ? {
-              ...d,
-              sessions: d.sessions.map((s) =>
-                s.id === toastUndo.sessionId
-                  ? { ...s, status: toastUndo.previousStatus }
-                  : s
-              ),
-            }
-          : d
-      ),
-    }));
-    setToastUndo(null);
   };
 
   const handleOpenEditTime = (dayId: string, session: SessionItem) => {
@@ -388,6 +411,7 @@ export function AttendancePage() {
 
   const handleSaveEditTime = () => {
     if (!editingTimeSession) return;
+    const targetSessionId = editingTimeSession.session.id;
     const formatted = formatTimeWindow(startTimeInput, endTimeInput);
     setEventData((prev) => ({
       ...prev,
@@ -396,7 +420,7 @@ export function AttendancePage() {
           ? {
               ...d,
               sessions: d.sessions.map((s) =>
-                s.id === editingTimeSession.session.id
+                s.id === targetSessionId
                   ? { ...s, timeWindow: formatted }
                   : s
               ),
@@ -404,23 +428,39 @@ export function AttendancePage() {
           : d
       ),
     }));
+    triggerHighlight(targetSessionId);
+    showFeedback(`Time window updated to ${formatted}`, 'success');
     setEditingTimeSession(null);
   };
 
   const handleConfirmDeleteSession = () => {
     if (!deletingSessionInfo) return;
+    const deletedSession = deletingSessionInfo.session;
+    const targetDayId = deletingSessionInfo.dayId;
     setEventData((prev) => ({
       ...prev,
       days: prev.days.map((d) =>
-        d.dayId === deletingSessionInfo.dayId
+        d.dayId === targetDayId
           ? {
               ...d,
-              sessions: d.sessions.filter((s) => s.id !== deletingSessionInfo.session.id),
+              sessions: d.sessions.filter((s) => s.id !== deletedSession.id),
             }
           : d
       ),
     }));
     setDeletingSessionInfo(null);
+    showFeedback(`"${deletedSession.name}" deleted`, 'delete', 'Undo', () => {
+      setEventData((prev) => ({
+        ...prev,
+        days: prev.days.map((d) =>
+          d.dayId === targetDayId
+            ? { ...d, sessions: [...d.sessions, deletedSession] }
+            : d
+        ),
+      }));
+      triggerHighlight(deletedSession.id);
+      showFeedback(`Restored "${deletedSession.name}"`, 'success');
+    });
   };
 
   const handleCopyFromDay1 = (targetDayId: string) => {
@@ -444,6 +484,11 @@ export function AttendancePage() {
       ),
     }));
     setExpandedDayId(targetDayId);
+    const targetDay = eventData.days.find((d) => d.dayId === targetDayId);
+    showFeedback(
+      `Copied schedule from Day 1 to ${targetDay ? targetDay.dayLabel.split('-')[0].trim() : 'Day'}`,
+      'success'
+    );
   };
 
   const handleEventPublished = (newEvent: any) => {
@@ -456,6 +501,7 @@ export function AttendancePage() {
       status: 'Ongoing',
       days: initialEvent.days,
     });
+    showFeedback(`Event "${newEvent.name}" published successfully!`, 'success');
   };
 
   const filteredDays = useMemo(() => {
@@ -638,7 +684,11 @@ export function AttendancePage() {
                   {day.sessions.map((session) => (
                         <div
                           key={session.id}
-                          className="rounded-2xl border border-[#E5E0EB] bg-white p-4 shadow-sm"
+                          className={`rounded-2xl border bg-white p-4 shadow-sm transition-all duration-300 ${
+                            highlightedSessionId === session.id
+                              ? 'border-[#451475] ring-2 ring-[#451475]/25 shadow-md scale-[1.008]'
+                              : 'border-[#E5E0EB]'
+                          }`}
                         >
                           {/* Session Header */}
                           <div className="flex items-center justify-between">
@@ -953,25 +1003,34 @@ export function AttendancePage() {
           document.body
         )}
 
-      {/* Undo Notification Toast (White mode Presnt theme) */}
-      {toastUndo &&
+      {/* Unified Action Feedback Toast (White mode Presnt theme) */}
+      {feedbackToast &&
         createPortal(
           <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full border border-[#E5E0EB] bg-white px-4 py-2.5 text-[#24133F] shadow-xl animate-in slide-in-from-bottom-5 duration-200">
-            <CheckCircle2 className="h-4 w-4 text-[#10B981] shrink-0" />
+            {feedbackToast.type === 'delete' ? (
+              <Trash2 className="h-4 w-4 text-[#EF4444] shrink-0" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 text-[#10B981] shrink-0" />
+            )}
             <span className="text-xs font-semibold text-[#24133F]">
-              &quot;{toastUndo.sessionName}&quot; marked as completed
+              {feedbackToast.message}
             </span>
+            {feedbackToast.actionLabel && feedbackToast.onAction && (
+              <button
+                type="button"
+                onClick={() => {
+                  feedbackToast.onAction?.();
+                  setFeedbackToast(null);
+                }}
+                className="ml-1 flex items-center gap-1.5 rounded-full border border-[#E9DDF8] bg-[#FAF7FD] px-3 py-1 text-xs font-bold text-[#451475] hover:bg-[#F3EDFB] active:scale-95 transition-all shadow-xs"
+              >
+                <RotateCcw className="h-3 w-3" />
+                {feedbackToast.actionLabel}
+              </button>
+            )}
             <button
               type="button"
-              onClick={handleUndoMarkComplete}
-              className="ml-1 flex items-center gap-1.5 rounded-full border border-[#E9DDF8] bg-[#FAF7FD] px-3 py-1 text-xs font-bold text-[#451475] hover:bg-[#F3EDFB] active:scale-95 transition-all shadow-xs"
-            >
-              <RotateCcw className="h-3 w-3" />
-              Undo
-            </button>
-            <button
-              type="button"
-              onClick={() => setToastUndo(null)}
+              onClick={() => setFeedbackToast(null)}
               className="p-1 rounded-full text-[#756883] hover:text-[#24133F] hover:bg-slate-100 transition-colors"
               aria-label="Dismiss notification"
             >
