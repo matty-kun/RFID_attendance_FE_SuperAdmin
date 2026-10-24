@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  Trash2,
 } from 'lucide-react';
 import { Checkbox } from '../../../components/common/Checkbox';
 import { TimePicker } from '../../../components/common/TimePicker';
@@ -24,8 +25,10 @@ import {
 } from './AssignOfficersDrawer';
 
 export interface SessionTimeSlot {
+  hasIn: boolean;
   inTime: string;
   inOfficers: AssignedOfficer[];
+  hasOut: boolean;
   outTime: string;
   outOfficers: AssignedOfficer[];
 }
@@ -105,25 +108,65 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   // Dynamic session slots & officers
   const [morningSlot, setMorningSlot] = useState<SessionTimeSlot>({
+    hasIn: true,
     inTime: '7:00 - 8:30 AM',
     inOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'Cite Building', status: 'Online' }],
+    hasOut: true,
     outTime: '12:00 - 1:30 PM',
     outOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'Cite Building', status: 'Online' }],
   });
 
   const [afternoonSlot, setAfternoonSlot] = useState<SessionTimeSlot>({
+    hasIn: true,
     inTime: '1:00 - 2:30 PM',
     inOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'Cite Building', status: 'Online' }],
+    hasOut: true,
     outTime: '5:00 - 6:30 PM',
     outOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'Cite Building', status: 'Online' }],
   });
 
   const [eveningSlot, setEveningSlot] = useState<SessionTimeSlot>({
+    hasIn: true,
     inTime: '6:00 - 7:30 PM',
     inOfficers: [{ id: 'adm-1', name: 'Ako si batman', initials: 'AB', role: 'Admin', location: 'Gymnasium', status: 'Online' }],
+    hasOut: true,
     outTime: '9:00 - 10:30 PM',
     outOfficers: [{ id: 'adm-1', name: 'Ako si batman', initials: 'AB', role: 'Admin', location: 'Gymnasium', status: 'Online' }],
   });
+
+  const handleToggleWindow = (
+    sessionType: 'Morning' | 'Afternoon' | 'Evening',
+    slot: 'IN' | 'OUT',
+    enable: boolean
+  ) => {
+    const updateSlot = (prev: SessionTimeSlot): SessionTimeSlot => {
+      if (!enable) {
+        const otherActive = slot === 'IN' ? prev.hasOut : prev.hasIn;
+        if (!otherActive) {
+          toast.error('A session must have at least one window. Uncheck the session checkbox to disable it.');
+          return prev;
+        }
+        toast.success(`${slot === 'IN' ? 'Check-in' : 'Check-out'} window removed.`);
+      } else {
+        toast.success(`${slot === 'IN' ? 'Check-in' : 'Check-out'} window added.`);
+      }
+      return {
+        ...prev,
+        [slot === 'IN' ? 'hasIn' : 'hasOut']: enable,
+      };
+    };
+
+    if (sessionType === 'Morning') setMorningSlot(updateSlot);
+    if (sessionType === 'Afternoon') setAfternoonSlot(updateSlot);
+    if (sessionType === 'Evening') setEveningSlot(updateSlot);
+  };
+
+  const getSessionBadge = (slot: SessionTimeSlot) => {
+    if (slot.hasIn && slot.hasOut) return 'Both (IN + OUT)';
+    if (slot.hasIn) return 'Check-in Only';
+    if (slot.hasOut) return 'Check-out Only';
+    return 'Disabled';
+  };
 
   // Time Window Edit Modal State (with Start & End tabs)
   const [activeTimeField, setActiveTimeField] = useState<'start' | 'end'>('start');
@@ -685,7 +728,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 {
                   type: 'Morning' as const,
                   label: 'Morning Session',
-                  badge: 'Both (IN + OUT)',
+                  badge: getSessionBadge(morningSlot),
                   enabled: morningEnabled,
                   setEnabled: setMorningEnabled,
                   expanded: morningExpanded,
@@ -695,7 +738,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 {
                   type: 'Afternoon' as const,
                   label: 'Afternoon Session',
-                  badge: 'Both (IN + OUT)',
+                  badge: getSessionBadge(afternoonSlot),
                   enabled: afternoonEnabled,
                   setEnabled: setAfternoonEnabled,
                   expanded: afternoonExpanded,
@@ -705,7 +748,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 {
                   type: 'Evening' as const,
                   label: 'Evening Session',
-                  badge: 'Both (IN + OUT)',
+                  badge: getSessionBadge(eveningSlot),
                   enabled: eveningEnabled,
                   setEnabled: setEveningEnabled,
                   expanded: eveningExpanded,
@@ -776,28 +819,65 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
                   {session.enabled && session.expanded && (
                         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                          {/* IN Slot Card */}
-                          <div className="rounded-2xl border border-[#F1EEF4] bg-[#FAF8FB]/50 p-3.5 space-y-2.5">
-                            <div className="flex items-center justify-between">
-                              <span className="flex items-center gap-1 font-bold text-emerald-600 text-xs">
-                                <span className="h-2 w-2 rounded-full bg-emerald-600" />
-                                Check-in Window
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditTimeSlot(session.type, 'IN', session.slot.inTime)}
-                                className="group flex items-center gap-1.5 rounded-lg bg-white hover:bg-[#FAF7FD] border border-[#E5E0EB] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#24133F] hover:text-[#451475] transition-all shadow-xs"
-                                title="Click to edit check-in window"
-                              >
-                                <Clock className="h-3.5 w-3.5 text-[#451475]" />
-                                <span>{session.slot.inTime}</span>
-                              </button>
-                            </div>
+                          {/* IN Slot Card or Add Button */}
+                          {session.slot.hasIn ? (
+                            <div className="rounded-2xl border border-[#F1EEF4] bg-[#FAF8FB]/50 p-3.5 space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <span className="flex items-center gap-1 font-bold text-emerald-600 text-xs">
+                                  <span className="h-2 w-2 rounded-full bg-emerald-600" />
+                                  Check-in Window
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditTimeSlot(session.type, 'IN', session.slot.inTime)}
+                                    className="group flex items-center gap-1.5 rounded-lg bg-white hover:bg-[#FAF7FD] border border-[#E5E0EB] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#24133F] hover:text-[#451475] transition-all shadow-xs"
+                                    title="Click to edit check-in window"
+                                  >
+                                    <Clock className="h-3.5 w-3.5 text-[#451475]" />
+                                    <span>{session.slot.inTime}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleWindow(session.type, 'IN', false)}
+                                    className="rounded-lg p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                    title="Delete Check-in window"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
 
-                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                              {session.slot.inOfficers.map((off: AssignedOfficer) => (
+                              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                {session.slot.inOfficers.map((off: AssignedOfficer) => (
+                                  <button
+                                    key={off.id}
+                                    type="button"
+                                    onClick={() =>
+                                      handleOpenAssignDrawer(
+                                        session.type,
+                                        'IN',
+                                        session.slot.inTime,
+                                        session.slot.inOfficers
+                                      )
+                                    }
+                                    className="group flex items-center gap-1.5 rounded-full bg-white border border-[#E5E0EB] hover:border-[#451475] pl-1.5 pr-2.5 py-1 text-[11px] font-semibold text-[#24133F] transition-colors shadow-2xs"
+                                    title="Click to view/change assignment"
+                                  >
+                                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#E9D5FF] text-[9px] font-bold text-[#6D21A8]">
+                                      {off.initials}
+                                    </div>
+                                    <span>{off.name}</span>
+                                    {off.location && (
+                                      <span className="flex items-center gap-0.5 rounded-full bg-[#FAF7FD] text-[9px] font-medium text-[#451475] px-1.5 py-0.2">
+                                        <MapPin className="h-2.5 w-2.5 text-[#451475]" />
+                                        {off.location}
+                                      </span>
+                                    )}
+                                  </button>
+                                ))}
+
                                 <button
-                                  key={off.id}
                                   type="button"
                                   onClick={() =>
                                     handleOpenAssignDrawer(
@@ -807,62 +887,86 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                       session.slot.inOfficers
                                     )
                                   }
-                                  className="group flex items-center gap-1.5 rounded-full bg-white border border-[#E5E0EB] hover:border-[#451475] pl-1.5 pr-2.5 py-1 text-[11px] font-semibold text-[#24133F] transition-colors shadow-2xs"
-                                  title="Click to view/change assignment"
+                                  className="flex items-center gap-1 rounded-full border border-dashed border-[#756883] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#756883] hover:text-[#451475] hover:bg-[#FAF7FD] transition-colors"
                                 >
-                                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#E9D5FF] text-[9px] font-bold text-[#6D21A8]">
-                                    {off.initials}
-                                  </div>
-                                  <span>{off.name}</span>
-                                  {off.location && (
-                                    <span className="flex items-center gap-0.5 rounded-full bg-[#FAF7FD] text-[9px] font-medium text-[#451475] px-1.5 py-0.2">
-                                      <MapPin className="h-2.5 w-2.5 text-[#451475]" />
-                                      {off.location}
-                                    </span>
-                                  )}
+                                  <Plus className="h-3.5 w-3.5" />
+                                  <span>Assign Officers</span>
                                 </button>
-                              ))}
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleOpenAssignDrawer(
-                                    session.type,
-                                    'IN',
-                                    session.slot.inTime,
-                                    session.slot.inOfficers
-                                  )
-                                }
-                                className="flex items-center gap-1 rounded-full border border-dashed border-[#756883] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#756883] hover:text-[#451475] hover:bg-[#FAF7FD] transition-colors"
-                              >
-                                <Plus className="h-3.5 w-3.5" />
-                                <span>Assign Officers</span>
-                              </button>
+                              </div>
                             </div>
-                          </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleWindow(session.type, 'IN', true)}
+                              className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[#E5E0EB] bg-[#FAF8FB]/40 hover:bg-[#FAF8FB] p-5 text-xs font-semibold text-[#756883] hover:text-[#451475] hover:border-[#451475] transition-all min-h-[96px]"
+                            >
+                              <div className="flex items-center gap-1.5 text-emerald-600 font-bold">
+                                <Plus className="h-4 w-4" />
+                                <span>Add Check-in Window</span>
+                              </div>
+                              <span className="text-[11px] text-[#756883] font-normal">Enable check-in attendance window</span>
+                            </button>
+                          )}
 
-                          {/* OUT Slot Card */}
-                          <div className="rounded-2xl border border-[#F1EEF4] bg-[#FAF8FB]/50 p-3.5 space-y-2.5">
-                            <div className="flex items-center justify-between">
-                              <span className="flex items-center gap-1 font-bold text-[#EF3340] text-xs">
-                                <span className="h-2 w-2 rounded-full bg-[#EF3340]" />
-                                Check-out Window
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditTimeSlot(session.type, 'OUT', session.slot.outTime)}
-                                className="group flex items-center gap-1.5 rounded-lg bg-white hover:bg-[#FAF7FD] border border-[#E5E0EB] hover:border-[#EF3340] px-2.5 py-1 text-[11px] font-semibold text-[#24133F] hover:text-[#EF3340] transition-all shadow-xs"
-                                title="Click to edit check-out window"
-                              >
-                                <Clock className="h-3.5 w-3.5 text-[#EF3340]" />
-                                <span>{session.slot.outTime}</span>
-                              </button>
-                            </div>
+                          {/* OUT Slot Card or Add Button */}
+                          {session.slot.hasOut ? (
+                            <div className="rounded-2xl border border-[#F1EEF4] bg-[#FAF8FB]/50 p-3.5 space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <span className="flex items-center gap-1 font-bold text-[#EF3340] text-xs">
+                                  <span className="h-2 w-2 rounded-full bg-[#EF3340]" />
+                                  Check-out Window
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditTimeSlot(session.type, 'OUT', session.slot.outTime)}
+                                    className="group flex items-center gap-1.5 rounded-lg bg-white hover:bg-[#FAF7FD] border border-[#E5E0EB] hover:border-[#EF3340] px-2.5 py-1 text-[11px] font-semibold text-[#24133F] hover:text-[#EF3340] transition-all shadow-xs"
+                                    title="Click to edit check-out window"
+                                  >
+                                    <Clock className="h-3.5 w-3.5 text-[#EF3340]" />
+                                    <span>{session.slot.outTime}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleWindow(session.type, 'OUT', false)}
+                                    className="rounded-lg p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                    title="Delete Check-out window"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
 
-                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                              {session.slot.outOfficers.map((off: AssignedOfficer) => (
+                              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                {session.slot.outOfficers.map((off: AssignedOfficer) => (
+                                  <button
+                                    key={off.id}
+                                    type="button"
+                                    onClick={() =>
+                                      handleOpenAssignDrawer(
+                                        session.type,
+                                        'OUT',
+                                        session.slot.outTime,
+                                        session.slot.outOfficers
+                                      )
+                                    }
+                                    className="group flex items-center gap-1.5 rounded-full bg-white border border-[#E5E0EB] hover:border-[#451475] pl-1.5 pr-2.5 py-1 text-[11px] font-semibold text-[#24133F] transition-colors shadow-2xs"
+                                    title="Click to view/change assignment"
+                                  >
+                                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#E9D5FF] text-[9px] font-bold text-[#6D21A8]">
+                                      {off.initials}
+                                    </div>
+                                    <span>{off.name}</span>
+                                    {off.location && (
+                                      <span className="flex items-center gap-0.5 rounded-full bg-[#FAF7FD] text-[9px] font-medium text-[#451475] px-1.5 py-0.2">
+                                        <MapPin className="h-2.5 w-2.5 text-[#451475]" />
+                                        {off.location}
+                                      </span>
+                                    )}
+                                  </button>
+                                ))}
+
                                 <button
-                                  key={off.id}
                                   type="button"
                                   onClick={() =>
                                     handleOpenAssignDrawer(
@@ -872,39 +976,26 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                       session.slot.outOfficers
                                     )
                                   }
-                                  className="group flex items-center gap-1.5 rounded-full bg-white border border-[#E5E0EB] hover:border-[#451475] pl-1.5 pr-2.5 py-1 text-[11px] font-semibold text-[#24133F] transition-colors shadow-2xs"
-                                  title="Click to view/change assignment"
+                                  className="flex items-center gap-1 rounded-full border border-dashed border-[#756883] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#756883] hover:text-[#451475] hover:bg-[#FAF7FD] transition-colors"
                                 >
-                                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#E9D5FF] text-[9px] font-bold text-[#6D21A8]">
-                                    {off.initials}
-                                  </div>
-                                  <span>{off.name}</span>
-                                  {off.location && (
-                                    <span className="flex items-center gap-0.5 rounded-full bg-[#FAF7FD] text-[9px] font-medium text-[#451475] px-1.5 py-0.2">
-                                      <MapPin className="h-2.5 w-2.5 text-[#451475]" />
-                                      {off.location}
-                                    </span>
-                                  )}
+                                  <Plus className="h-3.5 w-3.5" />
+                                  <span>Assign Officers</span>
                                 </button>
-                              ))}
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleOpenAssignDrawer(
-                                    session.type,
-                                    'OUT',
-                                    session.slot.outTime,
-                                    session.slot.outOfficers
-                                  )
-                                }
-                                className="flex items-center gap-1 rounded-full border border-dashed border-[#756883] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#756883] hover:text-[#451475] hover:bg-[#FAF7FD] transition-colors"
-                              >
-                                <Plus className="h-3.5 w-3.5" />
-                                <span>Assign Officers</span>
-                              </button>
+                              </div>
                             </div>
-                          </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleWindow(session.type, 'OUT', true)}
+                              className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[#E5E0EB] bg-[#FAF8FB]/40 hover:bg-[#FAF8FB] p-5 text-xs font-semibold text-[#756883] hover:text-[#451475] hover:border-[#451475] transition-all min-h-[96px]"
+                            >
+                              <div className="flex items-center gap-1.5 text-[#EF3340] font-bold">
+                                <Plus className="h-4 w-4" />
+                                <span>Add Check-out Window</span>
+                              </div>
+                              <span className="text-[11px] text-[#756883] font-normal">Enable check-out attendance window</span>
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1000,43 +1091,74 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       <div key={dayLabel} className="rounded-xl border border-[#F1EEF4] p-3">
                         <p className="text-xs font-bold text-[#24133F]">{dayLabel}</p>
                         <div className="mt-2 space-y-2 text-xs">
-                          <div className="flex items-center justify-between py-1">
-                            <div>
-                              <span className="font-semibold text-[#24133F]">Morning</span>
-                              <span className="ml-2 text-[11px] text-[#756883]">7:00 AM - 9:00 AM</span>
-                            </div>
-                            <span className="flex items-center gap-1 text-[11px] text-[#756883]">
-                              <MapPin className="h-3 w-3" /> CITE Building
-                            </span>
-                            <span className="rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[10px] font-bold text-[#3B82F6]">
-                              IN and OUT
-                            </span>
-                            <div className="flex -space-x-1">
-                              <span className="h-5 w-5 rounded-full bg-purple-200 border border-white text-[9px] font-bold text-purple-800 flex items-center justify-center">
-                                JD
+                          {morningEnabled && (
+                            <div className="flex items-center justify-between py-1">
+                              <div>
+                                <span className="font-semibold text-[#24133F]">Morning</span>
+                                <span className="ml-2 text-[11px] text-[#756883]">
+                                  {morningSlot.hasIn && morningSlot.hasOut
+                                    ? `${morningSlot.inTime} · ${morningSlot.outTime}`
+                                    : morningSlot.hasIn
+                                    ? morningSlot.inTime
+                                    : morningSlot.outTime}
+                                </span>
+                              </div>
+                              <span className="flex items-center gap-1 text-[11px] text-[#756883]">
+                                <MapPin className="h-3 w-3" /> CITE Building
                               </span>
-                              <span className="h-5 w-5 rounded-full bg-blue-200 border border-white text-[9px] font-bold text-blue-800 flex items-center justify-center">
-                                NK
+                              <span className="rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[10px] font-bold text-[#3B82F6]">
+                                {morningSlot.hasIn && morningSlot.hasOut
+                                  ? 'IN and OUT'
+                                  : morningSlot.hasIn
+                                  ? 'IN Only'
+                                  : 'OUT Only'}
                               </span>
+                              <div className="flex -space-x-1">
+                                {morningSlot.inOfficers.map((off) => (
+                                  <span
+                                    key={off.id}
+                                    className="h-5 w-5 rounded-full bg-purple-200 border border-white text-[9px] font-bold text-purple-800 flex items-center justify-center"
+                                  >
+                                    {off.initials}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex items-center justify-between py-1">
-                            <div>
-                              <span className="font-semibold text-[#24133F]">Afternoon</span>
-                              <span className="ml-2 text-[11px] text-[#756883]">11:00 AM - 12:00 PM</span>
-                            </div>
-                            <span className="flex items-center gap-1 text-[11px] text-[#756883]">
-                              <MapPin className="h-3 w-3" /> CITE Building
-                            </span>
-                            <span className="rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[10px] font-bold text-[#3B82F6]">
-                              IN and OUT
-                            </span>
-                            <div className="flex -space-x-1">
-                              <span className="h-5 w-5 rounded-full bg-purple-200 border border-white text-[9px] font-bold text-purple-800 flex items-center justify-center">
-                                JD
+                          )}
+                          {afternoonEnabled && (
+                            <div className="flex items-center justify-between py-1">
+                              <div>
+                                <span className="font-semibold text-[#24133F]">Afternoon</span>
+                                <span className="ml-2 text-[11px] text-[#756883]">
+                                  {afternoonSlot.hasIn && afternoonSlot.hasOut
+                                    ? `${afternoonSlot.inTime} · ${afternoonSlot.outTime}`
+                                    : afternoonSlot.hasIn
+                                    ? afternoonSlot.inTime
+                                    : afternoonSlot.outTime}
+                                </span>
+                              </div>
+                              <span className="flex items-center gap-1 text-[11px] text-[#756883]">
+                                <MapPin className="h-3 w-3" /> CITE Building
                               </span>
+                              <span className="rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[10px] font-bold text-[#3B82F6]">
+                                {afternoonSlot.hasIn && afternoonSlot.hasOut
+                                  ? 'IN and OUT'
+                                  : afternoonSlot.hasIn
+                                  ? 'IN Only'
+                                  : 'OUT Only'}
+                              </span>
+                              <div className="flex -space-x-1">
+                                {afternoonSlot.inOfficers.map((off) => (
+                                  <span
+                                    key={off.id}
+                                    className="h-5 w-5 rounded-full bg-blue-200 border border-white text-[9px] font-bold text-blue-800 flex items-center justify-center"
+                                  >
+                                    {off.initials}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </div>
                     )
