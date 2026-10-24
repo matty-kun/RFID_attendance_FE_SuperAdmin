@@ -143,8 +143,8 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       }
     >
       <form onSubmit={handleRegisterWithCard} className="space-y-5">
-        {/* TOP SECTION: RFID Card Binding Station */}
-        <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FC] p-4 space-y-3">
+        {/* TOP SECTION: RFID Card Binding Station (matches RapidCardScanDrawer clean white surface) */}
+        <div className="rounded-2xl border border-[#E5E0EB] bg-white p-4 space-y-3.5">
           <div className="flex items-center gap-3">
             <img
               src={hawiTapCardImg}
@@ -166,8 +166,8 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
             </div>
           </div>
 
-          {/* Mode Switcher: 2 Clean Options (Issue later moved to footer) */}
-          <div className="flex rounded-xl bg-white p-1 border border-[#E5E0EB]">
+          {/* Mode Switcher: Clean segmented bar matching RapidCardScanDrawer */}
+          <div className="flex rounded-xl bg-[#F6F4F8] p-1 border border-[#E5E0EB]">
             <button
               type="button"
               onClick={() => {
@@ -176,7 +176,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
               }}
               className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
                 cardMode === 'scan'
-                  ? 'bg-[#FAF8FC] text-[#7026B7] border border-[#7026B7]/20 shadow-xs font-bold'
+                  ? 'bg-white text-[#7026B7] font-bold shadow-xs'
                   : 'text-[#756883] hover:text-[#24133F]'
               }`}
             >
@@ -187,7 +187,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
               onClick={() => setCardMode('inventory')}
               className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
                 cardMode === 'inventory'
-                  ? 'bg-[#FAF8FC] text-[#7026B7] border border-[#7026B7]/20 shadow-xs font-bold'
+                  ? 'bg-white text-[#7026B7] font-bold shadow-xs'
                   : 'text-[#756883] hover:text-[#24133F]'
               }`}
             >
@@ -205,7 +205,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
                 value={scannedUid}
                 onChange={(e) => setScannedUid(e.target.value)}
                 onKeyDown={handleScannerKeyDown}
-                className="w-full rounded-xl border border-[#D5CEDD] bg-white px-3.5 py-2.5 text-xs font-mono font-bold text-[#24133F] placeholder:text-[#A59AAB] focus:border-[#7026B7] focus:outline-none"
+                className="w-full rounded-xl border border-[#D5CEDD] bg-[#FAF8FC] px-3.5 py-2.5 text-xs font-mono font-bold text-[#24133F] placeholder:text-[#A59AAB] focus:border-[#7026B7] focus:bg-white focus:outline-none"
               />
               <p className="text-[11px] text-[#756883]">
                 {scannedUid ? (
