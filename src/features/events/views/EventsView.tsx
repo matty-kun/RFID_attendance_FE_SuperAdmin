@@ -1,12 +1,10 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useEventsViewModel } from '../viewmodels';
-import { Card, CardHeader, CardTitle, CardContent } from '../../../components/common/Card';
 import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/common/Table';
-import { Plus, Calendar, Sparkles } from 'lucide-react';
+import { Plus, Search, Sparkles, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getEventStatus } from '../../../utils/status';
 
@@ -28,95 +26,121 @@ export const EventsView: React.FC = () => {
     handleCreate,
   } = useEventsViewModel();
 
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredEvents = useMemo(() => {
+    if (!searchQuery.trim()) return events;
+    const query = searchQuery.toLowerCase();
+    return events.filter(
+      (ev) =>
+        ev.name.toLowerCase().includes(query) ||
+        (ev.description && ev.description.toLowerCase().includes(query))
+    );
+  }, [events, searchQuery]);
+
   return (
-    <div className="space-y-6">
-      {/* Header with Action */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Campus Events</h1>
-          <p className="text-xs text-slate-500 mt-1 font-medium">
-            Manage university celebrations, sports leagues, and departmental assemblies.
-          </p>
+    <div className="mx-auto w-full max-w-[1120px] space-y-4 text-[#24133F]">
+      {/* Top Header */}
+      <div>
+        <h1 className="text-[22px] font-extrabold leading-tight">Campus Events</h1>
+        <p className="text-[11px] text-[#756883]">
+          Manage university celebrations, sports leagues, and departmental assemblies.
+        </p>
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex h-10 min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[310px]">
+          <Search className="h-4 w-4" />
+          <span className="sr-only">Search events</span>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search event name or description"
+            className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
+          />
+        </label>
+        <div className="ml-auto">
+          <Button
+            variant="primary"
+            leftIcon={<Plus className="h-4 w-4" />}
+            onClick={() => setIsModalOpen(true)}
+          >
+            Create Event
+          </Button>
         </div>
-        <Button
-          variant="primary"
-          leftIcon={<Plus className="w-4 h-4" />}
-          onClick={() => setIsModalOpen(true)}
-        >
-          Create Event
-        </Button>
       </div>
 
       {/* Events Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-brand-600" />
-            Registered Events ({events.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Event Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Start Date</TableHead>
-                <TableHead>End Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {events.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-slate-400 text-xs">
-                    No campus events found. Click "Create Event" to register one.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                events.map((ev) => (
-                  <TableRow key={ev.id}>
-                    <TableCell>
-                      <div className="font-bold text-slate-800 text-sm">{ev.name}</div>
-                      <div className="text-xs text-slate-400 mt-0.5 line-clamp-1 max-w-xs">
-                        {ev.description || 'No description'}
+      <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5 shadow-sm">
+        <table className="w-full min-w-[630px] text-left text-xs">
+          <thead>
+            <tr className="bg-[#F4F6FA] text-[10px] uppercase text-[#637596]">
+              <th className="rounded-l-xl px-3 py-3 font-medium">Event Name</th>
+              <th className="px-3 py-3 font-medium">Status</th>
+              <th className="px-3 py-3 font-medium">Start Date</th>
+              <th className="px-3 py-3 font-medium">End Date</th>
+              <th className="rounded-r-xl px-3 py-3 font-medium text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredEvents.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-10 text-center text-xs text-[#756883]">
+                  {searchQuery ? 'No campus events match your search.' : 'No campus events registered yet. Click "Create Event" to add one.'}
+                </td>
+              </tr>
+            ) : (
+              filteredEvents.map((ev) => {
+                const status = getEventStatus(ev.start_date, ev.end_date);
+                return (
+                  <tr key={ev.id} className="border-b border-[#EEF0F4] last:border-b-0 hover:bg-[#FAF8FC]">
+                    <td className="px-3 py-3">
+                      <div className="font-bold text-slate-900 text-sm">{ev.name}</div>
+                      <div className="text-xs text-[#756883] mt-0.5 line-clamp-1 max-w-xs">
+                        {ev.description || 'No description provided'}
                       </div>
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td className="px-3 py-3">
                       <Badge
                         variant={
-                          getEventStatus(ev.start_date, ev.end_date) === 'ongoing'
+                          status === 'ongoing'
                             ? 'emerald'
-                            : getEventStatus(ev.start_date, ev.end_date) === 'upcoming'
+                            : status === 'upcoming'
                             ? 'brand'
                             : 'slate'
                         }
                         dot
                       >
-                        {getEventStatus(ev.start_date, ev.end_date)}
+                        {status}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs font-medium text-slate-600">
-                      {new Date(ev.start_date).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-xs font-medium text-slate-600">
-                      {new Date(ev.end_date).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
+                    </td>
+                    <td className="px-3 py-3 text-xs font-medium text-[#637596]">
+                      {new Date(ev.start_date).toLocaleDateString('en-PH', { dateStyle: 'medium' })}
+                    </td>
+                    <td className="px-3 py-3 text-xs font-medium text-[#637596]">
+                      {new Date(ev.end_date).toLocaleDateString('en-PH', { dateStyle: 'medium' })}
+                    </td>
+                    <td className="px-3 py-3 text-right">
                       <Link
                         to={`/sessions?eventId=${ev.id}`}
-                        className="text-xs font-extrabold text-brand-600 hover:text-brand-800 transition-colors"
+                        className="inline-flex items-center gap-1 text-xs font-bold text-brand-700 hover:text-brand-800 transition-colors"
                       >
-                        View Sessions →
+                        <Calendar className="h-3.5 w-3.5" />
+                        Sessions →
                       </Link>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+        <div className="flex items-center justify-between border-t border-[#EEF0F4] px-3 pt-3 text-xs text-[#756883]">
+          <span>{filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''} listed</span>
+        </div>
+      </div>
 
       {/* Create Event Modal */}
       <Modal
@@ -126,7 +150,11 @@ export const EventsView: React.FC = () => {
         description="Add a new campus-wide event to track RFID attendance sessions."
       >
         <form onSubmit={handleCreate} className="space-y-4 mt-2">
-          {formError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs font-semibold text-rose-700">{formError}</p>}
+          {formError && (
+            <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+              {formError}
+            </p>
+          )}
           <Input
             label="Event Name"
             placeholder="e.g. Foundation Day 2026"
@@ -177,7 +205,7 @@ export const EventsView: React.FC = () => {
               type="submit"
               variant="primary"
               isLoading={isSubmitting}
-              leftIcon={<Sparkles className="w-4 h-4" />}
+              leftIcon={<Sparkles className="h-4 w-4" />}
             >
               Register Event
             </Button>

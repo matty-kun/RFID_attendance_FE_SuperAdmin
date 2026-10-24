@@ -22,27 +22,27 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    'inline-flex items-center justify-center font-bold rounded-[20px] transition-all select-none disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:ring-offset-2';
+    'inline-flex items-center justify-center font-bold select-none transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:ring-offset-2';
 
   const variants = {
     primary:
-      'bg-brand-600 hover:bg-[#671E9F] text-white shadow-tactile active:translate-y-[4px] active:shadow-tactile-pressed',
+      'bg-brand-700 hover:bg-brand-800 text-white shadow-[0_3px_0_0_#58158C] hover:-translate-y-0.5 active:translate-y-[2px] active:shadow-none',
     secondary:
-      'bg-[#DFD8E7] hover:bg-[#D5CCE0] text-slate-900 shadow-[0_5px_0_0_#C4BAD4] active:translate-y-[4px] active:shadow-[0_1px_0_0_#C4BAD4]',
+      'bg-white hover:bg-[#F7F6F9] text-[#24133F] border border-[#E5E0EB] shadow-sm hover:-translate-y-0.5 active:translate-y-[2px]',
     danger:
-      'bg-[#EF3340] hover:bg-[#D92734] text-white shadow-[0_5px_0_0_#B91C2A] active:translate-y-[4px] active:shadow-[0_1px_0_0_#B91C2A]',
+      'bg-[#EF3340] hover:bg-[#D92734] text-white shadow-[0_3px_0_0_#B91C2A] hover:-translate-y-0.5 active:translate-y-[2px] active:shadow-none',
     success:
-      'bg-[#25C85A] hover:bg-[#1CA347] text-white shadow-[0_5px_0_0_#12953B] active:translate-y-[4px] active:shadow-[0_1px_0_0_#12953B]',
+      'bg-[#17B556] hover:bg-[#12953B] text-white shadow-[0_3px_0_0_#0E7A2E] hover:-translate-y-0.5 active:translate-y-[2px] active:shadow-none',
     outline:
-      'bg-transparent hover:bg-brand-50 text-brand-700 border-[1.5px] border-brand-700 active:translate-y-0.5',
+      'bg-transparent hover:bg-brand-50 text-brand-700 border border-brand-700 hover:-translate-y-0.5 active:translate-y-[2px]',
     ghost:
       'bg-transparent hover:bg-brand-50 text-brand-700 active:bg-brand-100',
   };
 
   const sizes = {
-    sm: 'text-sm px-4 min-h-[39px] gap-2 rounded-[14px]',
-    md: 'text-base px-6 min-h-[53px] gap-2',
-    lg: 'text-lg px-6 min-h-[60px] gap-2.5 rounded-[22px]',
+    sm: 'h-8 px-3 text-xs gap-1.5 rounded-lg',
+    md: 'h-10 px-4 text-xs font-bold gap-2 rounded-xl',
+    lg: 'h-12 px-6 text-sm font-extrabold gap-2.5 rounded-xl',
   };
 
   return (
@@ -51,9 +51,11 @@ export const Button: React.FC<ButtonProps> = ({
       disabled={disabled || isLoading}
       {...props}
     >
-      {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-current" /> : leftIcon}
+      {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin text-current" /> : leftIcon}
       {children}
       {!isLoading && rightIcon}
     </button>
   );
 };
+
+export default Button;

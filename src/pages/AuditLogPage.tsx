@@ -18,7 +18,7 @@ export function AuditLogPage() {
   const [search, setSearch] = useState('');
   const {
     records, filterType, setFilterType, startDate, setStartDate,
-    endDate, setEndDate, page, setPage, total, error, isLoading, refresh,
+    endDate, setEndDate, page, setPage, total, error, isLoading,
   } = useAttendanceViewModel(auditPreviewRecords);
   const visibleRecords = useMemo(() => records.filter((record) => {
     const text = [record.student?.name, record.student?.student_id, record.student?.course,
@@ -28,9 +28,10 @@ export function AuditLogPage() {
   const pageCount = Math.max(1, Math.ceil(total / 30));
 
   return <section aria-labelledby="audit-log-heading" className="mx-auto w-full max-w-[1120px] pt-1 text-[#24133F]">
-    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-      <div><h1 id="audit-log-heading" className="text-[28px] font-extrabold leading-tight">Audit Log</h1><p className="text-xs text-[#756883]">History of every recorded student time in and time out.</p>{isDevPreview() && <p className="mt-1 text-[11px] font-bold text-brand-700">Sample attendance data · UI preview only</p>}</div>
-      <button type="button" onClick={() => void refresh()} disabled={isLoading} className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 text-xs font-bold text-brand-700 hover:border-brand-700 disabled:opacity-50">Refresh</button>
+    <div className="mb-4">
+      <h1 id="audit-log-heading" className="text-[28px] font-extrabold leading-tight">Audit Log</h1>
+      <p className="text-xs text-[#756883]">History of every recorded student time in and time out.</p>
+      {isDevPreview() && <p className="mt-1 text-[11px] font-bold text-brand-700">Sample attendance data · UI preview only</p>}
     </div>
     <div className="mb-2 flex flex-wrap gap-2">
       <label className="flex min-h-10 min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883]">

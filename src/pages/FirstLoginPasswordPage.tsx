@@ -16,7 +16,7 @@ export function FirstLoginPasswordPage() {
 
   if (isLoading) return <div className="min-h-screen grid place-items-center text-slate-500">Checking account…</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (!user.must_change_password) return <Navigate to="/events" replace />;
+  if (!user.must_change_password) return <Navigate to="/overview" replace />;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -30,7 +30,7 @@ export function FirstLoginPasswordPage() {
       await request.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword });
       try {
         await refreshUser();
-        navigate('/events', { replace: true });
+        navigate('/overview', { replace: true });
       } catch {
         logout();
         navigate('/login', { replace: true });
