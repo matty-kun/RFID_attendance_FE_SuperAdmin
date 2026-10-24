@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Download, Search } from 'lucide-react';
-import { Button } from '../components/common/Button';
+import { AlertCircle, Search } from 'lucide-react';
 import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
+import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
 import { attendanceService } from '../features/attendance/services/attendanceService';
 import type { AttendanceRecord } from '../features/attendance/models';
 import { isDevPreview } from '../features/auth/devPreview';
@@ -74,6 +74,58 @@ function exportCsv(rows: ReportRow[], type: string, endDate: string) {
   link.download = `attendance-report-${endDate}.csv`;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportExcel(rows: ReportRow[], type: string, endDate: string) {
+  const lines = [['Student', 'Student ID', 'Course', 'Session', 'Time In', 'Time Out', 'Status'].join('\t')];
+  for (const row of rows) {
+    lines.push([
+      row.student,
+      row.studentId,
+      row.course,
+      row.session,
+      row.timeIn ? new Date(row.timeIn).toLocaleString('en-PH') : '—',
+      row.timeOut ? new Date(row.timeOut).toLocaleString('en-PH') : '—',
+      rowStatus(row, type),
+    ].join('\t'));
+  }
+  const url = URL.createObjectURL(new Blob(['\uFEFF', lines.join('\r\n')], { type: 'application/vnd.ms-excel;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `attendance-report-${endDate}.xls`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportJson(rows: ReportRow[], type: string, endDate: string) {
+  const data = rows.map((row) => ({
+    student: row.student,
+    studentId: row.studentId,
+    course: row.course,
+    session: row.session,
+    timeIn: row.timeIn ? new Date(row.timeIn).toISOString() : null,
+    timeOut: row.timeOut ? new Date(row.timeOut).toISOString() : null,
+    status: rowStatus(row, type),
+  }));
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `attendance-report-${endDate}.json`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportReport(rows: ReportRow[], type: string, endDate: string, format: ExportFormat) {
+  if (format === 'csv') {
+    exportCsv(rows, type, endDate);
+  } else if (format === 'xlsx') {
+    exportExcel(rows, type, endDate);
+  } else if (format === 'json') {
+    exportJson(rows, type, endDate);
+  } else if (format === 'pdf') {
+    window.print();
+  }
 }
 
 export function ReportsPage() {
@@ -163,15 +215,11 @@ export function ReportsPage() {
           ]}
         />
       ))}
-      <Button
-        variant="primary"
+      <ExportButton
         className="ml-auto"
-        leftIcon={<Download className="h-4 w-4" />}
-        onClick={() => exportCsv(exportRows, type, endDate)}
+        onExport={(format) => exportReport(exportRows, type, endDate, format)}
         disabled={!exportRows.length}
-      >
-        Export CSV
-      </Button>
+      />
     </div>
     {total > 100 && <p className="text-xs text-[#756883]">Showing newest 100 of {total.toLocaleString()} scans. Breakdowns and export cover only these loaded records.</p>}
     <div className="grid gap-4 lg:grid-cols-[1fr_1.15fr]">
@@ -186,3 +234,5 @@ export function ReportsPage() {
     <section className="rounded-2xl border border-[#E5E0EB] bg-white p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-sm font-extrabold">Student Attendance Records</h2><p className="text-[10px] text-[#756883]">Read-only report · {rows.length} grouped records</p></div><label className="flex h-9 items-center gap-2 rounded-xl border border-[#E5E0EB] px-3 text-[#756883]"><Search className="h-4 w-4" /><span className="sr-only">Search loaded records</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search loaded records" className="bg-transparent text-xs outline-none" /></label></div><div className="mt-3 overflow-x-auto"><table className="w-full min-w-[680px] text-left text-xs"><thead className="text-[10px] uppercase text-[#637596]"><tr className="border-b border-[#E5E0EB]"><th className="py-2"><input type="checkbox" aria-label="Select all visible rows" checked={rows.length > 0 && rows.every((row) => selected.includes(row.key))} onChange={(event) => setSelected(event.target.checked ? rows.map((row) => row.key) : [])} /></th><th>Student</th><th>Course</th><th>Session</th><th>Time In</th><th>Time Out</th><th>Status</th></tr></thead><tbody>{rows.map((row) => <tr key={row.key} className="border-b border-[#EEF0F4] last:border-b-0"><td className="py-3"><input type="checkbox" aria-label={`Select ${row.student}`} checked={selected.includes(row.key)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, row.key] : current.filter((key) => key !== row.key))} /></td><td className="py-3 font-bold">{row.student}<span className="block text-[10px] font-normal text-[#637596]">{row.studentId}</span></td><td>{row.course}</td><td>{row.session}</td><td>{displayTime(row.timeIn)}</td><td>{displayTime(row.timeOut)}</td><td><span className={`rounded-xl px-2 py-1 text-[10px] font-bold ${rowStatus(row, type) === 'Completed' ? 'bg-[#E4F7EB] text-[#16883F]' : 'bg-[#FFF2DE] text-[#A96800]'}`}>{rowStatus(row, type)}</span></td></tr>)}</tbody></table>{!rows.length && <p className="py-10 text-center text-xs text-[#756883]">{loading ? 'Loading records…' : 'No records match these filters.'}</p>}</div></section>
   </div>;
 }
+
+export default ReportsPage;

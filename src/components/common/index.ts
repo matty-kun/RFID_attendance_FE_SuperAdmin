@@ -6,3 +6,4 @@ export * from './Modal';
 export * from './Table';
 export * from './CalendarDatePicker';
 export * from './Dropdown';
+export * from './ExportButton';
