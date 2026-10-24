@@ -272,34 +272,25 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 </p>
               </div>
 
-              {/* Date Inputs Row */}
+              {/* Selected Dates Display (No dropdown) */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-[#24133F] mb-1.5">Start Date</label>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setStartDate(val);
-                        if (val > endDate) setEndDate(val);
-                      }}
-                      className="w-full rounded-2xl border border-[#E5E0EB] px-4 py-2.5 text-xs font-semibold text-[#24133F] focus:border-[#451475] focus:outline-none bg-white shadow-xs cursor-pointer"
-                    />
+                <div className="rounded-2xl border border-[#E5E0EB] bg-white px-4 py-3 shadow-xs">
+                  <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">Start Date</span>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-[#451475] shrink-0" />
+                    <span className="text-xs font-bold text-[#24133F]">
+                      {startDate ? new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Select on calendar'}
+                    </span>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-[#24133F] mb-1.5">End Date</label>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      value={endDate}
-                      min={startDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full rounded-2xl border border-[#E5E0EB] px-4 py-2.5 text-xs font-semibold text-[#24133F] focus:border-[#451475] focus:outline-none bg-white shadow-xs cursor-pointer"
-                    />
+                <div className="rounded-2xl border border-[#E5E0EB] bg-white px-4 py-3 shadow-xs">
+                  <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">End Date</span>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-[#451475] shrink-0" />
+                    <span className="text-xs font-bold text-[#24133F]">
+                      {endDate ? new Date(endDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Select on calendar'}
+                    </span>
                   </div>
                 </div>
               </div>
