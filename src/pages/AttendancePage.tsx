@@ -20,6 +20,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { useToast } from '../context';
+import { Button } from '../components/common/Button';
 import { Dropdown } from '../components/common/Dropdown';
 import { CreateEventModal } from '../features/events/views/CreateEventModal';
 import { DeleteConfirmationModal } from '../components/common/DeleteConfirmationModal';
@@ -548,71 +549,71 @@ export function AttendancePage() {
   return (
     <div className="mx-auto w-full max-w-[1180px] space-y-6 text-[#24133F]">
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold leading-tight">Attendance Schedule</h1>
-          <p className="text-xs text-[#756883]">
-            Manage attendance sessions, locations, and assigned for your events.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setIsCreateEventOpen(true)}
-          className="flex items-center gap-2 rounded-2xl bg-[#451475] px-5 py-2.5 text-xs font-bold text-white shadow-[0_5px_0_0_#2B0C4A] hover:bg-[#38105F] active:translate-y-[4px] active:shadow-none transition-all"
-        >
-          <Plus className="h-4 w-4" />
-          Create Event
-        </button>
+      <div>
+        <h1 className="text-2xl font-extrabold leading-tight">Attendance Schedule</h1>
+        <p className="text-xs text-[#756883]">
+          Manage attendance sessions, locations, and assigned for your events.
+        </p>
       </div>
 
-      {/* Filter Bar (No tabs on top!) */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#756883]" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search"
-            className="h-10 w-56 rounded-xl border border-[#E5E0EB] bg-white pl-9 pr-4 text-xs text-[#24133F] placeholder-[#756883] transition-colors focus:border-brand-700 focus:outline-none md:w-64"
+      {/* Toolbar: Filters on the left, Create Event aligned on the right */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#756883]" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search"
+              className="h-10 w-56 rounded-xl border border-[#E5E0EB] bg-white pl-9 pr-4 text-xs text-[#24133F] placeholder-[#756883] transition-colors focus:border-brand-700 focus:outline-none md:w-64"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-[#756883] hover:text-[#24133F]"
+                title="Clear search"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
+          <Dropdown
+            value={statusFilter}
+            onChange={setStatusFilter}
+            buttonClassName="h-10 rounded-xl"
+            options={[
+              { value: 'all', label: 'All Status' },
+              { value: 'active', label: 'Active' },
+              { value: 'upcoming', label: 'Upcoming' },
+              { value: 'completed', label: 'Completed' },
+            ]}
           />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-[#756883] hover:text-[#24133F]"
-              title="Clear search"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          )}
+
+          <Dropdown
+            value={dateFilter}
+            onChange={setDateFilter}
+            buttonClassName="h-10 rounded-xl"
+            options={[
+              { value: 'all', label: 'All Dates' },
+              { value: 'october 2', label: 'Oct 2, 2026' },
+              { value: 'october 3', label: 'Oct 3, 2026' },
+              { value: 'october 4', label: 'Oct 4, 2026' },
+              { value: 'october 5', label: 'Oct 5, 2026' },
+            ]}
+          />
         </div>
 
-        <Dropdown
-          value={statusFilter}
-          onChange={setStatusFilter}
-          buttonClassName="h-10 rounded-xl"
-          options={[
-            { value: 'all', label: 'All Status' },
-            { value: 'active', label: 'Active' },
-            { value: 'upcoming', label: 'Upcoming' },
-            { value: 'completed', label: 'Completed' },
-          ]}
-        />
-
-        <Dropdown
-          value={dateFilter}
-          onChange={setDateFilter}
-          buttonClassName="h-10 rounded-xl"
-          options={[
-            { value: 'all', label: 'All Dates' },
-            { value: 'october 2', label: 'Oct 2, 2026' },
-            { value: 'october 3', label: 'Oct 3, 2026' },
-            { value: 'october 4', label: 'Oct 4, 2026' },
-            { value: 'october 5', label: 'Oct 5, 2026' },
-          ]}
-        />
+        {/* Create Event Button (In line with filters, matching vibrant brand purple #7026B7) */}
+        <Button
+          variant="primary"
+          leftIcon={<Plus className="h-4 w-4" />}
+          onClick={() => setIsCreateEventOpen(true)}
+        >
+          Create Event
+        </Button>
       </div>
 
       {/* Event Accordion Container (Cite Festival) */}
@@ -962,14 +963,14 @@ export function AttendancePage() {
           <p className="mt-1 max-w-sm text-xs text-[#756883]">
             There is currently no event published. Create a new event to configure schedules and sessions.
           </p>
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            leftIcon={<Plus className="h-4 w-4" />}
             onClick={() => setIsCreateEventOpen(true)}
-            className="mt-4 flex items-center gap-2 rounded-2xl bg-[#451475] px-5 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_0_#2B0C4A] hover:bg-[#38105F] active:translate-y-[2px] active:shadow-none transition-all"
+            className="mt-4"
           >
-            <Plus className="h-4 w-4" />
             Create Event
-          </button>
+          </Button>
         </div>
       )}
 
