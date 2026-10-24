@@ -5,14 +5,13 @@ import { Dropdown } from '../../../components/common/Dropdown';
 import { AddStudentDrawer } from './AddStudentDrawer';
 import { RapidCardScanDrawer } from './RapidCardScanDrawer';
 import { BulkStudentImportModal } from './BulkStudentImportModal';
+import { RegisterActionsDropdown } from './RegisterActionsDropdown';
 import {
   BookOpen,
   CreditCard,
-  Plus,
   Search,
   UsersRound,
   Zap,
-  UploadCloud,
   Link as LinkIcon,
   Unlink,
   CheckCircle2,
@@ -62,6 +61,10 @@ export const StudentsView: React.FC = () => {
   // Stats calculation
   const verifiedCount = useMemo(() => students.filter((s) => Boolean(s.rfid_uid)).length, [students]);
   const unverifiedCount = useMemo(() => students.filter((s) => !s.rfid_uid).length, [students]);
+  const pairableCount = useMemo(
+    () => Math.min(unassignedCards.length, cardlessStudents.length),
+    [unassignedCards.length, cardlessStudents.length]
+  );
 
   const courses = useMemo(
     () => [...new Set(students.map((s) => s.course).filter((c): c is string => Boolean(c)))].sort(),
@@ -102,44 +105,14 @@ export const StudentsView: React.FC = () => {
           </p>
         </div>
 
-        {/* Global Suite Actions */}
-        <div className="flex flex-wrap items-center gap-2">
-          {unassignedCards.length > 0 && cardlessStudents.length > 0 && (
-            <button
-              type="button"
-              onClick={() => handleAutoPairSequential()}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all"
-              title="Automatically pair unassigned inventory cards with cardless students in sequence"
-            >
-              <LinkIcon className="w-3.5 h-3.5" />
-              Auto-Pair ({Math.min(unassignedCards.length, cardlessStudents.length)})
-            </button>
-          )}
-
-          <Button
-            variant="secondary"
-            leftIcon={<UploadCloud className="h-4 w-4 text-[#7026B7]" />}
-            onClick={() => setIsBulkImportOpen(true)}
-          >
-            Bulk Import
-          </Button>
-
-          <Button
-            variant="secondary"
-            leftIcon={<Zap className="h-4 w-4 text-amber-500 fill-amber-500" />}
-            onClick={() => setIsRapidScanOpen(true)}
-          >
-            Rapid Scanner
-          </Button>
-
-          <Button
-            variant="primary"
-            leftIcon={<Plus className="h-4 w-4" />}
-            onClick={() => setIsAddDrawerOpen(true)}
-          >
-            Add Student
-          </Button>
-        </div>
+        {/* Split Dropdown Action Button (matches Reports ExportButton) */}
+        <RegisterActionsDropdown
+          onAddStudent={() => setIsAddDrawerOpen(true)}
+          onRapidScan={() => setIsRapidScanOpen(true)}
+          onBulkImport={() => setIsBulkImportOpen(true)}
+          onAutoPair={handleAutoPairSequential}
+          pairableCount={pairableCount}
+        />
       </div>
 
       {/* KPI Stat Cards */}
