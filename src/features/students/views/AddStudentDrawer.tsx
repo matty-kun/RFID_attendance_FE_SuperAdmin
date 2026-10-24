@@ -88,14 +88,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       description="Create student profile and assign an RFID card before release."
       maxWidth="md"
       footer={
-        <div className="flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-[#E5E0EB] px-5 py-2.5 text-xs font-bold text-[#756883] hover:bg-slate-50 transition-colors"
-          >
-            Cancel
-          </button>
+        <div className="flex items-center justify-end">
           <button
             type="button"
             onClick={handleSubmit}
