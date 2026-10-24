@@ -17,6 +17,32 @@ import {
   Plus,
 } from 'lucide-react';
 import { Checkbox } from '../../../components/common/Checkbox';
+import {
+  AssignOfficersDrawer,
+  type AssignedOfficer,
+} from './AssignOfficersDrawer';
+import { Dropdown } from '../../../components/common/Dropdown';
+
+export interface LocationSlot {
+  id: string;
+  name: string;
+  inTime: string;
+  inOfficers: AssignedOfficer[];
+  outTime: string;
+  outOfficers: AssignedOfficer[];
+}
+
+const availableLocationsList = [
+  'Cite Building',
+  'JBB Building',
+  'CR ETD',
+  'ETD Court',
+  'Cite 4th floor',
+  'Gymnasium',
+  'RSB Lobby',
+  'Primera',
+  'Field',
+];
 
 export interface CreateEventModalProps {
   isOpen: boolean;
@@ -68,6 +94,122 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const [morningExpanded, setMorningExpanded] = useState(true);
   const [afternoonExpanded, setAfternoonExpanded] = useState(true);
+  const [eveningExpanded, setEveningExpanded] = useState(true);
+
+  // Dynamic session location & officer structure
+  const [morningLocations, setMorningLocations] = useState<LocationSlot[]>([
+    {
+      id: 'm-loc-1',
+      name: 'Cite Building',
+      inTime: '7:00 - 8:30 AM',
+      inOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'Cite Building', status: 'Online' }],
+      outTime: '12:00 - 1:30 PM',
+      outOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'Cite Building', status: 'Online' }],
+    },
+    {
+      id: 'm-loc-2',
+      name: 'JBB Building',
+      inTime: '7:00 - 8:30 AM',
+      inOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'JBB Building', status: 'Online' }],
+      outTime: '12:00 - 1:30 PM',
+      outOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'JBB Building', status: 'Online' }],
+    },
+  ]);
+
+  const [afternoonLocations, setAfternoonLocations] = useState<LocationSlot[]>([
+    {
+      id: 'a-loc-1',
+      name: 'Cite Building',
+      inTime: '1:00 - 2:30 PM',
+      inOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'Cite Building', status: 'Online' }],
+      outTime: '5:00 - 6:30 PM',
+      outOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'Cite Building', status: 'Online' }],
+    },
+  ]);
+
+  const [eveningLocations, setEveningLocations] = useState<LocationSlot[]>([
+    {
+      id: 'e-loc-1',
+      name: 'Gymnasium',
+      inTime: '6:00 - 7:30 PM',
+      inOfficers: [{ id: 'adm-1', name: 'Ako si batman', initials: 'AB', role: 'Admin', location: 'Gymnasium', status: 'Online' }],
+      outTime: '9:00 - 10:30 PM',
+      outOfficers: [{ id: 'adm-1', name: 'Ako si batman', initials: 'AB', role: 'Admin', location: 'Gymnasium', status: 'Online' }],
+    },
+  ]);
+
+  // Drawer state for assigning officers
+  const [drawerConfig, setDrawerConfig] = useState<{
+    isOpen: boolean;
+    sessionType: 'Morning' | 'Afternoon' | 'Evening';
+    locationId: string;
+    slot: 'IN' | 'OUT';
+    locationName: string;
+    sessionTime: string;
+    initialOfficers: AssignedOfficer[];
+  }>({
+    isOpen: false,
+    sessionType: 'Morning',
+    locationId: '',
+    slot: 'IN',
+    locationName: '',
+    sessionTime: '',
+    initialOfficers: [],
+  });
+
+  const handleOpenAssignDrawer = (
+    sessionType: 'Morning' | 'Afternoon' | 'Evening',
+    loc: LocationSlot,
+    slot: 'IN' | 'OUT'
+  ) => {
+    setDrawerConfig({
+      isOpen: true,
+      sessionType,
+      locationId: loc.id,
+      slot,
+      locationName: loc.name,
+      sessionTime: slot === 'IN' ? loc.inTime : loc.outTime,
+      initialOfficers: slot === 'IN' ? loc.inOfficers : loc.outOfficers,
+    });
+  };
+
+  const handleSaveAssignedOfficers = (assigned: AssignedOfficer[]) => {
+    const { sessionType, locationId, slot, locationName } = drawerConfig;
+    const formattedAssigned = assigned.map((off) => ({
+      ...off,
+      location: off.location || locationName,
+    }));
+
+    const updateLocs = (locs: LocationSlot[]) =>
+      locs.map((loc) => {
+        if (loc.id !== locationId) return loc;
+        return {
+          ...loc,
+          [slot === 'IN' ? 'inOfficers' : 'outOfficers']: formattedAssigned,
+        };
+      });
+
+    if (sessionType === 'Morning') setMorningLocations(updateLocs);
+    if (sessionType === 'Afternoon') setAfternoonLocations(updateLocs);
+    if (sessionType === 'Evening') setEveningLocations(updateLocs);
+
+    setDrawerConfig((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const handleAddLocation = (sessionType: 'Morning' | 'Afternoon' | 'Evening') => {
+    const newLoc: LocationSlot = {
+      id: `${sessionType.toLowerCase()}-loc-${Date.now()}`,
+      name: 'ETD Court',
+      inTime: sessionType === 'Evening' ? '6:00 - 7:30 PM' : '7:00 - 8:30 AM',
+      inOfficers: [],
+      outTime: sessionType === 'Evening' ? '9:00 - 10:30 PM' : '12:00 - 1:30 PM',
+      outOfficers: [],
+    };
+
+    if (sessionType === 'Morning') setMorningLocations((prev) => [...prev, newLoc]);
+    if (sessionType === 'Afternoon') setAfternoonLocations((prev) => [...prev, newLoc]);
+    if (sessionType === 'Evening') setEveningLocations((prev) => [...prev, newLoc]);
+  };
 
   if (!isOpen) return null;
 
@@ -117,8 +259,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   ];
 
   return createPortal(
-    <div
-      role="presentation"
+    <>
+      <div
+        role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) handleCloseModal();
       }}
@@ -522,168 +665,181 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               </div>
 
               {/* Session Accordions */}
-              {morningEnabled && (
-                <div className="rounded-2xl border border-[#E5E0EB] bg-white p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-[#24133F]">Morning Session</span>
-                      <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-[#756883]">
-                        Both (IN + OUT)
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-[#EBF3FF] px-2.5 py-0.5 text-[10px] font-bold text-[#3B82F6]">
-                        Selected
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setMorningExpanded(!morningExpanded)}
-                        className="rounded p-1 text-[#756883]"
-                      >
-                        {morningExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {morningExpanded && (
-                    <div className="mt-3 space-y-3 pt-2">
-                      <p className="text-[11px] font-semibold text-[#756883]">Location (2)</p>
-
-                      {/* Row 1: CITE Building */}
-                      <div className="rounded-xl border border-[#F1EEF4] p-3">
-                        <div className="flex items-center gap-2 font-bold text-xs text-[#24133F]">
-                          <MapPin className="h-3.5 w-3.5 text-[#756883]" />
-                          <span>CITE Building</span>
+              {[
+                {
+                  type: 'Morning' as const,
+                  label: 'Morning Session',
+                  badge: 'Both (IN + OUT)',
+                  enabled: morningEnabled,
+                  expanded: morningExpanded,
+                  setExpanded: setMorningExpanded,
+                  locations: morningLocations,
+                  setLocations: setMorningLocations,
+                },
+                {
+                  type: 'Afternoon' as const,
+                  label: 'Afternoon Session',
+                  badge: 'Both (IN + OUT)',
+                  enabled: afternoonEnabled,
+                  expanded: afternoonExpanded,
+                  setExpanded: setAfternoonExpanded,
+                  locations: afternoonLocations,
+                  setLocations: setAfternoonLocations,
+                },
+                {
+                  type: 'Evening' as const,
+                  label: 'Evening Session',
+                  badge: 'Both (IN + OUT)',
+                  enabled: eveningEnabled,
+                  expanded: eveningExpanded,
+                  setExpanded: setEveningExpanded,
+                  locations: eveningLocations,
+                  setLocations: setEveningLocations,
+                },
+              ].map(
+                (session) =>
+                  session.enabled && (
+                    <div key={session.type} className="rounded-2xl border border-[#E5E0EB] bg-white p-4 shadow-xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-[#24133F]">{session.label}</span>
+                          <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-[#756883]">
+                            {session.badge}
+                          </span>
                         </div>
-                        <div className="mt-2.5 grid grid-cols-2 gap-3 text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-1 font-semibold text-emerald-600">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
-                              IN
-                            </span>
-                            <span className="rounded-lg border border-[#E5E0EB] px-2.5 py-1 text-[11px]">
-                              7:00 - 8:30 AM
-                            </span>
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-[#756883]">
-                              Nonoy Kaibo
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-1 font-semibold text-[#3B82F6]">
-                              <span className="h-1.5 w-1.5 rounded-full bg-[#3B82F6]" />
-                              OUT
-                            </span>
-                            <span className="rounded-lg border border-[#E5E0EB] px-2.5 py-1 text-[11px]">
-                              12:00 - 1:30 PM
-                            </span>
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-[#756883]">
-                              Nonoy Kaibo
-                            </span>
-                            <button type="button" className="rounded-full border border-dashed border-[#756883] p-0.5 text-[#756883]">
-                              <Plus className="h-3 w-3" />
-                            </button>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full bg-[#EBF3FF] px-2.5 py-0.5 text-[10px] font-bold text-[#3B82F6]">
+                            Selected
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => session.setExpanded(!session.expanded)}
+                            className="rounded p-1 text-[#756883] hover:text-[#24133F] transition-colors"
+                          >
+                            {session.expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </button>
                         </div>
                       </div>
 
-                      {/* Row 2: JBB Building */}
-                      <div className="rounded-xl border border-[#F1EEF4] p-3">
-                        <div className="flex items-center gap-2 font-bold text-xs text-[#24133F]">
-                          <MapPin className="h-3.5 w-3.5 text-[#756883]" />
-                          <span>JBB Building</span>
-                        </div>
-                        <div className="mt-2.5 grid grid-cols-2 gap-3 text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-1 font-semibold text-emerald-600">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
-                              IN
-                            </span>
-                            <span className="rounded-lg border border-[#E5E0EB] px-2.5 py-1 text-[11px]">
-                              7:00 - 8:30 AM
-                            </span>
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-[#756883]">
-                              Nonoy Kaibo
-                            </span>
+                      {session.expanded && (
+                        <div className="mt-3 space-y-3 pt-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[11px] font-semibold text-[#756883]">
+                              Location ({session.locations.length})
+                            </p>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-1 font-semibold text-[#3B82F6]">
-                              <span className="h-1.5 w-1.5 rounded-full bg-[#3B82F6]" />
-                              OUT
-                            </span>
-                            <span className="rounded-lg border border-[#E5E0EB] px-2.5 py-1 text-[11px]">
-                              12:00 - 1:30 PM
-                            </span>
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-[#756883]">
-                              Nonoy Kaibo
-                            </span>
-                            <button type="button" className="rounded-full border border-dashed border-[#756883] p-0.5 text-[#756883]">
-                              <Plus className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
 
-                      <button
-                        type="button"
-                        className="flex items-center gap-1.5 text-xs font-bold text-[#451475] hover:underline"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        Add location
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+                          {session.locations.map((loc: LocationSlot) => (
+                            <div key={loc.id} className="rounded-2xl border border-[#F1EEF4] bg-[#FAF8FB]/40 p-3.5 space-y-3">
+                              {/* Location header with editable location dropdown */}
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="h-3.5 w-3.5 text-[#451475]" />
+                                  <div className="w-48">
+                                    <Dropdown
+                                      value={loc.name}
+                                      onChange={(newLoc: string) => {
+                                        session.setLocations((prev: LocationSlot[]) =>
+                                          prev.map((l: LocationSlot) => (l.id === loc.id ? { ...l, name: newLoc } : l))
+                                        );
+                                      }}
+                                      options={availableLocationsList.map((l) => ({ value: l, label: l }))}
+                                      buttonClassName="py-1 px-3 text-xs font-bold bg-white"
+                                    />
+                                  </div>
+                                </div>
+                                {session.locations.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      session.setLocations((prev: LocationSlot[]) => prev.filter((l: LocationSlot) => l.id !== loc.id))
+                                    }
+                                    className="text-[10px] font-semibold text-[#EF3340] hover:underline"
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
 
-              {afternoonEnabled && (
-                <div className="rounded-2xl border border-[#E5E0EB] bg-white p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-[#24133F]">Afternoon Session</span>
-                      <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-[#756883]">
-                        IN ONLY
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setAfternoonExpanded(!afternoonExpanded)}
-                      className="rounded p-1 text-[#756883]"
-                    >
-                      {afternoonExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </button>
-                  </div>
+                              {/* IN and OUT slots */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                {/* IN Slot */}
+                                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white p-2">
+                                  <span className="flex items-center gap-1 font-bold text-emerald-600 text-[11px]">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                                    IN
+                                  </span>
+                                  <span className="rounded-lg bg-[#FAF8FB] border border-[#E5E0EB] px-2 py-0.5 text-[11px] font-medium text-[#24133F]">
+                                    {loc.inTime}
+                                  </span>
+                                  {loc.inOfficers.map((off: AssignedOfficer) => (
+                                    <button
+                                      key={off.id}
+                                      type="button"
+                                      onClick={() => handleOpenAssignDrawer(session.type, loc, 'IN')}
+                                      className="group flex items-center gap-1 rounded-full bg-slate-100 hover:bg-[#E9D5FF] px-2 py-0.5 text-[10px] font-semibold text-[#756883] hover:text-[#451475] transition-colors"
+                                      title="Click to manage officers"
+                                    >
+                                      <span>{off.name}</span>
+                                    </button>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenAssignDrawer(session.type, loc, 'IN')}
+                                    className="flex items-center gap-1 rounded-full border border-dashed border-[#756883] hover:border-[#451475] px-1.5 py-0.5 text-[10px] font-medium text-[#756883] hover:text-[#451475] transition-colors"
+                                    title="Assign officers"
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                    <span>Assign</span>
+                                  </button>
+                                </div>
 
-                  {afternoonExpanded && (
-                    <div className="mt-3 space-y-3 pt-2">
-                      <p className="text-[11px] font-semibold text-[#756883]">Location (1)</p>
-                      <div className="rounded-xl border border-[#F1EEF4] p-3">
-                        <div className="flex items-center gap-2 font-bold text-xs text-[#24133F]">
-                          <MapPin className="h-3.5 w-3.5 text-[#756883]" />
-                          <span>CITE Building</span>
+                                {/* OUT Slot */}
+                                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white p-2">
+                                  <span className="flex items-center gap-1 font-bold text-[#3B82F6] text-[11px]">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-[#3B82F6]" />
+                                    OUT
+                                  </span>
+                                  <span className="rounded-lg bg-[#FAF8FB] border border-[#E5E0EB] px-2 py-0.5 text-[11px] font-medium text-[#24133F]">
+                                    {loc.outTime}
+                                  </span>
+                                  {loc.outOfficers.map((off: AssignedOfficer) => (
+                                    <button
+                                      key={off.id}
+                                      type="button"
+                                      onClick={() => handleOpenAssignDrawer(session.type, loc, 'OUT')}
+                                      className="group flex items-center gap-1 rounded-full bg-slate-100 hover:bg-[#E9D5FF] px-2 py-0.5 text-[10px] font-semibold text-[#756883] hover:text-[#451475] transition-colors"
+                                      title="Click to manage officers"
+                                    >
+                                      <span>{off.name}</span>
+                                    </button>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenAssignDrawer(session.type, loc, 'OUT')}
+                                    className="flex items-center gap-1 rounded-full border border-dashed border-[#756883] hover:border-[#451475] px-1.5 py-0.5 text-[10px] font-medium text-[#756883] hover:text-[#451475] transition-colors"
+                                    title="Assign officers"
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                    <span>Assign</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+
+                          <button
+                            type="button"
+                            onClick={() => handleAddLocation(session.type)}
+                            className="flex items-center gap-1.5 text-xs font-bold text-[#451475] hover:text-[#38105F] transition-colors pt-1"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Add location
+                          </button>
                         </div>
-                        <div className="mt-2.5 flex items-center gap-3 text-xs">
-                          <span className="flex items-center gap-1 font-semibold text-emerald-600">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
-                            IN
-                          </span>
-                          <span className="rounded-lg border border-[#E5E0EB] px-2.5 py-1 text-[11px]">
-                            7:00 - 8:30 AM
-                          </span>
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-[#756883]">
-                            Nonoy Kaibo
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className="flex items-center gap-1.5 text-xs font-bold text-[#451475] hover:underline"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        Add location
-                      </button>
+                      )}
                     </div>
-                  )}
-                </div>
+                  )
               )}
             </div>
           ) : currentStep === 4 ? (
@@ -958,7 +1114,19 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           )}
         </div>
       </div>
-    </div>,
+      </div>
+
+      {/* Assign Officers Drawer */}
+      <AssignOfficersDrawer
+        isOpen={drawerConfig.isOpen}
+        onClose={() => setDrawerConfig((prev) => ({ ...prev, isOpen: false }))}
+        sessionName={`${drawerConfig.sessionType} - ${drawerConfig.slot} (${drawerConfig.locationName})`}
+        sessionTime={drawerConfig.sessionTime}
+        sessionDate={formatDateDisplay(startDate)}
+        initialAssigned={drawerConfig.initialOfficers}
+        onSave={handleSaveAssignedOfficers}
+      />
+    </>,
     document.body
   );
 };
