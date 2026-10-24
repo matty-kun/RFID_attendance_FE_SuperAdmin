@@ -1,73 +1,46 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Search } from 'lucide-react';
+import { AlertCircle, ChevronRight, Pencil, Search, Trash2, X, Check } from 'lucide-react';
 import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
 import { attendanceService } from '../features/attendance/services/attendanceService';
 import type { AttendanceRecord } from '../features/attendance/models';
 import { isDevPreview } from '../features/auth/devPreview';
-import { auditPreviewRecords } from './auditPreviewRecords';
-
-type ReportRow = {
-  key: string;
-  student: string;
-  studentId: string;
-  course: string;
-  session: string;
-  timeIn?: string;
-  timeOut?: string;
-  lastScan: string;
-};
+import {
+  auditPreviewRecords,
+  defaultTrendDays,
+  defaultSessionBreakdown,
+  defaultCheckpoints,
+  defaultIssues,
+  defaultCourseBreakdown,
+  defaultStudentRecords,
+  type ReportTrendDay,
+  type ReportSessionItem,
+  type ReportCheckpointItem,
+  type ReportIssueItem,
+  type ReportCourseItem,
+  type ReportStudentAttendanceRow,
+} from './auditPreviewRecords';
 
 const manilaDate = (date: Date) => {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
   const value = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
   return `${value('year')}-${value('month')}-${value('day')}`;
 };
-const displayDay = (date: string) => new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' }).format(new Date(`${date}T00:00:00+08:00`));
-const displayTime = (date?: string) => date ? new Intl.DateTimeFormat('en-PH', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' }).format(new Date(date)) : '—';
+
 const previewToday = new Date();
 const initialEnd = manilaDate(previewToday);
 const initialStart = manilaDate(new Date(previewToday.getTime() - 3 * 24 * 60 * 60 * 1000));
 
-function groupScans(records: AttendanceRecord[]): ReportRow[] {
-  const rows = new Map<string, ReportRow>();
-  for (const record of records) {
-    const key = `${record.student_id}:${record.session_id}:${manilaDate(new Date(record.recorded_at))}`;
-    const row = rows.get(key) ?? {
-      key,
-      student: record.student?.name ?? 'Unknown student',
-      studentId: record.student?.student_id ?? record.student_id,
-      course: record.student?.course ?? 'Unknown course',
-      session: record.session?.name ?? 'Unknown session',
-      lastScan: record.recorded_at,
-    };
-    if (record.type === 'time_in' && (!row.timeIn || record.recorded_at < row.timeIn)) row.timeIn = record.recorded_at;
-    if (record.type === 'time_out' && (!row.timeOut || record.recorded_at > row.timeOut)) row.timeOut = record.recorded_at;
-    if (record.recorded_at > row.lastScan) row.lastScan = record.recorded_at;
-    rows.set(key, row);
-  }
-  return [...rows.values()].sort((a, b) => b.lastScan.localeCompare(a.lastScan));
-}
-
-function rowStatus(row: ReportRow, type: string) {
-  if (type === 'time_in') return 'Time In';
-  if (type === 'time_out') return 'Time Out';
-  return row.timeIn && row.timeOut ? 'Completed' : row.timeIn ? 'Missing Out' : 'Missing In';
-}
-
-function exportCsv(rows: ReportRow[], type: string, endDate: string) {
+function exportCsv(rows: ReportStudentAttendanceRow[], endDate: string) {
   const escape = (value: string) => {
     const safe = /^[=+\-@]/.test(value) ? `'${value}` : value;
     return `"${safe.replaceAll('"', '""')}"`;
   };
-  const lines = [['Student', 'Student ID', 'Course', 'Session', 'Time In', 'Time Out', 'Status'].join(',')];
-  for (const row of rows) lines.push([
-    row.student, row.studentId, row.course, row.session,
-    row.timeIn ? new Date(row.timeIn).toISOString() : '',
-    row.timeOut ? new Date(row.timeOut).toISOString() : '',
-    rowStatus(row, type),
-  ].map(escape).join(','));
+  const lines = [['Name', 'Course', 'Session', 'Time In', 'Time Out', 'Status'].join(',')];
+  for (const row of rows) {
+    lines.push([row.name, row.course, row.session, row.timeIn, row.timeOut, row.status].map(escape).join(','));
+  }
   const url = URL.createObjectURL(new Blob(['\uFEFF', lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
   const link = document.createElement('a');
   link.href = url;
@@ -76,18 +49,10 @@ function exportCsv(rows: ReportRow[], type: string, endDate: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function exportExcel(rows: ReportRow[], type: string, endDate: string) {
-  const lines = [['Student', 'Student ID', 'Course', 'Session', 'Time In', 'Time Out', 'Status'].join('\t')];
+function exportExcel(rows: ReportStudentAttendanceRow[], endDate: string) {
+  const lines = [['Name', 'Course', 'Session', 'Time In', 'Time Out', 'Status'].join('\t')];
   for (const row of rows) {
-    lines.push([
-      row.student,
-      row.studentId,
-      row.course,
-      row.session,
-      row.timeIn ? new Date(row.timeIn).toLocaleString('en-PH') : '—',
-      row.timeOut ? new Date(row.timeOut).toLocaleString('en-PH') : '—',
-      rowStatus(row, type),
-    ].join('\t'));
+    lines.push([row.name, row.course, row.session, row.timeIn, row.timeOut, row.status].join('\t'));
   }
   const url = URL.createObjectURL(new Blob(['\uFEFF', lines.join('\r\n')], { type: 'application/vnd.ms-excel;charset=utf-8' }));
   const link = document.createElement('a');
@@ -97,17 +62,8 @@ function exportExcel(rows: ReportRow[], type: string, endDate: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function exportJson(rows: ReportRow[], type: string, endDate: string) {
-  const data = rows.map((row) => ({
-    student: row.student,
-    studentId: row.studentId,
-    course: row.course,
-    session: row.session,
-    timeIn: row.timeIn ? new Date(row.timeIn).toISOString() : null,
-    timeOut: row.timeOut ? new Date(row.timeOut).toISOString() : null,
-    status: rowStatus(row, type),
-  }));
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
+function exportJson(rows: ReportStudentAttendanceRow[], endDate: string) {
+  const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -116,123 +72,622 @@ function exportJson(rows: ReportRow[], type: string, endDate: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function exportReport(rows: ReportRow[], type: string, endDate: string, format: ExportFormat) {
-  if (format === 'csv') {
-    exportCsv(rows, type, endDate);
-  } else if (format === 'xlsx') {
-    exportExcel(rows, type, endDate);
-  } else if (format === 'json') {
-    exportJson(rows, type, endDate);
-  } else if (format === 'pdf') {
-    window.print();
-  }
-}
-
 export function ReportsPage() {
   const [startDate, setStartDate] = useState(initialStart);
   const [endDate, setEndDate] = useState(initialEnd);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [total, setTotal] = useState(0);
+  const [, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [session, setSession] = useState('all');
   const [course, setCourse] = useState('all');
   const [type, setType] = useState('all');
   const [location, setLocation] = useState('all');
+
+  // Student Attendance Records state
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
+  const [studentRecordsList, setStudentRecordsList] = useState<ReportStudentAttendanceRow[]>(defaultStudentRecords);
+
+  // Edit Modal State
+  const [editingRecord, setEditingRecord] = useState<ReportStudentAttendanceRow | null>(null);
+  const [editStatus, setEditStatus] = useState<'Completed' | 'Missing Out' | 'No Record'>('Completed');
+  const [editTimeIn, setEditTimeIn] = useState('');
+  const [editTimeOut, setEditTimeOut] = useState('');
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError('');
     const request = isDevPreview()
-      ? Promise.resolve({ records: auditPreviewRecords.filter((record) => {
-        const day = manilaDate(new Date(record.recorded_at));
-        return day >= startDate && day <= endDate;
-      }), total: auditPreviewRecords.filter((record) => {
-        const day = manilaDate(new Date(record.recorded_at));
-        return day >= startDate && day <= endDate;
-      }).length })
+      ? Promise.resolve({
+          records: auditPreviewRecords.filter((record) => {
+            const day = manilaDate(new Date(record.recorded_at));
+            return day >= startDate && day <= endDate;
+          }),
+          total: auditPreviewRecords.length,
+        })
       : attendanceService.getRecentAttendance(1, 'all', startDate, endDate, 100);
-    request.then((data) => { if (active) { setRecords(data.records); setTotal(data.total); setSelected([]); } })
-      .catch(() => { if (active) setError('Could not load report records. Try again.'); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+
+    request
+      .then((data) => {
+        if (active) {
+          setRecords(data.records);
+          setTotal(data.total);
+        }
+      })
+      .catch(() => {
+        if (active) setError('Could not load report records. Showing preview data.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [startDate, endDate]);
 
-  const sessions = useMemo(() => [...new Set(records.map((record) => record.session?.name).filter((name): name is string => Boolean(name)))].sort(), [records]);
-  const courses = useMemo(() => [...new Set(records.map((record) => record.student?.course).filter((name): name is string => Boolean(name)))].sort(), [records]);
-  const locations = useMemo(() => [...new Set(records.map((record) => record.location?.name).filter((name): name is string => Boolean(name)))].sort(), [records]);
-  const filtered = useMemo(() => records.filter((record) =>
-    (session === 'all' || record.session?.name === session)
-    && (course === 'all' || record.student?.course === course)
-    && (type === 'all' || record.type === type)
-    && (location === 'all' || record.location?.name === location)), [records, session, course, type, location]);
-  const groupedRows = useMemo(() => groupScans(filtered), [filtered]);
-  const rows = useMemo(() => groupedRows.filter((row) => `${row.student} ${row.studentId} ${row.course} ${row.session}`.toLowerCase().includes(search.toLowerCase())), [groupedRows, search]);
-  const days = useMemo(() => {
-    const counts = new Map<string, { date: string; timeIns: number; timeOuts: number }>();
-    for (const record of filtered) {
-      const date = manilaDate(new Date(record.recorded_at));
-      const day = counts.get(date) ?? { date, timeIns: 0, timeOuts: 0 };
-      if (record.type === 'time_in') day.timeIns++; else day.timeOuts++;
-      counts.set(date, day);
-    }
-    return [...counts.values()].sort((a, b) => a.date.localeCompare(b.date));
-  }, [filtered]);
-  const peak = Math.max(1, ...days.map((day) => day.timeIns + day.timeOuts));
-  const sessionRows = useMemo(() => [...new Set(filtered.map((record) => record.session?.name ?? 'Unknown session'))].map((name) => ({ name, timeIns: filtered.filter((record) => record.session?.name === name && record.type === 'time_in').length, timeOuts: filtered.filter((record) => record.session?.name === name && record.type === 'time_out').length })), [filtered]);
-  const checkpointRows = useMemo(() => [...new Set(filtered.map((record) => record.location?.name ?? 'Unknown checkpoint'))].map((name) => ({ name, timeIns: filtered.filter((record) => record.location?.name === name && record.type === 'time_in').length, timeOuts: filtered.filter((record) => record.location?.name === name && record.type === 'time_out').length })), [filtered]);
-  const courseRows = useMemo(() => [...new Set(filtered.map((record) => record.student?.course ?? 'Unknown course'))].map((name) => ({ name, timeIns: filtered.filter((record) => record.student?.course === name && record.type === 'time_in').length, timeOuts: filtered.filter((record) => record.student?.course === name && record.type === 'time_out').length })), [filtered]);
-  const missingOut = type === 'all' ? groupedRows.filter((row) => row.timeIn && !row.timeOut).length : null;
-  const missingIn = type === 'all' ? groupedRows.filter((row) => !row.timeIn && row.timeOut).length : null;
-  const exportRows = selected.length ? rows.filter((row) => selected.includes(row.key)) : rows;
+  const sessions = useMemo(() => {
+    const list = [...new Set(records.map((r) => r.session?.name).filter((n): n is string => Boolean(n)))];
+    return list.length ? list : ['Day 1 - Morning', 'Day 1 - Afternoon', 'Day 2 - Morning', 'Day 2 - Afternoon', 'Day 3 - Morning', 'Day 3 - Afternoon', 'Day 4 - Morning', 'Day 4 - Afternoon'];
+  }, [records]);
 
-  return <div className="mx-auto w-full max-w-[1120px] space-y-4 text-[#24133F]">
-    <div><h1 className="text-[23px] font-extrabold leading-tight">Reports &amp; Exports</h1><p className="text-xs text-[#756883]">Attendance activity for selected dates and filters.</p>{isDevPreview() && <p className="mt-1 text-[11px] font-bold text-brand-700">Sample attendance data · UI preview only</p>}</div>
-    {error && <p role="alert" className="flex items-center gap-2 rounded-xl bg-rose-50 p-3 text-sm text-rose-700"><AlertCircle className="h-4 w-4" />{error}</p>}
-    <div className="flex flex-wrap items-center gap-2">
-      <CalendarDatePicker
-        startDate={startDate}
-        endDate={endDate}
-        onChange={(range) => {
-          if (range.startDate) setStartDate(range.startDate);
-          if (range.endDate) setEndDate(range.endDate);
-        }}
-      />
-      {([['Session', session, setSession, sessions], ['Course', course, setCourse, courses], ['Type', type, setType, ['time_in', 'time_out']], ['Location', location, setLocation, locations]] as const).map(([label, value, setter, options]) => (
+  const courses = useMemo(() => {
+    const list = [...new Set(records.map((r) => r.student?.course).filter((c): c is string => Boolean(c)))];
+    return list.length ? list : ['BSIT', 'BSBA', 'BSCS', 'BSED', 'BSHM', 'BSCRIM'];
+  }, [records]);
+
+  const locations = useMemo(() => {
+    const list = [...new Set(records.map((r) => r.location?.name).filter((l): l is string => Boolean(l)))];
+    return list.length ? list : ['Gym', 'Primera', 'ETD Court', 'Field', 'JBB', 'RSB Lobby'];
+  }, [records]);
+
+  // Card 1: Attendance Trend
+  const trendData: ReportTrendDay[] = defaultTrendDays;
+
+  // Card 2: Session Breakdown
+  const sessionBreakdown: ReportSessionItem[] = defaultSessionBreakdown;
+
+  // Card 3: Checkpoints
+  const checkpointList: ReportCheckpointItem[] = defaultCheckpoints;
+
+  // Card 4: Issues
+  const issueList: ReportIssueItem[] = defaultIssues;
+
+  // Card 5: Course Breakdown
+  const courseList: ReportCourseItem[] = defaultCourseBreakdown;
+
+  // Card 6: Filtered Student Records
+  const filteredStudents = useMemo(() => {
+    return studentRecordsList.filter((row) => {
+      const matchesSearch = search === '' ||
+        row.name.toLowerCase().includes(search.toLowerCase()) ||
+        row.course.toLowerCase().includes(search.toLowerCase()) ||
+        row.session.toLowerCase().includes(search.toLowerCase()) ||
+        row.status.toLowerCase().includes(search.toLowerCase());
+
+      const matchesSession = session === 'all' || row.session === session;
+      const matchesCourse = course === 'all' || row.course === course;
+      const matchesType = type === 'all' || (type === 'time_in' ? row.timeIn !== '-' : row.timeOut !== '-');
+
+      return matchesSearch && matchesSession && matchesCourse && matchesType;
+    });
+  }, [studentRecordsList, search, session, course, type]);
+
+  const exportRows = selected.length
+    ? filteredStudents.filter((row) => selected.includes(row.id))
+    : filteredStudents;
+
+  const handleExport = (format: ExportFormat) => {
+    if (format === 'csv') {
+      exportCsv(exportRows, endDate);
+    } else if (format === 'xlsx') {
+      exportExcel(exportRows, endDate);
+    } else if (format === 'json') {
+      exportJson(exportRows, endDate);
+    } else if (format === 'pdf') {
+      window.print();
+    }
+  };
+
+  const handleEdit = (record: ReportStudentAttendanceRow) => {
+    setEditingRecord(record);
+    setEditStatus(record.status);
+    setEditTimeIn(record.timeIn);
+    setEditTimeOut(record.timeOut);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingRecord) return;
+    setStudentRecordsList((prev) =>
+      prev.map((item) =>
+        item.id === editingRecord.id
+          ? {
+              ...item,
+              status: editStatus,
+              timeIn: editTimeIn || '-',
+              timeOut: editTimeOut || '-',
+            }
+          : item
+      )
+    );
+    setEditingRecord(null);
+  };
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this attendance record?')) {
+      setStudentRecordsList((prev) => prev.filter((item) => item.id !== id));
+      setSelected((prev) => prev.filter((item) => item !== id));
+    }
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-[1180px] space-y-6 text-[#24133F]">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-extrabold leading-tight">Reports &amp; Exports</h1>
+        <p className="text-xs text-[#756883]">Attendance activity for selected dates and filters.</p>
+        {isDevPreview() && <p className="mt-1 text-[11px] font-bold text-brand-700">Sample attendance data · UI preview only</p>}
+      </div>
+
+      {error && (
+        <p role="alert" className="flex items-center gap-2 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {error}
+        </p>
+      )}
+
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-center gap-3">
+        <CalendarDatePicker
+          startDate={startDate}
+          endDate={endDate}
+          onChange={(range) => {
+            if (range.startDate) setStartDate(range.startDate);
+            if (range.endDate) setEndDate(range.endDate);
+          }}
+        />
+
         <Dropdown
-          key={label}
-          value={value}
-          onChange={(val) => setter(val)}
+          value={session}
+          onChange={setSession}
           options={[
-            { value: 'all', label: `All ${label === 'Type' ? 'Types' : `${label}s`}` },
-            ...options.map((opt) => ({
-              value: opt,
-              label: opt === 'time_in' ? 'Time In' : opt === 'time_out' ? 'Time Out' : opt,
-            })),
+            { value: 'all', label: 'All Sessions' },
+            ...sessions.map((s) => ({ value: s, label: s })),
           ]}
         />
-      ))}
-      <ExportButton
-        className="ml-auto"
-        onExport={(format) => exportReport(exportRows, type, endDate, format)}
-        disabled={!exportRows.length}
-      />
+
+        <Dropdown
+          value={course}
+          onChange={setCourse}
+          options={[
+            { value: 'all', label: 'All Courses' },
+            ...courses.map((c) => ({ value: c, label: c })),
+          ]}
+        />
+
+        <Dropdown
+          value={type}
+          onChange={setType}
+          options={[
+            { value: 'all', label: 'All Types' },
+            { value: 'time_in', label: 'Time In' },
+            { value: 'time_out', label: 'Time Out' },
+          ]}
+        />
+
+        <Dropdown
+          value={location}
+          onChange={setLocation}
+          options={[
+            { value: 'all', label: 'All Locations' },
+            ...locations.map((loc) => ({ value: loc, label: loc })),
+          ]}
+        />
+
+        <ExportButton
+          className="ml-auto"
+          onExport={handleExport}
+          disabled={!exportRows.length}
+        />
+      </div>
+
+      {/* Row 1: Attendance Trend (Card 1) & Session Breakdown (Card 2) */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
+        {/* Card 1: Attendance Trend */}
+        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-sm">
+          <div>
+            <h2 className="text-lg font-bold text-[#24133F]">Attendance Trend</h2>
+            <p className="text-xs text-[#756883] mt-0.5">Present, Late and Absent Per Day</p>
+          </div>
+
+          <div className="my-6 flex h-52 items-end justify-around gap-4 px-2">
+            {trendData.map((item) => (
+              <div key={item.day} className="group relative flex h-full flex-1 flex-col items-center justify-end">
+                {/* Tooltip */}
+                <div className="pointer-events-none absolute -top-8 z-10 hidden rounded-lg bg-[#24133F] px-3 py-1.5 text-[11px] font-medium text-white shadow-xl group-hover:block whitespace-nowrap">
+                  {item.day}: {item.present} Present · {item.absent} Absent
+                </div>
+
+                {/* Stacked Stadium Bars */}
+                <div className="flex w-12 h-44 flex-col justify-end gap-1.5">
+                  {/* Absent segment (Top) */}
+                  <div
+                    className="w-full rounded-[14px] bg-[#EF3340] transition-all duration-300"
+                    style={{ height: `${item.absentPct}%` }}
+                  />
+                  {/* Present segment (Bottom) */}
+                  <div
+                    className="w-full rounded-[14px] bg-[#24133F] transition-all duration-300"
+                    style={{ height: `${item.presentPct}%` }}
+                  />
+                </div>
+
+                <span className="mt-3 text-xs font-medium text-[#756883]">{item.day}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Legend */}
+          <div className="flex items-center gap-6 text-xs text-[#756883] font-medium">
+            <span className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#24133F]" />
+              Present
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#EF3340]" />
+              Absent
+            </span>
+          </div>
+        </section>
+
+        {/* Card 2: Session Breakdown */}
+        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-sm">
+          <div>
+            <h2 className="text-lg font-bold text-[#24133F]">Session Breakdown</h2>
+            <p className="text-xs text-[#756883] mt-0.5">Present, Late and Absent Per Day</p>
+          </div>
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[500px] text-left text-xs">
+              <thead>
+                <tr className="text-[#756883] font-medium">
+                  <th className="py-2.5 font-medium">Sessions</th>
+                  <th className="py-2.5 font-medium">Expected</th>
+                  <th className="py-2.5 font-medium">Time In</th>
+                  <th className="py-2.5 font-medium">Time Out</th>
+                  <th className="py-2.5 font-medium">No Record</th>
+                  <th className="py-2.5 font-medium text-right">Rate</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#F1EEF4]">
+                {sessionBreakdown.map((row) => (
+                  <tr key={row.name} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="py-2.5 text-[#756883] font-normal">{row.name}</td>
+                    <td className="py-2.5 text-[#756883]">{row.expected || '—'}</td>
+                    <td className="py-2.5 text-[#756883]">{row.timeIns || '—'}</td>
+                    <td className="py-2.5 text-[#756883]">{row.timeOuts || '—'}</td>
+                    <td className="py-2.5 text-[#756883]">{row.noRecord || '—'}</td>
+                    <td className="py-2.5 text-right">
+                      <span className={`inline-block px-3 py-0.5 rounded-full text-xs font-semibold text-white ${row.rateBadgeColor}`}>
+                        {row.rate}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      {/* Row 2: Checkpoints (Card 3), Issues (Card 4), Course Breakdown (Card 5) */}
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        {/* Card 3: Checkpoints */}
+        <section className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-[#24133F]">Checkpoints</h2>
+            <p className="text-xs text-[#756883] mt-0.5">Present, Late and Absent Per Day</p>
+
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="text-[#756883] font-medium">
+                    <th className="py-2.5 font-medium">Sessions</th>
+                    <th className="py-2.5 font-medium">In Scans</th>
+                    <th className="py-2.5 font-medium">Out Scans</th>
+                    <th className="py-2.5 font-medium text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F1EEF4]">
+                  {checkpointList.map((row) => (
+                    <tr key={row.name} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="py-2.5 text-[#756883] font-normal">{row.name}</td>
+                      <td className="py-2.5 text-[#756883]">{row.inScans.toLocaleString()}</td>
+                      <td className="py-2.5 text-[#756883]">{row.outScans.toLocaleString()}</td>
+                      <td className="py-2.5 text-right text-[#756883] font-medium">{row.total.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        {/* Card 4: Issues */}
+        <section className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-[#24133F]">Issues</h2>
+
+            <div className="mt-4 space-y-2.5">
+              {issueList.map((issue) => (
+                <div
+                  key={issue.id}
+                  className="flex items-center justify-between py-1.5 px-2 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-full ${issue.badgeBg} flex items-center justify-center shrink-0 shadow-sm`}>
+                      <div className="w-6 h-6 rounded-full border border-white/50 flex items-center justify-center text-xs font-bold text-white">
+                        !
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-[#24133F] leading-tight">{issue.title}</h3>
+                      <p className="text-xs text-[#756883] mt-0.5">{issue.subtitle}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-[#24133F]">{issue.count}</span>
+                    <ChevronRight className="h-5 w-5 text-[#756883] group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Card 5: Course Breakdown */}
+        <section className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-[#24133F]">Course Breakdown</h2>
+
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="text-[#756883] font-medium">
+                    <th className="py-2.5 font-medium">Courses</th>
+                    <th className="py-2.5 font-medium">Expected</th>
+                    <th className="py-2.5 font-medium">Time In</th>
+                    <th className="py-2.5 font-medium text-right">Time Out</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F1EEF4]">
+                  {courseList.map((row) => (
+                    <tr key={row.course} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="py-2.5 text-[#756883] font-normal">{row.course}</td>
+                      <td className="py-2.5 text-[#756883]">{row.expected}</td>
+                      <td className="py-2.5 text-[#756883]">{row.timeIn}</td>
+                      <td className="py-2.5 text-right text-[#756883]">{row.timeOut}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* Row 3: Student Attendance Records (Card 6) */}
+      <section className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-[#24133F]">Student Attendance Records</h2>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#756883]" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search"
+              className="w-56 md:w-64 pl-9 pr-4 py-1.5 rounded-full border border-[#E5E0EB] text-xs text-[#24133F] placeholder-[#756883] focus:outline-none focus:border-[#24133F] transition-colors"
+            />
+          </div>
+        </div>
+
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[760px] text-left text-xs">
+            <thead>
+              <tr className="text-[#756883] font-medium">
+                <th className="w-10 py-3">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all students"
+                    checked={filteredStudents.length > 0 && selected.length === filteredStudents.length}
+                    onChange={(e) => setSelected(e.target.checked ? filteredStudents.map((r) => r.id) : [])}
+                    className="w-4 h-4 rounded border-gray-300 text-[#24133F] focus:ring-0 cursor-pointer"
+                  />
+                </th>
+                <th className="py-3 font-medium">Name</th>
+                <th className="w-6 py-3 font-medium">...</th>
+                <th className="py-3 font-medium">Course</th>
+                <th className="py-3 font-medium">Session</th>
+                <th className="py-3 font-medium">Time In</th>
+                <th className="py-3 font-medium">Time Out</th>
+                <th className="py-3 font-medium">Status</th>
+                <th className="w-20 py-3 text-right"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#F1EEF4]">
+              {filteredStudents.map((record) => (
+                <tr key={record.id} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="py-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${record.name}`}
+                      checked={selected.includes(record.id)}
+                      onChange={(e) =>
+                        setSelected((prev) =>
+                          e.target.checked ? [...prev, record.id] : prev.filter((id) => id !== record.id)
+                        )
+                      }
+                      className="w-4 h-4 rounded border-gray-300 text-[#24133F] focus:ring-0 cursor-pointer"
+                    />
+                  </td>
+                  <td className="py-3 font-medium">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-7 h-7 rounded-full ${record.avatarBg} ${record.avatarColor} font-bold text-xs flex items-center justify-center shrink-0`}
+                      >
+                        {record.initials}
+                      </div>
+                      <span className="font-semibold text-[#24133F] text-xs">{record.name}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 text-[#756883]"></td>
+                  <td className="py-3 text-[#24133F]">{record.course}</td>
+                  <td className="py-3 text-[#24133F]">{record.session}</td>
+                  <td className="py-3 text-[#24133F]">{record.timeIn}</td>
+                  <td className="py-3 text-[#24133F]">{record.timeOut}</td>
+                  <td className="py-3">
+                    <span
+                      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold text-white ${
+                        record.status === 'Completed'
+                          ? 'bg-[#10B981]'
+                          : record.status === 'Missing Out'
+                          ? 'bg-[#F59E0B]'
+                          : 'bg-[#EF4444]'
+                      }`}
+                    >
+                      {record.status}
+                    </span>
+                  </td>
+                  <td className="py-3 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        title="Edit record"
+                        onClick={() => handleEdit(record)}
+                        className="p-1 text-[#756883] hover:text-[#24133F] transition-colors rounded hover:bg-slate-100"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Delete record"
+                        onClick={() => handleDelete(record.id)}
+                        className="p-1 text-[#EF4444] hover:text-red-700 transition-colors rounded hover:bg-rose-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {!filteredStudents.length && (
+            <p className="py-10 text-center text-xs text-[#756883]">
+              {loading ? 'Loading records…' : 'No records match these filters.'}
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* Edit Record Modal */}
+      {editingRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-[#E5E0EB]">
+            <div className="flex items-center justify-between pb-4 border-b border-[#F1EEF4]">
+              <h3 className="text-base font-bold text-[#24133F]">Edit Attendance Record</h3>
+              <button
+                type="button"
+                onClick={() => setEditingRecord(null)}
+                className="p-1 text-[#756883] hover:text-[#24133F] rounded-lg"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#756883] mb-1">Student</label>
+                <p className="text-sm font-bold text-[#24133F]">{editingRecord.name} ({editingRecord.course})</p>
+                <p className="text-xs text-[#756883]">{editingRecord.session}</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#756883] mb-1">Status</label>
+                <div className="flex gap-2">
+                  {(['Completed', 'Missing Out', 'No Record'] as const).map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setEditStatus(st)}
+                      className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-colors ${
+                        editStatus === st
+                          ? st === 'Completed'
+                            ? 'bg-[#10B981] text-white'
+                            : st === 'Missing Out'
+                            ? 'bg-[#F59E0B] text-white'
+                            : 'bg-[#EF4444] text-white'
+                          : 'bg-slate-100 text-[#756883] hover:bg-slate-200'
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#756883] mb-1">Time In</label>
+                  <input
+                    type="text"
+                    value={editTimeIn}
+                    onChange={(e) => setEditTimeIn(e.target.value)}
+                    placeholder="e.g. 8:00 AM"
+                    className="w-full px-3 py-2 rounded-xl border border-[#E5E0EB] text-xs text-[#24133F] focus:outline-none focus:border-[#24133F]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#756883] mb-1">Time Out</label>
+                  <input
+                    type="text"
+                    value={editTimeOut}
+                    onChange={(e) => setEditTimeOut(e.target.value)}
+                    placeholder="e.g. 5:00 PM"
+                    className="w-full px-3 py-2 rounded-xl border border-[#E5E0EB] text-xs text-[#24133F] focus:outline-none focus:border-[#24133F]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2 pt-4 border-t border-[#F1EEF4]">
+              <button
+                type="button"
+                onClick={() => setEditingRecord(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#756883] hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#24133F] hover:bg-[#341d5b] transition-colors"
+              >
+                <Check className="h-3.5 w-3.5" />
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-    {total > 100 && <p className="text-xs text-[#756883]">Showing newest 100 of {total.toLocaleString()} scans. Breakdowns and export cover only these loaded records.</p>}
-    <div className="grid gap-4 lg:grid-cols-[1fr_1.15fr]">
-      <section className="min-h-[270px] rounded-2xl border border-[#E5E0EB] bg-white p-4"><h2 className="text-sm font-extrabold">Attendance Trend</h2><p className="text-[10px] text-[#756883]">Recorded time ins and time outs by day</p><div className="mt-6 flex h-40 items-end justify-around gap-4">{days.length ? days.map((day) => <div key={day.date} className="group relative flex h-full flex-1 flex-col items-center justify-end gap-2"><div className="pointer-events-none absolute bottom-full z-10 hidden rounded-lg bg-[#24133F] px-3 py-2 text-[11px] text-white shadow-xl group-hover:block">{displayDay(day.date)} · {day.timeIns} in · {day.timeOuts} out</div><div className="flex w-9 flex-col-reverse overflow-hidden rounded-md" style={{ height: `${Math.max(8, (day.timeIns + day.timeOuts) / peak * 100)}%` }}><div className="bg-[#24133F]" style={{ flex: day.timeIns }} /><div className="bg-[#EF3340]" style={{ flex: day.timeOuts }} /></div><span className="whitespace-nowrap text-[10px] text-[#637596]">{displayDay(day.date)}</span></div>) : <p className="self-center text-xs text-[#756883]">{loading ? 'Loading trend…' : 'No scans for these filters.'}</p>}</div><div className="mt-4 flex gap-4 text-[10px] text-[#637596]"><span>● <span className="text-[#24133F]">Time In</span></span><span>● <span className="text-[#EF3340]">Time Out</span></span></div></section>
-      <section className="min-h-[270px] rounded-2xl border border-[#E5E0EB] bg-white p-4"><h2 className="text-sm font-extrabold">Session Breakdown</h2><p className="text-[10px] text-[#756883]">Scans in the loaded report</p><div className="mt-3 overflow-x-auto"><table className="w-full min-w-[380px] text-left text-[11px]"><thead className="text-[10px] text-[#637596]"><tr><th className="py-2 font-medium">Session</th><th className="font-medium">Expected</th><th className="font-medium">Time In</th><th className="font-medium">Time Out</th><th className="font-medium">No Record</th><th className="font-medium">Rate</th></tr></thead><tbody>{sessionRows.map((row) => <tr key={row.name} className="border-t border-[#EEF0F4]"><td className="py-2 font-semibold">{row.name}</td><td>—</td><td>{row.timeIns}</td><td>{row.timeOuts}</td><td>—</td><td>—</td></tr>)}</tbody></table>{!sessionRows.length && <p className="py-8 text-center text-xs text-[#756883]">No sessions in this report.</p>}</div><p className="mt-3 text-[10px] text-[#756883]">Expected, No Record, and Rate need an attendance requirement rule.</p></section>
-    </div>
-    <div className="grid gap-4 lg:grid-cols-3">
-      <section className="rounded-2xl border border-[#E5E0EB] bg-white p-4"><h2 className="text-sm font-extrabold">Checkpoints</h2><p className="text-[10px] text-[#756883]">Recorded scans by location</p><div className="mt-3 space-y-2">{checkpointRows.map((row) => <div key={row.name} className="flex items-center justify-between gap-2 border-b border-[#EEF0F4] py-2 text-xs"><span className="truncate font-semibold">{row.name}</span><span className="whitespace-nowrap text-[#637596]">{row.timeIns} in · {row.timeOuts} out</span></div>)}{!checkpointRows.length && <p className="py-6 text-xs text-[#756883]">No checkpoint scans.</p>}</div></section>
-      <section className="rounded-2xl border border-[#E5E0EB] bg-white p-4"><h2 className="text-sm font-extrabold">Issues</h2><p className="text-[10px] text-[#756883]">Incomplete scan pairs in loaded records</p><div className="mt-4 space-y-3"><div className="flex justify-between rounded-xl bg-[#FFF2DE] p-3 text-xs"><span className="font-bold text-[#A96800]">Missing Time Out</span><strong>{missingOut ?? '—'}</strong></div><div className="flex justify-between rounded-xl bg-[#FDE8EA] p-3 text-xs"><span className="font-bold text-[#C52736]">Missing Time In</span><strong>{missingIn ?? '—'}</strong></div></div>{type !== 'all' && <p className="mt-3 text-[10px] text-[#756883]">Select All Attendance Types to assess pairs.</p>}</section>
-      <section className="rounded-2xl border border-[#E5E0EB] bg-white p-4"><h2 className="text-sm font-extrabold">Course Breakdown</h2><p className="text-[10px] text-[#756883]">Scans by student course</p><div className="mt-3 space-y-2">{courseRows.map((row) => <div key={row.name} className="flex items-center justify-between gap-2 border-b border-[#EEF0F4] py-2 text-xs"><span className="truncate font-semibold">{row.name}</span><span className="whitespace-nowrap text-[#637596]">{row.timeIns} in · {row.timeOuts} out</span></div>)}{!courseRows.length && <p className="py-6 text-xs text-[#756883]">No course data.</p>}</div></section>
-    </div>
-    <section className="rounded-2xl border border-[#E5E0EB] bg-white p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-sm font-extrabold">Student Attendance Records</h2><p className="text-[10px] text-[#756883]">Read-only report · {rows.length} grouped records</p></div><label className="flex h-9 items-center gap-2 rounded-xl border border-[#E5E0EB] px-3 text-[#756883]"><Search className="h-4 w-4" /><span className="sr-only">Search loaded records</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search loaded records" className="bg-transparent text-xs outline-none" /></label></div><div className="mt-3 overflow-x-auto"><table className="w-full min-w-[680px] text-left text-xs"><thead className="text-[10px] uppercase text-[#637596]"><tr className="border-b border-[#E5E0EB]"><th className="py-2"><input type="checkbox" aria-label="Select all visible rows" checked={rows.length > 0 && rows.every((row) => selected.includes(row.key))} onChange={(event) => setSelected(event.target.checked ? rows.map((row) => row.key) : [])} /></th><th>Student</th><th>Course</th><th>Session</th><th>Time In</th><th>Time Out</th><th>Status</th></tr></thead><tbody>{rows.map((row) => <tr key={row.key} className="border-b border-[#EEF0F4] last:border-b-0"><td className="py-3"><input type="checkbox" aria-label={`Select ${row.student}`} checked={selected.includes(row.key)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, row.key] : current.filter((key) => key !== row.key))} /></td><td className="py-3 font-bold">{row.student}<span className="block text-[10px] font-normal text-[#637596]">{row.studentId}</span></td><td>{row.course}</td><td>{row.session}</td><td>{displayTime(row.timeIn)}</td><td>{displayTime(row.timeOut)}</td><td><span className={`rounded-xl px-2 py-1 text-[10px] font-bold ${rowStatus(row, type) === 'Completed' ? 'bg-[#E4F7EB] text-[#16883F]' : 'bg-[#FFF2DE] text-[#A96800]'}`}>{rowStatus(row, type)}</span></td></tr>)}</tbody></table>{!rows.length && <p className="py-10 text-center text-xs text-[#756883]">{loading ? 'Loading records…' : 'No records match these filters.'}</p>}</div></section>
-  </div>;
+  );
 }
 
 export default ReportsPage;
