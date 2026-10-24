@@ -132,8 +132,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
           {/* Stepper (Only visible during creation, not in success modal) */}
           {!isPublished && (
-            <div className="mt-6 overflow-x-auto">
-              <div className="grid min-w-[600px] grid-cols-5 px-4">
+            <div className="mt-4 overflow-x-auto py-1">
+              <div className="grid min-w-[600px] grid-cols-5 px-4 pt-2 pb-1">
               {stepTitles.map((title, idx) => {
                 const stepNum = idx + 1;
                 const isComplete = currentStep > stepNum;
@@ -161,7 +161,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       </span>
                     {idx < stepTitles.length - 1 && (
                       <div
-                        className={`absolute left-[calc(50%+1.5rem)] top-4 h-[2px] w-[calc(100%-3rem)] transition-colors ${
+                        className={`absolute left-[calc(50%+1.5rem)] top-6 h-[2px] w-[calc(100%-3rem)] transition-colors ${
                           currentStep > stepNum ? 'bg-[#A855F7]' : 'bg-[#E5E0EB]'
                         }`}
                       />
