@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { UploadCloud, Download, Sparkles } from 'lucide-react';
 import { Modal } from '../../../components/common/Modal';
 import { toast } from '../../../context';
 import type { BulkImportStudentRow, InventoryCard } from '../models';
@@ -38,7 +37,6 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
       }
 
       const rows: BulkImportStudentRow[] = [];
-      // Skip header line
       for (let i = 1; i < lines.length; i++) {
         const parts = lines[i].split(',').map((p) => p.trim());
         if (parts[0] && parts[1]) {
@@ -74,7 +72,7 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
   };
 
   const handleLoadSample = () => {
-    setFileName('cite_festival_student_batch.csv');
+    setFileName('student_roster_sample.csv');
     parseCsvText(SAMPLE_CSV);
   };
 
@@ -82,7 +80,7 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
     if (parsedRows.length === 0) return;
 
     let csvContent = 'data:text/csv;charset=utf-8,';
-    csvContent += 'Card Number,Student ID,Full Name,Course,Year Level,Card UID,Student Signature\n';
+    csvContent += 'Card Number,Student ID,Full Name,Course,Year Level,Card UID,Signature\n';
 
     parsedRows.forEach((row, idx) => {
       const cardNum = autoPairWithInventory && availableCards[idx] ? availableCards[idx].cardNumber : 'N/A';
@@ -97,7 +95,7 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success('Physical distribution checklist roster downloaded!');
+    toast.success('Distribution checklist downloaded.');
   };
 
   const handleConfirmImport = async () => {
@@ -118,39 +116,38 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Bulk Import Students"
-      description="Upload your student roster file (CSV / Excel). You can auto-assign available RFID cards in order."
+      title="Bulk import students"
+      description="Upload your student roster file. You can automatically pair available RFID cards in sequence."
       maxWidth="lg"
     >
       <div className="space-y-4 pt-1">
-        {/* Dropzone */}
-        <div className="rounded-2xl border-2 border-dashed border-[#E5E0EB] bg-[#FAF8FB] p-6 text-center hover:border-[#7026B7] transition-all">
-          <UploadCloud className="h-9 w-9 text-[#7026B7] mx-auto mb-2" />
-          <p className="text-xs font-bold text-[#24133F]">
-            {fileName ? fileName : 'Upload your Student CSV / Excel Roster'}
+        {/* Dropzone with Anti-Slop typography (no cartoon/cloud icons) */}
+        <div className="rounded-2xl border border-dashed border-[#D5CEDD] bg-[#FAF8FC] p-6 text-center hover:border-[#7026B7] transition-all">
+          <p className="text-sm font-bold text-[#24133F]">
+            {fileName ? fileName : 'Upload student CSV or Excel roster'}
           </p>
-          <p className="text-[11px] text-[#756883] mt-1">
-            Columns: student_id, name, email, course, year_level
+          <p className="text-xs text-[#756883] mt-1">
+            Columns: <code className="font-mono text-[#24133F]">student_id, name, email, course, year_level</code>
           </p>
 
-          <div className="mt-3 flex items-center justify-center gap-2">
-            <label className="cursor-pointer rounded-xl bg-white border border-[#E5E0EB] px-3.5 py-1.5 text-xs font-bold text-[#7026B7] hover:bg-slate-50 transition-colors shadow-2xs">
-              Browse CSV File
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <label className="cursor-pointer rounded-xl bg-white border border-[#E5E0EB] px-4 py-2 text-xs font-semibold text-[#24133F] hover:bg-slate-50 transition-colors">
+              Browse CSV file
               <input type="file" accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
             </label>
             <button
               type="button"
               onClick={handleLoadSample}
-              className="rounded-xl bg-[#F4EFFB] px-3.5 py-1.5 text-xs font-bold text-[#7026B7] hover:bg-[#EAE0F7] transition-colors"
+              className="rounded-xl bg-white border border-[#E5E0EB] px-4 py-2 text-xs font-semibold text-[#7026B7] hover:bg-purple-50/50 transition-colors"
             >
-              Load Sample Roster
+              Load sample roster
             </button>
           </div>
         </div>
 
         {/* Auto-Pairing Option with Inventory Pool */}
         {parsedRows.length > 0 && (
-          <div className="rounded-2xl border border-purple-200 bg-purple-50/50 p-3.5 space-y-2">
+          <div className="rounded-xl border border-[#E5E0EB] bg-white p-3.5 space-y-1">
             <label className="flex items-start gap-2.5 cursor-pointer">
               <input
                 type="checkbox"
@@ -159,11 +156,11 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
                 className="mt-0.5 h-4 w-4 rounded accent-[#7026B7]"
               />
               <div className="text-xs">
-                <span className="font-bold text-[#24133F]">
-                  Auto-Assign Available RFID Cards ({availableCards.length} in inventory)
+                <span className="font-semibold text-[#24133F]">
+                  Auto-pair with available RFID cards ({availableCards.length} in inventory pool)
                 </span>
                 <p className="text-[#756883] mt-0.5">
-                  Binds physical cards sequentially: Row 1 ➔ Card #{availableCards[0]?.cardNumber || 1}, Row 2 ➔ Card #{availableCards[1]?.cardNumber || 2}, etc.
+                  Pairs students sequentially: Row 1 to Card #{availableCards[0]?.cardNumber || 1}, Row 2 to Card #{availableCards[1]?.cardNumber || 2}, etc.
                 </p>
               </div>
             </label>
@@ -174,24 +171,23 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
         {parsedRows.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#24133F]">
-                Roster Preview ({parsedRows.length} students detected)
+              <span className="text-xs font-semibold text-[#756883]">
+                Roster preview ({parsedRows.length} students detected)
               </span>
               <button
                 type="button"
                 onClick={handleDownloadRoster}
-                className="flex items-center gap-1.5 text-xs font-bold text-[#7026B7] hover:underline"
+                className="text-xs font-semibold text-[#7026B7] hover:underline"
               >
-                <Download className="h-3.5 w-3.5" />
-                <span>Download Card Distribution Roster</span>
+                Download distribution checklist (.csv)
               </button>
             </div>
 
             <div className="max-h-48 overflow-y-auto rounded-xl border border-[#E5E0EB] bg-white">
               <table className="w-full text-left text-xs">
-                <thead className="border-b border-[#F1EEF4] bg-[#FAF8FB] text-[10px] uppercase font-bold text-[#756883]">
+                <thead className="border-b border-[#F1EEF4] bg-[#FAF8FC] text-xs font-medium text-[#756883]">
                   <tr>
-                    <th className="px-3 py-2">Assigned Card #</th>
+                    <th className="px-3 py-2">Assigned card</th>
                     <th className="px-3 py-2">Student ID</th>
                     <th className="px-3 py-2">Name</th>
                     <th className="px-3 py-2">Program</th>
@@ -201,12 +197,12 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
                   {parsedRows.map((row, idx) => {
                     const card = autoPairWithInventory ? availableCards[idx] : null;
                     return (
-                      <tr key={idx} className="hover:bg-slate-50">
-                        <td className="px-3 py-2 font-mono font-bold text-[#7026B7]">
-                          {card ? `Card #${card.cardNumber} (${card.uid.slice(0, 10)}...)` : 'No Card'}
+                      <tr key={idx} className="hover:bg-[#FAF8FC]">
+                        <td className="px-3 py-2 font-mono font-semibold text-[#7026B7]">
+                          {card ? `Card #${card.cardNumber} (${card.uid.slice(0, 10)}...)` : 'No card'}
                         </td>
-                        <td className="px-3 py-2 font-semibold text-[#24133F]">{row.student_id}</td>
-                        <td className="px-3 py-2 font-medium">{row.name}</td>
+                        <td className="px-3 py-2 font-mono text-[#24133F]">{row.student_id}</td>
+                        <td className="px-3 py-2 font-medium text-[#24133F]">{row.name}</td>
                         <td className="px-3 py-2 text-[#756883]">{row.course}</td>
                       </tr>
                     );
@@ -217,23 +213,15 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
           </div>
         )}
 
-        {/* Actions */}
-        <div className="pt-3 border-t border-[#F1EEF4] flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-[#E5E0EB] px-4 py-2 text-xs font-bold text-[#756883] hover:bg-slate-50 transition-colors"
-          >
-            Cancel
-          </button>
+        {/* Footer Actions: Clean 3D Tactile Button, No Cancel Button */}
+        <div className="pt-3 border-t border-[#F1EEF4] flex items-center justify-end">
           <button
             type="button"
             onClick={handleConfirmImport}
             disabled={parsedRows.length === 0 || isProcessing}
-            className="flex items-center gap-1.5 rounded-xl bg-[#7026B7] px-5 py-2 text-xs font-bold text-white hover:bg-[#631FA4] shadow-[0_4px_0_0_#451475] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50"
+            className="rounded-xl bg-[#7026B7] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#621FA3] shadow-[0_4px_0_0_#451475] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50"
           >
-            <Sparkles className="h-4 w-4" />
-            <span>{isProcessing ? 'Importing...' : `Import ${parsedRows.length} Students`}</span>
+            {isProcessing ? 'Importing students...' : `Import ${parsedRows.length} Students`}
           </button>
         </div>
       </div>

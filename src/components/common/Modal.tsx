@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '../../utils/cn';
@@ -20,6 +20,26 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   maxWidth = 'md',
 }) => {
+  const [isMounted, setIsMounted] = useState(isOpen);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isOpen) {
+      setIsMounted(true);
+      const rAF = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setIsVisible(true));
+      });
+      return () => cancelAnimationFrame(rAF);
+    } else {
+      setIsVisible(false);
+      timer = setTimeout(() => {
+        setIsMounted(false);
+      }, 180);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) onClose();
@@ -28,7 +48,7 @@ export const Modal: React.FC<ModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isMounted) return null;
 
   const maxW = {
     sm: 'max-w-sm',
@@ -38,32 +58,43 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#170D29]/40 p-4 backdrop-blur-md animate-in fade-in duration-200">
+    <div
+      role="presentation"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className={cn(
+        'fixed inset-0 z-[100] flex items-center justify-center bg-[#170D29]/40 p-4 backdrop-blur-md transition-opacity duration-180 ease-out',
+        isVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+      )}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
         className={cn(
-          'w-full bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200',
-          maxW[maxWidth]
+          'w-full bg-white rounded-2xl border border-[#E5E0EB] overflow-hidden transition-all duration-180 cubic-bezier(0.16,1,0.3,1)',
+          maxW[maxWidth],
+          isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'
         )}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#F1EEF4] bg-white">
           <div>
-            <h3 className="text-base font-bold text-slate-900">{title}</h3>
-            {description && <p className="text-xs text-slate-500 mt-0.5">{description}</p>}
+            <h3 className="text-base font-bold text-[#24133F]">{title}</h3>
+            {description && <p className="text-xs text-[#756883] mt-0.5">{description}</p>}
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            className="p-1 rounded-lg text-[#756883] hover:text-[#24133F] hover:bg-slate-100 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
         <div className="p-6">{children}</div>
       </div>
-    </div>, document.body
+    </div>,
+    document.body
   );
 };
