@@ -210,6 +210,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     });
   };
 
+  // Calculate duration between current editing start and end
+  const currentSlotDurationHours = useMemo(() => {
+    if (!editingTimeSlot.start || !editingTimeSlot.end) return null;
+    const [h1, m1] = editingTimeSlot.start.split(':').map(Number);
+    const [h2, m2] = editingTimeSlot.end.split(':').map(Number);
+    let diffMins = (h2 * 60 + m2) - (h1 * 60 + m1);
+    if (diffMins < 0) diffMins += 24 * 60;
+    return diffMins / 60;
+  }, [editingTimeSlot.start, editingTimeSlot.end]);
+
   const applySlotDuration = (hoursToAdd: number) => {
     const [h, m] = editingTimeSlot.start.split(':').map(Number);
     const totalMinutes = (h || 0) * 60 + (m || 0) + Math.round(hoursToAdd * 60);
@@ -1365,64 +1375,110 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             </div>
 
             <div className="mt-4 space-y-4">
-              {/* Quick Start Time Grid (Deel/Calendly aesthetic) */}
+              {/* Quick Start Time Grid (Context-Aware by session period) */}
               <div>
                 <p className="text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-1.5">
                   Quick Select Start Time
                 </p>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {[
-                    { label: '7:00 AM', val: '07:00' },
-                    { label: '7:30 AM', val: '07:30' },
-                    { label: '8:00 AM', val: '08:00' },
-                    { label: '12:00 PM', val: '12:00' },
-                    { label: '1:00 PM', val: '13:00' },
-                    { label: '5:30 PM', val: '17:30' },
-                  ].map((slot) => {
-                    const isSelected = editingTimeSlot.start === slot.val;
-                    return (
-                      <button
-                        key={slot.val}
-                        type="button"
-                        onClick={() => {
-                          const [h, m] = slot.val.split(':').map(Number);
-                          const totalMinutes = h * 60 + m + 90; // default 1.5 hr
-                          const newH = Math.floor(totalMinutes / 60) % 24;
-                          const newM = totalMinutes % 60;
-                          setEditingTimeSlot((prev) => ({
-                            ...prev,
-                            start: slot.val,
-                            end: `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`,
-                          }));
-                        }}
-                        className={`rounded-xl border py-2 text-center text-xs font-bold transition-all shadow-2xs ${
-                          isSelected
-                            ? 'border-[#451475] bg-[#451475] text-white shadow-xs'
-                            : 'border-[#E5E0EB] bg-white text-[#24133F] hover:border-[#451475] hover:bg-[#FAF7FD]'
-                        }`}
-                      >
-                        {slot.label}
-                      </button>
-                    );
-                  })}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {(() => {
+                    const isMorning = editingTimeSlot.sessionType === 'Morning';
+                    const isAfternoon = editingTimeSlot.sessionType === 'Afternoon';
+                    const isOutSlot = editingTimeSlot.slot === 'OUT';
+
+                    let slots: { label: string; val: string }[] = [];
+                    if (isMorning) {
+                      slots = isOutSlot
+                        ? [
+                            { label: '11:30 AM', val: '11:30' },
+                            { label: '12:00 PM', val: '12:00' },
+                            { label: '12:30 PM', val: '12:30' },
+                            { label: '1:00 PM', val: '13:00' },
+                          ]
+                        : [
+                            { label: '7:00 AM', val: '07:00' },
+                            { label: '7:30 AM', val: '07:30' },
+                            { label: '8:00 AM', val: '08:00' },
+                            { label: '8:30 AM', val: '08:30' },
+                          ];
+                    } else if (isAfternoon) {
+                      slots = isOutSlot
+                        ? [
+                            { label: '4:30 PM', val: '16:30' },
+                            { label: '5:00 PM', val: '17:00' },
+                            { label: '5:30 PM', val: '17:30' },
+                            { label: '6:00 PM', val: '18:00' },
+                          ]
+                        : [
+                            { label: '12:30 PM', val: '12:30' },
+                            { label: '1:00 PM', val: '13:00' },
+                            { label: '1:30 PM', val: '13:30' },
+                            { label: '2:00 PM', val: '14:00' },
+                          ];
+                    } else {
+                      // Evening
+                      slots = isOutSlot
+                        ? [
+                            { label: '8:30 PM', val: '20:30' },
+                            { label: '9:00 PM', val: '21:00' },
+                            { label: '9:30 PM', val: '21:30' },
+                            { label: '10:00 PM', val: '22:00' },
+                          ]
+                        : [
+                            { label: '5:30 PM', val: '17:30' },
+                            { label: '6:00 PM', val: '18:00' },
+                            { label: '6:30 PM', val: '18:30' },
+                            { label: '7:00 PM', val: '19:00' },
+                          ];
+                    }
+
+                    return slots.map((slot) => {
+                      const isSelected = editingTimeSlot.start === slot.val;
+                      return (
+                        <button
+                          key={slot.val}
+                          type="button"
+                          onClick={() => {
+                            const [h, m] = slot.val.split(':').map(Number);
+                            const currentDuration = currentSlotDurationHours || 1.5;
+                            const totalMinutes = h * 60 + m + Math.round(currentDuration * 60);
+                            const newH = Math.floor(totalMinutes / 60) % 24;
+                            const newM = totalMinutes % 60;
+                            setEditingTimeSlot((prev) => ({
+                              ...prev,
+                              start: slot.val,
+                              end: `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`,
+                            }));
+                          }}
+                          className={`rounded-xl border py-2 text-center text-xs font-bold transition-all shadow-2xs ${
+                            isSelected
+                              ? 'border-[#451475] bg-[#451475] text-white shadow-xs'
+                              : 'border-[#E5E0EB] bg-white text-[#24133F] hover:border-[#451475] hover:bg-[#FAF7FD]'
+                          }`}
+                        >
+                          {slot.label}
+                        </button>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
 
-              {/* Exact Time Pickers */}
-              <div className="space-y-2.5">
+              {/* Exact Time Pickers (Side by Side) */}
+              <div className="grid grid-cols-2 gap-3">
                 <TimePicker
-                  label="Exact Start Time"
+                  label="Start Time"
                   value={editingTimeSlot.start}
                   onChange={(val) => setEditingTimeSlot((prev) => ({ ...prev, start: val }))}
                 />
                 <TimePicker
-                  label="Exact End Time"
+                  label="End Time"
                   value={editingTimeSlot.end}
                   onChange={(val) => setEditingTimeSlot((prev) => ({ ...prev, end: val }))}
                 />
               </div>
 
-              {/* Quick duration presets */}
+              {/* Quick duration presets with active state */}
               <div>
                 <p className="text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-1.5">
                   Set Window Duration
@@ -1434,16 +1490,25 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     { label: '2 hrs', val: 2 },
                     { label: '2.5 hrs', val: 2.5 },
                     { label: '3 hrs', val: 3 },
-                  ].map((p) => (
-                    <button
-                      key={p.label}
-                      type="button"
-                      onClick={() => applySlotDuration(p.val)}
-                      className="rounded-xl border border-[#E5E0EB] bg-[#FAF8FB] hover:border-[#451475] hover:bg-[#F3EDFB] px-2.5 py-1 text-[11px] font-semibold text-[#451475] transition-colors"
-                    >
-                      +{p.label}
-                    </button>
-                  ))}
+                  ].map((p) => {
+                    const isCurrentDuration =
+                      currentSlotDurationHours !== null &&
+                      Math.abs(currentSlotDurationHours - p.val) < 0.05;
+                    return (
+                      <button
+                        key={p.label}
+                        type="button"
+                        onClick={() => applySlotDuration(p.val)}
+                        className={`rounded-xl border px-3 py-1 text-[11px] font-bold transition-all ${
+                          isCurrentDuration
+                            ? 'border-[#451475] bg-[#451475] text-white shadow-2xs'
+                            : 'border-[#E5E0EB] bg-[#FAF8FB] text-[#451475] hover:border-[#451475] hover:bg-[#F3EDFB]'
+                        }`}
+                      >
+                        +{p.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
