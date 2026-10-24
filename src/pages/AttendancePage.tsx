@@ -570,7 +570,7 @@ export function AttendancePage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search"
-            className="w-56 md:w-64 pl-9 pr-4 py-1.5 rounded-full border border-[#E5E0EB] text-xs text-[#24133F] placeholder-[#756883] focus:outline-none focus:border-[#24133F] transition-colors bg-white"
+            className="h-10 w-56 rounded-xl border border-[#E5E0EB] bg-white pl-9 pr-4 text-xs text-[#24133F] placeholder-[#756883] transition-colors focus:border-brand-700 focus:outline-none md:w-64"
           />
           {search && (
             <button
@@ -587,7 +587,7 @@ export function AttendancePage() {
         <Dropdown
           value={statusFilter}
           onChange={setStatusFilter}
-          buttonClassName="h-[33px] py-1.5 px-3.5 rounded-full"
+          buttonClassName="h-10 rounded-xl"
           options={[
             { value: 'all', label: 'All Status' },
             { value: 'active', label: 'Active' },
@@ -599,7 +599,7 @@ export function AttendancePage() {
         <Dropdown
           value={dateFilter}
           onChange={setDateFilter}
-          buttonClassName="h-[33px] py-1.5 px-3.5 rounded-full"
+          buttonClassName="h-10 rounded-xl"
           options={[
             { value: 'all', label: 'All Dates' },
             { value: 'october 2', label: 'Oct 2, 2026' },
