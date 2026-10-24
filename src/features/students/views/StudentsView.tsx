@@ -8,17 +8,13 @@ import { BulkStudentImportModal } from './BulkStudentImportModal';
 import { RegisterActionsDropdown } from './RegisterActionsDropdown';
 import {
   BookOpen,
-  CreditCard,
   Search,
   UsersRound,
   Zap,
   Link as LinkIcon,
   Unlink,
-  CheckCircle2,
-  AlertCircle,
   Radio,
   Clock,
-  Layers,
 } from 'lucide-react';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
 import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
@@ -115,89 +111,88 @@ export const StudentsView: React.FC = () => {
         />
       </div>
 
-      {/* KPI Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3.5 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#756883]">Total Students</p>
-            <p className="text-xl font-extrabold text-[#24133F] mt-0.5">{total.toLocaleString()}</p>
-          </div>
-          <div className="w-9 h-9 rounded-xl bg-purple-50 text-[#7026B7] flex items-center justify-center">
-            <UsersRound className="w-5 h-5" />
-          </div>
+      {/* KPI Headline Metrics: Unified container split by 1px rules (Anti-Slop / design-taste-frontend §5) */}
+      <div className="rounded-2xl border border-[#E5E0EB] bg-white grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-[#E5E0EB]">
+        <div className="p-4 sm:p-5">
+          <p className="text-xs font-medium text-[#756883]">Total students</p>
+          <p className="text-2xl font-bold tracking-tight text-[#24133F] mt-1 tabular-nums">
+            {total.toLocaleString()}
+          </p>
+          <p className="text-[11px] text-[#A59AAB] mt-0.5">Enrolled student roster</p>
         </div>
 
-        <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3.5 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#756883]">Verified RFID</p>
-            <p className="text-xl font-extrabold text-[#16883F] mt-0.5">{verifiedCount.toLocaleString()}</p>
+        <div className="p-4 sm:p-5">
+          <p className="text-xs font-medium text-[#756883]">Verified RFID cards</p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-2xl font-bold tracking-tight text-[#16883F] tabular-nums">
+              {verifiedCount.toLocaleString()}
+            </span>
+            <span className="text-[11px] font-semibold text-emerald-700">
+              {total > 0 ? `${Math.round((verifiedCount / total) * 100)}%` : '0%'}
+            </span>
           </div>
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
+          <p className="text-[11px] text-[#A59AAB] mt-0.5">Active cards in circulation</p>
         </div>
 
-        <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3.5 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#756883]">No Card Assigned</p>
-            <p className="text-xl font-extrabold text-amber-600 mt-0.5">{unverifiedCount.toLocaleString()}</p>
+        <div className="p-4 sm:p-5">
+          <p className="text-xs font-medium text-[#756883]">No card assigned</p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-2xl font-bold tracking-tight text-[#24133F] tabular-nums">
+              {unverifiedCount.toLocaleString()}
+            </span>
+            {unverifiedCount > 0 && (
+              <span className="text-[11px] font-semibold text-amber-700">
+                Pending assignment
+              </span>
+            )}
           </div>
-          <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-            <AlertCircle className="w-5 h-5" />
-          </div>
+          <p className="text-[11px] text-[#A59AAB] mt-0.5">
+            {unverifiedCount === 0 ? 'All students equipped' : 'Awaiting card pairing'}
+          </p>
         </div>
 
-        <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3.5 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#756883]">Card Pool Ready</p>
-            <p className="text-xl font-extrabold text-[#7026B7] mt-0.5">{unassignedCards.length.toLocaleString()}</p>
+        <div className="p-4 sm:p-5">
+          <p className="text-xs font-medium text-[#756883]">Card pool ready</p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-2xl font-bold tracking-tight text-[#7026B7] tabular-nums">
+              {unassignedCards.length.toLocaleString()}
+            </span>
+            <span className="text-[11px] font-semibold text-[#7026B7]">
+              {unassignedCards.length > 0 ? 'In stock' : 'Depleted'}
+            </span>
           </div>
-          <div className="w-9 h-9 rounded-xl bg-purple-50 text-[#7026B7] flex items-center justify-center">
-            <CreditCard className="w-5 h-5" />
-          </div>
+          <p className="text-[11px] text-[#A59AAB] mt-0.5">
+            {pairableCount > 0 ? `${pairableCount} ready to auto-pair` : 'Available to assign'}
+          </p>
         </div>
       </div>
 
-      {/* Main Tabs */}
-      <div className="flex items-center gap-1 border-b border-[#E5E0EB] pt-1">
+      {/* Main Tabs: Quiet underline navigation on 1px border */}
+      <div className="flex items-center gap-6 border-b border-[#E5E0EB]">
         <button
           type="button"
           onClick={() => setActiveTab('students')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all ${
+          className={`pb-3 text-xs font-semibold border-b-2 -mb-[1px] transition-all flex items-center gap-1.5 ${
             activeTab === 'students'
               ? 'border-[#7026B7] text-[#7026B7]'
               : 'border-transparent text-[#756883] hover:text-[#24133F]'
           }`}
         >
-          <UsersRound className="w-4 h-4" />
-          Students Roster
-          <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-              activeTab === 'students' ? 'bg-[#7026B7]/10 text-[#7026B7]' : 'bg-slate-100 text-slate-600'
-            }`}
-          >
-            {total}
-          </span>
+          <span>Students roster</span>
+          <span className="text-[11px] text-[#A59AAB] font-normal">({total})</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('inventory')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all ${
+          className={`pb-3 text-xs font-semibold border-b-2 -mb-[1px] transition-all flex items-center gap-1.5 ${
             activeTab === 'inventory'
               ? 'border-[#7026B7] text-[#7026B7]'
               : 'border-transparent text-[#756883] hover:text-[#24133F]'
           }`}
         >
-          <Layers className="w-4 h-4" />
-          Card Inventory Pool
-          <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-              activeTab === 'inventory' ? 'bg-[#7026B7]/10 text-[#7026B7]' : 'bg-slate-100 text-slate-600'
-            }`}
-          >
-            {inventoryCards.length}
-          </span>
+          <span>Card inventory pool</span>
+          <span className="text-[11px] text-[#A59AAB] font-normal">({inventoryCards.length})</span>
         </button>
       </div>
 
@@ -248,13 +243,13 @@ export const StudentsView: React.FC = () => {
             {error && <p role="alert" className="px-3 py-2 text-sm text-rose-600">{error}</p>}
             <table className="w-full min-w-[760px] text-left text-xs">
               <thead>
-                <tr className="rounded-xl border border-[#E9EDF4] text-[10px] uppercase text-[#637596]">
-                  <th className="rounded-l-xl border-y border-l border-[#E9EDF4] px-3 py-3 font-medium">Student</th>
-                  <th className="border-y border-[#E9EDF4] px-3 py-3 font-medium">Course</th>
-                  <th className="border-y border-[#E9EDF4] px-3 py-3 font-medium">Year</th>
-                  <th className="border-y border-[#E9EDF4] px-3 py-3 font-medium">RFID Card</th>
-                  <th className="border-y border-[#E9EDF4] px-3 py-3 font-medium">RFID Status</th>
-                  <th className="rounded-r-xl border-y border-r border-[#E9EDF4] px-3 py-3 font-medium text-right">Actions</th>
+                <tr className="border-b border-[#E9EDF4] text-xs font-medium text-[#756883]">
+                  <th className="px-3 py-3">Student</th>
+                  <th className="px-3 py-3">Course</th>
+                  <th className="px-3 py-3">Year level</th>
+                  <th className="px-3 py-3">RFID card</th>
+                  <th className="px-3 py-3">Status</th>
+                  <th className="px-3 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -448,12 +443,12 @@ export const StudentsView: React.FC = () => {
           <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5">
             <table className="w-full min-w-[640px] text-left text-xs">
               <thead>
-                <tr className="rounded-xl border border-[#E9EDF4] text-[10px] uppercase text-[#637596]">
-                  <th className="rounded-l-xl border-y border-l border-[#E9EDF4] px-3 py-3 font-medium">Batch #</th>
-                  <th className="border-y border-[#E9EDF4] px-3 py-3 font-medium">Card UID</th>
-                  <th className="border-y border-[#E9EDF4] px-3 py-3 font-medium">Added Time</th>
-                  <th className="border-y border-[#E9EDF4] px-3 py-3 font-medium">Status</th>
-                  <th className="rounded-r-xl border-y border-r border-[#E9EDF4] px-3 py-3 font-medium">Assigned Student</th>
+                <tr className="border-b border-[#E9EDF4] text-xs font-medium text-[#756883]">
+                  <th className="px-3 py-3">Batch</th>
+                  <th className="px-3 py-3">Card UID</th>
+                  <th className="px-3 py-3">Added time</th>
+                  <th className="px-3 py-3">Status</th>
+                  <th className="px-3 py-3">Assigned student</th>
                 </tr>
               </thead>
               <tbody>
