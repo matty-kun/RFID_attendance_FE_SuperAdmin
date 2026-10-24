@@ -73,7 +73,7 @@ export const Drawer: React.FC<DrawerProps> = ({
         if (e.target === e.currentTarget) onClose();
       }}
       className={cn(
-        'fixed inset-0 z-[100] flex justify-end bg-[#170D29]/40 backdrop-blur-xs transition-opacity duration-300 ease-out',
+        'fixed inset-0 z-[100] flex justify-end bg-[#170D29]/40 backdrop-blur-md transition-opacity duration-300 ease-out',
         isVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
       )}
     >
