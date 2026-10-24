@@ -53,6 +53,7 @@ export const StudentsView: React.FC = () => {
   const [courseFilter, setCourseFilter] = useState('all');
   const [rfidFilter, setRfidFilter] = useState('all');
   const [inventoryFilter, setInventoryFilter] = useState<'all' | 'unassigned' | 'assigned'>('all');
+  const [inventorySearchQuery, setInventorySearchQuery] = useState('');
 
   // Stats calculation
   const verifiedCount = useMemo(() => students.filter((s) => Boolean(s.rfid_uid)).length, [students]);
@@ -73,11 +74,23 @@ export const StudentsView: React.FC = () => {
       (rfidFilter === 'all' || (rfidFilter === 'verified' ? Boolean(student.rfid_uid) : !student.rfid_uid))
   );
 
-  const visibleInventoryCards = inventoryCards.filter((card) => {
-    if (inventoryFilter === 'unassigned') return card.status === 'unassigned';
-    if (inventoryFilter === 'assigned') return card.status === 'assigned';
-    return true;
-  });
+  const visibleInventoryCards = useMemo(() => {
+    return inventoryCards.filter((card) => {
+      const matchesFilter =
+        inventoryFilter === 'all' ||
+        (inventoryFilter === 'unassigned' && card.status === 'unassigned') ||
+        (inventoryFilter === 'assigned' && card.status === 'assigned');
+
+      const q = inventorySearchQuery.trim().toLowerCase();
+      const matchesSearch =
+        !q ||
+        card.uid.toLowerCase().includes(q) ||
+        String(card.cardNumber).includes(q) ||
+        (card.assignedToStudentName && card.assignedToStudentName.toLowerCase().includes(q));
+
+      return matchesFilter && matchesSearch;
+    });
+  }, [inventoryCards, inventoryFilter, inventorySearchQuery]);
 
   const yearLabel = (year?: number | null) =>
     year ? `${year}${year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} Year` : '—';
@@ -231,9 +244,9 @@ export const StudentsView: React.FC = () => {
               onChange={(val) => setRfidFilter(val)}
               icon={<UsersRound className="h-4 w-4" />}
               options={[
-                { value: 'all', label: 'RFID Status: All' },
-                { value: 'verified', label: 'Verified Only' },
-                { value: 'no-card', label: 'Needs Card' },
+                { value: 'all', label: 'All RFID status' },
+                { value: 'verified', label: 'Assigned / Verified' },
+                { value: 'no-card', label: 'Unassigned (No card)' },
               ]}
             />
           </div>
@@ -394,50 +407,28 @@ export const StudentsView: React.FC = () => {
       {/* TAB 2: Card Inventory Pool */}
       {activeTab === 'inventory' && (
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setInventoryFilter('all')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  inventoryFilter === 'all'
-                    ? 'bg-[#7026B7] text-white'
-                    : 'bg-white border border-[#E5E0EB] text-[#756883] hover:text-[#24133F]'
-                }`}
-              >
-                All Cards ({inventoryCards.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setInventoryFilter('unassigned')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  inventoryFilter === 'unassigned'
-                    ? 'bg-[#7026B7] text-white'
-                    : 'bg-white border border-[#E5E0EB] text-[#756883] hover:text-[#24133F]'
-                }`}
-              >
-                Available ({unassignedCards.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setInventoryFilter('assigned')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  inventoryFilter === 'assigned'
-                    ? 'bg-[#7026B7] text-white'
-                    : 'bg-white border border-[#E5E0EB] text-[#756883] hover:text-[#24133F]'
-                }`}
-              >
-                Assigned ({inventoryCards.length - unassignedCards.length})
-              </button>
-            </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[310px]">
+              <Search className="h-4 w-4" />
+              <span className="sr-only">Search pool cards</span>
+              <input
+                type="search"
+                value={inventorySearchQuery}
+                onChange={(e) => setInventorySearchQuery(e.target.value)}
+                placeholder="Search by card UID or student…"
+                className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
+              />
+            </label>
 
-            <Button
-              variant="primary"
-              leftIcon={<Zap className="w-4 h-4" />}
-              onClick={() => setIsRapidScanOpen(true)}
-            >
-              Scan More Cards to Pool
-            </Button>
+            <Dropdown
+              value={inventoryFilter}
+              onChange={(val) => setInventoryFilter(val as 'all' | 'unassigned' | 'assigned')}
+              options={[
+                { value: 'all', label: `All pool cards (${inventoryCards.length})` },
+                { value: 'unassigned', label: `Unassigned (${unassignedCards.length})` },
+                { value: 'assigned', label: `Assigned (${inventoryCards.length - unassignedCards.length})` },
+              ]}
+            />
           </div>
 
           <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5">
