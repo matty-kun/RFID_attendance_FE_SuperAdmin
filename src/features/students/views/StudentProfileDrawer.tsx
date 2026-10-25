@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Drawer } from '../../../components/common/Drawer';
 import { Button } from '../../../components/common/Button';
+import { toast } from '../../../context';
 import {
   Copy,
   Check,
@@ -221,6 +222,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     if (!currentStudent?.rfid_uid) return;
     navigator.clipboard.writeText(currentStudent.rfid_uid);
     setCopiedUid(true);
+    toast.success('Card UID copied to clipboard');
     setTimeout(() => setCopiedUid(false), 2000);
   };
 
