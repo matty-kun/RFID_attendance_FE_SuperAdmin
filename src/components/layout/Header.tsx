@@ -25,26 +25,40 @@ const commands = [
   { name: 'Notifications', path: '', icon: Bell, keywords: 'alerts updates bell', action: 'notifications' },
 ];
 
+const labelWidths: Record<string, number> = {
+  'Overview': 66,
+  'Audit Log': 68,
+  'Attendance': 86,
+  'Students': 64,
+  'Reports': 60,
+  'Admins': 56,
+};
+
 function NavTab({ name, path, icon: Icon }: { name: string; path: string; icon: React.ComponentType<{ className?: string }> }) {
+  const maxWidth = labelWidths[name] ?? 64;
+
   return (
     <NavLink
       to={path}
       title={name}
       aria-label={name}
       className={({ isActive }) => cn(
-        'group relative flex h-8 shrink-0 items-center justify-center rounded-xl border text-[12px] font-semibold select-none cursor-pointer focus-visible:outline-2 focus-visible:outline-brand-700 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
+        'group relative flex h-8 shrink-0 items-center justify-center rounded-xl px-3 text-[12px] font-bold select-none cursor-pointer focus-visible:outline-2 focus-visible:outline-brand-700 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
         isActive
-          ? 'border-slate-200/90 bg-white text-[#7026B7] shadow-xs -translate-y-0.5 px-3.5 font-bold'
-          : 'border-transparent bg-white/70 hover:bg-white text-[#756883] hover:text-[#7026B7] hover:-translate-y-0.5 active:scale-95 px-2.5'
+          ? 'bg-white text-[#7026B7] shadow-sm border border-slate-200/80'
+          : 'bg-transparent hover:bg-white/60 text-[#756883] hover:text-[#7026B7] border border-transparent active:scale-95'
       )}
     >
       {({ isActive }) => (
         <>
           <Icon className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-300 ease-out', isActive ? 'scale-105 text-[#7026B7]' : 'scale-100 text-[#756883] group-hover:scale-110 group-hover:text-[#7026B7]')} />
           <span
+            style={{
+              maxWidth: isActive ? `${maxWidth}px` : '0px',
+            }}
             className={cn(
               'inline-block overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none',
-              isActive ? 'max-w-32 opacity-100 ml-1.5' : 'max-w-0 opacity-0 ml-0'
+              isActive ? 'opacity-100 ml-1.5' : 'opacity-0 ml-0'
             )}
           >
             {name}
