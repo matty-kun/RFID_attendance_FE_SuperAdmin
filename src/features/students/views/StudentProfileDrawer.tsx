@@ -9,6 +9,8 @@ import {
   Zap,
   Link as LinkIcon,
   X,
+  Clock,
+  MapPin,
 } from 'lucide-react';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
@@ -425,37 +427,24 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                                 <span className="text-xs font-semibold text-[#24133F]">
                                   {scan.sessionName}
                                 </span>
-                                <span
-                                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                                    scan.status === 'on_time'
-                                      ? 'bg-emerald-50 text-[#16883F]'
-                                      : scan.status === 'late'
-                                      ? 'bg-amber-50 text-amber-700'
-                                      : 'bg-rose-50 text-rose-700'
-                                  }`}
-                                >
-                                  <i
-                                    className={`h-1 w-1 rounded-full ${
-                                      scan.status === 'on_time'
-                                        ? 'bg-[#17B556]'
-                                        : scan.status === 'late'
-                                        ? 'bg-amber-500'
-                                        : 'bg-rose-500'
-                                    }`}
-                                  />
-                                  {scan.status === 'on_time'
-                                    ? 'On time'
-                                    : scan.status === 'late'
-                                    ? 'Late'
-                                    : 'Missed'}
-                                </span>
+                                {scan.status === 'late' && (
+                                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-700">
+                                    <i className="h-1 w-1 rounded-full bg-amber-500" />
+                                    Late
+                                  </span>
+                                )}
                               </div>
 
-                              <p className="text-[11px] text-[#756883] mt-0.5">
-                                <span>Window {scan.timeWindow}</span>
-                                <span className="mx-1.5 text-[#D2C5E0]">·</span>
-                                <span>{scan.locationName}</span>
-                              </p>
+                              <div className="flex items-center gap-3 text-[11px] text-[#756883] mt-1">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3 text-[#A59CAC] shrink-0" />
+                                  <span>{scan.timeWindow}</span>
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3 text-[#A59CAC] shrink-0" />
+                                  <span>{scan.locationName}</span>
+                                </span>
+                              </div>
                             </div>
 
                             {/* Right: Exact timestamp & verification */}
