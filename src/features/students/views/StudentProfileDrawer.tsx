@@ -235,10 +235,10 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       noPadding
     >
       <div className="flex flex-col min-h-full bg-white select-none">
-        {/* Duolingo-style Top Hero Banner */}
-        <div className="relative bg-[#78C9FC] px-6 pt-5 pb-0 flex flex-col justify-between min-h-[200px] border-b border-[#60B9F0] overflow-hidden">
+        {/* Duolingo-style Top Hero Banner with Smooth Fog Transition */}
+        <div className="relative bg-[#78C9FC] px-6 pt-5 pb-0 flex flex-col justify-between min-h-[230px] overflow-hidden">
           {/* Top Bar inside banner */}
-          <div className="flex items-center justify-between z-10">
+          <div className="flex items-center justify-between z-20">
             <h2 className="text-2xl font-black text-[#15344F] tracking-tight">
               {student.name}
             </h2>
@@ -253,17 +253,23 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
           </div>
 
           {/* Character standing in center of banner */}
-          <div className="flex justify-center items-end mt-2 z-0">
+          <div className="flex justify-center items-end mt-2 z-0 relative">
             <img
               src={hawiWavingImg}
               alt="Student Character"
-              className="h-32 w-auto object-contain drop-shadow-md pointer-events-none"
+              className="h-36 w-auto object-contain drop-shadow-md pointer-events-none"
             />
           </div>
+
+          {/* Smooth Fog Transition Layer: Seamless white mist dissolving banner into content below */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-white via-white/70 to-transparent z-10"
+          />
         </div>
 
         {/* Content Area Below Banner */}
-        <div className="flex-1 p-5 space-y-4">
+        <div className="flex-1 p-5 pt-3 space-y-4 relative z-20 bg-white">
           {/* Subheading Handle */}
           <div>
             <p className="text-xs font-extrabold text-[#756883] uppercase tracking-wider">
