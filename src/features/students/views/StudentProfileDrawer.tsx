@@ -7,7 +7,9 @@ import {
   Unlink,
   Zap,
   Link as LinkIcon,
+  X,
 } from 'lucide-react';
+import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
 import type { StudentRecord, InventoryCard } from '../models';
 
@@ -183,16 +185,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   const [filterType, setFilterType] = useState<'all' | 'time_in' | 'time_out'>('all');
   const [copiedUid, setCopiedUid] = useState(false);
 
-  const initials = useMemo(() => {
-    if (!student?.name) return '??';
-    return student.name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((n) => n[0].toUpperCase())
-      .join('');
-  }, [student?.name]);
-
   const scans = useMemo(() => generateStudentScans(student), [student]);
 
   const filteredScans = useMemo(() => {
@@ -228,237 +220,268 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   const yearLabel = (year?: number | null) =>
     year ? `${year}${year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} Year` : '—';
 
+  const totalRecorded = scans.filter((s) => s.status !== 'missed').length;
+  const onTimeCount = scans.filter((s) => s.status === 'on_time').length;
+  const onTimePercent = totalRecorded > 0 ? Math.round((onTimeCount / totalRecorded) * 100) : 0;
+
   if (!student) return null;
 
   return (
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
-      title="Student Profile & Scans"
-      description="Academic credentials, card status, and event attendance timeline."
       maxWidth="2xl"
+      hideHeader
+      noPadding
     >
-      <div className="space-y-4">
-        {/* Top Centered Profile Hero: Profile picture on top */}
-        <div className="flex flex-col items-center text-center pt-1 pb-1">
-          <div className="relative">
-            <span className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-b from-[#F5EEFC] to-[#EBE0F8] border-2 border-[#E5E0EB] text-xl font-extrabold text-[#7026B7] shadow-xs select-none">
-              {initials}
-            </span>
+      <div className="flex flex-col min-h-full bg-white select-none">
+        {/* Duolingo-style Top Hero Banner */}
+        <div className="relative bg-[#78C9FC] px-6 pt-5 pb-0 flex flex-col justify-between min-h-[200px] border-b border-[#60B9F0] overflow-hidden">
+          {/* Top Bar inside banner */}
+          <div className="flex items-center justify-between z-10">
+            <h2 className="text-2xl font-black text-[#15344F] tracking-tight">
+              {student.name}
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close drawer"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-[#15344F] shadow-xs active:scale-95 transition-all cursor-pointer"
+            >
+              <X className="h-5 w-5 stroke-[2.5]" />
+            </button>
           </div>
 
-          <h3 className="text-lg font-bold text-[#24133F] mt-3 leading-tight">
-            {student.name}
-          </h3>
-
-          <p className="text-xs text-[#756883] mt-1 flex flex-wrap items-center justify-center gap-1.5">
-            <span className="font-mono font-medium text-[#24133F]">{student.student_id}</span>
-            <span className="text-[#D2C5E0]">·</span>
-            <span>{student.course || '—'}</span>
-            <span className="text-[#D2C5E0]">·</span>
-            <span>{yearLabel(student.year_level)}</span>
-          </p>
-
-          {student.email && (
-            <p className="text-[11px] text-[#A59AAB] mt-0.5">{student.email}</p>
-          )}
-
-          {/* Clean RFID Credential Pill */}
-          <div className="mt-3.5 inline-flex flex-wrap items-center justify-center gap-2 rounded-xl border border-[#E5E0EB] bg-[#FAF8FC] px-3.5 py-1.5 shadow-2xs">
-            {student.rfid_uid ? (
-              <>
-                <span className="text-xs text-[#756883]">Card UID:</span>
-                <span className="font-mono text-xs font-bold text-[#24133F] tracking-tight">
-                  {student.rfid_uid}
-                </span>
-
-                <div className="h-3.5 w-[1px] bg-[#E5E0EB] mx-1" />
-
-                <button
-                  type="button"
-                  onClick={handleCopyUid}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#756883] hover:text-[#24133F] transition-colors cursor-pointer"
-                  title="Copy Card UID"
-                >
-                  {copiedUid ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
-                  <span>{copiedUid ? 'Copied' : 'Copy'}</span>
-                </button>
-
-                <div className="h-3.5 w-[1px] bg-[#E5E0EB] mx-0.5" />
-
-                <button
-                  type="button"
-                  onClick={() => onUnlinkCard(student.id)}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-700 transition-colors cursor-pointer"
-                  title="Unlink RFID Card"
-                >
-                  <Unlink className="h-3 w-3" />
-                  <span>Unlink</span>
-                </button>
-              </>
-            ) : (
-              <div className="flex items-center gap-2 text-xs text-[#756883]">
-                <span>No RFID card linked</span>
-                {availableCards.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => onQuickPair(student.id, availableCards[0].uid)}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 transition-colors cursor-pointer ml-1"
-                  >
-                    <LinkIcon className="h-3 w-3" />
-                    <span>Pair #{availableCards[0].cardNumber}</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onOpenRapidScan();
-                  }}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#7026B7] hover:text-[#5B1A99] transition-colors cursor-pointer ml-1"
-                >
-                  <Zap className="h-3 w-3 fill-current" />
-                  <span>Scan card</span>
-                </button>
-              </div>
-            )}
+          {/* Character standing in center of banner */}
+          <div className="flex justify-center items-end mt-2 z-0">
+            <img
+              src={hawiWavingImg}
+              alt="Student Character"
+              className="h-32 w-auto object-contain drop-shadow-md pointer-events-none"
+            />
           </div>
         </div>
 
-        {/* Scan History Section Header */}
-        <div className="space-y-3 pt-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-xs font-bold text-[#24133F]">
-                Event Scan History
-              </h4>
-              <p className="text-[11px] text-[#756883]">
-                Time-in and time-out records across all event days
-              </p>
-            </div>
-
-            {/* Filter by scan type */}
-            {scans.length > 0 && (
-              <Dropdown
-                value={filterType}
-                onChange={(val) => setFilterType(val as 'all' | 'time_in' | 'time_out')}
-                options={[
-                  { value: 'all', label: `All Scans (${scans.length})` },
-                  { value: 'time_in', label: 'Time-In only' },
-                  { value: 'time_out', label: 'Time-Out only' },
-                ]}
-              />
-            )}
+        {/* Content Area Below Banner */}
+        <div className="flex-1 p-5 space-y-4">
+          {/* Subheading Handle */}
+          <div>
+            <p className="text-xs font-extrabold text-[#756883] uppercase tracking-wider">
+              @{student.student_id} · ENROLLED {student.created_at ? new Date(student.created_at).getFullYear() : '2023'}
+            </p>
           </div>
 
-          {/* Unified Timeline Ledger with Bottom Fog Fade */}
-          <div className="relative">
-            {groupedScans.length > 0 ? (
-              <div className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden shadow-xs divide-y divide-[#E5E0EB] max-h-[440px] overflow-y-auto relative scroll-smooth">
-                {groupedScans.map((group) => (
-                  <div key={`${group.event}-${group.date}`}>
-                    {/* Subtle Date Header */}
-                    <div className="sticky top-0 z-10 flex items-center justify-between bg-[#FAF8FC]/95 backdrop-blur-xs px-4 py-2 text-xs border-b border-[#F0E8FC]">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-[#24133F]">{group.event}</span>
-                        <span className="text-[#A59AAB]">·</span>
-                        <span className="font-medium text-[#7026B7]">{group.label}</span>
-                      </div>
-                      <span className="text-[11px] text-[#756883]">{group.date}</span>
-                    </div>
+          {/* Horizontal Stats Strip (Courses / Following / Followers style) */}
+          <div className="grid grid-cols-3 gap-2 py-3 rounded-2xl border border-[#E5E0EB] bg-[#FAF8FC] text-center">
+            <div>
+              <p className="text-xl font-black text-[#24133F] tabular-nums">{scans.length}</p>
+              <p className="text-[11px] font-bold text-[#756883]">Total Scans</p>
+            </div>
+            <div>
+              <p className="text-xl font-black text-[#16883F] tabular-nums">{onTimePercent}%</p>
+              <p className="text-[11px] font-bold text-[#756883]">On-Time</p>
+            </div>
+            <div>
+              <p className="text-xl font-black text-[#7026B7]">
+                {student.rfid_uid ? 'Active' : 'None'}
+              </p>
+              <p className="text-[11px] font-bold text-[#756883]">RFID Status</p>
+            </div>
+          </div>
 
-                    {/* Scans in this Day */}
-                    <div className="divide-y divide-[#F0E8FC]">
-                      {group.items.map((scan) => (
-                        <div
-                          key={scan.id}
-                          className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-[#FAF8FC]/50 transition-colors"
-                        >
-                          {/* Left: Session name & details */}
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-semibold text-[#24133F]">
-                                {scan.sessionName}
-                              </span>
-                              <span
-                                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                                  scan.status === 'on_time'
-                                    ? 'bg-emerald-50 text-[#16883F]'
-                                    : scan.status === 'late'
-                                    ? 'bg-amber-50 text-amber-700'
-                                    : 'bg-rose-50 text-rose-700'
-                                }`}
-                              >
-                                <i
-                                  className={`h-1 w-1 rounded-full ${
+          {/* 3D Tactile Card Action Button (Duolingo ADD FRIENDS style) */}
+          {student.rfid_uid ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCopyUid}
+                className="flex-1 flex items-center justify-center gap-2 rounded-2xl border-2 border-[#E5E0EB] bg-white py-2.5 px-3 text-xs font-extrabold text-[#24133F] shadow-[0_3px_0_0_#D1D5DB] hover:bg-[#FAF8FC] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
+              >
+                {copiedUid ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4 text-[#756883]" />}
+                <span className="font-mono">Card UID: {student.rfid_uid}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onUnlinkCard(student.id)}
+                className="flex items-center justify-center gap-1.5 rounded-2xl border-2 border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-extrabold text-rose-700 shadow-[0_3px_0_0_#FECDD3] hover:bg-rose-100 active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
+                title="Unlink RFID Card"
+              >
+                <Unlink className="h-4 w-4" />
+                <span>Unlink</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              {availableCards.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onQuickPair(student.id, availableCards[0].uid)}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-2xl border-2 border-emerald-200 bg-emerald-50 py-2.5 text-xs font-extrabold text-emerald-700 shadow-[0_3px_0_0_#A7F3D0] hover:bg-emerald-100 active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
+                >
+                  <LinkIcon className="h-4 w-4" />
+                  <span>Pair Card #{availableCards[0].cardNumber}</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenRapidScan();
+                }}
+                className="flex items-center justify-center gap-2 rounded-2xl bg-[#7026B7] px-4 py-2.5 text-xs font-extrabold text-white shadow-[0_3px_0_0_#451475] hover:bg-[#621FA3] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
+              >
+                <Zap className="h-4 w-4 fill-current" />
+                <span>Scan card</span>
+              </button>
+            </div>
+          )}
+
+          {/* OVERVIEW SECTION (Academic Details) */}
+          <div className="pt-1">
+            <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase">
+              Overview
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
+                <p className="text-[10px] font-bold text-[#756883] uppercase">Program / Course</p>
+                <p className="font-bold text-[#24133F] mt-0.5">{student.course || '—'}</p>
+              </div>
+              <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
+                <p className="text-[10px] font-bold text-[#756883] uppercase">Year Level</p>
+                <p className="font-bold text-[#24133F] mt-0.5">{yearLabel(student.year_level)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* SCAN HISTORY SECTION WITH FOG BELOW */}
+          <div className="pt-2 space-y-2 relative">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase">
+                Scan History
+              </p>
+              {scans.length > 0 && (
+                <Dropdown
+                  value={filterType}
+                  onChange={(val) => setFilterType(val as 'all' | 'time_in' | 'time_out')}
+                  options={[
+                    { value: 'all', label: `All Scans (${scans.length})` },
+                    { value: 'time_in', label: 'Time-In only' },
+                    { value: 'time_out', label: 'Time-Out only' },
+                  ]}
+                />
+              )}
+            </div>
+
+            {/* Timeline with Bottom Fog Fade */}
+            <div className="relative">
+              {groupedScans.length > 0 ? (
+                <div className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden shadow-xs divide-y divide-[#E5E0EB] max-h-[380px] overflow-y-auto relative scroll-smooth">
+                  {groupedScans.map((group) => (
+                    <div key={`${group.event}-${group.date}`}>
+                      {/* Subtle Date Header */}
+                      <div className="sticky top-0 z-10 flex items-center justify-between bg-[#FAF8FC]/95 backdrop-blur-xs px-4 py-2 text-xs border-b border-[#F0E8FC]">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[#24133F]">{group.event}</span>
+                          <span className="text-[#A59AAB]">·</span>
+                          <span className="font-medium text-[#7026B7]">{group.label}</span>
+                        </div>
+                        <span className="text-[11px] text-[#756883]">{group.date}</span>
+                      </div>
+
+                      {/* Scans in this Day */}
+                      <div className="divide-y divide-[#F0E8FC]">
+                        {group.items.map((scan) => (
+                          <div
+                            key={scan.id}
+                            className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-[#FAF8FC]/50 transition-colors"
+                          >
+                            {/* Left: Session name & details */}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-[#24133F]">
+                                  {scan.sessionName}
+                                </span>
+                                <span
+                                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                                     scan.status === 'on_time'
-                                      ? 'bg-[#17B556]'
+                                      ? 'bg-emerald-50 text-[#16883F]'
                                       : scan.status === 'late'
-                                      ? 'bg-amber-500'
-                                      : 'bg-rose-500'
+                                      ? 'bg-amber-50 text-amber-700'
+                                      : 'bg-rose-50 text-rose-700'
                                   }`}
-                                />
-                                {scan.status === 'on_time'
-                                  ? 'On time'
-                                  : scan.status === 'late'
-                                  ? 'Late'
-                                  : 'Missed'}
-                              </span>
+                                >
+                                  <i
+                                    className={`h-1 w-1 rounded-full ${
+                                      scan.status === 'on_time'
+                                        ? 'bg-[#17B556]'
+                                        : scan.status === 'late'
+                                        ? 'bg-amber-500'
+                                        : 'bg-rose-500'
+                                    }`}
+                                  />
+                                  {scan.status === 'on_time'
+                                    ? 'On time'
+                                    : scan.status === 'late'
+                                    ? 'Late'
+                                    : 'Missed'}
+                                </span>
+                              </div>
+
+                              <p className="text-[11px] text-[#756883] mt-0.5">
+                                <span>Window {scan.timeWindow}</span>
+                                <span className="mx-1.5 text-[#D2C5E0]">·</span>
+                                <span>{scan.locationName}</span>
+                              </p>
                             </div>
 
-                            <p className="text-[11px] text-[#756883] mt-0.5">
-                              <span>Window {scan.timeWindow}</span>
-                              <span className="mx-1.5 text-[#D2C5E0]">·</span>
-                              <span>{scan.locationName}</span>
-                            </p>
+                            {/* Right: Exact timestamp & verification */}
+                            <div className="text-right shrink-0">
+                              {scan.timestamp ? (
+                                <div>
+                                  <p className="font-mono text-xs font-bold text-[#24133F] tabular-nums">
+                                    {scan.timestamp}
+                                  </p>
+                                  <p className="text-[10px] text-[#16883F] font-medium mt-0.5">
+                                    Verified
+                                  </p>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-[#A59AAB] italic">
+                                  No scan
+                                </span>
+                              )}
+                            </div>
                           </div>
-
-                          {/* Right: Exact timestamp & verification */}
-                          <div className="text-right shrink-0">
-                            {scan.timestamp ? (
-                              <div>
-                                <p className="font-mono text-xs font-bold text-[#24133F] tabular-nums">
-                                  {scan.timestamp}
-                                </p>
-                                <p className="text-[10px] text-[#16883F] font-medium mt-0.5">
-                                  Verified
-                                </p>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-[#A59AAB] italic">
-                                No scan
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-[#E5E0EB] bg-white py-12 px-4 text-center">
-                <img
-                  src={hawiQuestionImg}
-                  alt="No scan records"
-                  className="w-20 h-20 object-contain mb-2"
-                />
-                <p className="text-xs font-bold text-[#24133F]">No scan logs found</p>
-                <p className="text-[11px] text-[#756883] max-w-xs mt-0.5">
-                  {student.rfid_uid
-                    ? 'This student has not checked into any event sessions yet.'
-                    : 'Link an RFID card first to track automatic event attendance.'}
-                </p>
-              </div>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-[#E5E0EB] bg-white py-12 px-4 text-center">
+                  <img
+                    src={hawiQuestionImg}
+                    alt="No scan records"
+                    className="w-20 h-20 object-contain mb-2"
+                  />
+                  <p className="text-xs font-bold text-[#24133F]">No scan logs found</p>
+                  <p className="text-[11px] text-[#756883] max-w-xs mt-0.5">
+                    {student.rfid_uid
+                      ? 'This student has not checked into any event sessions yet.'
+                      : 'Link an RFID card first to track automatic event attendance.'}
+                  </p>
+                </div>
+              )}
 
-            {/* Bottom Fog Fade: Frosted peek gradient so user can see history of scans underneath */}
-            {groupedScans.length > 0 && (
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute bottom-0 inset-x-0 h-16 rounded-b-2xl bg-gradient-to-t from-white via-white/80 to-transparent backdrop-blur-[1px]"
-              />
-            )}
+              {/* Frosted Bottom Fog Fade: Smooth peek gradient so user can see history of scans underneath */}
+              {groupedScans.length > 0 && (
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute bottom-0 inset-x-0 h-16 rounded-b-2xl bg-gradient-to-t from-white via-white/80 to-transparent backdrop-blur-[1px]"
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>

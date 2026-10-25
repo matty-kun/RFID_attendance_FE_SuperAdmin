@@ -6,7 +6,7 @@ import { cn } from '../../utils/cn';
 export interface DrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  title?: string;
   description?: string;
   icon?: React.ReactNode;
   contextBox?: React.ReactNode;
@@ -14,6 +14,8 @@ export interface DrawerProps {
   footer?: React.ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
   className?: string;
+  hideHeader?: boolean;
+  noPadding?: boolean;
 }
 
 const maxWidthMap = {
@@ -36,6 +38,8 @@ export const Drawer: React.FC<DrawerProps> = ({
   footer,
   maxWidth = 'md',
   className,
+  hideHeader = false,
+  noPadding = false,
 }) => {
   const [isMounted, setIsMounted] = useState(isOpen);
   const [isVisible, setIsVisible] = useState(false);
@@ -81,7 +85,7 @@ export const Drawer: React.FC<DrawerProps> = ({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-label={title || 'Drawer'}
         className={cn(
           'flex h-full w-full flex-col justify-between border-l border-[#E5E0EB] bg-white shadow-2xl transition-transform duration-300 cubic-bezier(0.16,1,0.3,1)',
           maxWidthMap[maxWidth],
@@ -89,35 +93,37 @@ export const Drawer: React.FC<DrawerProps> = ({
           className
         )}
       >
-        {/* Drawer Header */}
-        <div className="border-b border-[#F1EEF4] p-6 shrink-0 bg-white">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              {icon && (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F4EFFB] text-[#451475]">
-                  {icon}
+        {/* Drawer Header (rendered unless hideHeader is true) */}
+        {!hideHeader && (
+          <div className="border-b border-[#F1EEF4] p-6 shrink-0 bg-white">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                {icon && (
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F4EFFB] text-[#451475]">
+                    {icon}
+                  </div>
+                )}
+                <div>
+                  {title && <h2 className="text-lg font-bold text-[#24133F]">{title}</h2>}
+                  {description && <p className="text-xs text-[#756883] mt-0.5">{description}</p>}
                 </div>
-              )}
-              <div>
-                <h2 className="text-lg font-bold text-[#24133F]">{title}</h2>
-                {description && <p className="text-xs text-[#756883] mt-0.5">{description}</p>}
               </div>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close drawer"
+                className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F] transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close drawer"
-              className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F] transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
 
-          {contextBox && <div className="mt-4">{contextBox}</div>}
-        </div>
+            {contextBox && <div className="mt-4">{contextBox}</div>}
+          </div>
+        )}
 
         {/* Drawer Content */}
-        <div className="flex-1 overflow-y-auto p-6 min-h-0 flex flex-col">
+        <div className={cn("flex-1 overflow-y-auto min-h-0 flex flex-col", noPadding ? "p-0" : "p-6")}>
           {children}
         </div>
 
