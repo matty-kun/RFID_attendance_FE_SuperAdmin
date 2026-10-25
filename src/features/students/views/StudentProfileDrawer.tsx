@@ -220,10 +220,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   const yearLabel = (year?: number | null) =>
     year ? `${year}${year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} Year` : '—';
 
-  const totalRecorded = scans.filter((s) => s.status !== 'missed').length;
-  const onTimeCount = scans.filter((s) => s.status === 'on_time').length;
-  const onTimePercent = totalRecorded > 0 ? Math.round((onTimeCount / totalRecorded) * 100) : 0;
-
   if (!student) return null;
 
   return (
@@ -275,24 +271,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             <p className="text-xs font-extrabold text-[#756883] uppercase tracking-wider">
               @{student.student_id} · ENROLLED {student.created_at ? new Date(student.created_at).getFullYear() : '2023'}
             </p>
-          </div>
-
-          {/* Horizontal Stats Strip (Courses / Following / Followers style) */}
-          <div className="grid grid-cols-3 gap-2 py-3 rounded-2xl border border-[#E5E0EB] bg-[#FAF8FC] text-center">
-            <div>
-              <p className="text-xl font-black text-[#24133F] tabular-nums">{scans.length}</p>
-              <p className="text-[11px] font-bold text-[#756883]">Total Scans</p>
-            </div>
-            <div>
-              <p className="text-xl font-black text-[#16883F] tabular-nums">{onTimePercent}%</p>
-              <p className="text-[11px] font-bold text-[#756883]">On-Time</p>
-            </div>
-            <div>
-              <p className="text-xl font-black text-[#7026B7]">
-                {student.rfid_uid ? 'Active' : 'None'}
-              </p>
-              <p className="text-[11px] font-bold text-[#756883]">RFID Status</p>
-            </div>
           </div>
 
           {/* 3D Tactile Card Action Button (Duolingo ADD FRIENDS style) */}
