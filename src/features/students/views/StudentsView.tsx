@@ -50,6 +50,7 @@ export const StudentsView: React.FC = () => {
 
   const [isCardPoolOpen, setIsCardPoolOpen] = useState(false);
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<StudentRecord | null>(null);
+  const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
   const [courseFilter, setCourseFilter] = useState('all');
   const [rfidFilter, setRfidFilter] = useState('all');
 
@@ -236,7 +237,10 @@ export const StudentsView: React.FC = () => {
               {visibleStudents.map((student) => (
                 <tr
                   key={student.id}
-                  onClick={() => setSelectedStudentForProfile(student)}
+                  onClick={() => {
+                    setSelectedStudentForProfile(student);
+                    setIsProfileDrawerOpen(true);
+                  }}
                   className="border-b border-[#E9EDF4] last:border-b-0 hover:bg-[#FAF8FC] cursor-pointer transition-colors group"
                 >
                   <td className="px-3 py-3">
@@ -387,8 +391,8 @@ export const StudentsView: React.FC = () => {
 
       {/* Slide-in Drawer: Student Profile & Scan History */}
       <StudentProfileDrawer
-        isOpen={Boolean(selectedStudentForProfile)}
-        onClose={() => setSelectedStudentForProfile(null)}
+        isOpen={isProfileDrawerOpen}
+        onClose={() => setIsProfileDrawerOpen(false)}
         student={activeProfileStudent}
         availableCards={unassignedCards}
         onUnlinkCard={handleUnlinkCard}

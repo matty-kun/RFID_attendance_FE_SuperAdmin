@@ -87,7 +87,7 @@ export const Drawer: React.FC<DrawerProps> = ({
         aria-modal="true"
         aria-label={title || 'Drawer'}
         className={cn(
-          'flex h-full w-full flex-col justify-between border-l border-[#E5E0EB] bg-white shadow-2xl transition-transform duration-300 cubic-bezier(0.16,1,0.3,1)',
+          'flex h-full w-full flex-col justify-between border-l border-[#E5E0EB] bg-white shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
           maxWidthMap[maxWidth],
           isVisible ? 'translate-x-0' : 'translate-x-full',
           className

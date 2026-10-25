@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Drawer } from '../../../components/common/Drawer';
 import {
   Copy,
@@ -184,7 +184,14 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   const [filterType, setFilterType] = useState<'all' | 'time_in' | 'time_out'>('all');
   const [copiedUid, setCopiedUid] = useState(false);
 
-  const scans = useMemo(() => generateStudentScans(student), [student]);
+  // Cache student reference so the drawer can animate out smoothly when closing
+  const activeStudentRef = useRef<StudentRecord | null>(student);
+  if (student) {
+    activeStudentRef.current = student;
+  }
+  const currentStudent = student || activeStudentRef.current;
+
+  const scans = useMemo(() => generateStudentScans(currentStudent), [currentStudent]);
 
   const filteredScans = useMemo(() => {
     if (filterType === 'all') return scans;
@@ -210,8 +217,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   }, [filteredScans]);
 
   const handleCopyUid = () => {
-    if (!student?.rfid_uid) return;
-    navigator.clipboard.writeText(student.rfid_uid);
+    if (!currentStudent?.rfid_uid) return;
+    navigator.clipboard.writeText(currentStudent.rfid_uid);
     setCopiedUid(true);
     setTimeout(() => setCopiedUid(false), 2000);
   };
@@ -219,7 +226,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   const yearLabel = (year?: number | null) =>
     year ? `${year}${year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} Year` : '—';
 
-  if (!student) return null;
+  if (!currentStudent) return null;
 
   return (
     <Drawer
@@ -235,7 +242,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
           {/* Top Bar inside banner */}
           <div className="flex items-center justify-between z-20">
             <h2 className="text-2xl font-black text-[#15344F] tracking-tight">
-              {student.name}
+              {currentStudent.name}
             </h2>
             <button
               type="button"
@@ -268,12 +275,12 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
           {/* Subheading Handle */}
           <div>
             <p className="text-xs font-extrabold text-[#756883] uppercase tracking-wider">
-              @{student.student_id} · ENROLLED {student.created_at ? new Date(student.created_at).getFullYear() : '2023'}
+              @{currentStudent.student_id} · ENROLLED {currentStudent.created_at ? new Date(currentStudent.created_at).getFullYear() : '2023'}
             </p>
           </div>
 
           {/* 3D Tactile Card Action Button (Duolingo ADD FRIENDS style) */}
-          {student.rfid_uid ? (
+          {currentStudent.rfid_uid ? (
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -281,12 +288,12 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                 className="flex-1 flex items-center justify-center gap-2 rounded-2xl border-2 border-[#E5E0EB] bg-white py-2.5 px-3 text-xs font-extrabold text-[#24133F] shadow-[0_3px_0_0_#D1D5DB] hover:bg-[#FAF8FC] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
               >
                 {copiedUid ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4 text-[#756883]" />}
-                <span className="font-mono">Card UID: {student.rfid_uid}</span>
+                <span className="font-mono">Card UID: {currentStudent.rfid_uid}</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => onUnlinkCard(student.id)}
+                onClick={() => onUnlinkCard(currentStudent.id)}
                 className="flex items-center justify-center gap-1.5 rounded-2xl border-2 border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-extrabold text-rose-700 shadow-[0_3px_0_0_#FECDD3] hover:bg-rose-100 active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
                 title="Unlink RFID Card"
               >
@@ -299,7 +306,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               {availableCards.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => onQuickPair(student.id, availableCards[0].uid)}
+                  onClick={() => onQuickPair(currentStudent.id, availableCards[0].uid)}
                   className="flex-1 flex items-center justify-center gap-2 rounded-2xl border-2 border-emerald-200 bg-emerald-50 py-2.5 text-xs font-extrabold text-emerald-700 shadow-[0_3px_0_0_#A7F3D0] hover:bg-emerald-100 active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
                 >
                   <LinkIcon className="h-4 w-4" />
@@ -328,11 +335,11 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
               <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
                 <p className="text-[10px] font-bold text-[#756883] uppercase">Program / Course</p>
-                <p className="font-bold text-[#24133F] mt-0.5">{student.course || '—'}</p>
+                <p className="font-bold text-[#24133F] mt-0.5">{currentStudent.course || '—'}</p>
               </div>
               <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
                 <p className="text-[10px] font-bold text-[#756883] uppercase">Year Level</p>
-                <p className="font-bold text-[#24133F] mt-0.5">{yearLabel(student.year_level)}</p>
+                <p className="font-bold text-[#24133F] mt-0.5">{yearLabel(currentStudent.year_level)}</p>
               </div>
             </div>
           </div>
@@ -478,7 +485,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   />
                   <p className="text-xs font-bold text-[#24133F]">No scan logs found</p>
                   <p className="text-[11px] text-[#756883] max-w-xs mt-0.5">
-                    {student.rfid_uid
+                    {currentStudent.rfid_uid
                       ? 'This student has not checked into any event sessions yet.'
                       : 'Link an RFID card first to track automatic event attendance.'}
                   </p>
