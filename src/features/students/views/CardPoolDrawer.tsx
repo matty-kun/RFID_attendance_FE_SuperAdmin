@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Drawer } from '../../../components/common/Drawer';
+import { Button } from '../../../components/common/Button';
 import { Dropdown } from '../../../components/common/Dropdown';
 import { Search, Clock, Zap } from 'lucide-react';
 import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
@@ -58,24 +59,24 @@ export const CardPoolDrawer: React.FC<CardPoolDrawerProps> = ({
             <span className="font-bold text-[#7026B7]">{unassignedCount}</span> card{unassignedCount === 1 ? '' : 's'} available in pool
           </p>
           <div className="flex items-center gap-3">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-[#756883] hover:text-[#24133F] transition-colors"
             >
               Close
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => {
                 onClose();
                 onOpenRapidScan();
               }}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#7026B7] px-4 py-2 text-xs font-bold text-white shadow-[0_4px_0_0_#451475] hover:bg-[#621FA3] active:translate-y-[2px] active:shadow-none transition-all"
+              leftIcon={<Zap className="w-3.5 h-3.5 fill-current" />}
             >
-              <Zap className="w-3.5 h-3.5 fill-current" />
-              <span>Rapid Scan Cards</span>
-            </button>
+              Rapid Scan Cards
+            </Button>
           </div>
         </div>
       }

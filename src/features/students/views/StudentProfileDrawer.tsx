@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Drawer } from '../../../components/common/Drawer';
+import { Button } from '../../../components/common/Button';
 import {
   Copy,
   Check,
@@ -279,51 +280,53 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             </p>
           </div>
 
-          {/* 3D Tactile Card Action Button (Duolingo ADD FRIENDS style) */}
+          {/* 3D Tactile Card Action Button (Signature components) */}
           {currentStudent.rfid_uid ? (
             <div className="flex items-center gap-2">
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={handleCopyUid}
-                className="flex-1 flex items-center justify-center gap-2 rounded-2xl border-2 border-[#E5E0EB] bg-white py-2.5 px-3 text-xs font-extrabold text-[#24133F] shadow-[0_3px_0_0_#D1D5DB] hover:bg-[#FAF8FC] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
+                className="flex-1 font-mono text-xs justify-center"
+                leftIcon={copiedUid ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4 text-[#756883]" />}
               >
-                {copiedUid ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4 text-[#756883]" />}
-                <span className="font-mono">Card UID: {currentStudent.rfid_uid}</span>
-              </button>
+                Card UID: {currentStudent.rfid_uid}
+              </Button>
 
-              <button
-                type="button"
+              <Button
+                variant="danger"
+                size="md"
                 onClick={() => onUnlinkCard(currentStudent.id)}
-                className="flex items-center justify-center gap-1.5 rounded-2xl border-2 border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-extrabold text-rose-700 shadow-[0_3px_0_0_#FECDD3] hover:bg-rose-100 active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
+                leftIcon={<Unlink className="h-4 w-4" />}
                 title="Unlink RFID Card"
               >
-                <Unlink className="h-4 w-4" />
-                <span>Unlink</span>
-              </button>
+                Unlink
+              </Button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
               {availableCards.length > 0 && (
-                <button
-                  type="button"
+                <Button
+                  variant="success"
+                  size="md"
                   onClick={() => onQuickPair(currentStudent.id, availableCards[0].uid)}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-2xl border-2 border-emerald-200 bg-emerald-50 py-2.5 text-xs font-extrabold text-emerald-700 shadow-[0_3px_0_0_#A7F3D0] hover:bg-emerald-100 active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
+                  className="flex-1 justify-center"
+                  leftIcon={<LinkIcon className="h-4 w-4" />}
                 >
-                  <LinkIcon className="h-4 w-4" />
-                  <span>Pair Card #{availableCards[0].cardNumber}</span>
-                </button>
+                  Pair Card #{availableCards[0].cardNumber}
+                </Button>
               )}
-              <button
-                type="button"
+              <Button
+                variant="primary"
+                size="md"
                 onClick={() => {
                   onClose();
                   onOpenRapidScan();
                 }}
-                className="flex items-center justify-center gap-2 rounded-2xl bg-[#7026B7] px-4 py-2.5 text-xs font-extrabold text-white shadow-[0_3px_0_0_#451475] hover:bg-[#621FA3] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
+                leftIcon={<Zap className="h-4 w-4 fill-current" />}
               >
-                <Zap className="h-4 w-4 fill-current" />
-                <span>Scan card</span>
-              </button>
+                Scan card
+              </Button>
             </div>
           )}
 
