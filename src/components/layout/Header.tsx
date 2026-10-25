@@ -25,6 +25,59 @@ const commands = [
   { name: 'Notifications', path: '', icon: Bell, keywords: 'alerts updates bell', action: 'notifications' },
 ];
 
+function NavTab({ name, path, icon: Icon }: { name: string; path: string; icon: React.ComponentType<{ className?: string }> }) {
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [measuredWidth, setMeasuredWidth] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (textRef.current) {
+      setMeasuredWidth(textRef.current.scrollWidth);
+    }
+  }, []);
+
+  const fallbackWidths: Record<string, number> = {
+    'Overview': 58,
+    'Audit Log': 60,
+    'Attendance': 78,
+    'Students': 56,
+    'Reports': 52,
+    'Admins': 48,
+  };
+
+  const targetWidth = measuredWidth || fallbackWidths[name] || 60;
+
+  return (
+    <NavLink
+      to={path}
+      title={name}
+      aria-label={name}
+      className={({ isActive }) => cn(
+        'group relative flex h-8 shrink-0 items-center justify-center rounded-xl border px-2.5 text-[12px] font-semibold select-none cursor-pointer focus-visible:outline-2 focus-visible:outline-brand-700 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
+        isActive
+          ? 'border-slate-200/90 bg-white text-[#7026B7] shadow-xs -translate-y-0.5 font-bold'
+          : 'border-transparent bg-white/70 hover:bg-white text-[#756883] hover:text-[#7026B7] hover:-translate-y-0.5 active:scale-95'
+      )}
+    >
+      {({ isActive }) => (
+        <>
+          <Icon className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-300 ease-out', isActive ? 'scale-105 text-[#7026B7]' : 'scale-100 text-[#756883] group-hover:scale-110 group-hover:text-[#7026B7]')} />
+          <span
+            ref={textRef}
+            style={{
+              width: isActive ? `${targetWidth}px` : '0px',
+              opacity: isActive ? 1 : 0,
+              marginLeft: isActive ? '6px' : '0px',
+            }}
+            className="inline-block overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none"
+          >
+            {name}
+          </span>
+        </>
+      )}
+    </NavLink>
+  );
+}
+
 export function Header() {
   const pagesDialog = useRef<HTMLDialogElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
@@ -68,21 +121,9 @@ export function Header() {
     <NavLink to="/overview" className="z-10 text-[30px] font-extrabold leading-none tracking-tight text-[#24133F] md:text-[34px]">Presnt</NavLink>
 
     <nav aria-label="Main navigation" className="order-3 flex max-w-full gap-1.5 overflow-x-auto rounded-xl bg-[#F2F1F5] p-1.5 md:absolute md:left-[calc(50%+32px)] md:order-2 md:-translate-x-1/2">
-      {navigation.map(({ name, path, icon: Icon }) => <NavLink
-        key={path}
-        to={path}
-        title={name}
-        aria-label={name}
-        className={({ isActive }) => cn(
-          'group relative flex h-8 shrink-0 items-center justify-center rounded-xl border px-2.5 text-[12px] font-semibold transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none cursor-pointer focus-visible:outline-2 focus-visible:outline-brand-700',
-          isActive
-            ? 'border-slate-200/90 bg-white text-[#7026B7] shadow-xs -translate-y-0.5'
-            : 'border-transparent bg-white/75 hover:bg-white text-[#756883] hover:text-[#7026B7] hover:-translate-y-0.5 active:scale-95'
-        )}
-      >{({ isActive }) => <>
-        <Icon className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-300 ease-out', isActive ? 'scale-105 text-[#7026B7]' : 'scale-100 text-[#756883] group-hover:scale-110 group-hover:text-[#7026B7]')} />
-        <span className={cn('overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]', isActive ? 'max-w-28 opacity-100 ml-1.5 font-bold' : 'max-w-0 opacity-0 ml-0 font-normal')}>{name}</span>
-      </>}</NavLink>)}
+      {navigation.map((item) => (
+        <NavTab key={item.path} name={item.name} path={item.path} icon={item.icon} />
+      ))}
     </nav>
 
     <div className="z-10 flex items-center gap-2">
