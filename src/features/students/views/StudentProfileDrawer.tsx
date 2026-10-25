@@ -461,14 +461,9 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                             {/* Right: Exact timestamp & verification */}
                             <div className="text-right shrink-0">
                               {scan.timestamp ? (
-                                <div>
-                                  <p className="font-mono text-xs font-bold text-[#24133F] tabular-nums">
-                                    {scan.timestamp}
-                                  </p>
-                                  <p className="text-[10px] text-[#16883F] font-medium mt-0.5">
-                                    Verified
-                                  </p>
-                                </div>
+                                <p className="font-mono text-xs font-bold text-[#24133F] tabular-nums">
+                                  {scan.timestamp}
+                                </p>
                               ) : (
                                 <span className="text-xs text-[#A59AAB] italic">
                                   No scan
