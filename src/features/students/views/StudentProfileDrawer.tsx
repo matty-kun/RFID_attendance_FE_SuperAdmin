@@ -484,14 +484,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   </p>
                 </div>
               )}
-
-              {/* Frosted Bottom Fog Fade: Smooth peek gradient so user can see history of scans underneath */}
-              {groupedScans.length > 0 && (
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute bottom-0 inset-x-0 h-16 rounded-b-2xl bg-gradient-to-t from-white via-white/80 to-transparent backdrop-blur-[1px]"
-                />
-              )}
             </div>
           </div>
         </div>
