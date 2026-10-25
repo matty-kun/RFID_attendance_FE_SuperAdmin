@@ -264,7 +264,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         </div>
 
         {/* Content Area Below Banner */}
-        <div className="flex-1 p-5 pt-3 space-y-4 relative z-20 bg-white">
+        <div className="flex-1 p-5 pt-3 pb-8 space-y-4 relative z-20 bg-white">
           {/* Subheading Handle */}
           <div>
             <p className="text-xs font-extrabold text-[#756883] uppercase tracking-wider">
@@ -384,14 +384,14 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               )}
             </div>
 
-            {/* Timeline with Bottom Fog Fade */}
-            <div className="relative">
+            {/* Timeline: Natural flow scrolling with drawer all the way down */}
+            <div>
               {groupedScans.length > 0 ? (
-                <div className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden shadow-xs divide-y divide-[#E5E0EB] max-h-[380px] overflow-y-auto relative scroll-smooth">
+                <div className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden shadow-xs divide-y divide-[#E5E0EB]">
                   {groupedScans.map((group) => (
                     <div key={`${group.event}-${group.date}`}>
                       {/* Subtle Date Header */}
-                      <div className="sticky top-0 z-10 flex items-center justify-between bg-[#FAF8FC]/95 backdrop-blur-xs px-4 py-2 text-xs border-b border-[#F0E8FC]">
+                      <div className="flex items-center justify-between bg-[#FAF8FC] px-4 py-2 text-xs border-b border-[#F0E8FC]">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-[#24133F]">{group.event}</span>
                           <span className="text-[#A59AAB]">·</span>
