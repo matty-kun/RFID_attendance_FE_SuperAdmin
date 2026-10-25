@@ -25,6 +25,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
   const [studentId, setStudentId] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [temporaryPassword, setTemporaryPassword] = useState('');
   const [course, setCourse] = useState('BS Information Technology');
   const [yearLevel, setYearLevel] = useState(1);
   const [cardMode, setCardMode] = useState<'scan' | 'inventory'>('scan');
@@ -68,11 +69,12 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       setStudentId('');
       setName('');
       setEmail('');
+      setTemporaryPassword('');
       setCourse('BS Information Technology');
       setYearLevel(1);
       setScannedUid('');
       setSelectedInventoryUid(availableCards[0]?.uid || '');
-      setCardMode(availableCards.length > 0 ? 'scan' : 'scan');
+      setCardMode('scan');
       const timer = setTimeout(() => scannerInputRef.current?.focus(), 150);
       return () => clearTimeout(timer);
     }
@@ -89,24 +91,33 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
     }
   };
 
+  const validateCommonFields = () => {
+    if (!studentId.trim() || !name.trim() || !email.trim()) {
+      toast.error('Please fill in Student ID, Full Name, and Email Address.');
+      return false;
+    }
+    if (temporaryPassword.length < 12) {
+      toast.error('Temporary password must be at least 12 characters.');
+      return false;
+    }
+    return true;
+  };
+
   const handleRegisterWithCard = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!studentId.trim() || !name.trim() || !email.trim()) {
-      toast.error('Please fill in Student ID, Name, and Email.');
-      return;
-    }
+    if (!validateCommonFields()) return;
 
     let finalUid: string | undefined = undefined;
     if (cardMode === 'scan') {
       if (!scannedUid.trim()) {
-        toast.error('Tap card on scanner or click "Register without card".');
+        toast.error('Tap card on scanner or click "Issue card later".');
         scannerInputRef.current?.focus();
         return;
       }
       finalUid = scannedUid.trim();
     } else if (cardMode === 'inventory') {
       if (!selectedInventoryUid) {
-        toast.error('Select a card from pool or click "Register without card".');
+        toast.error('Select a card from pool or click "Issue card later".');
         return;
       }
       finalUid = selectedInventoryUid;
@@ -115,7 +126,8 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
     await onSubmit({
       student_id: studentId.trim(),
       name: name.trim(),
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
+      temporary_password: temporaryPassword,
       course,
       year_level: yearLevel,
       rfid_uid: finalUid,
@@ -123,15 +135,13 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
   };
 
   const handleRegisterWithoutCard = async () => {
-    if (!studentId.trim() || !name.trim() || !email.trim()) {
-      toast.error('Please fill in Student ID, Name, and Email.');
-      return;
-    }
+    if (!validateCommonFields()) return;
 
     await onSubmit({
       student_id: studentId.trim(),
       name: name.trim(),
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
+      temporary_password: temporaryPassword,
       course,
       year_level: yearLevel,
       rfid_uid: undefined,
@@ -174,7 +184,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       }
     >
       <form onSubmit={handleRegisterWithCard} className="space-y-5">
-        {/* TOP SECTION: RFID Card Binding Station (matches RapidCardScanDrawer clean white surface) */}
+        {/* TOP SECTION: RFID Card Binding Station */}
         <div className="rounded-2xl border border-[#E5E0EB] bg-white p-4 space-y-3.5">
           <div className="flex items-center gap-3">
             <img
@@ -197,7 +207,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
             </div>
           </div>
 
-          {/* Mode Switcher: Clean segmented bar matching RapidCardScanDrawer */}
+          {/* Mode Switcher */}
           <div className="flex rounded-xl bg-[#F6F4F8] p-1 border border-[#E5E0EB]">
             <button
               type="button"
@@ -304,6 +314,16 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
             placeholder="e.g. roberto@university.edu"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+
+          <Input
+            label="Temporary Password (min 12 chars)"
+            type="password"
+            placeholder="Temporary password for first login"
+            value={temporaryPassword}
+            onChange={(e) => setTemporaryPassword(e.target.value)}
+            minLength={12}
             required
           />
 

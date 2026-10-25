@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Activity, AlertCircle, CalendarDays, GraduationCap, MapPin, ScanLine, ShieldCheck, Users, X } from 'lucide-react';
+import { Activity, AlertCircle, CalendarDays, GraduationCap, MapPin, RefreshCw, ScanLine, ShieldCheck, Users, X } from 'lucide-react';
 import { adminService } from '../services/adminService';
 import type { DashboardMetrics } from '../types';
 
@@ -32,9 +32,13 @@ export function OverviewPage() {
   const refresh = useCallback(async () => {
     setLoading(true);
     setError('');
-    try { setMetrics(await adminService.getMetrics()); }
-    catch { setError('Could not load the overview. Try again.'); }
-    finally { setLoading(false); }
+    try {
+      setMetrics(await adminService.getMetrics());
+    } catch (err: any) {
+      setError(err?.response?.data?.error?.message || 'Could not load the overview. Try again.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -51,15 +55,32 @@ export function OverviewPage() {
   const locationPeak = Math.max(1, ...locationActivity.map((location) => location.scansToday));
   const hasAttendance = attendanceByDay.some((day) => day.timeIns + day.timeOuts > 0);
   const lastFourDaysTotal = attendanceByDay.reduce((total, day) => total + day.timeIns + day.timeOuts, 0);
-  const busiestDay = attendanceByDay.reduce<DashboardMetrics['attendanceByDay'][number] | null>((best, day) => !best || day.timeIns + day.timeOuts > best.timeIns + best.timeOuts ? day : best, null);
-  const busiestLocation = locationActivity.reduce<DashboardMetrics['locationActivity'][number] | null>((best, location) => !best || location.scansToday > best.scansToday ? location : best, null);
+  const busiestDay = attendanceByDay.reduce<DashboardMetrics['attendanceByDay'][number] | null>((best, day) => {
+    if (day.timeIns + day.timeOuts === 0) return best;
+    return !best || day.timeIns + day.timeOuts > best.timeIns + best.timeOuts ? day : best;
+  }, null);
+  const busiestLocation = locationActivity.reduce<DashboardMetrics['locationActivity'][number] | null>((best, location) => {
+    if (location.scansToday === 0) return best;
+    return !best || location.scansToday > best.scansToday ? location : best;
+  }, null);
 
   return (
     <div className="space-y-4">
       {error && (
-        <div role="alert" className="flex items-center gap-2 rounded-2xl border border-[#F8B9C0] bg-[#FDE8EA] px-4 py-3 text-sm text-[#B91C2A]">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {error}
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-2xl border border-[#F8B9C0] bg-[#FDE8EA] px-4 py-3 text-sm text-[#B91C2A]">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-[#B91C2A] shadow-sm transition-colors hover:bg-rose-50 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Retry
+          </button>
         </div>
       )}
 
@@ -87,15 +108,27 @@ export function OverviewPage() {
       </div>
 
       <div className="grid gap-7 md:min-h-[calc(100vh-320px)] md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-        {/* Attendance by Day (Visual match to Figma: Stadium pill stacked bars with green Present & red Absent) */}
+        {/* Attendance by Day */}
         <section
           id="attendance-chart"
           aria-labelledby="attendance-chart-title"
           className="flex min-h-[300px] flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6"
         >
-          <h2 id="attendance-chart-title" className="text-lg font-bold text-[#24133F]">
-            Attendance by Day
-          </h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 id="attendance-chart-title" className="text-lg font-bold text-[#24133F]">
+              Attendance by Day
+            </h2>
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              disabled={loading}
+              aria-label="Refresh overview metrics"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E0EB] px-2.5 py-1 text-xs font-semibold text-[#756883] transition-colors hover:bg-slate-50 hover:text-[#24133F] disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
 
           {loading && !metrics ? (
             <div className="my-6 flex h-52 items-end justify-around gap-4 px-2">
@@ -103,63 +136,70 @@ export function OverviewPage() {
                 <div key={index} className="w-12 animate-pulse rounded-[14px] bg-slate-100" style={{ height: `${height}%` }} />
               ))}
             </div>
+          ) : error && !metrics ? (
+            <div className="my-6 flex h-52 flex-col items-center justify-center gap-2 text-center text-sm text-slate-500">
+              <p className="font-semibold text-[#B91C2A]">Unable to load attendance chart.</p>
+              <button
+                type="button"
+                onClick={() => void refresh()}
+                className="text-xs font-bold text-brand-700 underline hover:text-brand-800"
+              >
+                Try again
+              </button>
+            </div>
+          ) : !hasAttendance ? (
+            <div className="my-6 flex h-52 flex-col items-center justify-center gap-1.5 text-center text-sm text-slate-500">
+              <p className="font-semibold text-[#24133F]">No attendance records available.</p>
+              <p className="text-xs text-[#756883]">Recorded time-in and time-out scans over the last 4 days will appear here.</p>
+            </div>
           ) : (
             <div className="my-6 flex h-52 items-end justify-around gap-4 px-2">
-              {(hasAttendance
-                ? attendanceByDay.map((day, idx) => {
-                    const present = day.timeIns;
-                    const absent = Math.max(10, Math.round(present * 0.2));
-                    const peakVal = Math.max(1, dayPeak * 1.25);
-                    return {
-                      dayLabel: `Day ${idx + 1}`,
-                      date: day.date,
-                      present,
-                      absent,
-                      presentPct: Math.max(8, Math.round((present / peakVal) * 100)),
-                      absentPct: Math.max(6, Math.round((absent / peakVal) * 100)),
-                      raw: day,
-                    };
-                  })
-                : [
-                    { dayLabel: 'Day 1', date: 'Day 1', present: 420, absent: 80, presentPct: 75, absentPct: 20, raw: null },
-                    { dayLabel: 'Day 2', date: 'Day 2', present: 438, absent: 62, presentPct: 80, absentPct: 15, raw: null },
-                    { dayLabel: 'Day 3', date: 'Day 3', present: 465, absent: 35, presentPct: 88, absentPct: 10, raw: null },
-                    { dayLabel: 'Day 4', date: 'Day 4', present: 385, absent: 115, presentPct: 70, absentPct: 25, raw: null },
-                  ]
-              ).map((item) => (
-                <button
-                  type="button"
-                  key={item.dayLabel}
-                  onClick={() => item.raw && setSelectedDay(item.raw)}
-                  aria-label={`${item.dayLabel}: ${item.present} Present, ${item.absent} Absent`}
-                  className="group relative flex h-full flex-1 flex-col items-center justify-end rounded-lg focus-visible:outline-2 focus-visible:outline-brand-700"
-                >
-                  {/* Tooltip */}
-                  <div
-                    role="tooltip"
-                    className="pointer-events-none absolute -top-8 z-10 hidden whitespace-nowrap rounded-lg bg-[#24133F] px-3 py-1.5 text-[11px] font-medium text-white shadow-xl group-hover:block group-focus-visible:block"
+              {attendanceByDay.map((day, idx) => {
+                const timeIns = day.timeIns;
+                const timeOuts = day.timeOuts;
+                const peakVal = Math.max(1, dayPeak * 1.15);
+                const dayLabel = formatDay(day.date) || `Day ${idx + 1}`;
+                return (
+                  <button
+                    type="button"
+                    key={day.date}
+                    onClick={() => setSelectedDay(day)}
+                    aria-label={`${dayLabel}: ${timeIns} Time In, ${timeOuts} Time Out`}
+                    className="group relative flex h-full flex-1 flex-col items-center justify-end rounded-lg focus-visible:outline-2 focus-visible:outline-brand-700"
                   >
-                    {item.dayLabel}
-                    {item.date !== item.dayLabel ? ` (${formatDay(item.date)})` : ''}: {item.present.toLocaleString()} Present · {item.absent.toLocaleString()} Absent
-                  </div>
-
-                  {/* Stacked Stadium Bars */}
-                  <div className="flex w-12 h-44 flex-col justify-end gap-1.5 transition-transform duration-200 group-hover:scale-105 motion-reduce:transform-none">
-                    {/* Absent segment (Top) */}
+                    {/* Tooltip */}
                     <div
-                      className="w-full rounded-[14px] bg-[#EF3340] transition-all duration-300"
-                      style={{ height: `${item.absentPct}%` }}
-                    />
-                    {/* Present segment (Bottom) */}
-                    <div
-                      className="w-full rounded-[14px] bg-[#10B981] transition-all duration-300"
-                      style={{ height: `${item.presentPct}%` }}
-                    />
-                  </div>
+                      role="tooltip"
+                      className="pointer-events-none absolute -top-8 z-10 hidden whitespace-nowrap rounded-lg bg-[#24133F] px-3 py-1.5 text-[11px] font-medium text-white shadow-xl group-hover:block group-focus-visible:block"
+                    >
+                      {dayLabel}: {timeIns.toLocaleString()} Time In · {timeOuts.toLocaleString()} Time Out
+                    </div>
 
-                  <span className="mt-3 text-xs font-medium text-[#756883]">{item.dayLabel}</span>
-                </button>
-              ))}
+                    {/* Stacked Stadium Bars */}
+                    <div className="flex w-12 h-44 flex-col justify-end gap-1.5 transition-transform duration-200 group-hover:scale-105 motion-reduce:transform-none">
+                      {/* Time Out segment (Top) */}
+                      {timeOuts > 0 && (
+                        <div
+                          className="w-full rounded-[14px] bg-[#EF3340] transition-all duration-300"
+                          style={{ height: `${Math.max(8, Math.round((timeOuts / peakVal) * 100))}%` }}
+                        />
+                      )}
+                      {/* Time In segment (Bottom) */}
+                      {timeIns > 0 && (
+                        <div
+                          className="w-full rounded-[14px] bg-[#10B981] transition-all duration-300"
+                          style={{ height: `${Math.max(8, Math.round((timeIns / peakVal) * 100))}%` }}
+                        />
+                      )}
+                      {timeIns === 0 && timeOuts === 0 && (
+                        <div className="w-full h-2 rounded-[14px] bg-slate-100" />
+                      )}
+                    </div>
+
+                    <span className="mt-3 text-xs font-medium text-[#756883]">{dayLabel}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -167,11 +207,11 @@ export function OverviewPage() {
           <div className="flex items-center gap-6 text-xs text-[#756883] font-medium">
             <span className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-[#10B981]" />
-              Present
+              Time In
             </span>
             <span className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-[#EF3340]" />
-              Absent
+              Time Out
             </span>
           </div>
         </section>
@@ -185,6 +225,10 @@ export function OverviewPage() {
                 <div key={index} className="h-8 animate-pulse rounded-lg bg-slate-100" />
               ))}
             </div>
+          ) : error && !metrics ? (
+            <div className="flex h-[160px] items-center justify-center text-center text-sm text-[#B91C2A]">
+              Unable to load location activity.
+            </div>
           ) : locationActivity.length ? (
             <div className="mt-3 flex flex-1 flex-col justify-around gap-3">
               {locationActivity.map((location, index) => (
@@ -195,7 +239,7 @@ export function OverviewPage() {
                   </div>
                   <div className="h-[7px] rounded-full bg-slate-100">
                     {location.scansToday > 0 && (
-                      <div className={`h-full rounded-full ${locationColors[index]}`} style={{ width: `${Math.max(3, (location.scansToday / locationPeak) * 100)}%` }} />
+                      <div className={`h-full rounded-full ${locationColors[index % locationColors.length]}`} style={{ width: `${Math.max(3, (location.scansToday / locationPeak) * 100)}%` }} />
                     )}
                   </div>
                 </div>
@@ -210,17 +254,17 @@ export function OverviewPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <p className="text-xs font-semibold text-slate-500">Scans · last 4 days</p>
-          <p className="mt-2 text-2xl font-extrabold text-[#24133F]">{loading ? '—' : lastFourDaysTotal.toLocaleString()}</p>
+          <p className="mt-2 text-2xl font-extrabold text-[#24133F]">{loading || !metrics ? '—' : lastFourDaysTotal.toLocaleString()}</p>
           <p className="mt-1 text-xs text-slate-500">Time ins and time outs combined</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <p className="text-xs font-semibold text-slate-500">Busiest day</p>
-          <p className="mt-2 text-2xl font-extrabold text-[#24133F]">{loading ? '—' : busiestDay ? formatDay(busiestDay.date) : 'No scans'}</p>
+          <p className="mt-2 text-2xl font-extrabold text-[#24133F]">{loading || !metrics ? '—' : busiestDay ? formatDay(busiestDay.date) : 'No scans'}</p>
           <p className="mt-1 text-xs text-slate-500">{busiestDay ? `${(busiestDay.timeIns + busiestDay.timeOuts).toLocaleString()} scans` : 'Last four days'}</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <p className="text-xs font-semibold text-slate-500">Busiest checkpoint today</p>
-          <p className="mt-2 truncate text-2xl font-extrabold text-[#24133F]">{loading ? '—' : busiestLocation?.name ?? 'No scans'}</p>
+          <p className="mt-2 truncate text-2xl font-extrabold text-[#24133F]">{loading || !metrics ? '—' : busiestLocation?.name ?? 'No scans'}</p>
           <p className="mt-1 text-xs text-slate-500">{busiestLocation ? `${busiestLocation.scansToday.toLocaleString()} scans today` : 'No checkpoint activity'}</p>
         </div>
       </div>

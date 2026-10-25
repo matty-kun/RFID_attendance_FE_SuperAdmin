@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
+  AlertCircle,
   Calendar,
   ChevronDown,
   ChevronRight,
@@ -8,6 +9,7 @@ import {
   Copy,
   MoreVertical,
   Plus,
+  RefreshCw,
   Search,
   Users,
   MapPin,
@@ -15,27 +17,32 @@ import {
   CheckCircle2,
   Trash2,
   X,
-  RotateCcw,
 } from 'lucide-react';
 import { useToast } from '../context';
 import { Button } from '../components/common/Button';
 import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { CreateEventModal } from '../features/events/views/CreateEventModal';
-import { DeleteConfirmationModal } from '../components/common/DeleteConfirmationModal';
 import { EditTimeWindowDrawer } from '../features/events/views/EditTimeWindowDrawer';
 import {
   AssignOfficersDrawer,
   type AssignedOfficer,
 } from '../features/events/views/AssignOfficersDrawer';
+import { adminService, type SessionLocations } from '../services/adminService';
+import { getEventStatus, getSessionStatus } from '../utils/status';
+import type { EventRecord, SessionRecord } from '../types';
 import hawiQuestionImg from '../assets/illustrations/Hawi Question.png';
 
 interface SessionItem {
   id: string;
   name: string;
+  date: string;
+  timeInStart: string;
+  timeInEnd: string;
+  timeOutStart: string;
+  timeOutEnd: string;
   timeWindow: string;
-  status: 'Active' | 'Upcoming' | 'Completed' | 'Not Started';
-  previousStatus?: 'Active' | 'Upcoming' | 'Not Started';
+  status: 'Active' | 'Upcoming' | 'Completed';
   officers: AssignedOfficer[];
 }
 
@@ -43,6 +50,7 @@ interface DaySchedule {
   dayId: string;
   dayLabel: string;
   dateStr: string;
+  ymd: string;
   sessions: SessionItem[];
   status: 'Active' | 'Upcoming' | 'Not Started';
 }
@@ -50,193 +58,51 @@ interface DaySchedule {
 interface EventData {
   id: string;
   name: string;
+  description: string | null;
+  startDate: string;
+  endDate: string;
   dateRange: string;
   durationDays: number;
   status: 'Ongoing' | 'Upcoming' | 'Completed';
   days: DaySchedule[];
 }
 
-const initialEvent: EventData = {
-  id: 'ev-1',
-  name: 'Cite Festival',
-  dateRange: 'October 2 - 5, 2026 · 4 days',
-  durationDays: 4,
-  status: 'Ongoing',
-  days: [
-    {
-      dayId: 'd1',
-      dayLabel: 'Day 1 - October 2, 2026',
-      dateStr: 'October 2, 2026',
-      status: 'Active',
-      sessions: [
-        {
-          id: 's1',
-          name: 'Morning - Time IN',
-          timeWindow: '7:00 - 9:00 AM',
-          status: 'Active',
-          officers: [
-            { id: 'o1', name: 'Juan bayot', initials: 'JD', role: 'Admin', location: 'Cite Building', status: 'Online' },
-            { id: 'o2', name: 'Ako si batman', initials: 'JD', role: 'Admin', location: 'Cite Building', status: 'Online' },
-            { id: 'o3', name: 'Nonoy Kaibo', initials: 'JD', role: 'Admin', location: 'CR ETD', status: 'Online' },
-          ],
-        },
-        {
-          id: 's2',
-          name: 'Morning - Time OUT',
-          timeWindow: '11:00 - 12:30 PM',
-          status: 'Upcoming',
-          officers: [
-            { id: 'o4', name: 'Ako si batman', initials: 'JD', role: 'Admin', location: 'Cite Building', status: 'Online' },
-            { id: 'o5', name: 'Nonoy Kaibo', initials: 'JD', role: 'Admin', location: 'CR ETD', status: 'Online' },
-          ],
-        },
-        {
-          id: 's3',
-          name: 'Afternoon - Time IN',
-          timeWindow: '1:00 - 2:00 PM',
-          status: 'Upcoming',
-          officers: [
-            { id: 'o6', name: 'Ako si batman', initials: 'JD', role: 'Admin', location: 'ETD Court', status: 'Online' },
-            { id: 'o7', name: 'King Kong', initials: 'KK', role: 'Admin', location: 'Cite 4th floor', status: 'Offline' },
-          ],
-        },
-      ],
-    },
-    {
-      dayId: 'd2',
-      dayLabel: 'Day 2 - October 3, 2026',
-      dateStr: 'October 3, 2026',
-      status: 'Not Started',
-      sessions: [
-        {
-          id: 's4',
-          name: 'Morning - Time IN',
-          timeWindow: '7:00 - 9:00 AM',
-          status: 'Not Started',
-          officers: [],
-        },
-        {
-          id: 's5',
-          name: 'Afternoon - Time IN',
-          timeWindow: '1:00 - 2:00 PM',
-          status: 'Not Started',
-          officers: [],
-        },
-        {
-          id: 's6',
-          name: 'Evening - Time OUT',
-          timeWindow: '5:00 - 6:30 PM',
-          status: 'Not Started',
-          officers: [],
-        },
-      ],
-    },
-    {
-      dayId: 'd3',
-      dayLabel: 'Day 3 - October 4, 2026',
-      dateStr: 'October 4, 2026',
-      status: 'Not Started',
-      sessions: [
-        {
-          id: 's7',
-          name: 'Morning - Time IN',
-          timeWindow: '7:00 - 9:00 AM',
-          status: 'Not Started',
-          officers: [],
-        },
-        {
-          id: 's8',
-          name: 'Afternoon - Time OUT',
-          timeWindow: '12:00 - 1:30 PM',
-          status: 'Not Started',
-          officers: [],
-        },
-      ],
-    },
-    {
-      dayId: 'd4',
-      dayLabel: 'Day 4 - October 5, 2026',
-      dateStr: 'October 5, 2026',
-      status: 'Not Started',
-      sessions: [
-        {
-          id: 's9',
-          name: 'Morning - Time IN',
-          timeWindow: '7:00 - 9:00 AM',
-          status: 'Not Started',
-          officers: [],
-        },
-        {
-          id: 's10',
-          name: 'Evening - Time OUT',
-          timeWindow: '5:00 - 7:00 PM',
-          status: 'Not Started',
-          officers: [],
-        },
-      ],
-    },
-  ],
-};
-
-function parseTimeWindow(tw: string): { start: string; end: string } {
-  try {
-    const parts = tw.split('-').map((s) => s.trim());
-    if (parts.length < 2) return { start: '08:00', end: '10:00' };
-
-    const endRaw = parts[1];
-    const endPeriodMatch = endRaw.match(/(AM|PM)/i);
-    const endPeriod = endPeriodMatch ? endPeriodMatch[1].toUpperCase() : 'AM';
-
-    const startRaw = parts[0];
-    const startPeriodMatch = startRaw.match(/(AM|PM)/i);
-    let startPeriod = startPeriodMatch ? startPeriodMatch[1].toUpperCase() : endPeriod;
-
-    if (!startPeriodMatch && endPeriod === 'PM') {
-      const startHour = parseInt(startRaw.split(':')[0], 10);
-      if (startHour >= 7 && startHour <= 11) {
-        startPeriod = 'AM';
-      }
-    }
-
-    const to24 = (timeStr: string, period: string) => {
-      const cleaned = timeStr.replace(/(AM|PM)/gi, '').trim();
-      const [hStr, mStr] = cleaned.split(':');
-      let h = parseInt(hStr, 10);
-      const m = parseInt(mStr, 10) || 0;
-      if (isNaN(h)) h = 8;
-      if (period === 'PM' && h < 12) h += 12;
-      if (period === 'AM' && h === 12) h = 0;
-      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-    };
-
-    return {
-      start: to24(startRaw, startPeriod),
-      end: to24(endRaw, endPeriod),
-    };
-  } catch {
-    return { start: '08:00', end: '10:00' };
-  }
+function formatTo12(timeStr: string): string {
+  if (!timeStr) return '--:--';
+  const [hStr, mStr] = timeStr.split(':');
+  const h = parseInt(hStr, 10) || 0;
+  const m = parseInt(mStr, 10) || 0;
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hr = h % 12 || 12;
+  return `${hr}:${String(m).padStart(2, '0')} ${period}`;
 }
 
-
-
-function parseDateStrToYMD(dateStr: string): string {
+function formatDateRangeLabel(startDate: string, endDate: string): { label: string; daysCount: number } {
   try {
-    const d = new Date(dateStr);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+    const d1 = new Date(`${startDate}T00:00:00`);
+    const d2 = new Date(`${endDate}T00:00:00`);
+    const daysCount = Math.max(1, Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    const startFormatted = d1.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const endFormatted = d2.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const rangeText = startDate === endDate ? startFormatted : `${startFormatted} - ${endFormatted}`;
+    return {
+      label: `${rangeText} · ${daysCount} ${daysCount === 1 ? 'day' : 'days'}`,
+      daysCount,
+    };
   } catch {
-    return '';
+    return { label: `${startDate} - ${endDate}`, daysCount: 1 };
   }
 }
 
 export function AttendancePage() {
   const { showToast } = useToast();
-  const [eventData, setEventData] = useState<EventData | null>(initialEvent);
+  const [events, setEvents] = useState<EventRecord[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const [eventData, setEventData] = useState<EventData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
   const [isEventMenuOpen, setIsEventMenuOpen] = useState(false);
-  const [isDeletingEvent, setIsDeletingEvent] = useState(false);
   const [isEventExpanded, setIsEventExpanded] = useState(true);
   const [expandedDayId, setExpandedDayId] = useState<string>('d1');
 
@@ -253,11 +119,6 @@ export function AttendancePage() {
     dateStr: string;
   } | null>(null);
 
-  const handleOpenAssign = (dayId: string, session: SessionItem, dateStr: string) => {
-    setAssigningSession({ dayId, session, dateStr });
-  };
-
-  // Toast Feedback & Card Highlight States
   const [highlightedSessionId, setHighlightedSessionId] = useState<string | null>(null);
 
   const triggerHighlight = (sessionId: string) => {
@@ -276,29 +137,170 @@ export function AttendancePage() {
     showToast(message, { type, actionLabel, onAction });
   };
 
-  const handleSaveAssignedOfficers = (updatedOfficers: AssignedOfficer[]) => {
+  const buildEventSchedule = useCallback(async (ev: EventRecord) => {
+    const sessions: SessionRecord[] = await adminService.getSessions(ev.id);
+
+    // Fetch allowed checkpoint locations for each session in parallel
+    const sessionLocationsEntries: Array<[string, SessionLocations]> = await Promise.all(
+      sessions.map(async (ses): Promise<[string, SessionLocations]> => {
+        try {
+          const locs = await adminService.getSessionLocations(ses.id);
+          return [ses.id, locs];
+        } catch {
+          return [ses.id, { session_id: ses.id, time_in_locations: [], time_out_locations: [] }];
+        }
+      })
+    );
+    const locationsMap = new Map<string, SessionLocations>(sessionLocationsEntries);
+
+    const { label: dateRangeLabel, daysCount } = formatDateRangeLabel(ev.start_date, ev.end_date);
+    const startObj = new Date(`${ev.start_date}T00:00:00`);
+
+    const days: DaySchedule[] = Array.from({ length: daysCount }, (_, idx) => {
+      const cur = new Date(startObj);
+      cur.setDate(startObj.getDate() + idx);
+      const y = cur.getFullYear();
+      const m = String(cur.getMonth() + 1).padStart(2, '0');
+      const d = String(cur.getDate()).padStart(2, '0');
+      const ymd = `${y}-${m}-${d}`;
+      const dateStr = cur.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      const dayId = `d${idx + 1}`;
+      const daySessions = sessions
+        .filter((s) => s.date === ymd)
+        .map((s): SessionItem => {
+          const rawStatus = getSessionStatus(s.date, s.time_in_start, s.time_out_end);
+          const status: SessionItem['status'] =
+            rawStatus === 'open' ? 'Active' : rawStatus === 'upcoming' ? 'Upcoming' : 'Completed';
+          const locs = locationsMap.get(s.id);
+          const uniqueLocations = new Map<string, string>();
+          for (const l of locs?.time_in_locations || []) uniqueLocations.set(l.id, l.name);
+          for (const l of locs?.time_out_locations || []) uniqueLocations.set(l.id, l.name);
+
+          const officers: AssignedOfficer[] = Array.from(uniqueLocations.entries()).map(([locId, locName]) => ({
+            id: `loc-${locId}`,
+            name: locName,
+            initials: locName.slice(0, 2).toUpperCase(),
+            role: 'Checkpoint',
+            location: locName,
+            locationId: locId,
+            status: 'Online',
+          }));
+
+          return {
+            id: s.id,
+            name: s.name,
+            date: s.date,
+            timeInStart: s.time_in_start,
+            timeInEnd: s.time_in_end,
+            timeOutStart: s.time_out_start,
+            timeOutEnd: s.time_out_end,
+            timeWindow: `IN: ${formatTo12(s.time_in_start)} - ${formatTo12(s.time_in_end)} · OUT: ${formatTo12(s.time_out_start)} - ${formatTo12(s.time_out_end)}`,
+            status,
+            officers,
+          };
+        });
+
+      const hasActive = daySessions.some((s) => s.status === 'Active');
+      const hasAny = daySessions.length > 0;
+
+      return {
+        dayId,
+        dayLabel: `Day ${idx + 1} - ${dateStr}`,
+        dateStr,
+        ymd,
+        sessions: daySessions,
+        status: hasActive ? 'Active' : hasAny ? 'Upcoming' : 'Not Started',
+      };
+    });
+
+    const evRawStatus = getEventStatus(ev.start_date, ev.end_date);
+    const evStatus: EventData['status'] =
+      evRawStatus === 'ongoing' ? 'Ongoing' : evRawStatus === 'upcoming' ? 'Upcoming' : 'Completed';
+
+    setEventData({
+      id: ev.id,
+      name: ev.name,
+      description: ev.description,
+      startDate: ev.start_date,
+      endDate: ev.end_date,
+      dateRange: dateRangeLabel,
+      durationDays: daysCount,
+      status: evStatus,
+      days,
+    });
+  }, []);
+
+  const loadSchedule = useCallback(async (preferredEventId?: string) => {
+    setLoading(true);
+    setError('');
+    try {
+      const allEvents = await adminService.getEvents();
+      setEvents(allEvents);
+      if (allEvents.length === 0) {
+        setSelectedEventId('');
+        setEventData(null);
+        return;
+      }
+      const targetId = preferredEventId || selectedEventId || allEvents[0].id;
+      const targetEvent = allEvents.find((e) => e.id === targetId) || allEvents[0];
+      setSelectedEventId(targetEvent.id);
+      await buildEventSchedule(targetEvent);
+    } catch (err: any) {
+      setError(err?.response?.data?.error?.message || 'Could not load attendance schedule. Try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedEventId, buildEventSchedule]);
+
+  useEffect(() => {
+    void loadSchedule();
+  }, [loadSchedule]);
+
+  const handleOpenAssign = (dayId: string, session: SessionItem, dateStr: string) => {
+    setAssigningSession({ dayId, session, dateStr });
+  };
+
+  const handleSaveAssignedOfficers = async (updatedOfficers: AssignedOfficer[]) => {
     if (!assigningSession) return;
     const targetSessionId = assigningSession.session.id;
     const targetSessionName = assigningSession.session.name;
-    setEventData((prev) => !prev ? prev : ({
-      ...prev,
-      days: prev.days.map((d) =>
-        d.dayId === assigningSession.dayId
-          ? {
-              ...d,
-              sessions: d.sessions.map((s) =>
-                s.id === targetSessionId
-                  ? { ...s, officers: updatedOfficers }
-                  : s
+
+    const locationIds = Array.from(
+      new Set(updatedOfficers.map((o) => o.locationId).filter((id): id is string => Boolean(id)))
+    );
+
+    try {
+      await adminService.saveSessionLocations(targetSessionId, {
+        time_in_location_ids: locationIds,
+        time_out_location_ids: locationIds,
+      });
+
+      setEventData((prev) =>
+        !prev
+          ? prev
+          : {
+              ...prev,
+              days: prev.days.map((d) =>
+                d.dayId === assigningSession.dayId
+                  ? {
+                      ...d,
+                      sessions: d.sessions.map((s) =>
+                        s.id === targetSessionId ? { ...s, officers: updatedOfficers } : s
+                      ),
+                    }
+                  : d
               ),
             }
-          : d
-      ),
-    }));
-    triggerHighlight(targetSessionId);
-    showFeedback(
-      `Assigned ${updatedOfficers.length} officer${updatedOfficers.length === 1 ? '' : 's'} to ${targetSessionName}`
-    );
+      );
+      triggerHighlight(targetSessionId);
+      showFeedback(
+        `Saved ${locationIds.length} checkpoint${locationIds.length === 1 ? '' : 's'} for ${targetSessionName}`,
+        'success'
+      );
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Could not save session checkpoints.';
+      showFeedback(apiMsg, 'warning');
+    }
   };
 
   // Session action menus & edit modal state
@@ -306,188 +308,115 @@ export function AttendancePage() {
   const [editingTimeSession, setEditingTimeSession] = useState<{ dayId: string; session: SessionItem } | null>(null);
   const [startTimeInput, setStartTimeInput] = useState('07:00');
   const [endTimeInput, setEndTimeInput] = useState('09:00');
-  const [deletingSessionInfo, setDeletingSessionInfo] = useState<{ dayId: string; session: SessionItem } | null>(null);
 
-  const handleToggleSessionComplete = (dayId: string, session: SessionItem) => {
-    if (session.status === 'Completed') {
-      // Reopen session
-      const revertStatus = session.previousStatus || 'Active';
-      setEventData((prev) => !prev ? prev : ({
-        ...prev,
-        days: prev.days.map((d) =>
-          d.dayId === dayId
-            ? {
-                ...d,
-                sessions: d.sessions.map((s) =>
-                  s.id === session.id ? { ...s, status: revertStatus } : s
-                ),
-              }
-            : d
-        ),
-      }));
-      triggerHighlight(session.id);
-      showFeedback(`"${session.name}" reopened as ${revertStatus}`, 'success');
-    } else {
-      // Mark as completed
-      const prior = session.status;
-      setEventData((prev) => !prev ? prev : ({
-        ...prev,
-        days: prev.days.map((d) =>
-          d.dayId === dayId
-            ? {
-                ...d,
-                sessions: d.sessions.map((s) =>
-                  s.id === session.id
-                    ? { ...s, status: 'Completed', previousStatus: prior }
-                    : s
-                ),
-              }
-            : d
-        ),
-      }));
-      triggerHighlight(session.id);
-      showFeedback(`"${session.name}" marked as completed`, 'info', 'Undo', () => {
-        setEventData((prev) => !prev ? prev : ({
-          ...prev,
-          days: prev.days.map((d) =>
-            d.dayId === dayId
-              ? {
-                  ...d,
-                  sessions: d.sessions.map((s) =>
-                    s.id === session.id ? { ...s, status: prior } : s
-                  ),
-                }
-              : d
-          ),
-        }));
-        triggerHighlight(session.id);
-        showFeedback(`"${session.name}" restored to ${prior}`, 'success');
-      });
-    }
+  const handleToggleSessionComplete = (_dayId: string, session: SessionItem) => {
     setOpenMenuSessionId(null);
+    showFeedback(
+      `Manual session status override for "${session.name}" is not supported: sessions open and close automatically based on their configured schedule.`,
+      'warning'
+    );
   };
 
   const handleOpenEditTime = (dayId: string, session: SessionItem) => {
     setEditingTimeSession({ dayId, session });
-    const parsed = parseTimeWindow(session.timeWindow);
-    setStartTimeInput(parsed.start);
-    setEndTimeInput(parsed.end);
+    setStartTimeInput(session.timeInStart.slice(0, 5));
+    setEndTimeInput(session.timeInEnd.slice(0, 5));
     setOpenMenuSessionId(null);
   };
 
-  const handleSaveEditTime = (_start: string, _end: string, formatted: string) => {
+  const handleSaveEditTime = async (start: string, end: string, _formatted: string) => {
     if (!editingTimeSession) return;
-    const targetSessionId = editingTimeSession.session.id;
-    setEventData((prev) => !prev ? prev : ({
-      ...prev,
-      days: prev.days.map((d) =>
-        d.dayId === editingTimeSession.dayId
-          ? {
-              ...d,
-              sessions: d.sessions.map((s) =>
-                s.id === targetSessionId
-                  ? { ...s, timeWindow: formatted }
-                  : s
-              ),
-            }
-          : d
-      ),
-    }));
-    triggerHighlight(targetSessionId);
-    showFeedback(`Time window updated to ${formatted}`, 'success');
-    setEditingTimeSession(null);
+    const targetSession = editingTimeSession.session;
+    const newInStart = `${start}:00`;
+    const newInEnd = `${end}:00`;
+
+    // Ensure time_out_start >= newInEnd so backend validation passes
+    let newOutStart = targetSession.timeOutStart;
+    let newOutEnd = targetSession.timeOutEnd;
+    if (newOutStart < newInEnd) {
+      newOutStart = newInEnd;
+      if (newOutEnd <= newOutStart) {
+        const [h] = newOutStart.split(':').map(Number);
+        const outEndHr = Math.min(23, (h || 12) + 1);
+        newOutEnd = `${String(outEndHr).padStart(2, '0')}:30:00`;
+      }
+    }
+
+    try {
+      await adminService.updateSession(targetSession.id, {
+        time_in_start: newInStart,
+        time_in_end: newInEnd,
+        time_out_start: newOutStart,
+        time_out_end: newOutEnd,
+      });
+      await loadSchedule(selectedEventId);
+      triggerHighlight(targetSession.id);
+      showFeedback(`Updated time window for "${targetSession.name}"`, 'success');
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Could not update session time window.';
+      showFeedback(apiMsg, 'warning');
+    } finally {
+      setEditingTimeSession(null);
+    }
   };
 
-  const handleConfirmDeleteSession = () => {
-    if (!deletingSessionInfo) return;
-    const deletedSession = deletingSessionInfo.session;
-    const targetDayId = deletingSessionInfo.dayId;
-    const targetDay = eventData?.days.find((d) => d.dayId === targetDayId);
-    const originalIndex = targetDay
-      ? targetDay.sessions.findIndex((s) => s.id === deletedSession.id)
-      : -1;
-
-    setEventData((prev) => !prev ? prev : ({
-      ...prev,
-      days: prev.days.map((d) =>
-        d.dayId === targetDayId
-          ? {
-              ...d,
-              sessions: d.sessions.filter((s) => s.id !== deletedSession.id),
-            }
-          : d
-      ),
-    }));
-    setDeletingSessionInfo(null);
-    showFeedback(`"${deletedSession.name}" deleted`, 'delete', 'Undo', () => {
-      setEventData((prev) => !prev ? prev : ({
-        ...prev,
-        days: prev.days.map((d) => {
-          if (d.dayId !== targetDayId) return d;
-          const nextSessions = [...d.sessions];
-          if (originalIndex >= 0 && originalIndex <= nextSessions.length) {
-            nextSessions.splice(originalIndex, 0, deletedSession);
-          } else {
-            nextSessions.push(deletedSession);
-          }
-          return { ...d, sessions: nextSessions };
-        }),
-      }));
-      triggerHighlight(deletedSession.id);
-      showFeedback(`Restored "${deletedSession.name}"`, 'success');
-    });
-  };
-
-  const handleCopyFromDay1 = (targetDayId: string) => {
-    const day1 = eventData?.days.find((d) => d.dayId === 'd1');
-    if (!day1) return;
-
-    setEventData((prev) => !prev ? prev : ({
-      ...prev,
-      days: prev.days.map((d) =>
-        d.dayId === targetDayId
-          ? {
-              ...d,
-              status: 'Upcoming',
-              sessions: day1.sessions.map((s, idx) => ({
-                ...s,
-                id: `${targetDayId}-s-${idx + 1}`,
-                status: 'Upcoming',
-              })),
-            }
-          : d
-      ),
-    }));
-    setExpandedDayId(targetDayId);
-    const targetDay = eventData?.days.find((d) => d.dayId === targetDayId);
+  const handleUnsupportedDeleteSession = (session: SessionItem) => {
+    setOpenMenuSessionId(null);
     showFeedback(
-      `Copied schedule from Day 1 to ${targetDay ? targetDay.dayLabel.split('-')[0].trim() : 'Day'}`,
-      'success'
+      `Deleting session "${session.name}" is not supported by the backend API to preserve attendance audit history.`,
+      'warning'
     );
   };
 
-  const handleConfirmDeleteEvent = () => {
+  const handleCopyFromDay1 = async (targetDayId: string) => {
     if (!eventData) return;
-    const deletedEvent = eventData;
-    setEventData(null);
-    setIsDeletingEvent(false);
-    showFeedback(`Event "${deletedEvent.name}" deleted`, 'delete', 'Undo', () => {
-      setEventData(deletedEvent);
-      showFeedback(`Restored "${deletedEvent.name}"`, 'success');
-    });
+    const day1 = eventData.days.find((d) => d.dayId === 'd1');
+    const targetDay = eventData.days.find((d) => d.dayId === targetDayId);
+    if (!day1 || !targetDay || day1.sessions.length === 0) {
+      showFeedback('Day 1 has no configured sessions to copy.', 'warning');
+      return;
+    }
+
+    try {
+      for (const s of day1.sessions) {
+        const created = await adminService.createSession(eventData.id, {
+          name: s.name.replace(/^Day 1\s*-\s*/i, `${targetDay.dayLabel.split('-')[0].trim()} - `),
+          date: targetDay.ymd,
+          time_in_start: s.timeInStart,
+          time_in_end: s.timeInEnd,
+          time_out_start: s.timeOutStart,
+          time_out_end: s.timeOutEnd,
+        });
+        const locIds = s.officers.map((o) => o.locationId).filter((id): id is string => Boolean(id));
+        if (locIds.length > 0) {
+          await adminService.saveSessionLocations(created.id, {
+            time_in_location_ids: locIds,
+            time_out_location_ids: locIds,
+          });
+        }
+      }
+      await loadSchedule(eventData.id);
+      setExpandedDayId(targetDayId);
+      showFeedback(
+        `Copied ${day1.sessions.length} session(s) from Day 1 to ${targetDay.dayLabel.split('-')[0].trim()}`,
+        'success'
+      );
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to copy sessions from Day 1.';
+      showFeedback(apiMsg, 'warning');
+    }
   };
 
-  const handleEventPublished = (newEvent: any) => {
-    // Add published event
-    setEventData({
-      id: `ev-${Date.now()}`,
-      name: newEvent.name,
-      dateRange: `October 2 - 5, 2026 · ${newEvent.daysCount} days`,
-      durationDays: newEvent.daysCount,
-      status: 'Ongoing',
-      days: initialEvent.days,
-    });
-    showFeedback(`Event "${newEvent.name}" published successfully!`, 'success');
+  const handleUnsupportedDeleteEvent = () => {
+    setIsEventMenuOpen(false);
+    showFeedback(
+      'Deleting an event is not supported by the backend API to preserve linked sessions and attendance records.',
+      'warning'
+    );
+  };
+
+  const handleEventPublished = (createdEvent: EventRecord) => {
+    void loadSchedule(createdEvent.id);
   };
 
   const hasDateFilter = Boolean(dateRange.start || dateRange.end);
@@ -499,7 +428,7 @@ export function AttendancePage() {
       .map((day) => {
         const matchesDate = (() => {
           if (!dateRange.start && !dateRange.end) return true;
-          const dayYMD = parseDateStrToYMD(day.dateStr);
+          const dayYMD = day.ymd;
           if (!dayYMD) return true;
           if (dateRange.start && !dateRange.end) return dayYMD === dateRange.start;
           if (dateRange.start && dateRange.end) return dayYMD >= dateRange.start && dayYMD <= dateRange.end;
@@ -536,23 +465,62 @@ export function AttendancePage() {
   return (
     <div className="mx-auto w-full max-w-[1180px] space-y-6 text-[#24133F]">
       {/* Top Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold leading-tight">Attendance Schedule</h1>
-        <p className="text-xs text-[#756883]">
-          Manage attendance sessions, locations, and assigned for your events.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-extrabold leading-tight">Attendance Schedule</h1>
+          <p className="text-xs text-[#756883]">
+            Manage attendance sessions, scanning windows, and checkpoint assignments for your events.
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => void loadSchedule(selectedEventId)}
+          isLoading={loading}
+          leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+        >
+          Refresh
+        </Button>
       </div>
+
+      {error && (
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">
+          <span className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {error}
+          </span>
+          <button type="button" onClick={() => void loadSchedule(selectedEventId)} className="underline">
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Toolbar: Filters on the left, Create Event aligned on the right */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
+          {events.length > 1 && (
+            <Dropdown
+              value={selectedEventId}
+              onChange={(val) => {
+                setSelectedEventId(val);
+                const found = events.find((e) => e.id === val);
+                if (found) void buildEventSchedule(found);
+              }}
+              buttonClassName="h-10 rounded-xl"
+              options={events.map((ev) => ({
+                value: ev.id,
+                label: ev.name,
+              }))}
+            />
+          )}
+
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#756883]" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search"
+              placeholder="Search sessions or checkpoints"
               className="h-10 w-56 rounded-xl border border-[#E5E0EB] bg-white pl-9 pr-4 text-xs text-[#24133F] placeholder-[#756883] transition-colors focus:border-brand-700 focus:outline-none md:w-64"
             />
             {search && (
@@ -591,7 +559,6 @@ export function AttendancePage() {
           />
         </div>
 
-        {/* Create Event Button (In line with filters, matching vibrant brand purple #7026B7) */}
         <Button
           variant="primary"
           leftIcon={<Plus className="h-4 w-4" />}
@@ -601,10 +568,14 @@ export function AttendancePage() {
         </Button>
       </div>
 
-      {/* Event Accordion Container (Cite Festival) */}
-      {eventData ? (
+      {/* Event Accordion Container */}
+      {loading && !eventData ? (
+        <div className="rounded-[24px] border border-[#E5E0EB] bg-white p-12 text-center text-xs font-semibold text-[#756883]">
+          Loading attendance schedule…
+        </div>
+      ) : eventData ? (
         <div className="rounded-[24px] border border-[#E5E0EB] bg-white p-6">
-          {/* Main Event Header (Divider line only shown when rolled down/expanded) */}
+          {/* Main Event Header */}
           <div
             className={`flex items-center justify-between transition-all ${
               isEventExpanded ? 'pb-4 border-b border-[#F1EEF4]' : ''
@@ -621,9 +592,25 @@ export function AttendancePage() {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
-              <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-[#10B981]">
-                <span className="h-2 w-2 rounded-full bg-[#10B981]" />
-                Ongoing
+              <span
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
+                  eventData.status === 'Ongoing'
+                    ? 'bg-emerald-50 text-[#10B981]'
+                    : eventData.status === 'Upcoming'
+                    ? 'bg-purple-50 text-[#7026B7]'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    eventData.status === 'Ongoing'
+                      ? 'bg-[#10B981]'
+                      : eventData.status === 'Upcoming'
+                      ? 'bg-[#7026B7]'
+                      : 'bg-slate-400'
+                  }`}
+                />
+                {eventData.status}
               </span>
 
               {/* Event Actions Kebab Menu */}
@@ -643,17 +630,15 @@ export function AttendancePage() {
                       className="fixed inset-0 z-20"
                       onClick={() => setIsEventMenuOpen(false)}
                     />
-                    <div className="absolute right-0 top-full mt-1 z-30 w-36 rounded-xl border border-[#E5E0EB] bg-white p-1 shadow-lg animate-in fade-in zoom-in-95 duration-100">
+                    <div className="absolute right-0 top-full mt-1 z-30 w-44 rounded-xl border border-[#E5E0EB] bg-white p-1 shadow-lg animate-in fade-in zoom-in-95 duration-100">
                       <button
                         type="button"
-                        onClick={() => {
-                          setIsEventMenuOpen(false);
-                          setIsDeletingEvent(true);
-                        }}
-                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                        onClick={handleUnsupportedDeleteEvent}
+                        title="Deleting events is not supported by the backend API"
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-400 cursor-not-allowed"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                        <span>Delete Event</span>
+                        <span>Delete Event (Unsupported)</span>
                       </button>
                     </div>
                   </>
@@ -671,79 +656,84 @@ export function AttendancePage() {
             </div>
           </div>
 
-        {/* Event Days Content */}
-        <div
-          className={`overflow-hidden transition-all duration-300 ease-in-out ${
-            isEventExpanded ? 'max-h-[3500px] opacity-100 mt-5 space-y-4' : 'max-h-0 opacity-0 pointer-events-none'
-          }`}
-        >
-          {filteredDays.map((day) => {
-            const isDayOpen = isSearching || expandedDayId === day.dayId;
+          {/* Event Days Content */}
+          <div
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${
+              isEventExpanded ? 'max-h-[3500px] opacity-100 mt-5 space-y-4' : 'max-h-0 opacity-0 pointer-events-none'
+            }`}
+          >
+            {filteredDays.map((day) => {
+              const isDayOpen = isSearching || expandedDayId === day.dayId;
 
-            return (
-              <div
-                key={day.dayId}
-                className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden transition-all"
-              >
-                {/* Day Header Row */}
+              return (
                 <div
-                  onClick={() => setExpandedDayId(isDayOpen ? '' : day.dayId)}
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50/60 transition-colors"
+                  key={day.dayId}
+                  className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden transition-all"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-[#756883]">
-                      <Calendar className="h-4 w-4" />
+                  {/* Day Header Row */}
+                  <div
+                    onClick={() => setExpandedDayId(isDayOpen ? '' : day.dayId)}
+                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50/60 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-[#756883]">
+                        <Calendar className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-[#24133F]">{day.dayLabel}</h3>
+                        {!isDayOpen && (
+                          <p className="text-[10px] text-[#756883]">
+                            {day.visibleSessions.length}{' '}
+                            {day.visibleSessions.length === 1 ? 'Session' : 'Sessions'} configured
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-xs font-bold text-[#24133F]">{day.dayLabel}</h3>
-                      {!isDayOpen && (
-                        <p className="text-[10px] text-[#756883]">
-                          Morning, afternoon, evening · {day.visibleSessions.length}{' '}
-                          {day.visibleSessions.length === 1 ? 'Session' : 'Sessions'}
-                        </p>
+
+                    <div className="flex items-center gap-2">
+                      {isDayOpen ? (
+                        <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-[#756883]">
+                          {day.visibleSessions.length}{' '}
+                          {day.visibleSessions.length === 1 ? 'session' : 'sessions'}
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          {day.dayId !== 'd1' && day.sessions.length === 0 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleCopyFromDay1(day.dayId);
+                              }}
+                              className="hidden sm:flex items-center gap-1 rounded-xl border border-dashed border-[#451475]/40 bg-[#FAF7FD] px-2.5 py-1 text-[11px] font-bold text-[#451475] hover:bg-[#F3EDFB] transition-colors"
+                            >
+                              <Copy className="h-3 w-3" />
+                              Copy from Day 1
+                            </button>
+                          )}
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-[#756883]">
+                            {day.status === 'Not Started' ? 'No Sessions' : 'Configured'}
+                          </span>
+                          <ChevronRight className="h-4 w-4 text-[#756883]" />
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {isDayOpen ? (
-                      <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-[#756883]">
-                        {day.visibleSessions.length}{' '}
-                        {day.visibleSessions.length === 1 ? 'session' : 'sessions'}
-                      </span>
+                  {/* Day Sessions List */}
+                  <div
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      isDayOpen
+                        ? 'max-h-[1600px] opacity-100 border-t border-[#F1EEF4] p-4 space-y-3 bg-[#FAF8FB]/40'
+                        : 'max-h-0 opacity-0 p-0 pointer-events-none'
+                    }`}
+                  >
+                    {day.visibleSessions.length === 0 ? (
+                      <p className="py-4 text-center text-xs text-[#756883]">
+                        No sessions configured for this day.
+                      </p>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        {day.dayId !== 'd1' && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCopyFromDay1(day.dayId);
-                            }}
-                            className="hidden sm:flex items-center gap-1 rounded-xl border border-dashed border-[#451475]/40 bg-[#FAF7FD] px-2.5 py-1 text-[11px] font-bold text-[#451475] hover:bg-[#F3EDFB] transition-colors"
-                          >
-                            <Copy className="h-3 w-3" />
-                            Copy from Day 1
-                          </button>
-                        )}
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-[#756883]">
-                          {day.status === 'Not Started' ? 'Not Started' : 'Configured'}
-                        </span>
-                        <ChevronRight className="h-4 w-4 text-[#756883]" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Day Sessions List (Expanded with smooth sliding animation) */}
-                <div
-                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                    isDayOpen
-                      ? 'max-h-[1600px] opacity-100 border-t border-[#F1EEF4] p-4 space-y-3 bg-[#FAF8FB]/40'
-                      : 'max-h-0 opacity-0 p-0 pointer-events-none'
-                  }`}
-                >
-                  {day.visibleSessions.map((session) => (
+                      day.visibleSessions.map((session) => (
                         <div
                           key={session.id}
                           className={`rounded-2xl border bg-white p-4 transition-colors duration-200 ${
@@ -769,9 +759,7 @@ export function AttendancePage() {
                                     ? 'bg-[#10B981]'
                                     : session.status === 'Upcoming'
                                     ? 'bg-[#F59E0B]'
-                                    : session.status === 'Completed'
-                                    ? 'bg-emerald-700'
-                                    : 'bg-slate-400'
+                                    : 'bg-emerald-700'
                                 }`}
                               >
                                 {session.status}
@@ -800,7 +788,7 @@ export function AttendancePage() {
                                         setOpenMenuSessionId(null);
                                       }}
                                     />
-                                    <div className="absolute right-0 top-full mt-1.5 z-50 w-48 rounded-2xl border border-[#E5E0EB] bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-150 text-xs">
+                                    <div className="absolute right-0 top-full mt-1.5 z-50 w-52 rounded-2xl border border-[#E5E0EB] bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-150 text-xs">
                                       <button
                                         type="button"
                                         onClick={(e) => {
@@ -812,43 +800,30 @@ export function AttendancePage() {
                                         <Pencil className="h-3.5 w-3.5 text-[#756883]" />
                                         Edit time window
                                       </button>
-                                      {session.status === 'Completed' ? (
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleToggleSessionComplete(day.dayId, session);
-                                          }}
-                                          className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 font-semibold text-[#3B82F6] hover:bg-blue-50 transition-colors"
-                                        >
-                                          <RotateCcw className="h-3.5 w-3.5 text-[#3B82F6]" />
-                                          Reopen session
-                                        </button>
-                                      ) : (
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleToggleSessionComplete(day.dayId, session);
-                                          }}
-                                          className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 font-semibold text-[#24133F] hover:bg-slate-50 transition-colors"
-                                        >
-                                          <CheckCircle2 className="h-3.5 w-3.5 text-[#10B981]" />
-                                          Mark as completed
-                                        </button>
-                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleToggleSessionComplete(day.dayId, session);
+                                        }}
+                                        title="Sessions open/close automatically based on schedule"
+                                        className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 font-semibold text-slate-400 cursor-not-allowed"
+                                      >
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" />
+                                        Auto-scheduled status
+                                      </button>
                                       <div className="my-1 border-t border-[#F1EEF4]" />
                                       <button
                                         type="button"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setDeletingSessionInfo({ dayId: day.dayId, session });
-                                          setOpenMenuSessionId(null);
+                                          handleUnsupportedDeleteSession(session);
                                         }}
-                                        className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 font-semibold text-[#EF4444] hover:bg-rose-50 transition-colors"
+                                        title="Deleting sessions is not supported by the backend API"
+                                        className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 font-semibold text-slate-400 cursor-not-allowed"
                                       >
-                                        <Trash2 className="h-3.5 w-3.5 text-[#EF4444]" />
-                                        Delete session
+                                        <Trash2 className="h-3.5 w-3.5 text-slate-400" />
+                                        Delete session (Unsupported)
                                       </button>
                                     </div>
                                   </>
@@ -857,13 +832,13 @@ export function AttendancePage() {
                             </div>
                           </div>
 
-                          {/* Assigned Officers Row */}
+                          {/* Assigned Checkpoints / Officers Row */}
                           <div className="mt-3.5 border-t border-[#F1EEF4] pt-3">
                             <div className="flex items-center gap-1.5 text-[11px] text-[#756883]">
                               <Users className="h-3.5 w-3.5" />
                               <span>
                                 {session.officers.length}{' '}
-                                {session.officers.length === 1 ? 'officer' : 'officers'} assigned
+                                {session.officers.length === 1 ? 'checkpoint / officer' : 'checkpoints / officers'} configured
                               </span>
                             </div>
 
@@ -898,20 +873,20 @@ export function AttendancePage() {
                                 </button>
                               )}
 
-                              {/* Add Officers Pill Button */}
                               <button
                                 type="button"
                                 onClick={() => handleOpenAssign(day.dayId, session, day.dateStr)}
                                 className="flex items-center gap-1 rounded-full border border-dashed border-[#451475] bg-[#FAF7FD] px-3 py-1.5 text-xs font-bold text-[#451475] hover:bg-[#F3EDFB] transition-colors"
                               >
                                 <Plus className="h-3.5 w-3.5" />
-                                Add officers
+                                Assign checkpoints / officers
                               </button>
                             </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -943,16 +918,16 @@ export function AttendancePage() {
           </div>
         </div>
       ) : (
-        /* Empty State when Event is deleted */
+        /* Empty State when no Events exist */
         <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-[#E5E0EB] bg-white p-12 text-center">
           <img
             src={hawiQuestionImg}
             alt="No Event"
             className="h-32 w-32 sm:h-40 sm:w-40 object-contain mx-auto mb-4"
           />
-          <h3 className="text-base font-bold text-[#24133F]">No Event Active</h3>
+          <h3 className="text-base font-bold text-[#24133F]">No Events Scheduled</h3>
           <p className="mt-1 max-w-sm text-xs text-[#756883]">
-            There is currently no event published. Create a new event to configure schedules and sessions.
+            There are currently no campus events registered. Create a new event to configure schedules and attendance sessions.
           </p>
           <Button
             variant="primary"
@@ -965,14 +940,14 @@ export function AttendancePage() {
         </div>
       )}
 
-      {/* 5-Step Create Event Flow Modal */}
+      {/* Create Event Flow Modal */}
       <CreateEventModal
         isOpen={isCreateEventOpen}
         onClose={() => setIsCreateEventOpen(false)}
         onPublished={handleEventPublished}
       />
 
-      {/* Assign Officers Drawer (With location per officer) */}
+      {/* Assign Officers & Checkpoints Drawer */}
       <AssignOfficersDrawer
         isOpen={Boolean(assigningSession)}
         onClose={() => setAssigningSession(null)}
@@ -995,27 +970,11 @@ export function AttendancePage() {
         isOpen={Boolean(editingTimeSession)}
         onClose={() => setEditingTimeSession(null)}
         sessionTitle={editingTimeSession ? `${editingTimeSession.session.name}` : ''}
-        windowType="Session"
+        windowType="IN"
         dateStr={eventData?.days.find((d) => d.dayId === editingTimeSession?.dayId)?.dateStr}
         initialStart={startTimeInput}
         initialEnd={endTimeInput}
         onSave={handleSaveEditTime}
-      />
-
-      {/* Delete Event Confirmation Modal */}
-      <DeleteConfirmationModal
-        isOpen={isDeletingEvent}
-        onClose={() => setIsDeletingEvent(false)}
-        onConfirm={handleConfirmDeleteEvent}
-        itemName={eventData ? eventData.name : 'this event'}
-      />
-
-      {/* Delete Session Confirmation Modal */}
-      <DeleteConfirmationModal
-        isOpen={Boolean(deletingSessionInfo)}
-        onClose={() => setDeletingSessionInfo(null)}
-        onConfirm={handleConfirmDeleteSession}
-        itemName={deletingSessionInfo ? `${deletingSessionInfo.session.name}` : 'this session'}
       />
     </div>
   );

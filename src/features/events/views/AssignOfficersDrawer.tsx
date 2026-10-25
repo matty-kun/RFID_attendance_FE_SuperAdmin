@@ -3,6 +3,8 @@ import { Search, Calendar, MapPin, Check, X } from 'lucide-react';
 import { Drawer } from '../../../components/common/Drawer';
 import { Checkbox } from '../../../components/common/Checkbox';
 import { Dropdown, type DropdownOption } from '../../../components/common/Dropdown';
+import { adminService } from '../../../services/adminService';
+import type { AdminRecord, LocationRecord } from '../../../types';
 
 export interface AssignedOfficer {
   id: string;
@@ -10,6 +12,7 @@ export interface AssignedOfficer {
   initials: string;
   role: string;
   location: string;
+  locationId?: string;
   status: 'Online' | 'Offline';
 }
 
@@ -24,26 +27,16 @@ export interface AssignOfficersDrawerProps {
   onSave: (assigned: AssignedOfficer[]) => void;
 }
 
-const defaultAdminPool: Omit<AssignedOfficer, 'location'>[] = [
-  { id: 'adm-1', name: 'Ako si batman', initials: 'JD', role: 'Admin', status: 'Online' },
-  { id: 'adm-2', name: 'Juan Bayot', initials: 'JD', role: 'Admin', status: 'Online' },
-  { id: 'adm-3', name: 'Nonoy Kaibo', initials: 'JD', role: 'Admin', status: 'Online' },
-  { id: 'adm-4', name: 'King Kong', initials: 'KK', role: 'Admin', status: 'Offline' },
-  { id: 'adm-5', name: 'Grace Villanueva', initials: 'GV', role: 'Admin', status: 'Online' },
-  { id: 'adm-6', name: 'Rafael Cortez', initials: 'RC', role: 'Admin', status: 'Offline' },
-  { id: 'adm-7', name: 'Liza Mendoza', initials: 'LM', role: 'Admin', status: 'Online' },
-];
-
-const availableLocations = [
-  'Cite Building',
-  'CR ETD',
-  'ETD Court',
-  'Cite 4th floor',
-  'Gymnasium',
-  'RSB Lobby',
-  'Primera',
-  'Field',
-];
+function getInitials(fullName: string) {
+  return (
+    fullName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() || '')
+      .join('') || 'AD'
+  );
+}
 
 export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
   isOpen,
@@ -52,61 +45,90 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
   sessionTime,
   sessionDate,
   sessionStatus = 'Active',
-  initialAssigned = [
-    { id: 'adm-1', name: 'Ako si batman', initials: 'JD', role: 'Admin', location: 'Cite Building', status: 'Online' },
-    { id: 'adm-2', name: 'Juan Bayot', initials: 'JD', role: 'Admin', location: 'Cite Building', status: 'Online' },
-    { id: 'adm-3', name: 'Nonoy Kaibo', initials: 'JD', role: 'Admin', location: 'CR ETD', status: 'Online' },
-  ],
+  initialAssigned = [],
   onSave,
 }) => {
   const [assigned, setAssigned] = useState<AssignedOfficer[]>(initialAssigned);
   const [search, setSearch] = useState('');
-  const [selectedToAdd, setSelectedToAdd] = useState<{ [adminId: string]: string }>({}); // adminId -> location
+  const [selectedToAdd, setSelectedToAdd] = useState<{ [adminId: string]: string }>({});
+  const [admins, setAdmins] = useState<AdminRecord[]>([]);
+  const [locations, setLocations] = useState<LocationRecord[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setAssigned(initialAssigned);
       setSelectedToAdd({});
       setSearch('');
+      setLoading(true);
+      Promise.all([
+        adminService.getAdmins(1, '', 100).catch(() => ({ admins: [], total: 0, page: 1, limit: 100 })),
+        adminService.getLocations().catch(() => []),
+      ])
+        .then(([adminRes, locRes]) => {
+          setAdmins(adminRes.admins);
+          setLocations(locRes);
+        })
+        .finally(() => setLoading(false));
     }
   }, [isOpen, initialAssigned]);
 
+  const adminPool = useMemo<Omit<AssignedOfficer, 'location'>[]>(() => {
+    return admins.map((adm) => ({
+      id: adm.id,
+      name: adm.name,
+      initials: getInitials(adm.name),
+      role: adm.role === 'super_admin' ? 'Super Admin' : 'Admin',
+      status: 'Online' as const,
+    }));
+  }, [admins]);
+
   const filteredAdmins = useMemo(() => {
     const assignedIds = new Set(assigned.map((a) => a.id));
-    return defaultAdminPool.filter(
+    return adminPool.filter(
       (admin) =>
         !assignedIds.has(admin.id) &&
         (search === '' || admin.name.toLowerCase().includes(search.toLowerCase()))
     );
-  }, [assigned, search]);
+  }, [adminPool, assigned, search]);
 
   const locationOptions: DropdownOption[] = useMemo(
     () =>
-      availableLocations.map((loc) => ({
-        value: loc,
-        label: loc,
+      locations.map((loc) => ({
+        value: loc.name,
+        label: loc.name,
         icon: <MapPin className="h-3 w-3 text-[#451475]" />,
       })),
-    []
+    [locations]
   );
+
+  const locationIdByName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const loc of locations) {
+      map.set(loc.name, loc.id);
+    }
+    return map;
+  }, [locations]);
 
   const handleRemoveAssigned = (id: string) => {
     setAssigned((prev) => prev.filter((a) => a.id !== id));
   };
 
   const handleChangeAssignedLocation = (officerId: string, location: string) => {
+    const locationId = locationIdByName.get(location);
     setAssigned((prev) =>
-      prev.map((o) => (o.id === officerId ? { ...o, location } : o))
+      prev.map((o) => (o.id === officerId ? { ...o, location, locationId } : o))
     );
   };
 
   const handleToggleSelect = (adminId: string) => {
+    const defaultLoc = locations[0]?.name || '';
     setSelectedToAdd((prev) => {
       const next = { ...prev };
-      if (next[adminId]) {
+      if (next[adminId] !== undefined) {
         delete next[adminId];
       } else {
-        next[adminId] = availableLocations[0]; // default location
+        next[adminId] = defaultLoc;
       }
       return next;
     });
@@ -122,11 +144,12 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
   const handleSaveAll = () => {
     const newAssigned: AssignedOfficer[] = [];
     for (const [adminId, loc] of Object.entries(selectedToAdd)) {
-      const found = defaultAdminPool.find((a) => a.id === adminId);
+      const found = adminPool.find((a) => a.id === adminId);
       if (found) {
         newAssigned.push({
           ...found,
           location: loc,
+          locationId: locationIdByName.get(loc),
         });
       }
     }
@@ -146,8 +169,8 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
-      title="Assign Officers"
-      description="Select one or more admin accounts to assign to this session"
+      title="Assign Officers & Checkpoints"
+      description="Select admin accounts and allowed scanning checkpoints for this session."
       contextBox={
         <div className="rounded-2xl border border-[#E5E0EB] bg-[#F9F7FA] p-3.5">
           <div className="flex items-center justify-between">
@@ -197,6 +220,12 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
       }
     >
       <div className="space-y-6">
+        {locations.length === 0 && !loading && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-800">
+            No checkpoint locations registered yet. Add locations in the Checkpoints page to bind checkpoints to sessions.
+          </p>
+        )}
+
         {/* Section: Currently Assigned */}
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-[#756883]">
@@ -216,19 +245,23 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Dropdown
-                    value={officer.location}
-                    onChange={(newLoc) => handleChangeAssignedLocation(officer.id, newLoc)}
-                    options={locationOptions}
-                    buttonClassName="h-7 px-2.5 text-[11px] font-semibold text-[#24133F] rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
-                    menuClassName="min-w-[190px] z-50"
-                    align="right"
-                  />
+                  {locationOptions.length > 0 ? (
+                    <Dropdown
+                      value={officer.location || locationOptions[0]?.value || ''}
+                      onChange={(newLoc) => handleChangeAssignedLocation(officer.id, newLoc)}
+                      options={locationOptions}
+                      buttonClassName="h-7 px-2.5 text-[11px] font-semibold text-[#24133F] rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
+                      menuClassName="min-w-[190px] z-50"
+                      align="right"
+                    />
+                  ) : (
+                    <span className="text-[11px] text-[#756883]">{officer.location || 'No location'}</span>
+                  )}
                   <button
                     type="button"
                     onClick={() => handleRemoveAssigned(officer.id)}
                     className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-red-600 transition-colors"
-                    title="Remove officer"
+                    title="Remove assignment"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -237,7 +270,7 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
             ))}
 
             {!assigned.length && (
-              <p className="py-4 text-center text-xs text-[#756883]">No officers assigned yet.</p>
+              <p className="py-4 text-center text-xs text-[#756883]">No officers or checkpoints assigned yet.</p>
             )}
           </div>
         </div>
@@ -263,61 +296,59 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
           </div>
 
           <div className="mt-3 divide-y divide-[#F1EEF4]">
-            {filteredAdmins.map((admin) => {
-              const isChecked = Boolean(selectedToAdd[admin.id]);
-              const selectedLocation = selectedToAdd[admin.id] || availableLocations[0];
+            {loading ? (
+              <p className="py-4 text-center text-xs text-[#756883]">Loading administrators and checkpoints…</p>
+            ) : (
+              filteredAdmins.map((admin) => {
+                const isChecked = selectedToAdd[admin.id] !== undefined;
+                const selectedLocation = selectedToAdd[admin.id] || locations[0]?.name || '';
 
-              return (
-                <div key={admin.id} className="py-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        checked={isChecked}
-                        onChange={() => handleToggleSelect(admin.id)}
-                      />
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-[#756883]">
-                        {admin.initials}
+                return (
+                  <div key={admin.id} className="py-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={isChecked}
+                          onChange={() => handleToggleSelect(admin.id)}
+                        />
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-[#756883]">
+                          {admin.initials}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-[#24133F]">{admin.name}</p>
+                          <p className="text-[11px] text-[#756883]">{admin.role}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-[#24133F]">{admin.name}</p>
-                        <p className="text-[11px] text-[#756883]">{admin.role}</p>
-                      </div>
-                    </div>
 
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                        admin.status === 'Online'
-                          ? 'bg-[#E4F7EB] text-[#16883F]'
-                          : 'bg-slate-100 text-slate-500'
-                      }`}
-                    >
-                      {admin.status}
-                    </span>
-                  </div>
-
-                  {/* Location picker if checked */}
-                  {isChecked && (
-                    <div className="mt-2.5 flex items-center justify-between border-t border-[#F1EEF4] pt-2">
-                      <span className="text-[11px] font-medium text-[#756883] flex items-center gap-1.5">
-                        <MapPin className="h-3 w-3 text-[#756883]" />
-                        Assign checkpoint:
+                      <span className="rounded-full bg-[#E4F7EB] px-2 py-0.5 text-[10px] font-bold text-[#16883F]">
+                        {admin.status}
                       </span>
-                      <Dropdown
-                        value={selectedLocation}
-                        onChange={(newLoc) => handleChangeLocation(admin.id, newLoc)}
-                        options={locationOptions}
-                        buttonClassName="h-7 px-2.5 text-[11px] font-semibold text-[#24133F] rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
-                        menuClassName="min-w-[190px] z-50"
-                        align="right"
-                      />
                     </div>
-                  )}
-                </div>
-              );
-            })}
 
-            {!filteredAdmins.length && (
-              <p className="py-4 text-center text-xs text-[#756883]">No other officers available.</p>
+                    {/* Location picker if checked */}
+                    {isChecked && locationOptions.length > 0 && (
+                      <div className="mt-2.5 flex items-center justify-between border-t border-[#F1EEF4] pt-2">
+                        <span className="text-[11px] font-medium text-[#756883] flex items-center gap-1.5">
+                          <MapPin className="h-3 w-3 text-[#756883]" />
+                          Assign checkpoint:
+                        </span>
+                        <Dropdown
+                          value={selectedLocation}
+                          onChange={(newLoc) => handleChangeLocation(admin.id, newLoc)}
+                          options={locationOptions}
+                          buttonClassName="h-7 px-2.5 text-[11px] font-semibold text-[#24133F] rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
+                          menuClassName="min-w-[190px] z-50"
+                          align="right"
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+
+            {!loading && !filteredAdmins.length && (
+              <p className="py-4 text-center text-xs text-[#756883]">No administrators available.</p>
             )}
           </div>
         </div>

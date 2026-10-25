@@ -15,7 +15,7 @@ export interface UseLoginViewModelReturn {
 
 export const useLoginViewModel = (): UseLoginViewModelReturn => {
   const navigate = useNavigate();
-  const { login, enterPreview } = useAuth();
+  const { login } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -26,11 +26,6 @@ export const useLoginViewModel = (): UseLoginViewModelReturn => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (import.meta.env.DEV && !identifier.trim() && !password) {
-      enterPreview();
-      navigate('/overview');
-      return;
-    }
     if (!identifier.trim() || !password) {
       setError('Enter your Super Admin email and password.');
       return;
@@ -41,7 +36,19 @@ export const useLoginViewModel = (): UseLoginViewModelReturn => {
       const user = await login(identifier.trim(), password);
       navigate(user.must_change_password ? '/change-password' : '/');
     } catch (err: any) {
-      setError(err?.response?.data?.error?.message || err?.message || 'Invalid credentials or access denied.');
+      const status = err?.response?.status;
+      const code = err?.response?.data?.error?.code;
+      const serverMessage = err?.response?.data?.error?.message || err?.message;
+
+      if (
+        status === 401 ||
+        code === 'invalid_credentials' ||
+        /student id/i.test(serverMessage || '')
+      ) {
+        setError('Invalid credentials');
+      } else {
+        setError(serverMessage || 'Invalid credentials');
+      }
     } finally {
       setIsLoading(false);
     }

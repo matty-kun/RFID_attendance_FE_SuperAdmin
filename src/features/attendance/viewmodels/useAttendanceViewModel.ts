@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AttendanceRecord, AttendanceFilterType } from '../models';
 import { attendanceService } from '../services';
-import { isDevPreview } from '../../auth/devPreview';
 
 export interface UseAttendanceViewModelReturn {
   records: AttendanceRecord[];
@@ -20,7 +19,7 @@ export interface UseAttendanceViewModelReturn {
   refresh: () => Promise<void>;
 }
 
-export const useAttendanceViewModel = (previewRecords?: AttendanceRecord[]): UseAttendanceViewModelReturn => {
+export const useAttendanceViewModel = (): UseAttendanceViewModelReturn => {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [filterType, setFilterType] = useState<AttendanceFilterType>('all');
   const [startDate, setStartDate] = useState('');
@@ -34,21 +33,15 @@ export const useAttendanceViewModel = (previewRecords?: AttendanceRecord[]): Use
     setIsLoading(true);
     setError('');
     try {
-      const data = isDevPreview() && previewRecords ? (() => {
-        const matching = previewRecords.filter((record) =>
-          (filterType === 'all' || record.type === filterType)
-          && (!startDate || record.recorded_at.slice(0, 10) >= startDate)
-          && (!endDate || record.recorded_at.slice(0, 10) <= endDate));
-        return { records: matching.slice((page - 1) * 30, page * 30), total: matching.length };
-      })() : await attendanceService.getRecentAttendance(page, filterType, startDate, endDate);
+      const data = await attendanceService.getRecentAttendance(page, filterType, startDate, endDate);
       setRecords(data.records);
       setTotal(data.total);
-    } catch {
-      setError('Could not load attendance records. Try again.');
+    } catch (err: any) {
+      setError(err?.response?.data?.error?.message || 'Could not load attendance records. Try again.');
     } finally {
       setIsLoading(false);
     }
-  }, [page, filterType, startDate, endDate, previewRecords]);
+  }, [page, filterType, startDate, endDate]);
 
   useEffect(() => {
     refresh();
