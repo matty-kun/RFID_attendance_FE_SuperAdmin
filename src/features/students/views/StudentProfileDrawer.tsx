@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { Drawer } from '../../../components/common/Drawer';
-import { Dropdown } from '../../../components/common/Dropdown';
 import {
   Copy,
   Check,
@@ -339,21 +338,49 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
           </div>
 
           {/* SCAN HISTORY SECTION WITH FOG BELOW */}
-          <div className="pt-2 space-y-2 relative">
-            <div className="flex items-center justify-between">
+          <div className="pt-2 space-y-2.5 relative">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase">
                 Scan History
               </p>
+
+              {/* Segmented Filter Pills (Replaces awkward dropdown menu on the side) */}
               {scans.length > 0 && (
-                <Dropdown
-                  value={filterType}
-                  onChange={(val) => setFilterType(val as 'all' | 'time_in' | 'time_out')}
-                  options={[
-                    { value: 'all', label: `All Scans (${scans.length})` },
-                    { value: 'time_in', label: 'Time-In only' },
-                    { value: 'time_out', label: 'Time-Out only' },
-                  ]}
-                />
+                <div className="inline-flex rounded-xl bg-[#FAF8FC] border border-[#E5E0EB] p-1 text-xs self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setFilterType('all')}
+                    className={`px-3 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                      filterType === 'all'
+                        ? 'bg-white text-[#7026B7] shadow-xs'
+                        : 'text-[#756883] hover:text-[#24133F]'
+                    }`}
+                  >
+                    All ({scans.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterType('time_in')}
+                    className={`px-3 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                      filterType === 'time_in'
+                        ? 'bg-white text-[#7026B7] shadow-xs'
+                        : 'text-[#756883] hover:text-[#24133F]'
+                    }`}
+                  >
+                    Time-In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterType('time_out')}
+                    className={`px-3 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                      filterType === 'time_out'
+                        ? 'bg-white text-[#7026B7] shadow-xs'
+                        : 'text-[#756883] hover:text-[#24133F]'
+                    }`}
+                  >
+                    Time-Out
+                  </button>
+                </div>
               )}
             </div>
 
