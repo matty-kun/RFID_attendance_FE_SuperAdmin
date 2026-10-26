@@ -235,14 +235,18 @@ export function AttendancePage() {
     setLoading(true);
     setError('');
     try {
-      const allEvents = await adminService.getEvents();
+      const [allEvents, activeRes] = await Promise.all([
+        adminService.getEvents(),
+        adminService.getActiveEvent().catch(() => ({ active_event_id: null, event: null })),
+      ]);
       setEvents(allEvents);
       if (allEvents.length === 0) {
         setSelectedEventId('');
         setEventData(null);
         return;
       }
-      const savedActiveId = localStorage.getItem('presnt_active_event_id');
+      const serverActiveId = activeRes?.active_event_id;
+      const savedActiveId = serverActiveId || localStorage.getItem('presnt_active_event_id');
       const targetId =
         preferredEventId ||
         (savedActiveId && allEvents.some((e) => e.id === savedActiveId) ? savedActiveId : null) ||
@@ -544,6 +548,7 @@ export function AttendancePage() {
                 onChange={(val) => {
                   setSelectedEventId(val);
                   localStorage.setItem('presnt_active_event_id', val);
+                  adminService.setActiveEvent(val).catch(() => {});
                   const found = events.find((e) => e.id === val);
                   if (found) void buildEventSchedule(found);
                 }}

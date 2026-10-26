@@ -9,6 +9,12 @@ import type {
 
 export const adminService = {
   getEvents: () => request.get<EventRecord[]>('/events'),
+  getActiveEvent: () =>
+    request.get<{ active_event_id: string | null; event: EventRecord | null }>('/events/active'),
+  setActiveEvent: (eventId: string) =>
+    request.put<{ message: string; active_event_id: string; event: EventRecord }>(
+      `/events/${encodeURIComponent(eventId)}/active`
+    ),
   createEvent: (payload: Partial<EventRecord>) =>
     request.post<EventRecord>('/events', payload),
   deleteEvent: (eventId: string) =>

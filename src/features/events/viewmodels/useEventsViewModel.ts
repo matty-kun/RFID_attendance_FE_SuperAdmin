@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { EventRecord, CreateEventPayload } from '../models';
 import { eventService } from '../services';
+import { adminService } from '../../../services/adminService';
 import { toast } from '../../../context';
 
 export interface UseEventsViewModelReturn {
@@ -48,20 +49,35 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
   const setActiveEventId = (id: string) => {
     setActiveEventIdState(id);
     localStorage.setItem('presnt_active_event_id', id);
+    adminService
+      .setActiveEvent(id)
+      .then(() => {
+        toast.success('Active event synced across campus');
+      })
+      .catch((err: any) => {
+        toast.error(err?.response?.data?.error?.message || 'Failed to sync active event to server');
+      });
   };
 
   const loadEvents = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await eventService.getEvents();
+      const [data, activeRes] = await Promise.all([
+        eventService.getEvents(),
+        adminService.getActiveEvent().catch(() => ({ active_event_id: null, event: null })),
+      ]);
       setEvents(data);
-      const savedActive = localStorage.getItem('presnt_active_event_id');
+
+      const serverActiveId = activeRes?.active_event_id;
+      const savedActive = serverActiveId || localStorage.getItem('presnt_active_event_id');
       if (savedActive && data.some((e) => e.id === savedActive)) {
         setActiveEventIdState(savedActive);
+        localStorage.setItem('presnt_active_event_id', savedActive);
       } else if (data.length > 0) {
         setActiveEventIdState(data[0].id);
         localStorage.setItem('presnt_active_event_id', data[0].id);
+        void adminService.setActiveEvent(data[0].id).catch(() => {});
       } else {
         setActiveEventIdState(null);
       }
