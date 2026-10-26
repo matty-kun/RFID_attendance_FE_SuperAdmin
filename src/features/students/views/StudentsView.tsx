@@ -47,6 +47,7 @@ export const StudentsView: React.FC = () => {
     handleBulkImport,
     handleQuickPair,
     handleUnlinkCard,
+    handleUpdateStudent,
     loadStudents,
   } = useStudentsViewModel();
 
@@ -419,6 +420,7 @@ export const StudentsView: React.FC = () => {
         availableCards={unassignedCards}
         onUnlinkCard={handleUnlinkCard}
         onQuickPair={handleQuickPair}
+        onUpdateStudent={handleUpdateStudent}
         onOpenRapidScan={() => setIsRapidScanOpen(true)}
       />
 

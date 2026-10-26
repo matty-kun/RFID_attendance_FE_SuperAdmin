@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { Drawer } from '../../../components/common/Drawer';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
+import { Dropdown } from '../../../components/common/Dropdown';
 import { toast } from '../../../context';
 import {
   Copy,
@@ -12,6 +13,8 @@ import {
   X,
   Clock,
   MapPin,
+  Pencil,
+  User,
 } from 'lucide-react';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
@@ -41,6 +44,7 @@ export interface StudentProfileDrawerProps {
   onUnlinkCard: (studentId: string, reason?: 'lost' | 'returned') => void;
   onQuickPair: (studentId: string, cardUid: string) => void;
   onOpenRapidScan: () => void;
+  onUpdateStudent?: (studentId: string, payload: { name: string; course: string; year_level: number }) => Promise<any>;
 }
 
 // Generate deterministic event scan history based on student record
@@ -185,10 +189,50 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   onUnlinkCard,
   onQuickPair,
   onOpenRapidScan,
+  onUpdateStudent,
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'time_in' | 'time_out'>('all');
   const [copiedUid, setCopiedUid] = useState(false);
   const [isUnlinkModalOpen, setIsUnlinkModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editCourse, setEditCourse] = useState('BS Information Technology');
+  const [editYearLevel, setEditYearLevel] = useState('1');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleOpenEdit = () => {
+    if (!currentStudent) return;
+    setEditName(currentStudent.name);
+    setEditCourse(currentStudent.course || 'BS Information Technology');
+    setEditYearLevel(String(currentStudent.year_level || 1));
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentStudent || !editName.trim()) return;
+    setIsSaving(true);
+    try {
+      if (onUpdateStudent) {
+        await onUpdateStudent(currentStudent.id, {
+          name: editName.trim(),
+          course: editCourse,
+          year_level: Number(editYearLevel),
+        });
+      }
+      activeStudentRef.current = {
+        ...currentStudent,
+        name: editName.trim(),
+        course: editCourse,
+        year_level: Number(editYearLevel),
+      };
+      setIsEditModalOpen(false);
+    } catch {
+      // toast shown by viewmodel
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Cache student reference so the drawer can animate out smoothly when closing
   const activeStudentRef = useRef<StudentRecord | null>(student);
@@ -251,14 +295,25 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             <h2 className="text-2xl font-black text-[#15344F] tracking-tight">
               {currentStudent.name}
             </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close drawer"
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-[#15344F] shadow-xs active:scale-95 transition-all cursor-pointer"
-            >
-              <X className="h-5 w-5 stroke-[2.5]" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleOpenEdit}
+                title="Edit Student Information"
+                className="flex h-9 items-center gap-1.5 px-3 rounded-xl bg-white/85 hover:bg-white text-[#15344F] shadow-xs active:scale-95 transition-all text-xs font-bold cursor-pointer"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close drawer"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-[#15344F] shadow-xs active:scale-95 transition-all cursor-pointer"
+              >
+                <X className="h-5 w-5 stroke-[2.5]" />
+              </button>
+            </div>
           </div>
 
           {/* Character standing in center of banner */}
@@ -543,6 +598,94 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             </Button>
           </div>
         </div>
+      </Modal>
+      {/* Edit Student Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Student Information"
+        description={`Update academic records for ${currentStudent.student_id}.`}
+        maxWidth="md"
+      >
+        <form onSubmit={handleSaveEdit} className="space-y-4 pt-1 text-left">
+          {/* Full Name */}
+          <div>
+            <label htmlFor="edit-student-name" className="mb-1.5 block text-xs font-bold text-[#24133F]">
+              Student Full Name
+            </label>
+            <div className="flex h-11 items-center gap-2.5 rounded-xl border border-[#D8B4ED] bg-white px-3.5 focus-within:border-[#7026B7] focus-within:ring-2 focus-within:ring-[#7026B7]/20">
+              <User className="h-4 w-4 text-[#756883] shrink-0" />
+              <input
+                id="edit-student-name"
+                type="text"
+                required
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Juan Dela Cruz"
+                className="h-full w-full bg-transparent text-xs font-semibold text-[#24133F] outline-none placeholder:text-[#A59CAC]"
+              />
+            </div>
+          </div>
+
+          {/* Course */}
+          <div>
+            <label className="mb-1.5 block text-xs font-bold text-[#24133F]">
+              Program / Course
+            </label>
+            <Dropdown
+              value={editCourse}
+              onChange={setEditCourse}
+              buttonClassName="h-11 w-full rounded-xl border-[#D8B4ED]"
+              options={[
+                { value: 'BS Information Technology', label: 'BS Information Technology' },
+                { value: 'BS Computer Science', label: 'BS Computer Science' },
+                { value: 'BS Information Systems', label: 'BS Information Systems' },
+                { value: 'BS Computer Engineering', label: 'BS Computer Engineering' },
+                { value: 'BS Business Administration', label: 'BS Business Administration' },
+              ]}
+            />
+          </div>
+
+          {/* Year Level */}
+          <div>
+            <label className="mb-1.5 block text-xs font-bold text-[#24133F]">
+              Year Level
+            </label>
+            <Dropdown
+              value={editYearLevel}
+              onChange={setEditYearLevel}
+              buttonClassName="h-11 w-full rounded-xl border-[#D8B4ED]"
+              options={[
+                { value: '1', label: '1st Year' },
+                { value: '2', label: '2nd Year' },
+                { value: '3', label: '3rd Year' },
+                { value: '4', label: '4th Year' },
+                { value: '5', label: '5th Year' },
+              ]}
+            />
+          </div>
+
+          {/* Form Actions */}
+          <div className="pt-2 flex items-center justify-end gap-2.5">
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              onClick={() => setIsEditModalOpen(false)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              isLoading={isSaving}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </form>
       </Modal>
     </Drawer>
   );

@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { StudentRecord, RegisterStudentPayload, InventoryCard, BulkImportStudentRow } from '../models';
+import type {
+  StudentRecord,
+  RegisterStudentPayload,
+  InventoryCard,
+  BulkImportStudentRow,
+  UpdateStudentPayload,
+} from '../models';
 import { studentService } from '../services';
 import { toast } from '../../../context';
 
@@ -36,6 +42,7 @@ export interface UseStudentsViewModelReturn {
   handleBulkImport: (newStudents: BulkImportStudentRow[], autoPair: boolean) => Promise<void>;
   handleQuickPair: (studentId: string, cardUid: string) => void;
   handleUnlinkCard: (studentId: string, reason?: 'lost' | 'returned') => Promise<void>;
+  handleUpdateStudent: (studentId: string, payload: UpdateStudentPayload) => Promise<StudentRecord>;
   loadStudents: () => Promise<void>;
 }
 
@@ -301,6 +308,22 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     }
   };
 
+  const handleUpdateStudent = async (studentId: string, payload: UpdateStudentPayload) => {
+    setIsSubmitting(true);
+    try {
+      const updated = await studentService.updateStudent(studentId, payload);
+      toast.success(`Student "${updated.name}" updated successfully!`);
+      await loadStudents();
+      return updated;
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.message || 'Failed to update student.';
+      toast.error(msg);
+      throw err;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return {
     students,
     filteredStudents,
@@ -334,6 +357,7 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     handleBulkImport,
     handleQuickPair,
     handleUnlinkCard,
+    handleUpdateStudent,
     loadStudents,
   };
 };
