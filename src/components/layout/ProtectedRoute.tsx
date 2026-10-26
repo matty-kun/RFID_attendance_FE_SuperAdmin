@@ -1,16 +1,20 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Loader2 } from 'lucide-react';
+import hawiFindingImg from '../../assets/illustrations/Hawi Finding.png';
 
 export const ProtectedRoute: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-3">
-        <Loader2 className="w-8 h-8 text-brand-600 animate-spin" />
-        <p className="text-sm font-semibold text-slate-500">Verifying Super Admin Authorization...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAF8FC] gap-3">
+        <img
+          src={hawiFindingImg}
+          alt="Loading..."
+          className="w-24 h-24 object-contain animate-pulse"
+        />
+        <p className="text-sm font-bold text-[#24133F]">Verifying Super Admin Authorization...</p>
       </div>
     );
   }

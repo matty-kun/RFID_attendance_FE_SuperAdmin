@@ -18,6 +18,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
+import hawiFindingImg from '../../../assets/illustrations/Hawi Finding.png';
 
 export const StudentsView: React.FC = () => {
   const {
@@ -357,9 +358,9 @@ export const StudentsView: React.FC = () => {
           {!visibleStudents.length && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <img
-                src={hawiQuestionImg}
-                alt="No students found"
-                className="w-24 h-24 object-contain mb-3"
+                src={isLoading ? hawiFindingImg : hawiQuestionImg}
+                alt={isLoading ? 'Loading students...' : 'No students found'}
+                className={`w-24 h-24 object-contain mb-3 ${isLoading ? 'animate-pulse' : ''}`}
               />
               <p className="text-sm font-bold text-[#24133F]">
                 {isLoading ? 'Loading students…' : error ? 'Unable to load students.' : 'No students found.'}

@@ -31,6 +31,7 @@ import { adminService, type SessionLocations } from '../services/adminService';
 import { getEventStatus, getSessionStatus } from '../utils/status';
 import type { EventRecord, SessionRecord } from '../types';
 import hawiQuestionImg from '../assets/illustrations/Hawi Question.png';
+import hawiFindingImg from '../assets/illustrations/Hawi Finding.png';
 
 interface SessionItem {
   id: string;
@@ -558,8 +559,14 @@ export function AttendancePage() {
 
       {/* Event Accordion Container */}
       {loading && !eventData ? (
-        <div className="rounded-[24px] border border-[#E5E0EB] bg-white p-12 text-center text-xs font-semibold text-[#756883]">
-          Loading attendance schedule…
+        <div className="rounded-[24px] border border-[#E5E0EB] bg-white p-12 text-center flex flex-col items-center justify-center">
+          <img
+            src={hawiFindingImg}
+            alt="Loading attendance schedule…"
+            className="w-24 h-24 object-contain mb-3 animate-pulse"
+          />
+          <p className="text-sm font-bold text-[#24133F]">Loading attendance schedule…</p>
+          <p className="text-xs text-[#756883] mt-1">Fetching events, sessions, and checkpoint mappings.</p>
         </div>
       ) : eventData ? (
         <div className="rounded-[24px] border border-[#E5E0EB] bg-white p-6">
