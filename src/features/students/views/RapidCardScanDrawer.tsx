@@ -20,9 +20,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
   onCardScannedForStudent,
 }) => {
   const [inputValue, setInputValue] = useState('');
-  const [batchHistory, setBatchHistory] = useState<
-    Array<{ uid: string; label: string; time: string; success: boolean }>
-  >([]);
+  const [assignedCount, setAssignedCount] = useState(0);
   const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -30,7 +28,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
   useEffect(() => {
     if (isOpen) {
       setInputValue('');
-      setBatchHistory([]);
+      setAssignedCount(0);
       setCurrentStudentIndex(0);
       const timer = setTimeout(() => inputRef.current?.focus(), 120);
       return () => clearTimeout(timer);
@@ -49,13 +47,6 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
 
       if (!rawUid) return;
 
-      const time = new Date().toLocaleTimeString('en-US', {
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      });
-
       const targetStudent = cardlessStudents[currentStudentIndex];
       if (!targetStudent) {
         soundManager.playErrorBuzz();
@@ -66,10 +57,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
       const res = await onCardScannedForStudent(targetStudent.id, rawUid);
       if (res.success) {
         soundManager.playSuccessBeep();
-        setBatchHistory((prev) => [
-          { uid: rawUid, label: `${targetStudent.name} (${targetStudent.student_id})`, time, success: true },
-          ...prev,
-        ]);
+        setAssignedCount((prev) => prev + 1);
         toast.success(`Card linked to ${targetStudent.name}`);
         setCurrentStudentIndex((prev) => prev + 1);
       } else {
@@ -93,7 +81,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
       footer={
         <div className="flex items-center justify-between">
           <span className="text-xs text-[#756883] tabular-nums font-medium">
-            {batchHistory.filter((b) => b.success).length} cards recorded this session
+            {assignedCount} card{assignedCount === 1 ? '' : 's'} assigned this session
           </span>
           <button
             type="button"
@@ -194,53 +182,6 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
               placeholder="Tap physical RFID card on scanner..."
               className="w-full rounded-xl border border-[#D5CEDD] bg-[#FAF8FC] px-3.5 py-2.5 text-xs font-mono font-bold text-[#24133F] placeholder:text-[#A59AAB] focus:border-[#7026B7] focus:bg-white focus:outline-none"
             />
-          </div>
-        </div>
-
-        {/* Live Activity Feed */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h4 className="text-xs font-bold text-[#756883]">
-              Activity log ({batchHistory.length})
-            </h4>
-            {batchHistory.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setBatchHistory([])}
-                className="text-xs text-[#7026B7] font-semibold hover:underline"
-              >
-                Clear log
-              </button>
-            )}
-          </div>
-
-          <div className="rounded-xl border border-[#E5E0EB] bg-white divide-y divide-[#F1EEF4] max-h-48 overflow-y-auto">
-            {batchHistory.map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between px-3.5 py-2.5 text-xs">
-                <div className="min-w-0 pr-2">
-                  <p className="font-bold text-[#24133F] truncate">{item.label}</p>
-                  <p className="font-mono text-[11px] text-[#756883]">{item.uid}</p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span
-                    className={`text-[11px] font-bold ${
-                      item.success ? 'text-emerald-700' : 'text-rose-600'
-                    }`}
-                  >
-                    {item.success ? 'Recorded' : 'Rejected'}
-                  </span>
-                  <span className="text-[11px] text-[#A59AAB] tabular-nums font-mono">
-                    {item.time}
-                  </span>
-                </div>
-              </div>
-            ))}
-
-            {batchHistory.length === 0 && (
-              <p className="py-7 text-center text-xs text-[#756883]">
-                No cards scanned in this session yet. Tap card on reader to start.
-              </p>
-            )}
           </div>
         </div>
       </div>
