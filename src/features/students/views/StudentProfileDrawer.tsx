@@ -592,46 +592,27 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               </div>
             </div>
           ) : currentStudent.rfid_uid ? (
-            <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/40 via-white to-white p-3.5 shadow-2xs">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-                    <CreditCard className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">RFID Card</p>
-                      <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
-                        Active
-                      </span>
-                    </div>
-                    <p className="font-mono text-xs font-bold text-slate-900 truncate mt-0.5">
-                      {currentStudent.rfid_uid}
-                    </p>
-                  </div>
-                </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={handleCopyUid}
+                className="flex-1 font-mono text-xs justify-center"
+                leftIcon={copiedUid ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4 text-slate-400" />}
+                title="Click to copy Card UID"
+              >
+                Card UID: {currentStudent.rfid_uid}
+              </Button>
 
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={handleCopyUid}
-                    leftIcon={copiedUid ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-slate-400" />}
-                    title="Copy Card UID"
-                  >
-                    {copiedUid ? 'Copied' : 'Copy'}
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => setIsUnlinking(true)}
-                    leftIcon={<Unlink className="h-3.5 w-3.5" />}
-                    title="Unlink RFID Card"
-                  >
-                    Unlink
-                  </Button>
-                </div>
-              </div>
+              <Button
+                variant="danger"
+                size="md"
+                onClick={() => setIsUnlinking(true)}
+                leftIcon={<Unlink className="h-4 w-4" />}
+                title="Unlink RFID Card"
+              >
+                Unlink
+              </Button>
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-3.5 transition-all">
