@@ -112,12 +112,12 @@ export const StudentsView: React.FC = () => {
       .join('');
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] space-y-5 text-[#24133F]">
+    <div className="mx-auto w-full max-w-[1180px] space-y-5 text-slate-900">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-extrabold leading-tight text-[#24133F]">Students &amp; RFID Cards</h1>
-          <p className="text-xs text-[#756883] mt-0.5">
+          <h1 className="text-[22px] font-extrabold leading-tight text-slate-900">Students &amp; RFID Cards</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
             Super Admin Registration Suite · continuous desktop scanner, bulk auto-pair, and inventory roster.
           </p>
         </div>
@@ -144,32 +144,32 @@ export const StudentsView: React.FC = () => {
       </div>
 
       {/* KPI Headline Metrics */}
-      <div className="rounded-2xl border border-[#E5E0EB] bg-white grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-[#E5E0EB]">
+      <div className="rounded-2xl border border-slate-200 bg-white grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
         <div className="p-4 sm:p-5">
-          <p className="text-xs font-medium text-[#756883]">Active students</p>
-          <p className="text-2xl font-bold tracking-tight text-[#24133F] mt-1 tabular-nums">
+          <p className="text-xs font-medium text-slate-500">Active students</p>
+          <p className="text-2xl font-bold tracking-tight text-slate-900 mt-1 tabular-nums">
             {isLoading && students.length === 0 ? '—' : activeStudents.length.toLocaleString()}
           </p>
-          <p className="text-[11px] text-[#A59AAB] mt-0.5">Enrolled active roster</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Enrolled active roster</p>
         </div>
 
         <div className="p-4 sm:p-5">
-          <p className="text-xs font-medium text-[#756883]">Verified RFID cards</p>
+          <p className="text-xs font-medium text-slate-500">Verified RFID cards</p>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold tracking-tight text-[#16883F] tabular-nums">
+            <span className="text-2xl font-bold tracking-tight text-emerald-600 tabular-nums">
               {isLoading && students.length === 0 ? '—' : verifiedCount.toLocaleString()}
             </span>
             <span className="text-[11px] font-semibold text-emerald-700">
               {activeStudents.length > 0 ? `${Math.round((verifiedCount / activeStudents.length) * 100)}%` : '0%'}
             </span>
           </div>
-          <p className="text-[11px] text-[#A59AAB] mt-0.5">Active cards in circulation</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Active cards in circulation</p>
         </div>
 
         <div className="p-4 sm:p-5">
-          <p className="text-xs font-medium text-[#756883]">No card assigned</p>
+          <p className="text-xs font-medium text-slate-500">No card assigned</p>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold tracking-tight text-[#24133F] tabular-nums">
+            <span className="text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
               {isLoading && students.length === 0 ? '—' : unverifiedCount.toLocaleString()}
             </span>
             {unverifiedCount > 0 && (
@@ -178,7 +178,7 @@ export const StudentsView: React.FC = () => {
               </span>
             )}
           </div>
-          <p className="text-[11px] text-[#A59AAB] mt-0.5">
+          <p className="text-[11px] text-slate-400 mt-0.5">
             {unverifiedCount === 0 ? 'All active students equipped' : 'Awaiting card pairing'}
           </p>
         </div>
@@ -187,25 +187,25 @@ export const StudentsView: React.FC = () => {
         <button
           type="button"
           onClick={() => setIsCardPoolOpen(true)}
-          className="p-4 sm:p-5 text-left transition-colors hover:bg-[#FAF8FC] group rounded-b-2xl lg:rounded-b-none lg:rounded-r-2xl cursor-pointer"
+          className="p-4 sm:p-5 text-left transition-colors hover:bg-slate-50 group rounded-b-2xl lg:rounded-b-none lg:rounded-r-2xl cursor-pointer"
         >
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-[#756883] group-hover:text-[#7026B7] transition-colors">
+            <p className="text-xs font-medium text-slate-500 group-hover:text-brand-700 transition-colors">
               Card pool stock
             </p>
-            <span className="text-[11px] font-semibold text-[#7026B7] opacity-80 group-hover:opacity-100 transition-opacity">
+            <span className="text-[11px] font-semibold text-brand-700 opacity-80 group-hover:opacity-100 transition-opacity">
               View pool &rarr;
             </span>
           </div>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold tracking-tight text-[#7026B7] tabular-nums">
+            <span className="text-2xl font-bold tracking-tight text-brand-700 tabular-nums">
               {unassignedCards.length.toLocaleString()}
             </span>
-            <span className="text-[11px] font-semibold text-[#7026B7]">
+            <span className="text-[11px] font-semibold text-brand-700">
               {unassignedCards.length > 0 ? 'In stock' : 'Empty'}
             </span>
           </div>
-          <p className="text-[11px] text-[#A59AAB] mt-0.5">
+          <p className="text-[11px] text-slate-400 mt-0.5">
             {unassignedCards.length > 0 ? `${unassignedCards.length} ready for new students` : 'Scan blank cards to add to pool'}
           </p>
         </button>
@@ -215,15 +215,15 @@ export const StudentsView: React.FC = () => {
       <div className="space-y-3">
         {/* Active vs Archived Segmented Tab Toggle & Controls Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          {/* Segmented Tab Toggle */}
-          <div className="inline-flex items-center gap-1 p-1 bg-[#FAF8FC] border border-[#E5E0EB] rounded-2xl self-start">
+          {/* Segmented Tab Toggle with Brand Colors */}
+          <div className="inline-flex items-center gap-1 p-1 bg-slate-100 border border-slate-200 rounded-2xl self-start">
             <button
               type="button"
               onClick={() => setActiveTab('active')}
               className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 activeTab === 'active'
-                  ? 'bg-white text-[#7026B7] shadow-xs'
-                  : 'text-[#756883] hover:text-[#24133F]'
+                  ? 'bg-white text-brand-700 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               Active Students ({activeStudents.length})
@@ -233,8 +233,8 @@ export const StudentsView: React.FC = () => {
               onClick={() => setActiveTab('archived')}
               className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 activeTab === 'archived'
-                  ? 'bg-white text-[#7026B7] shadow-xs'
-                  : 'text-[#756883] hover:text-[#24133F]'
+                  ? 'bg-white text-brand-700 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               Archived ({archivedStudents.length})
@@ -243,7 +243,7 @@ export const StudentsView: React.FC = () => {
 
           {/* Controls Bar: Search & Filters */}
           <div className="flex flex-wrap items-center gap-2">
-            <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:w-[260px]">
+            <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-slate-500 sm:w-[260px]">
               <Search className="h-4 w-4" />
               <span className="sr-only">Search students</span>
               <input
@@ -254,7 +254,7 @@ export const StudentsView: React.FC = () => {
                   setSearchQuery(event.target.value);
                 }}
                 placeholder="Search by name, ID or RFID…"
-                className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
+                className="w-full bg-transparent text-xs text-slate-900 outline-none placeholder:text-slate-400"
               />
             </label>
 
@@ -280,7 +280,7 @@ export const StudentsView: React.FC = () => {
         </div>
 
         {/* Students Table */}
-        <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2.5">
           {error && (
             <div role="alert" className="mb-2 flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
               <span>{error}</span>
@@ -291,7 +291,7 @@ export const StudentsView: React.FC = () => {
           )}
           <table className="w-full min-w-[760px] text-left text-xs">
             <thead>
-              <tr className="border-b border-[#E9EDF4] text-xs font-medium text-[#756883]">
+              <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500">
                 <th className="px-3 py-3">Student</th>
                 <th className="px-3 py-3">Course</th>
                 <th className="px-3 py-3">Year level</th>
@@ -310,74 +310,68 @@ export const StudentsView: React.FC = () => {
                       setSelectedStudentForProfile(student);
                       setIsProfileDrawerOpen(true);
                     }}
-                    className="border-b border-[#E9EDF4] last:border-b-0 hover:bg-[#FAF8FC] cursor-pointer transition-colors group"
+                    className="border-b border-slate-200 last:border-b-0 hover:bg-slate-50 cursor-pointer transition-colors group"
                   >
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#DFE8F8] text-[10px] font-extrabold text-[#294B85] group-hover:scale-105 transition-transform">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[10px] font-extrabold text-brand-700 group-hover:scale-105 transition-transform border border-brand-200/50">
                           {initials(student.name)}
                         </span>
                         <div>
-                          <p className="font-bold text-[#24133F] leading-snug group-hover:text-[#7026B7] transition-colors">
+                          <p className="font-bold text-slate-900 leading-snug group-hover:text-brand-700 transition-colors">
                             {student.name}
                           </p>
-                          <p className="text-[10px] font-mono text-[#756883]">{student.student_id}</p>
+                          <p className="text-[10px] font-mono text-slate-500">{student.student_id}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-3 font-semibold text-[#24133F]">{student.course || '—'}</td>
-                    <td className="px-3 py-3 text-[#756883]">{yearLabel(student.year_level)}</td>
+                    <td className="px-3 py-3 font-semibold text-slate-900">{student.course || '—'}</td>
+                    <td className="px-3 py-3 text-slate-500">{yearLabel(student.year_level)}</td>
+
+                    {/* RFID Card column */}
                     <td className="px-3 py-3">
                       {student.rfid_uid ? (
-                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-900 font-mono text-[11px] font-semibold">
-                          <Radio className="w-3 h-3 text-[#7026B7]" />
+                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-brand-50 border border-brand-200 text-brand-900 font-mono text-[11px] font-semibold">
+                          <Radio className="w-3 h-3 text-brand-700" />
                           {student.rfid_uid}
                         </div>
                       ) : (
-                        <span className="text-[#A59AAB] text-[11px] italic">
-                          {isStudentArchived ? 'Unlinked (Archived)' : 'No card linked'}
+                        <span className="text-slate-400 text-[11px] italic">
+                          {isStudentArchived ? 'Unlinked' : 'No card linked'}
                         </span>
                       )}
                     </td>
+
+                    {/* Status column: True account/enrollment status (Active vs Archived) */}
                     <td className="px-3 py-3">
                       {isStudentArchived ? (
-                        <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                        <span className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
                           <i className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                           Archived
                         </span>
                       ) : (
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1 font-semibold ${
-                            student.rfid_uid
-                              ? 'bg-[#E4F7EB] text-[#16883F]'
-                              : 'bg-[#FFF2DE] text-[#E58A00]'
-                          }`}
-                        >
-                          <i
-                            className={`h-1.5 w-1.5 rounded-full ${
-                              student.rfid_uid ? 'bg-[#17B556]' : 'bg-[#F59E0B]'
-                            }`}
-                          />
-                          {student.rfid_uid ? 'Verified' : 'No card'}
+                        <span className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          <i className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          Active
                         </span>
                       )}
                     </td>
+
+                    {/* Actions column: Clear, sensible action buttons */}
                     <td className="px-3 py-3 text-right">
                       {isStudentArchived ? (
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void handleRestoreStudent(student.id);
-                            }}
-                            title="Restore student to active roster"
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
-                          >
-                            <ArchiveRestore className="w-3 h-3" />
-                            Restore
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleRestoreStudent(student.id);
+                          }}
+                          title="Restore student to active roster"
+                          className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1 rounded-xl transition-all cursor-pointer shadow-2xs"
+                        >
+                          <ArchiveRestore className="w-3.5 h-3.5" />
+                          Restore
+                        </button>
                       ) : student.rfid_uid ? (
                         <button
                           type="button"
@@ -386,16 +380,14 @@ export const StudentsView: React.FC = () => {
                             setSelectedStudentForProfile(student);
                             setIsProfileDrawerOpen(true);
                           }}
-                          title="Card linked. Click to view profile or unlink card."
-                          aria-label={`Card linked to ${student.name}`}
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7026B7] bg-[#F2ECF9] border border-[#D8B4ED] px-2 py-1 rounded-lg hover:bg-[#EBE2F9] transition-colors cursor-pointer"
+                          title="View student profile & attendance history"
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 bg-white hover:bg-brand-50 hover:text-brand-700 hover:border-brand-200 border border-slate-200 px-3 py-1 rounded-xl transition-all cursor-pointer shadow-2xs"
                         >
-                          <LinkIcon className="w-3 h-3" />
-                          Linked
+                          View Profile &rarr;
                         </button>
                       ) : (
                         <div className="flex items-center justify-end gap-1.5">
-                          {unassignedCards.length > 0 && (
+                          {unassignedCards.length > 0 ? (
                             <button
                               type="button"
                               onClick={(e) => {
@@ -403,24 +395,25 @@ export const StudentsView: React.FC = () => {
                                 handleQuickPair(student.id, unassignedCards[0].uid);
                               }}
                               title={`Pair next card #${unassignedCards[0].cardNumber} from pool`}
-                              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7026B7] bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200 px-2.5 py-1 rounded-xl transition-all cursor-pointer shadow-2xs"
                             >
                               <LinkIcon className="w-3 h-3" />
-                              Pair Pool #{unassignedCards[0].cardNumber}
+                              Pair #{unassignedCards[0].cardNumber}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsRapidScanOpen(true);
+                              }}
+                              title="Scan blank cards into pool"
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200 px-2.5 py-1 rounded-xl transition-all cursor-pointer shadow-2xs"
+                            >
+                              <Zap className="w-3 h-3" />
+                              Scan Card
                             </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setIsRapidScanOpen(true);
-                            }}
-                            title="Scan blank cards into pool"
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7026B7] bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-1 rounded-lg transition-colors cursor-pointer"
-                          >
-                            <Zap className="w-3 h-3" />
-                            Scan Pool
-                          </button>
                         </div>
                       )}
                     </td>
@@ -437,7 +430,7 @@ export const StudentsView: React.FC = () => {
                 alt={isLoading ? 'Loading students...' : 'No students found'}
                 className={`w-24 h-24 object-contain mb-3 ${isLoading ? 'animate-pulse' : ''}`}
               />
-              <p className="text-sm font-bold text-[#24133F]">
+              <p className="text-sm font-bold text-slate-900">
                 {isLoading
                   ? 'Loading students…'
                   : error
@@ -446,7 +439,7 @@ export const StudentsView: React.FC = () => {
                   ? 'No archived students.'
                   : 'No students found.'}
               </p>
-              <p className="text-xs text-[#756883] max-w-xs mt-1">
+              <p className="text-xs text-slate-500 max-w-xs mt-1">
                 {error
                   ? 'Check your backend connection and try again.'
                   : activeTab === 'archived'
@@ -468,7 +461,7 @@ export const StudentsView: React.FC = () => {
             </div>
           )}
 
-          <div className="flex items-center justify-between gap-3 border-t border-[#E9EDF4] px-3 py-3 text-xs text-[#756883]">
+          <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-3 py-3 text-xs text-slate-500">
             <span>
               {activeTab === 'active' ? activeStudents.length.toLocaleString() : archivedStudents.length.toLocaleString()} {activeTab} students · Page {page} of {Math.max(1, Math.ceil(total / 25))}
             </span>

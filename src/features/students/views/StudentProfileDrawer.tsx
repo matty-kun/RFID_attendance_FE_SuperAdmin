@@ -600,21 +600,21 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   }}
                   className={`w-full text-left rounded-2xl border bg-white p-3 shadow-2xs transition-all group flex items-start justify-between ${
                     isArchived
-                      ? 'border-[#E5E0EB] cursor-default'
+                      ? 'border-slate-200 cursor-default'
                       : isCourseMenuOpen
-                      ? 'border-[#7026B7] ring-2 ring-[#7026B7]/20 cursor-pointer'
-                      : 'border-[#E5E0EB] hover:border-[#7026B7] hover:shadow-xs cursor-pointer'
+                      ? 'border-brand-700 ring-2 ring-brand-100 cursor-pointer'
+                      : 'border-slate-200 hover:border-brand-700 hover:shadow-xs cursor-pointer'
                   }`}
                   title={isArchived ? undefined : 'Click to change course'}
                 >
                   <div className="min-w-0 pr-1">
-                    <p className="text-[10px] font-bold text-[#756883] uppercase">Program / Course</p>
-                    <p className="font-bold text-[#24133F] mt-0.5 truncate">{currentStudent.course || '—'}</p>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">Program / Course</p>
+                    <p className="font-bold text-slate-900 mt-0.5 truncate">{currentStudent.course || '—'}</p>
                   </div>
                   {!isArchived && (
                     <ChevronDown
-                      className={`h-4 w-4 text-[#756883] transition-transform shrink-0 mt-0.5 group-hover:text-[#7026B7] ${
-                        isCourseMenuOpen ? 'rotate-180 text-[#7026B7]' : ''
+                      className={`h-4 w-4 text-slate-400 transition-transform shrink-0 mt-0.5 group-hover:text-brand-700 ${
+                        isCourseMenuOpen ? 'rotate-180 text-brand-700' : ''
                       }`}
                     />
                   )}
@@ -622,8 +622,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
 
                 {/* Floating Course Menu (No layout shifts) */}
                 {isCourseMenuOpen && (
-                  <div className="absolute top-full left-0 mt-1.5 w-64 bg-white rounded-2xl border border-[#E5E0EB] shadow-xl z-50 p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
-                    <p className="text-[10px] font-black text-[#A59AAB] uppercase px-2.5 py-1">
+                  <div className="absolute top-full left-0 mt-1.5 w-64 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase px-2.5 py-1">
                       Select Course
                     </p>
                     {COURSE_OPTIONS.map((c) => {
@@ -635,12 +635,12 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                           onClick={() => void handleSelectCourse(c)}
                           className={`w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
                             isSelected
-                              ? 'bg-[#F2ECF9] text-[#7026B7] font-bold'
-                              : 'text-[#24133F] hover:bg-[#FAF8FC]'
+                              ? 'bg-brand-50 text-brand-700 font-bold'
+                              : 'text-slate-900 hover:bg-slate-50'
                           }`}
                         >
                           <span className="truncate">{c}</span>
-                          {isSelected && <Check className="h-3.5 w-3.5 text-[#7026B7] shrink-0 ml-1" />}
+                          {isSelected && <Check className="h-3.5 w-3.5 text-brand-700 shrink-0 ml-1" />}
                         </button>
                       );
                     })}
@@ -660,21 +660,21 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   }}
                   className={`w-full text-left rounded-2xl border bg-white p-3 shadow-2xs transition-all group flex items-start justify-between ${
                     isArchived
-                      ? 'border-[#E5E0EB] cursor-default'
+                      ? 'border-slate-200 cursor-default'
                       : isYearMenuOpen
-                      ? 'border-[#7026B7] ring-2 ring-[#7026B7]/20 cursor-pointer'
-                      : 'border-[#E5E0EB] hover:border-[#7026B7] hover:shadow-xs cursor-pointer'
+                      ? 'border-brand-700 ring-2 ring-brand-100 cursor-pointer'
+                      : 'border-slate-200 hover:border-brand-700 hover:shadow-xs cursor-pointer'
                   }`}
                   title={isArchived ? undefined : 'Click to change year level'}
                 >
                   <div className="min-w-0 pr-1">
-                    <p className="text-[10px] font-bold text-[#756883] uppercase">Year Level</p>
-                    <p className="font-bold text-[#24133F] mt-0.5">{yearLabel(currentStudent.year_level)}</p>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">Year Level</p>
+                    <p className="font-bold text-slate-900 mt-0.5">{yearLabel(currentStudent.year_level)}</p>
                   </div>
                   {!isArchived && (
                     <ChevronDown
-                      className={`h-4 w-4 text-[#756883] transition-transform shrink-0 mt-0.5 group-hover:text-[#7026B7] ${
-                        isYearMenuOpen ? 'rotate-180 text-[#7026B7]' : ''
+                      className={`h-4 w-4 text-slate-400 transition-transform shrink-0 mt-0.5 group-hover:text-brand-700 ${
+                        isYearMenuOpen ? 'rotate-180 text-brand-700' : ''
                       }`}
                     />
                   )}
@@ -682,8 +682,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
 
                 {/* Floating Year Menu (No layout shifts) */}
                 {isYearMenuOpen && (
-                  <div className="absolute top-full right-0 mt-1.5 w-48 bg-white rounded-2xl border border-[#E5E0EB] shadow-xl z-50 p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
-                    <p className="text-[10px] font-black text-[#A59AAB] uppercase px-2.5 py-1">
+                  <div className="absolute top-full right-0 mt-1.5 w-48 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase px-2.5 py-1">
                       Select Year Level
                     </p>
                     {YEAR_OPTIONS.map((y) => {
@@ -695,12 +695,12 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                           onClick={() => void handleSelectYear(y.value)}
                           className={`w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
                             isSelected
-                              ? 'bg-[#F2ECF9] text-[#7026B7] font-bold'
-                              : 'text-[#24133F] hover:bg-[#FAF8FC]'
+                              ? 'bg-brand-50 text-brand-700 font-bold'
+                              : 'text-slate-900 hover:bg-slate-50'
                           }`}
                         >
                           <span>{y.label}</span>
-                          {isSelected && <Check className="h-3.5 w-3.5 text-[#7026B7] shrink-0 ml-1" />}
+                          {isSelected && <Check className="h-3.5 w-3.5 text-brand-700 shrink-0 ml-1" />}
                         </button>
                       );
                     })}
@@ -725,8 +725,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                     onClick={() => setFilterType('all')}
                     className={`px-3 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                       filterType === 'all'
-                        ? 'bg-white text-[#7026B7] shadow-xs'
-                        : 'text-[#756883] hover:text-[#24133F]'
+                        ? 'bg-white text-brand-700 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     All ({scans.length})
@@ -736,8 +736,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                     onClick={() => setFilterType('time_in')}
                     className={`px-3 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                       filterType === 'time_in'
-                        ? 'bg-white text-[#7026B7] shadow-xs'
-                        : 'text-[#756883] hover:text-[#24133F]'
+                        ? 'bg-white text-brand-700 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     Time-In
@@ -747,8 +747,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                     onClick={() => setFilterType('time_out')}
                     className={`px-3 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                       filterType === 'time_out'
-                        ? 'bg-white text-[#7026B7] shadow-xs'
-                        : 'text-[#756883] hover:text-[#24133F]'
+                        ? 'bg-white text-brand-700 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     Time-Out
@@ -766,9 +766,9 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                       {/* Date Header */}
                       <div className="flex items-center justify-between bg-[#FAF8FC] px-4 py-2 text-xs border-b border-[#F0E8FC]">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-[#24133F]">{group.event}</span>
-                          <span className="text-[#A59AAB]">·</span>
-                          <span className="font-medium text-[#7026B7]">{group.label}</span>
+                          <span className="font-bold text-slate-900">{group.event}</span>
+                          <span className="text-slate-400">·</span>
+                          <span className="font-medium text-brand-700">{group.label}</span>
                         </div>
                         <span className="text-[11px] text-[#756883]">{group.date}</span>
                       </div>
@@ -881,8 +881,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             className="w-full text-left p-3.5 rounded-2xl border border-[#E5E0EB] bg-[#FAF8FC] hover:bg-[#F2ECF9] transition-colors cursor-pointer group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-[#24133F]">Card Returned / Swapped</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#7026B7] bg-[#EBE2F9] px-2 py-0.5 rounded-full border border-[#D8B4ED]">Return to Pool</span>
+              <span className="text-xs font-extrabold text-slate-900">Card Returned / Swapped</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-brand-700 bg-brand-100 px-2 py-0.5 rounded-full border border-brand-200">Return to Pool</span>
             </div>
             <p className="text-[11px] text-[#756883] mt-1 leading-relaxed">
               Card is physically intact. Detaches UID from student and places it back in the Unassigned Card Pool for other students.
