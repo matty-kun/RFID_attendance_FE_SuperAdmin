@@ -8,7 +8,6 @@ import {
   Check,
   ChevronDown,
   Unlink,
-  Link as LinkIcon,
   X,
   Clock,
   MapPin,
@@ -20,7 +19,7 @@ import {
 } from 'lucide-react';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
-import type { StudentRecord, InventoryCard } from '../models';
+import type { StudentRecord } from '../models';
 
 export interface StudentScanItem {
   id: string;
@@ -42,7 +41,6 @@ export interface StudentProfileDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   student: StudentRecord | null;
-  availableCards: InventoryCard[];
   onUnlinkCard: (studentId: string, reason?: 'lost' | 'returned') => void;
   onQuickPair: (studentId: string, cardUid: string) => void;
   onOpenRapidScan: () => void;
@@ -206,7 +204,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   isOpen,
   onClose,
   student,
-  availableCards,
   onUnlinkCard,
   onQuickPair,
   onOpenRapidScan,
@@ -554,10 +551,10 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               </div>
             </div>
           ) : currentStudent.rfid_uid && isUnlinking ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2.5 animate-in fade-in duration-150">
+            <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-3.5 space-y-2 animate-in fade-in duration-150">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-800">
-                  Unlinking Card {currentStudent.rfid_uid}:
+                <span className="text-xs font-bold text-rose-900">
+                  Unlink Card {currentStudent.rfid_uid}?
                 </span>
                 <button
                   type="button"
@@ -567,31 +564,29 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   Cancel
                 </button>
               </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
+              <p className="text-[11px] text-rose-700/90 leading-tight">
+                This detaches the card from this student. Historical attendance records will remain saved.
+              </p>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsUnlinking(false)}
+                >
+                  Keep Card
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
                   onClick={() => {
                     setIsUnlinking(false);
-                    onUnlinkCard(currentStudent.id, 'returned');
+                    onUnlinkCard(currentStudent.id);
                   }}
-                  className="p-2.5 rounded-xl border border-brand-200 bg-white hover:bg-brand-50 hover:border-brand-300 transition-all text-left cursor-pointer shadow-2xs group"
                 >
-                  <p className="text-xs font-extrabold text-brand-700">Return to Pool</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Card intact · ready for next student</p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsUnlinking(false);
-                    onUnlinkCard(currentStudent.id, 'lost');
-                  }}
-                  className="p-2.5 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 transition-all text-left cursor-pointer shadow-2xs group"
-                >
-                  <p className="text-xs font-extrabold text-rose-700">Report Lost</p>
-                  <p className="text-[10px] text-rose-600/80 mt-0.5 leading-tight">Revokes card &bull; moves to Archived</p>
-                </button>
+                  Confirm Unlink
+                </Button>
               </div>
             </div>
           ) : currentStudent.rfid_uid ? (
@@ -657,17 +652,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  {availableCards.length > 0 && !isScanningCard && (
-                    <Button
-                      variant="success"
-                      size="sm"
-                      onClick={() => onQuickPair(currentStudent.id, availableCards[0].uid)}
-                      leftIcon={<LinkIcon className="h-3.5 w-3.5" />}
-                      title={`Quick pair card #${availableCards[0].cardNumber}`}
-                    >
-                      Pair #{availableCards[0].cardNumber}
-                    </Button>
-                  )}
                   {!isScanningCard ? (
                     <Button
                       variant="primary"

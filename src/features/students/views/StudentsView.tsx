@@ -6,13 +6,10 @@ import { AddStudentDrawer } from './AddStudentDrawer';
 import { RapidCardScanDrawer } from './RapidCardScanDrawer';
 import { BulkStudentImportModal } from './BulkStudentImportModal';
 import { RegisterActionsDropdown } from './RegisterActionsDropdown';
-import { CardPoolDrawer } from './CardPoolDrawer';
 import { StudentProfileDrawer } from './StudentProfileDrawer';
 import type { StudentRecord } from '../models';
 import {
   Search,
-  Zap,
-  Link as LinkIcon,
   Radio,
   RefreshCw,
   ArchiveRestore,
@@ -32,8 +29,6 @@ export const StudentsView: React.FC = () => {
     setPage,
     total,
     error,
-    inventoryCards,
-    unassignedCards,
     cardlessStudents,
     isAddDrawerOpen,
     setIsAddDrawerOpen,
@@ -44,11 +39,8 @@ export const StudentsView: React.FC = () => {
     archivedStudentIds,
     handleArchiveStudent,
     handleRestoreStudent,
-    handleRestoreLostCard,
     handleRegisterStudent,
-    handleCardScannedForInventory,
     handleCardScannedForStudent,
-    handleAutoPairSequential,
     handleBulkImport,
     handleQuickPair,
     handleUnlinkCard,
@@ -57,7 +49,6 @@ export const StudentsView: React.FC = () => {
   } = useStudentsViewModel();
 
   const [studentTab, setStudentTab] = useState<'active' | 'archived'>('active');
-  const [isCardPoolOpen, setIsCardPoolOpen] = useState(false);
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<StudentRecord | null>(null);
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
   const [courseFilter, setCourseFilter] = useState('all');
@@ -77,10 +68,6 @@ export const StudentsView: React.FC = () => {
   // Active students stats
   const verifiedCount = useMemo(() => activeStudents.filter((s) => Boolean(s.rfid_uid)).length, [activeStudents]);
   const unverifiedCount = useMemo(() => activeStudents.filter((s) => !s.rfid_uid).length, [activeStudents]);
-  const pairableCount = useMemo(
-    () => Math.min(unassignedCards.length, cardlessStudents.filter((s) => !archivedStudentIds.includes(s.id)).length),
-    [unassignedCards.length, cardlessStudents, archivedStudentIds]
-  );
 
   const courses = useMemo(
     () => [...new Set(students.map((s) => s.course).filter((c): c is string => Boolean(c)))].sort(),
@@ -120,7 +107,7 @@ export const StudentsView: React.FC = () => {
         <div>
           <h1 className="text-[22px] font-extrabold leading-tight text-slate-900">Students &amp; RFID Cards</h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Super Admin Registration Suite · continuous desktop scanner, bulk auto-pair, and inventory roster.
+            Super Admin Registration Suite · continuous desktop scanner, bulk import, and student roster.
           </p>
         </div>
 
@@ -138,15 +125,12 @@ export const StudentsView: React.FC = () => {
             onAddStudent={() => setIsAddDrawerOpen(true)}
             onRapidScan={() => setIsRapidScanOpen(true)}
             onBulkImport={() => setIsBulkImportOpen(true)}
-            onAutoPair={handleAutoPairSequential}
-            onOpenCardPool={() => setIsCardPoolOpen(true)}
-            pairableCount={pairableCount}
           />
         </div>
       </div>
 
       {/* KPI Headline Metrics */}
-      <div className="rounded-2xl border border-slate-200 bg-white grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
+      <div className="rounded-2xl border border-slate-200 bg-white grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
         <div className="p-4 sm:p-5">
           <p className="text-xs font-medium text-slate-500">Active students</p>
           <p className="text-2xl font-bold tracking-tight text-slate-900 mt-1 tabular-nums">
@@ -184,33 +168,6 @@ export const StudentsView: React.FC = () => {
             {unverifiedCount === 0 ? 'All active students equipped' : 'Awaiting card pairing'}
           </p>
         </div>
-
-        {/* Interactive KPI Card: Opens CardPoolDrawer without leaving the page */}
-        <button
-          type="button"
-          onClick={() => setIsCardPoolOpen(true)}
-          className="p-4 sm:p-5 text-left transition-colors hover:bg-slate-50 group rounded-b-2xl lg:rounded-b-none lg:rounded-r-2xl cursor-pointer"
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-slate-500 group-hover:text-brand-700 transition-colors">
-              Card pool stock
-            </p>
-            <span className="text-[11px] font-semibold text-brand-700 opacity-80 group-hover:opacity-100 transition-opacity">
-              View inventory &rarr;
-            </span>
-          </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold tracking-tight text-brand-700 tabular-nums">
-              {unassignedCards.length.toLocaleString()}
-            </span>
-            <span className="text-[11px] font-semibold text-brand-700">
-              {unassignedCards.length > 0 ? 'In stock' : 'Empty'}
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            {unassignedCards.length > 0 ? `${unassignedCards.length} ready for new students` : 'Scan blank cards to add to pool'}
-          </p>
-        </button>
       </div>
 
       {/* Main Section */}
@@ -345,48 +302,24 @@ export const StudentsView: React.FC = () => {
                           <ArchiveRestore className="w-3.5 h-3.5" />
                           Restore
                         </button>
-                      ) : student.rfid_uid ? (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedStudentForProfile(student);
-                            setIsProfileDrawerOpen(true);
-                          }}
-                          title="View student profile & attendance history"
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 bg-white hover:bg-brand-50 hover:text-brand-700 hover:border-brand-200 border border-slate-200 px-3 py-1 rounded-xl transition-all cursor-pointer shadow-2xs"
-                        >
-                          View Profile &rarr;
-                        </button>
                       ) : (
-                        <div className="flex items-center justify-end gap-1.5">
-                          {unassignedCards.length > 0 ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleQuickPair(student.id, unassignedCards[0].uid);
-                              }}
-                              title={`Pair next card #${unassignedCards[0].cardNumber} from pool`}
-                              className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200 px-2.5 py-1 rounded-xl transition-all cursor-pointer shadow-2xs"
-                            >
-                              <LinkIcon className="w-3 h-3" />
-                              Pair #{unassignedCards[0].cardNumber}
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setIsRapidScanOpen(true);
-                              }}
-                              title="Scan blank cards into pool"
-                              className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200 px-2.5 py-1 rounded-xl transition-all cursor-pointer shadow-2xs"
-                            >
-                              <Zap className="w-3 h-3" />
-                              Scan Card
-                            </button>
-                          )}
+                        <div className="flex items-center justify-end">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedStudentForProfile(student);
+                              setIsProfileDrawerOpen(true);
+                            }}
+                            title={student.rfid_uid ? 'View student profile & attendance history' : 'Link RFID card to student'}
+                            className={`inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1 rounded-xl transition-all cursor-pointer shadow-2xs ${
+                              student.rfid_uid
+                                ? 'text-slate-700 bg-white hover:bg-brand-50 hover:text-brand-700 hover:border-brand-200 border border-slate-200'
+                                : 'text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200'
+                            }`}
+                          >
+                            {student.rfid_uid ? 'View Profile →' : 'Link Card →'}
+                          </button>
                         </div>
                       )}
                     </td>
@@ -450,21 +383,11 @@ export const StudentsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Slide-in Drawer: Card Inventory Pool (Slides in smoothly without leaving the page!) */}
-      <CardPoolDrawer
-        isOpen={isCardPoolOpen}
-        onClose={() => setIsCardPoolOpen(false)}
-        inventoryCards={inventoryCards}
-        onOpenRapidScan={() => setIsRapidScanOpen(true)}
-        onRestoreLostCard={handleRestoreLostCard}
-      />
-
       {/* Slide-in Drawer: Student Profile & Scan History */}
       <StudentProfileDrawer
         isOpen={isProfileDrawerOpen}
         onClose={() => setIsProfileDrawerOpen(false)}
         student={activeProfileStudent}
-        availableCards={unassignedCards}
         onUnlinkCard={handleUnlinkCard}
         onQuickPair={handleQuickPair}
         onUpdateStudent={handleUpdateStudent}
@@ -478,7 +401,6 @@ export const StudentsView: React.FC = () => {
       <AddStudentDrawer
         isOpen={isAddDrawerOpen}
         onClose={() => setIsAddDrawerOpen(false)}
-        availableCards={unassignedCards}
         onSubmit={handleRegisterStudent}
         isSubmitting={isSubmitting}
       />
@@ -488,16 +410,13 @@ export const StudentsView: React.FC = () => {
         isOpen={isRapidScanOpen}
         onClose={() => setIsRapidScanOpen(false)}
         cardlessStudents={cardlessStudents}
-        onCardScannedForInventory={handleCardScannedForInventory}
         onCardScannedForStudent={handleCardScannedForStudent}
-        existingInventoryCount={inventoryCards.length}
       />
 
-      {/* Modal: Bulk Student Import with Sequential Auto-Pairing */}
+      {/* Modal: Bulk Student Import */}
       <BulkStudentImportModal
         isOpen={isBulkImportOpen}
         onClose={() => setIsBulkImportOpen(false)}
-        availableCards={unassignedCards}
         onImport={handleBulkImport}
       />
     </div>

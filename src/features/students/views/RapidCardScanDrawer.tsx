@@ -10,20 +10,15 @@ export interface RapidCardScanDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   cardlessStudents: StudentRecord[];
-  onCardScannedForInventory: (uid: string) => { success: boolean; message: string; cardNumber?: number };
   onCardScannedForStudent: (studentId: string, uid: string) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string };
-  existingInventoryCount: number;
 }
 
 export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
   isOpen,
   onClose,
   cardlessStudents,
-  onCardScannedForInventory,
   onCardScannedForStudent,
-  existingInventoryCount,
 }) => {
-  const [scanMode, setScanMode] = useState<'inventory' | 'queue'>('inventory');
   const [inputValue, setInputValue] = useState('');
   const [batchHistory, setBatchHistory] = useState<
     Array<{ uid: string; label: string; time: string; success: boolean }>
@@ -37,7 +32,6 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
       setInputValue('');
       setBatchHistory([]);
       setCurrentStudentIndex(0);
-      setScanMode(cardlessStudents.length > 0 ? 'queue' : 'inventory');
       const timer = setTimeout(() => inputRef.current?.focus(), 120);
       return () => clearTimeout(timer);
     }
@@ -62,44 +56,25 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
         second: '2-digit',
       });
 
-      if (scanMode === 'inventory') {
-        const res = onCardScannedForInventory(rawUid);
-        if (res.success) {
-          soundManager.playSuccessBeep();
-          setBatchHistory((prev) => [
-            { uid: rawUid, label: `Card #${res.cardNumber || prev.length + 1}`, time, success: true },
-            ...prev,
-          ]);
-          toast.success(res.message);
-        } else {
-          soundManager.playErrorBuzz();
-          setBatchHistory((prev) => [
-            { uid: rawUid, label: 'Duplicate UID', time, success: false },
-            ...prev,
-          ]);
-          toast.error(res.message);
-        }
-      } else {
-        const targetStudent = cardlessStudents[currentStudentIndex];
-        if (!targetStudent) {
-          soundManager.playErrorBuzz();
-          toast.info('All cardless students in queue have been assigned.');
-          return;
-        }
+      const targetStudent = cardlessStudents[currentStudentIndex];
+      if (!targetStudent) {
+        soundManager.playErrorBuzz();
+        toast.info('All cardless students in queue have been assigned.');
+        return;
+      }
 
-        const res = await onCardScannedForStudent(targetStudent.id, rawUid);
-        if (res.success) {
-          soundManager.playSuccessBeep();
-          setBatchHistory((prev) => [
-            { uid: rawUid, label: `${targetStudent.name} (${targetStudent.student_id})`, time, success: true },
-            ...prev,
-          ]);
-          toast.success(`Card linked to ${targetStudent.name}`);
-          setCurrentStudentIndex((prev) => prev + 1);
-        } else {
-          soundManager.playErrorBuzz();
-          toast.error(res.message);
-        }
+      const res = await onCardScannedForStudent(targetStudent.id, rawUid);
+      if (res.success) {
+        soundManager.playSuccessBeep();
+        setBatchHistory((prev) => [
+          { uid: rawUid, label: `${targetStudent.name} (${targetStudent.student_id})`, time, success: true },
+          ...prev,
+        ]);
+        toast.success(`Card linked to ${targetStudent.name}`);
+        setCurrentStudentIndex((prev) => prev + 1);
+      } else {
+        soundManager.playErrorBuzz();
+        toast.error(res.message);
       }
     }
   };
@@ -113,7 +88,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Rapid card scanner"
-      description="Continuous USB reader capture. Scans register and advance without mouse clicks."
+      description={`Continuous USB reader capture. ${remainingCount} student${remainingCount === 1 ? '' : 's'} awaiting cards.`}
       maxWidth="lg"
       footer={
         <div className="flex items-center justify-between">
@@ -131,129 +106,21 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
       }
     >
       <div className="space-y-4" onClick={handleContainerClick}>
-        {/* Mode Switcher: Clean segmented track */}
-        <div className="flex rounded-xl bg-[#F6F4F8] p-1 border border-[#E5E0EB]">
-          <button
-            type="button"
-            onClick={() => {
-              setScanMode('queue');
-              setTimeout(() => inputRef.current?.focus(), 50);
-            }}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs transition-all ${
-              scanMode === 'queue'
-                ? 'bg-white text-[#7026B7] font-bold shadow-xs'
-                : 'text-[#756883] hover:text-[#24133F]'
-            }`}
-          >
-            <span>Student queue</span>
-            {cardlessStudents.length > 0 && (
-              <span className="ml-1.5 text-[11px] text-[#756883] tabular-nums font-semibold">
-                ({remainingCount} pending)
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setScanMode('inventory');
-              setTimeout(() => inputRef.current?.focus(), 50);
-            }}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs transition-all ${
-              scanMode === 'inventory'
-                ? 'bg-white text-[#7026B7] font-bold shadow-xs'
-                : 'text-[#756883] hover:text-[#24133F]'
-            }`}
-          >
-            <span>Inventory pool</span>
-            <span className="ml-1.5 text-[11px] text-[#756883] tabular-nums font-semibold">
-              ({existingInventoryCount} in pool)
-            </span>
-          </button>
-        </div>
-
         {/* Operational Focus Workstation with Hawi Personality */}
         <div className="rounded-2xl border border-[#E5E0EB] bg-white p-4 sm:p-5 space-y-4">
-          {scanMode === 'queue' ? (
-            currentStudent ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between border-b border-[#F1EEF4] pb-2.5">
-                  <span className="text-xs font-semibold text-[#756883]">
-                    Assigning Student {currentStudentIndex + 1} of {cardlessStudents.length}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 text-xs text-amber-700 font-semibold">
-                    <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                    Waiting for card tap
-                  </span>
-                </div>
-
-                {/* Hawi side-by-side with student target */}
-                <div className="flex items-center gap-4">
-                  <img
-                    src={hawiTapCardImg}
-                    alt="Hawi Tapping Card"
-                    className="h-20 w-20 shrink-0 object-contain drop-shadow-sm select-none"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-lg sm:text-xl font-extrabold text-[#24133F] tracking-tight leading-snug truncate">
-                      {currentStudent.name}
-                    </h3>
-                    <p className="text-xs text-[#756883] font-medium mt-0.5">
-                      <span className="font-mono text-[#24133F] font-bold">{currentStudent.student_id}</span>
-                      {' · '}
-                      {currentStudent.course}
-                      {' · '}
-                      Year {currentStudent.year_level}
-                    </p>
-                    <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F4EFFB] text-[11px] font-bold text-[#7026B7]">
-                      <span>Tap card on USB reader to bind</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Queue preview: Next students in line */}
-                {upcomingStudents.length > 0 && (
-                  <div className="pt-2.5 border-t border-[#F1EEF4]">
-                    <p className="text-[11px] font-semibold text-[#756883] mb-1.5">Next in line:</p>
-                    <div className="space-y-1">
-                      {upcomingStudents.map((st, i) => (
-                        <div key={st.id} className="flex items-center justify-between text-xs text-[#756883]">
-                          <span className="font-medium text-[#24133F]">
-                            {currentStudentIndex + 2 + i}. {st.name}
-                          </span>
-                          <span className="font-mono text-[11px] text-[#A59AAB]">{st.student_id}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="py-4 flex items-center gap-4 text-left">
-                <img
-                  src={hawiCelebrateImg}
-                  alt="Hawi Celebrate"
-                  className="h-16 w-16 shrink-0 object-contain select-none"
-                />
-                <div>
-                  <h4 className="text-sm font-bold text-[#16883F]">Queue complete!</h4>
-                  <p className="text-xs text-[#756883] mt-0.5">
-                    All students in this queue have been assigned physical RFID cards.
-                  </p>
-                </div>
-              </div>
-            )
-          ) : (
+          {currentStudent ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between border-b border-[#F1EEF4] pb-2.5">
-                <span className="text-xs font-semibold text-[#756883]">Card inventory intake</span>
-                <span className="inline-flex items-center gap-1.5 text-xs text-emerald-700 font-semibold">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Scanner listening
+                <span className="text-xs font-semibold text-[#756883]">
+                  Assigning Student {currentStudentIndex + 1} of {cardlessStudents.length}
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-xs text-amber-700 font-semibold">
+                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                  Waiting for card tap
                 </span>
               </div>
 
-              {/* Hawi side-by-side with inventory metrics */}
+              {/* Hawi side-by-side with student target */}
               <div className="flex items-center gap-4">
                 <img
                   src={hawiTapCardImg}
@@ -261,14 +128,51 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
                   className="h-20 w-20 shrink-0 object-contain drop-shadow-sm select-none"
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-[#756883] font-medium">Ready in inventory pool</p>
-                  <p className="text-2xl font-extrabold tracking-tight text-[#7026B7] tabular-nums mt-0.5">
-                    {existingInventoryCount + batchHistory.filter((b) => b.success).length} cards
+                  <h3 className="text-lg sm:text-xl font-extrabold text-[#24133F] tracking-tight leading-snug truncate">
+                    {currentStudent.name}
+                  </h3>
+                  <p className="text-xs text-[#756883] font-medium mt-0.5">
+                    <span className="font-mono text-[#24133F] font-bold">{currentStudent.student_id}</span>
+                    {' · '}
+                    {currentStudent.course}
+                    {' · '}
+                    Year {currentStudent.year_level}
                   </p>
-                  <p className="text-xs text-[#756883] mt-1">
-                    Tap any unprogrammed card on the reader to record it into the pool.
-                  </p>
+                  <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F4EFFB] text-[11px] font-bold text-[#7026B7]">
+                    <span>Tap card on USB reader to bind</span>
+                  </div>
                 </div>
+              </div>
+
+              {/* Queue preview: Next students in line */}
+              {upcomingStudents.length > 0 && (
+                <div className="pt-2.5 border-t border-[#F1EEF4]">
+                  <p className="text-[11px] font-semibold text-[#756883] mb-1.5">Next in line:</p>
+                  <div className="space-y-1">
+                    {upcomingStudents.map((st, i) => (
+                      <div key={st.id} className="flex items-center justify-between text-xs text-[#756883]">
+                        <span className="font-medium text-[#24133F]">
+                          {currentStudentIndex + 2 + i}. {st.name}
+                        </span>
+                        <span className="font-mono text-[11px] text-[#A59AAB]">{st.student_id}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="py-4 flex items-center gap-4 text-left">
+              <img
+                src={hawiCelebrateImg}
+                alt="Hawi Celebrate"
+                className="h-16 w-16 shrink-0 object-contain select-none"
+              />
+              <div>
+                <h4 className="text-sm font-bold text-[#16883F]">Queue complete!</h4>
+                <p className="text-xs text-[#756883] mt-0.5">
+                  All active students have been assigned physical RFID cards.
+                </p>
               </div>
             </div>
           )}
