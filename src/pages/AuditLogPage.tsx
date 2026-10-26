@@ -86,7 +86,7 @@ export function AuditLogPage() {
       const actionLabel = isTimeIn ? 'Time In Recorded' : 'Time Out Recorded';
       const badgeClass = isTimeIn
         ? 'bg-[#10B981] text-white'
-        : 'bg-[#3B82F6] text-white';
+        : 'bg-[#EF4444] text-white';
       const studentName = rec.student?.name || 'Student';
       const studentNumber = rec.student?.student_id || rec.student_id.slice(0, 8);
       const sessionName = rec.session?.name || rec.session_id.slice(0, 8);
