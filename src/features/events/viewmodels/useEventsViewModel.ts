@@ -102,6 +102,11 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
       setFormError('End date must be on or after the start date.');
       return;
     }
+    const conflict = events.find((e) => startDate <= e.end_date && endDate >= e.start_date);
+    if (conflict) {
+      setFormError(`Date conflict: Overlaps with existing event "${conflict.name}" (${conflict.start_date} to ${conflict.end_date}). Department events cannot overlap.`);
+      return;
+    }
     setFormError(null);
     setIsSubmitting(true);
     try {
