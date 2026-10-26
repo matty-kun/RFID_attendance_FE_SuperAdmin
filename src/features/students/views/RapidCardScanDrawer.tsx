@@ -179,11 +179,10 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
 
           {/* HID Keystroke Input Capture */}
           <div className="pt-2 border-t border-[#F1EEF4]">
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="mb-1.5">
               <label htmlFor="usb-scanner-input" className="text-xs font-bold text-[#24133F]">
                 USB scanner listener
               </label>
-              <span className="text-[11px] text-[#7026B7] font-semibold">Focus retained automatically</span>
             </div>
             <input
               id="usb-scanner-input"
