@@ -11,7 +11,6 @@ import type { StudentRecord } from '../models';
 import {
   Search,
   Radio,
-  RefreshCw,
   ArchiveRestore,
 } from 'lucide-react';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
@@ -112,15 +111,6 @@ export const StudentsView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => void loadStudents()}
-            isLoading={isLoading}
-            leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
-          >
-            Refresh
-          </Button>
           <RegisterActionsDropdown
             onAddStudent={() => setIsAddDrawerOpen(true)}
             onRapidScan={() => setIsRapidScanOpen(true)}
