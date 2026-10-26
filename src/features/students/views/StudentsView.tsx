@@ -15,6 +15,7 @@ import {
   Link as LinkIcon,
   Radio,
   RefreshCw,
+  ArchiveRestore,
 } from 'lucide-react';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
 import hawiFindingImg from '../../../assets/illustrations/Hawi Finding.png';
@@ -40,6 +41,9 @@ export const StudentsView: React.FC = () => {
     setIsRapidScanOpen,
     isBulkImportOpen,
     setIsBulkImportOpen,
+    archivedStudentIds,
+    handleArchiveStudent,
+    handleRestoreStudent,
     handleRegisterStudent,
     handleCardScannedForInventory,
     handleCardScannedForStudent,
@@ -51,18 +55,30 @@ export const StudentsView: React.FC = () => {
     loadStudents,
   } = useStudentsViewModel();
 
+  const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
   const [isCardPoolOpen, setIsCardPoolOpen] = useState(false);
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<StudentRecord | null>(null);
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
   const [courseFilter, setCourseFilter] = useState('all');
   const [rfidFilter, setRfidFilter] = useState('all');
 
-  // Stats calculation from real backend records
-  const verifiedCount = useMemo(() => students.filter((s) => Boolean(s.rfid_uid)).length, [students]);
-  const unverifiedCount = useMemo(() => students.filter((s) => !s.rfid_uid).length, [students]);
+  // Split into active and archived cohorts
+  const activeStudents = useMemo(
+    () => filteredStudents.filter((s) => !archivedStudentIds.includes(s.id)),
+    [filteredStudents, archivedStudentIds]
+  );
+
+  const archivedStudents = useMemo(
+    () => filteredStudents.filter((s) => archivedStudentIds.includes(s.id)),
+    [filteredStudents, archivedStudentIds]
+  );
+
+  // Stats calculation for active students
+  const verifiedCount = useMemo(() => activeStudents.filter((s) => Boolean(s.rfid_uid)).length, [activeStudents]);
+  const unverifiedCount = useMemo(() => activeStudents.filter((s) => !s.rfid_uid).length, [activeStudents]);
   const pairableCount = useMemo(
-    () => Math.min(unassignedCards.length, cardlessStudents.length),
-    [unassignedCards.length, cardlessStudents.length]
+    () => Math.min(unassignedCards.length, cardlessStudents.filter((s) => !archivedStudentIds.includes(s.id)).length),
+    [unassignedCards.length, cardlessStudents, archivedStudentIds]
   );
 
   const courses = useMemo(
@@ -70,13 +86,15 @@ export const StudentsView: React.FC = () => {
     [students]
   );
 
-  const visibleStudents = filteredStudents.filter(
+  const currentTabStudents = activeTab === 'active' ? activeStudents : archivedStudents;
+
+  const visibleStudents = currentTabStudents.filter(
     (student) =>
       (courseFilter === 'all' || student.course === courseFilter) &&
       (rfidFilter === 'all' || (rfidFilter === 'verified' ? Boolean(student.rfid_uid) : !student.rfid_uid))
   );
 
-  // Keep active profile student synced with latest student data (e.g. after unlink/link)
+  // Keep active profile student synced with latest student data (e.g. after unlink/link/archive)
   const activeProfileStudent = useMemo(() => {
     if (!selectedStudentForProfile) return null;
     return students.find((s) => s.id === selectedStudentForProfile.id) || selectedStudentForProfile;
@@ -128,28 +146,28 @@ export const StudentsView: React.FC = () => {
       {/* KPI Headline Metrics */}
       <div className="rounded-2xl border border-[#E5E0EB] bg-white grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-[#E5E0EB]">
         <div className="p-4 sm:p-5">
-          <p className="text-xs font-medium text-[#756883]">Total students</p>
+          <p className="text-xs font-medium text-[#756883]">Active students</p>
           <p className="text-2xl font-bold tracking-tight text-[#24133F] mt-1 tabular-nums">
-            {isLoading && students.length === 0 ? '—' : total.toLocaleString()}
+            {isLoading && students.length === 0 ? '—' : activeStudents.length.toLocaleString()}
           </p>
-          <p className="text-[11px] text-[#A59AAB] mt-0.5">Enrolled student roster</p>
+          <p className="text-[11px] text-[#A59AAB] mt-0.5">Enrolled active roster</p>
         </div>
 
         <div className="p-4 sm:p-5">
-          <p className="text-xs font-medium text-[#756883]">Verified RFID cards (current page)</p>
+          <p className="text-xs font-medium text-[#756883]">Verified RFID cards</p>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-bold tracking-tight text-[#16883F] tabular-nums">
               {isLoading && students.length === 0 ? '—' : verifiedCount.toLocaleString()}
             </span>
             <span className="text-[11px] font-semibold text-emerald-700">
-              {students.length > 0 ? `${Math.round((verifiedCount / students.length) * 100)}%` : '0%'}
+              {activeStudents.length > 0 ? `${Math.round((verifiedCount / activeStudents.length) * 100)}%` : '0%'}
             </span>
           </div>
           <p className="text-[11px] text-[#A59AAB] mt-0.5">Active cards in circulation</p>
         </div>
 
         <div className="p-4 sm:p-5">
-          <p className="text-xs font-medium text-[#756883]">No card assigned (current page)</p>
+          <p className="text-xs font-medium text-[#756883]">No card assigned</p>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-bold tracking-tight text-[#24133F] tabular-nums">
               {isLoading && students.length === 0 ? '—' : unverifiedCount.toLocaleString()}
@@ -161,7 +179,7 @@ export const StudentsView: React.FC = () => {
             )}
           </div>
           <p className="text-[11px] text-[#A59AAB] mt-0.5">
-            {unverifiedCount === 0 ? 'All listed students equipped' : 'Awaiting card pairing'}
+            {unverifiedCount === 0 ? 'All active students equipped' : 'Awaiting card pairing'}
           </p>
         </div>
 
@@ -195,41 +213,70 @@ export const StudentsView: React.FC = () => {
 
       {/* Main Student Section */}
       <div className="space-y-3">
-        {/* Controls Bar */}
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[310px]">
-            <Search className="h-4 w-4" />
-            <span className="sr-only">Search students</span>
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(event) => {
-                setPage(1);
-                setSearchQuery(event.target.value);
-              }}
-              placeholder="Search by name, ID or RFID…"
-              className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
+        {/* Active vs Archived Segmented Tab Toggle & Controls Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          {/* Segmented Tab Toggle */}
+          <div className="inline-flex items-center gap-1 p-1 bg-[#FAF8FC] border border-[#E5E0EB] rounded-2xl self-start">
+            <button
+              type="button"
+              onClick={() => setActiveTab('active')}
+              className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                activeTab === 'active'
+                  ? 'bg-white text-[#7026B7] shadow-xs'
+                  : 'text-[#756883] hover:text-[#24133F]'
+              }`}
+            >
+              Active Students ({activeStudents.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('archived')}
+              className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                activeTab === 'archived'
+                  ? 'bg-white text-[#7026B7] shadow-xs'
+                  : 'text-[#756883] hover:text-[#24133F]'
+              }`}
+            >
+              Archived ({archivedStudents.length})
+            </button>
+          </div>
+
+          {/* Controls Bar: Search & Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:w-[260px]">
+              <Search className="h-4 w-4" />
+              <span className="sr-only">Search students</span>
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => {
+                  setPage(1);
+                  setSearchQuery(event.target.value);
+                }}
+                placeholder="Search by name, ID or RFID…"
+                className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
+              />
+            </label>
+
+            <Dropdown
+              value={courseFilter}
+              onChange={(val) => setCourseFilter(val)}
+              options={[
+                { value: 'all', label: 'All Courses' },
+                ...courses.map((c) => ({ value: c, label: c })),
+              ]}
             />
-          </label>
 
-          <Dropdown
-            value={courseFilter}
-            onChange={(val) => setCourseFilter(val)}
-            options={[
-              { value: 'all', label: 'All Courses' },
-              ...courses.map((c) => ({ value: c, label: c })),
-            ]}
-          />
-
-          <Dropdown
-            value={rfidFilter}
-            onChange={(val) => setRfidFilter(val)}
-            options={[
-              { value: 'all', label: 'All RFID status' },
-              { value: 'verified', label: 'Assigned / Verified' },
-              { value: 'no-card', label: 'Unassigned (No card)' },
-            ]}
-          />
+            <Dropdown
+              value={rfidFilter}
+              onChange={(val) => setRfidFilter(val)}
+              options={[
+                { value: 'all', label: 'All RFID status' },
+                { value: 'verified', label: 'Assigned / Verified' },
+                { value: 'no-card', label: 'Unassigned (No card)' },
+              ]}
+            />
+          </div>
         </div>
 
         {/* Students Table */}
@@ -254,105 +301,132 @@ export const StudentsView: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {visibleStudents.map((student) => (
-                <tr
-                  key={student.id}
-                  onClick={() => {
-                    setSelectedStudentForProfile(student);
-                    setIsProfileDrawerOpen(true);
-                  }}
-                  className="border-b border-[#E9EDF4] last:border-b-0 hover:bg-[#FAF8FC] cursor-pointer transition-colors group"
-                >
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#DFE8F8] text-[10px] font-extrabold text-[#294B85] group-hover:scale-105 transition-transform">
-                        {initials(student.name)}
-                      </span>
-                      <div>
-                        <p className="font-bold text-[#24133F] leading-snug group-hover:text-[#7026B7] transition-colors">
-                          {student.name}
-                        </p>
-                        <p className="text-[10px] font-mono text-[#756883]">{student.student_id}</p>
+              {visibleStudents.map((student) => {
+                const isStudentArchived = archivedStudentIds.includes(student.id);
+                return (
+                  <tr
+                    key={student.id}
+                    onClick={() => {
+                      setSelectedStudentForProfile(student);
+                      setIsProfileDrawerOpen(true);
+                    }}
+                    className="border-b border-[#E9EDF4] last:border-b-0 hover:bg-[#FAF8FC] cursor-pointer transition-colors group"
+                  >
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#DFE8F8] text-[10px] font-extrabold text-[#294B85] group-hover:scale-105 transition-transform">
+                          {initials(student.name)}
+                        </span>
+                        <div>
+                          <p className="font-bold text-[#24133F] leading-snug group-hover:text-[#7026B7] transition-colors">
+                            {student.name}
+                          </p>
+                          <p className="text-[10px] font-mono text-[#756883]">{student.student_id}</p>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 font-semibold text-[#24133F]">{student.course || '—'}</td>
-                  <td className="px-3 py-3 text-[#756883]">{yearLabel(student.year_level)}</td>
-                  <td className="px-3 py-3">
-                    {student.rfid_uid ? (
-                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-900 font-mono text-[11px] font-semibold">
-                        <Radio className="w-3 h-3 text-[#7026B7]" />
-                        {student.rfid_uid}
-                      </div>
-                    ) : (
-                      <span className="text-[#A59AAB] text-[11px] italic">No card linked</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1 font-semibold ${
-                        student.rfid_uid
-                          ? 'bg-[#E4F7EB] text-[#16883F]'
-                          : 'bg-[#FFF2DE] text-[#E58A00]'
-                      }`}
-                    >
-                      <i
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          student.rfid_uid ? 'bg-[#17B556]' : 'bg-[#F59E0B]'
-                        }`}
-                      />
-                      {student.rfid_uid ? 'Verified' : 'No card'}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    {student.rfid_uid ? (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedStudentForProfile(student);
-                          setIsProfileDrawerOpen(true);
-                        }}
-                        title="Card linked. Click to view profile or unlink card."
-                        aria-label={`Card linked to ${student.name}`}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7026B7] bg-[#F2ECF9] border border-[#D8B4ED] px-2 py-1 rounded-lg hover:bg-[#EBE2F9] transition-colors cursor-pointer" 
-                      >
-                        <LinkIcon className="w-3 h-3" />
-                        Linked
-                      </button>
-                    ) : (
-                      <div className="flex items-center justify-end gap-1.5">
-                        {unassignedCards.length > 0 && (
+                    </td>
+                    <td className="px-3 py-3 font-semibold text-[#24133F]">{student.course || '—'}</td>
+                    <td className="px-3 py-3 text-[#756883]">{yearLabel(student.year_level)}</td>
+                    <td className="px-3 py-3">
+                      {student.rfid_uid ? (
+                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-900 font-mono text-[11px] font-semibold">
+                          <Radio className="w-3 h-3 text-[#7026B7]" />
+                          {student.rfid_uid}
+                        </div>
+                      ) : (
+                        <span className="text-[#A59AAB] text-[11px] italic">
+                          {isStudentArchived ? 'Unlinked (Archived)' : 'No card linked'}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3">
+                      {isStudentArchived ? (
+                        <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                          <i className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                          Archived
+                        </span>
+                      ) : (
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1 font-semibold ${
+                            student.rfid_uid
+                              ? 'bg-[#E4F7EB] text-[#16883F]'
+                              : 'bg-[#FFF2DE] text-[#E58A00]'
+                          }`}
+                        >
+                          <i
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              student.rfid_uid ? 'bg-[#17B556]' : 'bg-[#F59E0B]'
+                            }`}
+                          />
+                          {student.rfid_uid ? 'Verified' : 'No card'}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      {isStudentArchived ? (
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleQuickPair(student.id, unassignedCards[0].uid);
+                              void handleRestoreStudent(student.id);
                             }}
-                            title="Updating existing student RFID cards is not supported by the backend API"
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg opacity-60 cursor-not-allowed" 
+                            title="Restore student to active roster"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
                           >
-                            <LinkIcon className="w-3 h-3" />
-                            Pair Pool #{unassignedCards[0].cardNumber}
+                            <ArchiveRestore className="w-3 h-3" />
+                            Restore
                           </button>
-                        )}
+                        </div>
+                      ) : student.rfid_uid ? (
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setIsRapidScanOpen(true);
+                            setSelectedStudentForProfile(student);
+                            setIsProfileDrawerOpen(true);
                           }}
-                          title="Scan blank cards into pool" 
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7026B7] bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-1 rounded-lg transition-colors"
+                          title="Card linked. Click to view profile or unlink card."
+                          aria-label={`Card linked to ${student.name}`}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7026B7] bg-[#F2ECF9] border border-[#D8B4ED] px-2 py-1 rounded-lg hover:bg-[#EBE2F9] transition-colors cursor-pointer"
                         >
-                          <Zap className="w-3 h-3" />
-                          Scan Pool
+                          <LinkIcon className="w-3 h-3" />
+                          Linked
                         </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                      ) : (
+                        <div className="flex items-center justify-end gap-1.5">
+                          {unassignedCards.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleQuickPair(student.id, unassignedCards[0].uid);
+                              }}
+                              title={`Pair next card #${unassignedCards[0].cardNumber} from pool`}
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7026B7] bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <LinkIcon className="w-3 h-3" />
+                              Pair Pool #{unassignedCards[0].cardNumber}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsRapidScanOpen(true);
+                            }}
+                            title="Scan blank cards into pool"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7026B7] bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Zap className="w-3 h-3" />
+                            Scan Pool
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
 
@@ -364,16 +438,24 @@ export const StudentsView: React.FC = () => {
                 className={`w-24 h-24 object-contain mb-3 ${isLoading ? 'animate-pulse' : ''}`}
               />
               <p className="text-sm font-bold text-[#24133F]">
-                {isLoading ? 'Loading students…' : error ? 'Unable to load students.' : 'No students found.'}
+                {isLoading
+                  ? 'Loading students…'
+                  : error
+                  ? 'Unable to load students.'
+                  : activeTab === 'archived'
+                  ? 'No archived students.'
+                  : 'No students found.'}
               </p>
               <p className="text-xs text-[#756883] max-w-xs mt-1">
                 {error
                   ? 'Check your backend connection and try again.'
+                  : activeTab === 'archived'
+                  ? 'Students you archive will appear here safely stored.'
                   : searchQuery || courseFilter !== 'all' || rfidFilter !== 'all'
                   ? 'Try clearing or relaxing your filters.'
                   : 'Get started by adding a student or importing a bulk CSV roster.'}
               </p>
-              {!isLoading && !error && !searchQuery && courseFilter === 'all' && (
+              {!isLoading && !error && !searchQuery && courseFilter === 'all' && activeTab === 'active' && (
                 <div className="flex items-center gap-2 mt-4">
                   <Button variant="primary" size="sm" onClick={() => setIsAddDrawerOpen(true)}>
                     + Add Student
@@ -388,7 +470,7 @@ export const StudentsView: React.FC = () => {
 
           <div className="flex items-center justify-between gap-3 border-t border-[#E9EDF4] px-3 py-3 text-xs text-[#756883]">
             <span>
-              {total.toLocaleString()} students · Page {page} of {Math.max(1, Math.ceil(total / 25))}
+              {activeTab === 'active' ? activeStudents.length.toLocaleString() : archivedStudents.length.toLocaleString()} {activeTab} students · Page {page} of {Math.max(1, Math.ceil(total / 25))}
             </span>
             <div className="flex gap-2">
               <Button
@@ -422,6 +504,9 @@ export const StudentsView: React.FC = () => {
         onQuickPair={handleQuickPair}
         onUpdateStudent={handleUpdateStudent}
         onOpenRapidScan={() => setIsRapidScanOpen(true)}
+        isArchived={activeProfileStudent ? archivedStudentIds.includes(activeProfileStudent.id) : false}
+        onArchiveStudent={handleArchiveStudent}
+        onRestoreStudent={handleRestoreStudent}
       />
 
       {/* Slide-in Drawer: Card Inventory Pool */}

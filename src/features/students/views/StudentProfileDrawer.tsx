@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Drawer } from '../../../components/common/Drawer';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
@@ -14,7 +14,8 @@ import {
   Clock,
   MapPin,
   Pencil,
-  User,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
@@ -45,6 +46,9 @@ export interface StudentProfileDrawerProps {
   onQuickPair: (studentId: string, cardUid: string) => void;
   onOpenRapidScan: () => void;
   onUpdateStudent?: (studentId: string, payload: { name: string; course: string; year_level: number }) => Promise<any>;
+  isArchived?: boolean;
+  onArchiveStudent?: (studentId: string) => void;
+  onRestoreStudent?: (studentId: string) => void;
 }
 
 // Generate deterministic event scan history based on student record
@@ -190,26 +194,57 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   onQuickPair,
   onOpenRapidScan,
   onUpdateStudent,
+  isArchived = false,
+  onArchiveStudent,
+  onRestoreStudent,
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'time_in' | 'time_out'>('all');
   const [copiedUid, setCopiedUid] = useState(false);
   const [isUnlinkModalOpen, setIsUnlinkModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
+
+  // Cache student reference so the drawer can animate out smoothly when closing
+  const activeStudentRef = useRef<StudentRecord | null>(student);
+  if (student) {
+    activeStudentRef.current = student;
+  }
+  const currentStudent = student || activeStudentRef.current;
+
+  // Inline editing state
+  const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editCourse, setEditCourse] = useState('BS Information Technology');
   const [editYearLevel, setEditYearLevel] = useState('1');
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleOpenEdit = () => {
+  // Reset edit values when opening or student changes
+  useEffect(() => {
+    if (currentStudent) {
+      setEditName(currentStudent.name);
+      setEditCourse(currentStudent.course || 'BS Information Technology');
+      setEditYearLevel(String(currentStudent.year_level || 1));
+      setIsEditing(false);
+    }
+  }, [currentStudent]);
+
+  const handleStartEdit = () => {
     if (!currentStudent) return;
     setEditName(currentStudent.name);
     setEditCourse(currentStudent.course || 'BS Information Technology');
     setEditYearLevel(String(currentStudent.year_level || 1));
-    setIsEditModalOpen(true);
+    setIsEditing(true);
   };
 
-  const handleSaveEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCancelEdit = () => {
+    if (currentStudent) {
+      setEditName(currentStudent.name);
+      setEditCourse(currentStudent.course || 'BS Information Technology');
+      setEditYearLevel(String(currentStudent.year_level || 1));
+    }
+    setIsEditing(false);
+  };
+
+  const handleSaveInlineEdit = async () => {
     if (!currentStudent || !editName.trim()) return;
     setIsSaving(true);
     try {
@@ -226,20 +261,13 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         course: editCourse,
         year_level: Number(editYearLevel),
       };
-      setIsEditModalOpen(false);
+      setIsEditing(false);
     } catch {
       // toast shown by viewmodel
     } finally {
       setIsSaving(false);
     }
   };
-
-  // Cache student reference so the drawer can animate out smoothly when closing
-  const activeStudentRef = useRef<StudentRecord | null>(student);
-  if (student) {
-    activeStudentRef.current = student;
-  }
-  const currentStudent = student || activeStudentRef.current;
 
   const scans = useMemo(() => generateStudentScans(currentStudent), [currentStudent]);
 
@@ -282,7 +310,10 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   return (
     <Drawer
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => {
+        setIsEditing(false);
+        onClose();
+      }}
       maxWidth="2xl"
       hideHeader
       noPadding
@@ -291,29 +322,84 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         {/* Duolingo-style Top Hero Banner with Smooth Fog Transition */}
         <div className="relative bg-[#78C9FC] px-6 pt-5 pb-0 flex flex-col justify-between min-h-[230px] overflow-hidden">
           {/* Top Bar inside banner */}
-          <div className="flex items-center justify-between z-20">
-            <h2 className="text-2xl font-black text-[#15344F] tracking-tight">
-              {currentStudent.name}
-            </h2>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleOpenEdit}
-                title="Edit Student Information"
-                className="flex h-9 items-center gap-1.5 px-3 rounded-xl bg-white/85 hover:bg-white text-[#15344F] shadow-xs active:scale-95 transition-all text-xs font-bold cursor-pointer"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close drawer"
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-[#15344F] shadow-xs active:scale-95 transition-all cursor-pointer"
-              >
-                <X className="h-5 w-5 stroke-[2.5]" />
-              </button>
-            </div>
+          <div className="flex items-center justify-between z-20 gap-3">
+            {!isEditing ? (
+              <>
+                <div className="flex items-center gap-2 min-w-0">
+                  <h2 className="text-2xl font-black text-[#15344F] tracking-tight truncate">
+                    {currentStudent.name}
+                  </h2>
+                  {isArchived && (
+                    <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
+                      Archived
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {!isArchived && (
+                    <button
+                      type="button"
+                      onClick={handleStartEdit}
+                      title="Edit Student Information Directly"
+                      className="flex h-9 items-center gap-1.5 px-3 rounded-xl bg-white/85 hover:bg-white text-[#15344F] shadow-xs active:scale-95 transition-all text-xs font-bold cursor-pointer"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Edit
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(false);
+                      onClose();
+                    }}
+                    aria-label="Close drawer"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-[#15344F] shadow-xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    <X className="h-5 w-5 stroke-[2.5]" />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Inline Name Editing Field */}
+                <div className="flex-1 mr-2">
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void handleSaveInlineEdit();
+                      if (e.key === 'Escape') handleCancelEdit();
+                    }}
+                    placeholder="Student Full Name"
+                    autoFocus
+                    className="w-full text-base sm:text-lg font-black text-[#15344F] tracking-tight bg-white border border-[#D8B4ED] rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#7026B7] shadow-xs"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                    className="h-9 px-3 rounded-xl bg-white/85 hover:bg-white text-[#756883] hover:text-[#24133F] text-xs font-bold transition-all cursor-pointer shadow-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveInlineEdit()}
+                    disabled={isSaving || !editName.trim()}
+                    className="h-9 px-3.5 rounded-xl bg-[#7026B7] hover:bg-[#5E1E9E] text-white text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    {isSaving ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Character standing in center of banner */}
@@ -335,87 +421,162 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         {/* Content Area Below Banner */}
         <div className="flex-1 p-5 pt-3 pb-8 space-y-4 relative z-20 bg-white">
           {/* Subheading Handle */}
-          <div>
+          <div className="flex items-center justify-between">
             <p className="text-xs font-extrabold text-[#756883] uppercase tracking-wider">
               @{currentStudent.student_id} · ENROLLED {currentStudent.created_at ? new Date(currentStudent.created_at).getFullYear() : '2023'}
             </p>
+            {isArchived && (
+              <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
+                Archived Record
+              </span>
+            )}
           </div>
 
-          {/* 3D Tactile Card Action Button (Signature components) */}
-          {currentStudent.rfid_uid ? (
-            <div className="flex items-center gap-2">
+          {/* Archived Banner / Quick Restore Bar */}
+          {isArchived ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3.5 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-extrabold text-amber-900">Student is Archived</p>
+                <p className="text-[11px] text-amber-700/90 mt-0.5">
+                  Historical attendance logs remain intact. Restore student to re-pair cards or register for future events.
+                </p>
+              </div>
               <Button
-                variant="secondary"
-                size="md"
-                onClick={handleCopyUid}
-                className="flex-1 font-mono text-xs justify-center"
-                leftIcon={copiedUid ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4 text-[#756883]" />}
+                variant="success"
+                size="sm"
+                onClick={() => {
+                  onRestoreStudent?.(currentStudent.id);
+                }}
+                leftIcon={<ArchiveRestore className="h-4 w-4" />}
+                className="shrink-0"
               >
-                Card UID: {currentStudent.rfid_uid}
-              </Button>
-
-              <Button
-                variant="danger"
-                size="md"
-                onClick={() => setIsUnlinkModalOpen(true)}
-                leftIcon={<Unlink className="h-4 w-4" />}
-                title="Unlink RFID Card"
-              >
-                Unlink
+                Restore
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              {availableCards.length > 0 && (
+            /* 3D Tactile Card Action Button */
+            currentStudent.rfid_uid ? (
+              <div className="flex items-center gap-2">
                 <Button
-                  variant="success"
+                  variant="secondary"
                   size="md"
-                  onClick={() => onQuickPair(currentStudent.id, availableCards[0].uid)}
-                  className="flex-1 justify-center"
-                  leftIcon={<LinkIcon className="h-4 w-4" />}
+                  onClick={handleCopyUid}
+                  className="flex-1 font-mono text-xs justify-center"
+                  leftIcon={copiedUid ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4 text-[#756883]" />}
                 >
-                  Pair Card #{availableCards[0].cardNumber}
+                  Card UID: {currentStudent.rfid_uid}
                 </Button>
-              )}
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => {
-                  onClose();
-                  onOpenRapidScan();
-                }}
-                leftIcon={<Zap className="h-4 w-4 fill-current" />}
-              >
-                Scan card
-              </Button>
-            </div>
+
+                <Button
+                  variant="danger"
+                  size="md"
+                  onClick={() => setIsUnlinkModalOpen(true)}
+                  leftIcon={<Unlink className="h-4 w-4" />}
+                  title="Unlink RFID Card"
+                >
+                  Unlink
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {availableCards.length > 0 && (
+                  <Button
+                    variant="success"
+                    size="md"
+                    onClick={() => onQuickPair(currentStudent.id, availableCards[0].uid)}
+                    className="flex-1 justify-center"
+                    leftIcon={<LinkIcon className="h-4 w-4" />}
+                  >
+                    Pair Card #{availableCards[0].cardNumber}
+                  </Button>
+                )}
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => {
+                    onClose();
+                    onOpenRapidScan();
+                  }}
+                  leftIcon={<Zap className="h-4 w-4 fill-current" />}
+                >
+                  Scan card
+                </Button>
+              </div>
+            )
           )}
 
-          {/* OVERVIEW SECTION (Academic Details) */}
+          {/* OVERVIEW SECTION (Academic Details: Inline Editable or View) */}
           <div className="pt-1">
-            <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase">
-              Overview
-            </p>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-              <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
-                <p className="text-[10px] font-bold text-[#756883] uppercase">Program / Course</p>
-                <p className="font-bold text-[#24133F] mt-0.5">{currentStudent.course || '—'}</p>
-              </div>
-              <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
-                <p className="text-[10px] font-bold text-[#756883] uppercase">Year Level</p>
-                <p className="font-bold text-[#24133F] mt-0.5">{yearLabel(currentStudent.year_level)}</p>
-              </div>
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase">
+                {isEditing ? 'Editing Academic Details' : 'Overview'}
+              </p>
+              {isEditing && (
+                <span className="text-[11px] font-semibold text-[#7026B7]">
+                  Select options below and click Save above
+                </span>
+              )}
             </div>
+
+            {!isEditing ? (
+              <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
+                  <p className="text-[10px] font-bold text-[#756883] uppercase">Program / Course</p>
+                  <p className="font-bold text-[#24133F] mt-0.5">{currentStudent.course || '—'}</p>
+                </div>
+                <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
+                  <p className="text-[10px] font-bold text-[#756883] uppercase">Year Level</p>
+                  <p className="font-bold text-[#24133F] mt-0.5">{yearLabel(currentStudent.year_level)}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div className="rounded-2xl border-2 border-[#7026B7]/30 bg-purple-50/40 p-2.5 space-y-1">
+                  <label className="text-[10px] font-extrabold text-[#7026B7] uppercase block">
+                    Program / Course
+                  </label>
+                  <Dropdown
+                    value={editCourse}
+                    onChange={setEditCourse}
+                    buttonClassName="h-10 w-full rounded-xl border-[#D8B4ED] text-xs bg-white"
+                    options={[
+                      { value: 'BS Information Technology', label: 'BS Information Technology' },
+                      { value: 'BS Computer Science', label: 'BS Computer Science' },
+                      { value: 'BS Information Systems', label: 'BS Information Systems' },
+                      { value: 'BS Computer Engineering', label: 'BS Computer Engineering' },
+                      { value: 'BS Business Administration', label: 'BS Business Administration' },
+                    ]}
+                  />
+                </div>
+                <div className="rounded-2xl border-2 border-[#7026B7]/30 bg-purple-50/40 p-2.5 space-y-1">
+                  <label className="text-[10px] font-extrabold text-[#7026B7] uppercase block">
+                    Year Level
+                  </label>
+                  <Dropdown
+                    value={editYearLevel}
+                    onChange={setEditYearLevel}
+                    buttonClassName="h-10 w-full rounded-xl border-[#D8B4ED] text-xs bg-white"
+                    options={[
+                      { value: '1', label: '1st Year' },
+                      { value: '2', label: '2nd Year' },
+                      { value: '3', label: '3rd Year' },
+                      { value: '4', label: '4th Year' },
+                      { value: '5', label: '5th Year' },
+                    ]}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* SCAN HISTORY SECTION WITH FOG BELOW */}
+          {/* SCAN HISTORY SECTION */}
           <div className="pt-2 space-y-2.5 relative">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase">
                 Scan History
               </p>
 
-              {/* Segmented Filter Pills (Replaces awkward dropdown menu on the side) */}
+              {/* Segmented Filter Pills */}
               {scans.length > 0 && (
                 <div className="inline-flex rounded-xl bg-[#FAF8FC] border border-[#E5E0EB] p-1 text-xs self-start sm:self-auto">
                   <button
@@ -455,7 +616,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               )}
             </div>
 
-            {/* Timeline: Natural flow scrolling with drawer all the way down */}
+            {/* Timeline */}
             <div>
               {groupedScans.length > 0 ? (
                 <div className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden shadow-xs divide-y divide-[#E5E0EB]">
@@ -478,7 +639,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                             key={scan.id}
                             className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-[#FAF8FC]/50 transition-colors"
                           >
-                            {/* Left: Session name & details */}
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="text-xs font-semibold text-[#24133F]">
@@ -504,7 +664,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                               </div>
                             </div>
 
-                            {/* Right: Exact timestamp & verification */}
                             <div className="text-right shrink-0">
                               {scan.timestamp ? (
                                 <p className="font-mono text-xs font-bold text-[#24133F] tabular-nums">
@@ -539,8 +698,45 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               )}
             </div>
           </div>
+
+          {/* ARCHIVE ACTION BAR (At bottom of drawer) */}
+          <div className="pt-4 border-t border-[#E5E0EB]">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-[#24133F]">Student Record Status</p>
+                <p className="text-[11px] text-[#756883] mt-0.5">
+                  {isArchived
+                    ? 'Student is archived. Restore anytime to re-enable card pairing and active rosters.'
+                    : 'Archive student to remove from active lists. Historical attendance records are permanently kept.'}
+                </p>
+              </div>
+
+              {isArchived ? (
+                <Button
+                  variant="success"
+                  size="sm"
+                  onClick={() => onRestoreStudent?.(currentStudent.id)}
+                  leftIcon={<ArchiveRestore className="h-3.5 w-3.5" />}
+                  className="shrink-0 self-start sm:self-auto"
+                >
+                  Restore Student
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsArchiveConfirmOpen(true)}
+                  leftIcon={<Archive className="h-3.5 w-3.5 text-[#756883]" />}
+                  className="shrink-0 self-start sm:self-auto text-xs text-[#756883] hover:text-rose-600 hover:border-rose-300"
+                >
+                  Archive Student
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
+
       {/* Unlink Reason Confirmation Modal */}
       <Modal
         isOpen={isUnlinkModalOpen}
@@ -599,93 +795,42 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
           </div>
         </div>
       </Modal>
-      {/* Edit Student Modal */}
+
+      {/* Archive Student Confirmation Modal */}
       <Modal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        title="Edit Student Information"
-        description={`Update academic records for ${currentStudent.student_id}.`}
-        maxWidth="md"
+        isOpen={isArchiveConfirmOpen}
+        onClose={() => setIsArchiveConfirmOpen(false)}
+        title="Archive Student"
+        description={`Are you sure you want to archive ${currentStudent.name} (${currentStudent.student_id})?`}
+        maxWidth="sm"
       >
-        <form onSubmit={handleSaveEdit} className="space-y-4 pt-1 text-left">
-          {/* Full Name */}
-          <div>
-            <label htmlFor="edit-student-name" className="mb-1.5 block text-xs font-bold text-[#24133F]">
-              Student Full Name
-            </label>
-            <div className="flex h-11 items-center gap-2.5 rounded-xl border border-[#D8B4ED] bg-white px-3.5 focus-within:border-[#7026B7] focus-within:ring-2 focus-within:ring-[#7026B7]/20">
-              <User className="h-4 w-4 text-[#756883] shrink-0" />
-              <input
-                id="edit-student-name"
-                type="text"
-                required
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                placeholder="Juan Dela Cruz"
-                className="h-full w-full bg-transparent text-xs font-semibold text-[#24133F] outline-none placeholder:text-[#A59CAC]"
-              />
-            </div>
-          </div>
-
-          {/* Course */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-[#24133F]">
-              Program / Course
-            </label>
-            <Dropdown
-              value={editCourse}
-              onChange={setEditCourse}
-              buttonClassName="h-11 w-full rounded-xl border-[#D8B4ED]"
-              options={[
-                { value: 'BS Information Technology', label: 'BS Information Technology' },
-                { value: 'BS Computer Science', label: 'BS Computer Science' },
-                { value: 'BS Information Systems', label: 'BS Information Systems' },
-                { value: 'BS Computer Engineering', label: 'BS Computer Engineering' },
-                { value: 'BS Business Administration', label: 'BS Business Administration' },
-              ]}
-            />
-          </div>
-
-          {/* Year Level */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-[#24133F]">
-              Year Level
-            </label>
-            <Dropdown
-              value={editYearLevel}
-              onChange={setEditYearLevel}
-              buttonClassName="h-11 w-full rounded-xl border-[#D8B4ED]"
-              options={[
-                { value: '1', label: '1st Year' },
-                { value: '2', label: '2nd Year' },
-                { value: '3', label: '3rd Year' },
-                { value: '4', label: '4th Year' },
-                { value: '5', label: '5th Year' },
-              ]}
-            />
-          </div>
-
-          {/* Form Actions */}
-          <div className="pt-2 flex items-center justify-end gap-2.5">
+        <div className="space-y-3 pt-1">
+          <p className="text-xs text-[#756883] leading-relaxed">
+            Archiving moves this student to the Archived roster. Any linked card will be returned to the inventory pool.
+            All historical event attendance records remain permanently preserved.
+          </p>
+          <div className="pt-2 flex items-center justify-end gap-2">
             <Button
-              type="button"
               variant="secondary"
-              size="md"
-              onClick={() => setIsEditModalOpen(false)}
-              disabled={isSaving}
+              size="sm"
+              onClick={() => setIsArchiveConfirmOpen(false)}
             >
               Cancel
             </Button>
             <Button
-              type="submit"
-              variant="primary"
-              size="md"
-              isLoading={isSaving}
+              variant="danger"
+              size="sm"
+              onClick={() => {
+                setIsArchiveConfirmOpen(false);
+                onArchiveStudent?.(currentStudent.id);
+                onClose();
+              }}
+              leftIcon={<Archive className="h-3.5 w-3.5" />}
             >
-              Save Changes
+              Archive Student
             </Button>
           </div>
-        </form>
+        </div>
       </Modal>
     </Drawer>
   );
