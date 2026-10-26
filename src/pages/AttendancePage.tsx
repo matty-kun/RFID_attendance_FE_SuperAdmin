@@ -592,8 +592,8 @@ export function AttendancePage() {
 
           <div className="flex items-center gap-2.5">
             {eventData.id === serverActiveId ? (
-              <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs font-bold text-[#10B981]">
-                <CheckCircle2 className="h-4 w-4" />
+              <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#E4F7EB] border border-[#17B556]/30 px-3 py-2 text-xs font-bold text-[#11883E]">
+                <CheckCircle2 className="h-4 w-4 text-[#17B556]" />
                 Active Campus Event
               </span>
             ) : (
@@ -731,7 +731,7 @@ export function AttendancePage() {
               <span
                 className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
                   eventData.status === 'Ongoing'
-                    ? 'bg-emerald-50 text-[#10B981]'
+                    ? 'bg-[#E4F7EB] text-[#11883E] border border-[#17B556]/20'
                     : eventData.status === 'Upcoming'
                     ? 'bg-purple-50 text-[#7026B7]'
                     : 'bg-slate-100 text-slate-600'
@@ -740,7 +740,7 @@ export function AttendancePage() {
                 <span
                   className={`h-2 w-2 rounded-full ${
                     eventData.status === 'Ongoing'
-                      ? 'bg-[#10B981]'
+                      ? 'bg-[#17B556]'
                       : eventData.status === 'Upcoming'
                       ? 'bg-[#7026B7]'
                       : 'bg-slate-400'
@@ -893,12 +893,12 @@ export function AttendancePage() {
 
                             <div className="flex items-center gap-2">
                               <span
-                                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white ${
+                                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
                                   session.status === 'Active'
-                                    ? 'bg-[#10B981]'
+                                    ? 'bg-[#17B556] text-white'
                                     : session.status === 'Upcoming'
-                                    ? 'bg-[#F59E0B]'
-                                    : 'bg-emerald-700'
+                                    ? 'bg-[#F59E0B] text-white'
+                                    : 'bg-[#E4F7EB] text-[#11883E] border border-[#17B556]/30'
                                 }`}
                               >
                                 {session.status}
@@ -1112,7 +1112,7 @@ export function AttendancePage() {
                           <span
                             className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
                               evRawStatus === 'ongoing'
-                                ? 'bg-emerald-50 text-[#10B981]'
+                                ? 'bg-[#E4F7EB] text-[#11883E] border border-[#17B556]/20'
                                 : evRawStatus === 'upcoming'
                                 ? 'bg-purple-50 text-[#7026B7]'
                                 : 'bg-slate-100 text-slate-600'
@@ -1121,7 +1121,7 @@ export function AttendancePage() {
                             <span
                               className={`h-1.5 w-1.5 rounded-full ${
                                 evRawStatus === 'ongoing'
-                                  ? 'bg-[#10B981]'
+                                  ? 'bg-[#17B556]'
                                   : evRawStatus === 'upcoming'
                                   ? 'bg-[#7026B7]'
                                   : 'bg-slate-400'
@@ -1145,8 +1145,8 @@ export function AttendancePage() {
 
                     <div className="flex items-center gap-2 self-end md:self-center shrink-0">
                       {isActiveCampus ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs font-bold text-emerald-700">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                        <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#E4F7EB] border border-[#17B556]/30 px-3 py-2 text-xs font-bold text-[#11883E]">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-[#17B556]" />
                           Active Event
                         </span>
                       ) : (
