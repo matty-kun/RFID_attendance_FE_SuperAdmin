@@ -1329,7 +1329,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   type="button"
                   onClick={handleNext}
                   disabled={currentStep === 2 && Boolean(dateConflict)}
-                  className="rounded-2xl bg-[#451475] px-6 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_0_#2B0C4A] hover:bg-[#38105F] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-2xl bg-[#7026B7] px-6 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_0_#451475] hover:bg-[#631FA4] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   Next →
                 </button>
@@ -1339,7 +1339,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     type="button"
                     onClick={handlePublish}
                     disabled={isPublishing}
-                    className="flex items-center gap-2 rounded-2xl bg-[#451475] px-6 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_0_#2B0C4A] hover:bg-[#38105F] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-60"
+                    className="flex items-center gap-2 rounded-2xl bg-[#7026B7] px-6 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_0_#451475] hover:bg-[#631FA4] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-60 cursor-pointer"
                   >
                     <Send className="h-3.5 w-3.5" />
                     {isPublishing ? 'Publishing…' : 'Publish Event'}
