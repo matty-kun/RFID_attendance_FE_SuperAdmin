@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Drawer } from '../../../components/common/Drawer';
 import { Button } from '../../../components/common/Button';
+import { Modal } from '../../../components/common/Modal';
 import { toast } from '../../../context';
 import {
   Copy,
@@ -37,7 +38,7 @@ export interface StudentProfileDrawerProps {
   onClose: () => void;
   student: StudentRecord | null;
   availableCards: InventoryCard[];
-  onUnlinkCard: (studentId: string) => void;
+  onUnlinkCard: (studentId: string, reason?: 'lost' | 'returned') => void;
   onQuickPair: (studentId: string, cardUid: string) => void;
   onOpenRapidScan: () => void;
 }
@@ -187,6 +188,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'time_in' | 'time_out'>('all');
   const [copiedUid, setCopiedUid] = useState(false);
+  const [isUnlinkModalOpen, setIsUnlinkModalOpen] = useState(false);
 
   // Cache student reference so the drawer can animate out smoothly when closing
   const activeStudentRef = useRef<StudentRecord | null>(student);
@@ -300,7 +302,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               <Button
                 variant="danger"
                 size="md"
-                onClick={() => onUnlinkCard(currentStudent.id)}
+                onClick={() => setIsUnlinkModalOpen(true)}
                 leftIcon={<Unlink className="h-4 w-4" />}
                 title="Unlink RFID Card"
               >
@@ -484,6 +486,64 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
           </div>
         </div>
       </div>
+      {/* Unlink Reason Confirmation Modal */}
+      <Modal
+        isOpen={isUnlinkModalOpen}
+        onClose={() => setIsUnlinkModalOpen(false)}
+        title="Unlink RFID Card"
+        description={`Unlinking Card ${currentStudent.rfid_uid} from ${currentStudent.name}. All past attendance records remain permanently preserved.`}
+        maxWidth="sm"
+      >
+        <div className="space-y-3 pt-1">
+          <p className="text-xs font-semibold text-[#756883]">
+            Select the reason for unlinking this card:
+          </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsUnlinkModalOpen(false);
+              onUnlinkCard(currentStudent.id, 'lost');
+            }}
+            className="w-full text-left p-3.5 rounded-2xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100/70 transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-rose-700">Card Reported Lost</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full border border-rose-200">Revoke</span>
+            </div>
+            <p className="text-[11px] text-rose-600/90 mt-1 leading-relaxed">
+              Card is lost or stolen. Permanently deactivates UID from active pool so it cannot be scanned or re-issued. Student is freed to receive a replacement card.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsUnlinkModalOpen(false);
+              onUnlinkCard(currentStudent.id, 'returned');
+            }}
+            className="w-full text-left p-3.5 rounded-2xl border border-[#E5E0EB] bg-[#FAF8FC] hover:bg-[#F2ECF9] transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-[#24133F]">Card Returned / Swapped</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#7026B7] bg-[#EBE2F9] px-2 py-0.5 rounded-full border border-[#D8B4ED]">Return to Pool</span>
+            </div>
+            <p className="text-[11px] text-[#756883] mt-1 leading-relaxed">
+              Card is physically intact. Detaches UID from student and places it back in the Unassigned Card Pool for other students.
+            </p>
+          </button>
+
+          <div className="pt-2 flex justify-end">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsUnlinkModalOpen(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </Drawer>
   );
 };

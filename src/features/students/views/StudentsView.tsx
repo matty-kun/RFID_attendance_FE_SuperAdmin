@@ -13,7 +13,6 @@ import {
   Search,
   Zap,
   Link as LinkIcon,
-  Unlink,
   Radio,
   RefreshCw,
 } from 'lucide-react';
@@ -310,13 +309,14 @@ export const StudentsView: React.FC = () => {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleUnlinkCard(student.id);
+                          setSelectedStudentForProfile(student);
+                          setIsProfileDrawerOpen(true);
                         }}
-                        title="Unlinking existing student RFID cards is not supported by the backend API"
-                        aria-label={`Unlink RFID card from ${student.name} unavailable`}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg opacity-60 cursor-not-allowed" 
+                        title="Card linked. Click to view profile or unlink card."
+                        aria-label={`Card linked to ${student.name}`}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7026B7] bg-[#F2ECF9] border border-[#D8B4ED] px-2 py-1 rounded-lg hover:bg-[#EBE2F9] transition-colors cursor-pointer" 
                       >
-                        <Unlink className="w-3 h-3" />
+                        <LinkIcon className="w-3 h-3" />
                         Linked
                       </button>
                     ) : (

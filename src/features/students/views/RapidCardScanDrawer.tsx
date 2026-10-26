@@ -11,7 +11,7 @@ export interface RapidCardScanDrawerProps {
   onClose: () => void;
   cardlessStudents: StudentRecord[];
   onCardScannedForInventory: (uid: string) => { success: boolean; message: string; cardNumber?: number };
-  onCardScannedForStudent: (studentId: string, uid: string) => { success: boolean; message: string };
+  onCardScannedForStudent: (studentId: string, uid: string) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string };
   existingInventoryCount: number;
 }
 
@@ -47,7 +47,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
     inputRef.current?.focus();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       const rawUid = inputValue.trim();
@@ -87,7 +87,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
           return;
         }
 
-        const res = onCardScannedForStudent(targetStudent.id, rawUid);
+        const res = await onCardScannedForStudent(targetStudent.id, rawUid);
         if (res.success) {
           soundManager.playSuccessBeep();
           setBatchHistory((prev) => [
