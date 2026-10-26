@@ -285,7 +285,6 @@ export const StudentsView: React.FC = () => {
                 <th className="px-3 py-3">Course</th>
                 <th className="px-3 py-3">Year level</th>
                 <th className="px-3 py-3">RFID card</th>
-                <th className="px-3 py-3">Status</th>
                 <th className="px-3 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -327,21 +326,6 @@ export const StudentsView: React.FC = () => {
                       ) : (
                         <span className="text-slate-400 text-[11px] italic">
                           {isStudentArchived ? 'Unlinked (Archived)' : 'No card linked'}
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Status column */}
-                    <td className="px-3 py-3">
-                      {isStudentArchived ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                          <i className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                          Archived
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                          <i className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                          Active
                         </span>
                       )}
                     </td>
