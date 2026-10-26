@@ -51,6 +51,22 @@ export interface StudentProfileDrawerProps {
   onRestoreStudent?: (studentId: string) => void;
 }
 
+const COURSE_OPTIONS = [
+  { value: 'BS Information Technology', label: 'BS Information Technology' },
+  { value: 'BS Computer Science', label: 'BS Computer Science' },
+  { value: 'BS Information Systems', label: 'BS Information Systems' },
+  { value: 'BS Computer Engineering', label: 'BS Computer Engineering' },
+  { value: 'BS Business Administration', label: 'BS Business Administration' },
+];
+
+const YEAR_OPTIONS = [
+  { value: '1', label: '1st Year' },
+  { value: '2', label: '2nd Year' },
+  { value: '3', label: '3rd Year' },
+  { value: '4', label: '4th Year' },
+  { value: '5', label: '5th Year' },
+];
+
 // Generate deterministic event scan history based on student record
 const generateStudentScans = (student: StudentRecord | null): StudentScanItem[] => {
   if (!student) return [];
@@ -210,62 +226,99 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   }
   const currentStudent = student || activeStudentRef.current;
 
-  // Inline editing state
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState('');
-  const [editCourse, setEditCourse] = useState('BS Information Technology');
-  const [editYearLevel, setEditYearLevel] = useState('1');
-  const [isSaving, setIsSaving] = useState(false);
+  // Individual click-to-edit states (Notion / Linear style)
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameVal, setNameVal] = useState('');
+  const [isSavingName, setIsSavingName] = useState(false);
 
-  // Reset edit values when opening or student changes
+  const [isEditingCourse, setIsEditingCourse] = useState(false);
+  const [isEditingYear, setIsEditingYear] = useState(false);
+
+  // Reset states when current student changes or drawer opens
   useEffect(() => {
     if (currentStudent) {
-      setEditName(currentStudent.name);
-      setEditCourse(currentStudent.course || 'BS Information Technology');
-      setEditYearLevel(String(currentStudent.year_level || 1));
-      setIsEditing(false);
+      setNameVal(currentStudent.name);
+      setIsEditingName(false);
+      setIsEditingCourse(false);
+      setIsEditingYear(false);
     }
   }, [currentStudent]);
 
-  const handleStartEdit = () => {
+  // Handle Name Autosave on blur or Enter
+  const handleSaveName = async () => {
     if (!currentStudent) return;
-    setEditName(currentStudent.name);
-    setEditCourse(currentStudent.course || 'BS Information Technology');
-    setEditYearLevel(String(currentStudent.year_level || 1));
-    setIsEditing(true);
-  };
-
-  const handleCancelEdit = () => {
-    if (currentStudent) {
-      setEditName(currentStudent.name);
-      setEditCourse(currentStudent.course || 'BS Information Technology');
-      setEditYearLevel(String(currentStudent.year_level || 1));
+    const trimmed = nameVal.trim();
+    if (!trimmed || trimmed === currentStudent.name) {
+      setNameVal(currentStudent.name);
+      setIsEditingName(false);
+      return;
     }
-    setIsEditing(false);
-  };
 
-  const handleSaveInlineEdit = async () => {
-    if (!currentStudent || !editName.trim()) return;
-    setIsSaving(true);
+    setIsSavingName(true);
     try {
       if (onUpdateStudent) {
         await onUpdateStudent(currentStudent.id, {
-          name: editName.trim(),
-          course: editCourse,
-          year_level: Number(editYearLevel),
+          name: trimmed,
+          course: currentStudent.course || 'BS Information Technology',
+          year_level: currentStudent.year_level || 1,
         });
       }
       activeStudentRef.current = {
         ...currentStudent,
-        name: editName.trim(),
-        course: editCourse,
-        year_level: Number(editYearLevel),
+        name: trimmed,
       };
-      setIsEditing(false);
+      setIsEditingName(false);
     } catch {
-      // toast shown by viewmodel
+      setNameVal(currentStudent.name);
+      setIsEditingName(false);
     } finally {
-      setIsSaving(false);
+      setIsSavingName(false);
+    }
+  };
+
+  // Handle Course Autosave on select
+  const handleSelectCourse = async (newCourse: string) => {
+    setIsEditingCourse(false);
+    if (!currentStudent || newCourse === currentStudent.course) return;
+
+    try {
+      if (onUpdateStudent) {
+        await onUpdateStudent(currentStudent.id, {
+          name: currentStudent.name,
+          course: newCourse,
+          year_level: currentStudent.year_level || 1,
+        });
+      }
+      activeStudentRef.current = {
+        ...currentStudent,
+        course: newCourse,
+      };
+    } catch {
+      // toast handled in viewmodel
+    }
+  };
+
+  // Handle Year Level Autosave on select
+  const handleSelectYear = async (newYear: string) => {
+    setIsEditingYear(false);
+    if (!currentStudent) return;
+    const numYear = Number(newYear);
+    if (numYear === currentStudent.year_level) return;
+
+    try {
+      if (onUpdateStudent) {
+        await onUpdateStudent(currentStudent.id, {
+          name: currentStudent.name,
+          course: currentStudent.course || 'BS Information Technology',
+          year_level: numYear,
+        });
+      }
+      activeStudentRef.current = {
+        ...currentStudent,
+        year_level: numYear,
+      };
+    } catch {
+      // toast handled in viewmodel
     }
   };
 
@@ -311,7 +364,9 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     <Drawer
       isOpen={isOpen}
       onClose={() => {
-        setIsEditing(false);
+        setIsEditingName(false);
+        setIsEditingCourse(false);
+        setIsEditingYear(false);
         onClose();
       }}
       maxWidth="2xl"
@@ -323,83 +378,83 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         <div className="relative bg-[#78C9FC] px-6 pt-5 pb-0 flex flex-col justify-between min-h-[230px] overflow-hidden">
           {/* Top Bar inside banner */}
           <div className="flex items-center justify-between z-20 gap-3">
-            {!isEditing ? (
-              <>
-                <div className="flex items-center gap-2 min-w-0">
-                  <h2 className="text-2xl font-black text-[#15344F] tracking-tight truncate">
-                    {currentStudent.name}
-                  </h2>
-                  {isArchived && (
-                    <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
-                      Archived
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  {!isArchived && (
-                    <button
-                      type="button"
-                      onClick={handleStartEdit}
-                      title="Edit Student Information Directly"
-                      className="flex h-9 items-center gap-1.5 px-3 rounded-xl bg-white/85 hover:bg-white text-[#15344F] shadow-xs active:scale-95 transition-all text-xs font-bold cursor-pointer"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                      Edit
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditing(false);
-                      onClose();
-                    }}
-                    aria-label="Close drawer"
-                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-[#15344F] shadow-xs active:scale-95 transition-all cursor-pointer"
-                  >
-                    <X className="h-5 w-5 stroke-[2.5]" />
-                  </button>
-                </div>
-              </>
+            {/* Click-to-Edit Student Name (Notion style) */}
+            {!isEditingName ? (
+              <div
+                role="button"
+                tabIndex={isArchived ? -1 : 0}
+                onClick={() => {
+                  if (!isArchived) {
+                    setNameVal(currentStudent.name);
+                    setIsEditingName(true);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (!isArchived && (e.key === 'Enter' || e.key === ' ')) {
+                    setNameVal(currentStudent.name);
+                    setIsEditingName(true);
+                  }
+                }}
+                className={`group flex items-center gap-2 rounded-xl px-2 py-1 -ml-2 transition-all max-w-[420px] ${
+                  isArchived ? 'cursor-default' : 'hover:bg-white/40 cursor-pointer'
+                }`}
+                title={isArchived ? undefined : 'Click to edit student name'}
+              >
+                <h2 className="text-2xl font-black text-[#15344F] tracking-tight truncate">
+                  {currentStudent.name}
+                </h2>
+                {!isArchived && (
+                  <Pencil className="h-4 w-4 text-[#15344F]/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                )}
+                {isArchived && (
+                  <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
+                    Archived
+                  </span>
+                )}
+              </div>
             ) : (
-              <>
-                {/* Inline Name Editing Field */}
-                <div className="flex-1 mr-2">
-                  <input
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') void handleSaveInlineEdit();
-                      if (e.key === 'Escape') handleCancelEdit();
-                    }}
-                    placeholder="Student Full Name"
-                    autoFocus
-                    className="w-full text-base sm:text-lg font-black text-[#15344F] tracking-tight bg-white border border-[#D8B4ED] rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#7026B7] shadow-xs"
-                  />
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleCancelEdit}
-                    disabled={isSaving}
-                    className="h-9 px-3 rounded-xl bg-white/85 hover:bg-white text-[#756883] hover:text-[#24133F] text-xs font-bold transition-all cursor-pointer shadow-xs"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleSaveInlineEdit()}
-                    disabled={isSaving || !editName.trim()}
-                    className="h-9 px-3.5 rounded-xl bg-[#7026B7] hover:bg-[#5E1E9E] text-white text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer flex items-center gap-1"
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                    {isSaving ? 'Saving...' : 'Save'}
-                  </button>
-                </div>
-              </>
+              <div className="flex items-center gap-2 max-w-[420px] flex-1">
+                <input
+                  type="text"
+                  value={nameVal}
+                  onChange={(e) => setNameVal(e.target.value)}
+                  onBlur={() => void handleSaveName()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void handleSaveName();
+                    if (e.key === 'Escape') {
+                      setNameVal(currentStudent.name);
+                      setIsEditingName(false);
+                    }
+                  }}
+                  disabled={isSavingName}
+                  autoFocus
+                  placeholder="Student Full Name"
+                  className="w-full text-xl font-black text-[#15344F] bg-white border border-[#D8B4ED] rounded-xl px-3 py-1 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#7026B7]"
+                />
+                {isSavingName && (
+                  <span className="text-xs font-bold text-[#15344F] shrink-0 animate-pulse">
+                    Saving…
+                  </span>
+                )}
+              </div>
             )}
+
+            {/* Right: Close button */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditingName(false);
+                  setIsEditingCourse(false);
+                  setIsEditingYear(false);
+                  onClose();
+                }}
+                aria-label="Close drawer"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-[#15344F] shadow-xs active:scale-95 transition-all cursor-pointer"
+              >
+                <X className="h-5 w-5 stroke-[2.5]" />
+              </button>
+            </div>
           </div>
 
           {/* Character standing in center of banner */}
@@ -505,68 +560,122 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             )
           )}
 
-          {/* OVERVIEW SECTION (Academic Details: Inline Editable or View) */}
+          {/* OVERVIEW SECTION (Click-to-Edit Course & Year Level) */}
           <div className="pt-1">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase">
-                {isEditing ? 'Editing Academic Details' : 'Overview'}
+                Overview
               </p>
-              {isEditing && (
-                <span className="text-[11px] font-semibold text-[#7026B7]">
-                  Select options below and click Save above
+              {!isArchived && (
+                <span className="text-[10px] text-[#A59AAB]">
+                  Click any field to edit
                 </span>
               )}
             </div>
 
-            {!isEditing ? (
-              <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
-                  <p className="text-[10px] font-bold text-[#756883] uppercase">Program / Course</p>
+            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              {/* Program / Course Card */}
+              {!isEditingCourse ? (
+                <div
+                  role="button"
+                  tabIndex={isArchived ? -1 : 0}
+                  onClick={() => !isArchived && setIsEditingCourse(true)}
+                  onKeyDown={(e) => {
+                    if (!isArchived && (e.key === 'Enter' || e.key === ' ')) {
+                      setIsEditingCourse(true);
+                    }
+                  }}
+                  className={`group rounded-2xl border bg-white p-3 shadow-2xs transition-all text-left ${
+                    isArchived
+                      ? 'border-[#E5E0EB] cursor-default'
+                      : 'border-[#E5E0EB] hover:border-[#7026B7] hover:shadow-xs cursor-pointer'
+                  }`}
+                  title={isArchived ? undefined : 'Click to change course'}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-bold text-[#756883] uppercase">Program / Course</p>
+                    {!isArchived && (
+                      <span className="text-[10px] font-bold text-[#7026B7] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                        <Pencil className="h-3 w-3" /> Edit
+                      </span>
+                    )}
+                  </div>
                   <p className="font-bold text-[#24133F] mt-0.5">{currentStudent.course || '—'}</p>
                 </div>
-                <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
-                  <p className="text-[10px] font-bold text-[#756883] uppercase">Year Level</p>
+              ) : (
+                <div className="rounded-2xl border-2 border-[#7026B7] bg-white p-2.5 shadow-xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-extrabold text-[#7026B7] uppercase">
+                      Select Program / Course
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingCourse(false)}
+                      className="text-[10px] font-bold text-[#756883] hover:text-[#24133F] cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <Dropdown
+                    value={currentStudent.course || 'BS Information Technology'}
+                    onChange={(val) => void handleSelectCourse(val)}
+                    buttonClassName="h-9 w-full rounded-xl border-[#D8B4ED] text-xs bg-white"
+                    options={COURSE_OPTIONS}
+                  />
+                </div>
+              )}
+
+              {/* Year Level Card */}
+              {!isEditingYear ? (
+                <div
+                  role="button"
+                  tabIndex={isArchived ? -1 : 0}
+                  onClick={() => !isArchived && setIsEditingYear(true)}
+                  onKeyDown={(e) => {
+                    if (!isArchived && (e.key === 'Enter' || e.key === ' ')) {
+                      setIsEditingYear(true);
+                    }
+                  }}
+                  className={`group rounded-2xl border bg-white p-3 shadow-2xs transition-all text-left ${
+                    isArchived
+                      ? 'border-[#E5E0EB] cursor-default'
+                      : 'border-[#E5E0EB] hover:border-[#7026B7] hover:shadow-xs cursor-pointer'
+                  }`}
+                  title={isArchived ? undefined : 'Click to change year level'}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-bold text-[#756883] uppercase">Year Level</p>
+                    {!isArchived && (
+                      <span className="text-[10px] font-bold text-[#7026B7] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                        <Pencil className="h-3 w-3" /> Edit
+                      </span>
+                    )}
+                  </div>
                   <p className="font-bold text-[#24133F] mt-0.5">{yearLabel(currentStudent.year_level)}</p>
                 </div>
-              </div>
-            ) : (
-              <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <div className="rounded-2xl border-2 border-[#7026B7]/30 bg-purple-50/40 p-2.5 space-y-1">
-                  <label className="text-[10px] font-extrabold text-[#7026B7] uppercase block">
-                    Program / Course
-                  </label>
+              ) : (
+                <div className="rounded-2xl border-2 border-[#7026B7] bg-white p-2.5 shadow-xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-extrabold text-[#7026B7] uppercase">
+                      Select Year Level
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingYear(false)}
+                      className="text-[10px] font-bold text-[#756883] hover:text-[#24133F] cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                   <Dropdown
-                    value={editCourse}
-                    onChange={setEditCourse}
-                    buttonClassName="h-10 w-full rounded-xl border-[#D8B4ED] text-xs bg-white"
-                    options={[
-                      { value: 'BS Information Technology', label: 'BS Information Technology' },
-                      { value: 'BS Computer Science', label: 'BS Computer Science' },
-                      { value: 'BS Information Systems', label: 'BS Information Systems' },
-                      { value: 'BS Computer Engineering', label: 'BS Computer Engineering' },
-                      { value: 'BS Business Administration', label: 'BS Business Administration' },
-                    ]}
+                    value={String(currentStudent.year_level || 1)}
+                    onChange={(val) => void handleSelectYear(val)}
+                    buttonClassName="h-9 w-full rounded-xl border-[#D8B4ED] text-xs bg-white"
+                    options={YEAR_OPTIONS}
                   />
                 </div>
-                <div className="rounded-2xl border-2 border-[#7026B7]/30 bg-purple-50/40 p-2.5 space-y-1">
-                  <label className="text-[10px] font-extrabold text-[#7026B7] uppercase block">
-                    Year Level
-                  </label>
-                  <Dropdown
-                    value={editYearLevel}
-                    onChange={setEditYearLevel}
-                    buttonClassName="h-10 w-full rounded-xl border-[#D8B4ED] text-xs bg-white"
-                    options={[
-                      { value: '1', label: '1st Year' },
-                      { value: '2', label: '2nd Year' },
-                      { value: '3', label: '3rd Year' },
-                      { value: '4', label: '4th Year' },
-                      { value: '5', label: '5th Year' },
-                    ]}
-                  />
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* SCAN HISTORY SECTION */}
