@@ -561,13 +561,68 @@ export function AttendancePage() {
 
   return (
     <div className="mx-auto w-full max-w-[1180px] space-y-6 text-[#24133F]">
-      {/* Top Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold leading-tight">Attendance Schedule</h1>
-        <p className="text-xs text-[#756883]">
-          Manage attendance sessions, scanning windows, and checkpoint assignments for your events.
-        </p>
-      </div>
+      {/* Top Header & Navigation */}
+      {eventData ? (
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <button
+              type="button"
+              onClick={handleBackToEvents}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#E5E0EB] bg-white text-[#756883] hover:text-[#24133F] hover:border-brand-700 hover:bg-[#FAF7FD] transition-all shadow-2xs"
+              title="Back to All Events"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <div>
+              <div className="flex items-center gap-1.5 text-xs text-[#756883]">
+                <button
+                  type="button"
+                  onClick={handleBackToEvents}
+                  className="hover:text-brand-700 hover:underline"
+                >
+                  Attendance Schedule
+                </button>
+                <span>/</span>
+                <span className="font-semibold text-brand-700">{eventData.name}</span>
+              </div>
+              <h1 className="text-2xl font-extrabold leading-tight text-[#24133F]">{eventData.name}</h1>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            {eventData.id === serverActiveId ? (
+              <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs font-bold text-[#10B981]">
+                <CheckCircle2 className="h-4 w-4" />
+                Active Campus Event
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={(e) => void handleSetActiveEvent(e, eventData.id, eventData.name)}
+                className="rounded-xl border border-[#E5E0EB] bg-white px-3.5 py-2 text-xs font-semibold text-[#756883] hover:border-brand-700 hover:text-brand-700 hover:bg-[#FAF7FD] transition-all shadow-2xs"
+              >
+                Set as Active Campus Event
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-extrabold leading-tight">Attendance Schedule</h1>
+            <p className="text-xs text-[#756883]">
+              Manage attendance sessions, scanning windows, and checkpoint assignments for your events.
+            </p>
+          </div>
+          <Button
+            variant="primary"
+            leftIcon={<Plus className="h-4 w-4" />}
+            onClick={() => setIsCreateEventOpen(true)}
+          >
+            Create Event
+          </Button>
+        </div>
+      )}
 
       {error && (
         <div role="alert" className="flex items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">
@@ -581,38 +636,7 @@ export function AttendancePage() {
         </div>
       )}
 
-      {/* Event Drilldown Breadcrumb */}
-      {eventData && (
-        <div className="flex flex-wrap items-center justify-between gap-3 -mb-2">
-          <button
-            type="button"
-            onClick={handleBackToEvents}
-            className="inline-flex items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3.5 py-2 text-xs font-bold text-brand-700 hover:border-brand-700 hover:bg-[#FAF7FD] transition-all shadow-2xs"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>← Back to All Events</span>
-          </button>
-
-          <div className="flex items-center gap-2">
-            {eventData.id === serverActiveId ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-[#10B981]">
-                <CheckCircle2 className="h-4 w-4" />
-                Active Campus Event
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={(e) => void handleSetActiveEvent(e, eventData.id, eventData.name)}
-                className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-1.5 text-xs font-semibold text-[#756883] hover:border-brand-700 hover:text-brand-700 hover:bg-[#FAF7FD] transition-all shadow-2xs"
-              >
-                Set as Active Campus Event
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Toolbar: Filters on the left, Create Event aligned on the right */}
+      {/* Toolbar: Filters */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
@@ -668,14 +692,6 @@ export function AttendancePage() {
             }}
           />
         </div>
-
-        <Button
-          variant="primary"
-          leftIcon={<Plus className="h-4 w-4" />}
-          onClick={() => setIsCreateEventOpen(true)}
-        >
-          Create Event
-        </Button>
       </div>
 
       {/* Event Accordion Container */}
