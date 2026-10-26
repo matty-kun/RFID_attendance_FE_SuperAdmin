@@ -326,7 +326,7 @@ export const EventsView: React.FC = () => {
           eventToDelete ? (
             <>
               Are you sure you want to delete event <span className="font-bold text-[#24133F]">"{eventToDelete.name}"</span>?
-              This will remove all associated sessions without attendance records. Events with student attendance records cannot be deleted.
+              This will permanently delete the event along with all its sessions, checkpoints, and recorded attendance logs.
             </>
           ) : undefined
         }

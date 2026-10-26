@@ -1233,7 +1233,7 @@ export function AttendancePage() {
           eventToDelete ? (
             <>
               Are you sure you want to delete event <span className="font-bold text-[#24133F]">"{eventToDelete.name}"</span>?
-              This will remove all associated sessions without attendance records. Events with student attendance records cannot be deleted.
+              This will permanently delete the event along with all its sessions, checkpoints, and recorded attendance logs.
             </>
           ) : undefined
         }
@@ -1252,7 +1252,7 @@ export function AttendancePage() {
           sessionToDelete ? (
             <>
               Are you sure you want to delete session <span className="font-bold text-[#24133F]">"{sessionToDelete.name}"</span>?
-              This session and its configured checkpoint assignments will be permanently removed.
+              This will permanently delete the session along with its checkpoint assignments and recorded attendance logs.
             </>
           ) : undefined
         }
