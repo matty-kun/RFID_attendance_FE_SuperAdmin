@@ -9,7 +9,6 @@ import {
   Copy,
   MoreVertical,
   Plus,
-  RefreshCw,
   Search,
   Users,
   MapPin,
@@ -465,22 +464,11 @@ export function AttendancePage() {
   return (
     <div className="mx-auto w-full max-w-[1180px] space-y-6 text-[#24133F]">
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-extrabold leading-tight">Attendance Schedule</h1>
-          <p className="text-xs text-[#756883]">
-            Manage attendance sessions, scanning windows, and checkpoint assignments for your events.
-          </p>
-        </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => void loadSchedule(selectedEventId)}
-          isLoading={loading}
-          leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
-        >
-          Refresh
-        </Button>
+      <div>
+        <h1 className="text-2xl font-extrabold leading-tight">Attendance Schedule</h1>
+        <p className="text-xs text-[#756883]">
+          Manage attendance sessions, scanning windows, and checkpoint assignments for your events.
+        </p>
       </div>
 
       {error && (
@@ -498,22 +486,6 @@ export function AttendancePage() {
       {/* Toolbar: Filters on the left, Create Event aligned on the right */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          {events.length > 1 && (
-            <Dropdown
-              value={selectedEventId}
-              onChange={(val) => {
-                setSelectedEventId(val);
-                const found = events.find((e) => e.id === val);
-                if (found) void buildEventSchedule(found);
-              }}
-              buttonClassName="h-10 rounded-xl"
-              options={events.map((ev) => ({
-                value: ev.id,
-                label: ev.name,
-              }))}
-            />
-          )}
-
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#756883]" />
             <input
@@ -534,6 +506,22 @@ export function AttendancePage() {
               </button>
             )}
           </div>
+
+          {events.length > 1 && (
+            <Dropdown
+              value={selectedEventId}
+              onChange={(val) => {
+                setSelectedEventId(val);
+                const found = events.find((e) => e.id === val);
+                if (found) void buildEventSchedule(found);
+              }}
+              buttonClassName="h-10 rounded-xl"
+              options={events.map((ev) => ({
+                value: ev.id,
+                label: ev.name,
+              }))}
+            />
+          )}
 
           <Dropdown
             value={statusFilter}
