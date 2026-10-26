@@ -2,11 +2,11 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Drawer } from '../../../components/common/Drawer';
 import { Button } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
-import { Dropdown } from '../../../components/common/Dropdown';
 import { toast } from '../../../context';
 import {
   Copy,
   Check,
+  ChevronDown,
   Unlink,
   Zap,
   Link as LinkIcon,
@@ -52,19 +52,19 @@ export interface StudentProfileDrawerProps {
 }
 
 const COURSE_OPTIONS = [
-  { value: 'BS Information Technology', label: 'BS Information Technology' },
-  { value: 'BS Computer Science', label: 'BS Computer Science' },
-  { value: 'BS Information Systems', label: 'BS Information Systems' },
-  { value: 'BS Computer Engineering', label: 'BS Computer Engineering' },
-  { value: 'BS Business Administration', label: 'BS Business Administration' },
+  'BS Information Technology',
+  'BS Computer Science',
+  'BS Information Systems',
+  'BS Computer Engineering',
+  'BS Business Administration',
 ];
 
 const YEAR_OPTIONS = [
-  { value: '1', label: '1st Year' },
-  { value: '2', label: '2nd Year' },
-  { value: '3', label: '3rd Year' },
-  { value: '4', label: '4th Year' },
-  { value: '5', label: '5th Year' },
+  { value: 1, label: '1st Year' },
+  { value: 2, label: '2nd Year' },
+  { value: 3, label: '3rd Year' },
+  { value: 4, label: '4th Year' },
+  { value: 5, label: '5th Year' },
 ];
 
 // Generate deterministic event scan history based on student record
@@ -226,25 +226,43 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   }
   const currentStudent = student || activeStudentRef.current;
 
-  // Individual click-to-edit states (Notion / Linear style)
+  // Seamless Inline Name Editing
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameVal, setNameVal] = useState('');
   const [isSavingName, setIsSavingName] = useState(false);
 
-  const [isEditingCourse, setIsEditingCourse] = useState(false);
-  const [isEditingYear, setIsEditingYear] = useState(false);
+  // Floating Dropdowns for Course & Year
+  const [isCourseMenuOpen, setIsCourseMenuOpen] = useState(false);
+  const [isYearMenuOpen, setIsYearMenuOpen] = useState(false);
 
-  // Reset states when current student changes or drawer opens
+  const courseDropdownRef = useRef<HTMLDivElement>(null);
+  const yearDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close floating menus on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (courseDropdownRef.current && !courseDropdownRef.current.contains(e.target as Node)) {
+        setIsCourseMenuOpen(false);
+      }
+      if (yearDropdownRef.current && !yearDropdownRef.current.contains(e.target as Node)) {
+        setIsYearMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Sync state when student changes
   useEffect(() => {
     if (currentStudent) {
       setNameVal(currentStudent.name);
       setIsEditingName(false);
-      setIsEditingCourse(false);
-      setIsEditingYear(false);
+      setIsCourseMenuOpen(false);
+      setIsYearMenuOpen(false);
     }
   }, [currentStudent]);
 
-  // Handle Name Autosave on blur or Enter
+  // Handle Name Autosave
   const handleSaveName = async () => {
     if (!currentStudent) return;
     const trimmed = nameVal.trim();
@@ -276,49 +294,47 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     }
   };
 
-  // Handle Course Autosave on select
-  const handleSelectCourse = async (newCourse: string) => {
-    setIsEditingCourse(false);
-    if (!currentStudent || newCourse === currentStudent.course) return;
+  // Handle Course Update
+  const handleSelectCourse = async (courseName: string) => {
+    setIsCourseMenuOpen(false);
+    if (!currentStudent || courseName === currentStudent.course) return;
 
     try {
       if (onUpdateStudent) {
         await onUpdateStudent(currentStudent.id, {
           name: currentStudent.name,
-          course: newCourse,
+          course: courseName,
           year_level: currentStudent.year_level || 1,
         });
       }
       activeStudentRef.current = {
         ...currentStudent,
-        course: newCourse,
+        course: courseName,
       };
     } catch {
-      // toast handled in viewmodel
+      // toast shown by viewmodel
     }
   };
 
-  // Handle Year Level Autosave on select
-  const handleSelectYear = async (newYear: string) => {
-    setIsEditingYear(false);
-    if (!currentStudent) return;
-    const numYear = Number(newYear);
-    if (numYear === currentStudent.year_level) return;
+  // Handle Year Level Update
+  const handleSelectYear = async (yearNum: number) => {
+    setIsYearMenuOpen(false);
+    if (!currentStudent || yearNum === currentStudent.year_level) return;
 
     try {
       if (onUpdateStudent) {
         await onUpdateStudent(currentStudent.id, {
           name: currentStudent.name,
           course: currentStudent.course || 'BS Information Technology',
-          year_level: numYear,
+          year_level: yearNum,
         });
       }
       activeStudentRef.current = {
         ...currentStudent,
-        year_level: numYear,
+        year_level: yearNum,
       };
     } catch {
-      // toast handled in viewmodel
+      // toast shown by viewmodel
     }
   };
 
@@ -365,8 +381,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       isOpen={isOpen}
       onClose={() => {
         setIsEditingName(false);
-        setIsEditingCourse(false);
-        setIsEditingYear(false);
+        setIsCourseMenuOpen(false);
+        setIsYearMenuOpen(false);
         onClose();
       }}
       maxWidth="2xl"
@@ -378,7 +394,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         <div className="relative bg-[#78C9FC] px-6 pt-5 pb-0 flex flex-col justify-between min-h-[230px] overflow-hidden">
           {/* Top Bar inside banner */}
           <div className="flex items-center justify-between z-20 gap-3">
-            {/* Click-to-Edit Student Name (Notion style) */}
+            {/* Seamless In-Place Name Editor */}
             {!isEditingName ? (
               <div
                 role="button"
@@ -389,18 +405,12 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                     setIsEditingName(true);
                   }
                 }}
-                onKeyDown={(e) => {
-                  if (!isArchived && (e.key === 'Enter' || e.key === ' ')) {
-                    setNameVal(currentStudent.name);
-                    setIsEditingName(true);
-                  }
-                }}
-                className={`group flex items-center gap-2 rounded-xl px-2 py-1 -ml-2 transition-all max-w-[420px] ${
-                  isArchived ? 'cursor-default' : 'hover:bg-white/40 cursor-pointer'
+                className={`group flex items-center gap-2 rounded-xl py-0.5 px-1 -ml-1 transition-all ${
+                  isArchived ? 'cursor-default' : 'hover:bg-white/30 cursor-pointer'
                 }`}
-                title={isArchived ? undefined : 'Click to edit student name'}
+                title={isArchived ? undefined : 'Click to rename student'}
               >
-                <h2 className="text-2xl font-black text-[#15344F] tracking-tight truncate">
+                <h2 className="text-2xl font-black text-[#15344F] tracking-tight truncate max-w-[340px]">
                   {currentStudent.name}
                 </h2>
                 {!isArchived && (
@@ -413,7 +423,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-2 max-w-[420px] flex-1">
+              <div className="flex items-center gap-2 flex-1 max-w-[340px]">
                 <input
                   type="text"
                   value={nameVal}
@@ -429,7 +439,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   disabled={isSavingName}
                   autoFocus
                   placeholder="Student Full Name"
-                  className="w-full text-xl font-black text-[#15344F] bg-white border border-[#D8B4ED] rounded-xl px-3 py-1 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#7026B7]"
+                  className="text-2xl font-black text-[#15344F] tracking-tight bg-transparent border-b-2 border-[#15344F] outline-none px-0 py-0 w-full"
                 />
                 {isSavingName && (
                   <span className="text-xs font-bold text-[#15344F] shrink-0 animate-pulse">
@@ -439,14 +449,36 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               </div>
             )}
 
-            {/* Right: Close button */}
+            {/* Top Right Actions: Archive + Close */}
             <div className="flex items-center gap-2 shrink-0">
+              {!isArchived ? (
+                <button
+                  type="button"
+                  onClick={() => setIsArchiveConfirmOpen(true)}
+                  title="Archive Student"
+                  className="flex h-9 items-center gap-1.5 px-3 rounded-xl bg-white/80 hover:bg-white text-[#756883] hover:text-rose-600 shadow-xs active:scale-95 transition-all text-xs font-bold cursor-pointer"
+                >
+                  <Archive className="h-4 w-4" />
+                  <span>Archive</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onRestoreStudent?.(currentStudent.id)}
+                  title="Restore Student to Active Roster"
+                  className="flex h-9 items-center gap-1.5 px-3 rounded-xl bg-white/80 hover:bg-white text-emerald-700 shadow-xs active:scale-95 transition-all text-xs font-bold cursor-pointer"
+                >
+                  <ArchiveRestore className="h-4 w-4" />
+                  <span>Restore</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => {
                   setIsEditingName(false);
-                  setIsEditingCourse(false);
-                  setIsEditingYear(false);
+                  setIsCourseMenuOpen(false);
+                  setIsYearMenuOpen(false);
                   onClose();
                 }}
                 aria-label="Close drawer"
@@ -466,7 +498,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             />
           </div>
 
-          {/* Smooth Fog Transition Layer: Seamless white mist dissolving banner into content below */}
+          {/* Smooth Fog Transition Layer */}
           <div
             aria-hidden="true"
             className="pointer-events-none absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-white via-white/70 to-transparent z-10"
@@ -493,20 +525,9 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               <div>
                 <p className="text-xs font-extrabold text-amber-900">Student is Archived</p>
                 <p className="text-[11px] text-amber-700/90 mt-0.5">
-                  Historical attendance logs remain intact. Restore student to re-pair cards or register for future events.
+                  Historical attendance logs remain intact. Click Restore in the top bar to re-pair cards or add to active events.
                 </p>
               </div>
-              <Button
-                variant="success"
-                size="sm"
-                onClick={() => {
-                  onRestoreStudent?.(currentStudent.id);
-                }}
-                leftIcon={<ArchiveRestore className="h-4 w-4" />}
-                className="shrink-0"
-              >
-                Restore
-              </Button>
             </div>
           ) : (
             /* 3D Tactile Card Action Button */
@@ -560,121 +581,132 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             )
           )}
 
-          {/* OVERVIEW SECTION (Click-to-Edit Course & Year Level) */}
+          {/* OVERVIEW SECTION: Single-layer Clean Cards with Floating Dropdown */}
           <div className="pt-1">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase">
-                Overview
-              </p>
-              {!isArchived && (
-                <span className="text-[10px] text-[#A59AAB]">
-                  Click any field to edit
-                </span>
-              )}
-            </div>
+            <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase">
+              Overview
+            </p>
 
-            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
               {/* Program / Course Card */}
-              {!isEditingCourse ? (
-                <div
-                  role="button"
-                  tabIndex={isArchived ? -1 : 0}
-                  onClick={() => !isArchived && setIsEditingCourse(true)}
-                  onKeyDown={(e) => {
-                    if (!isArchived && (e.key === 'Enter' || e.key === ' ')) {
-                      setIsEditingCourse(true);
+              <div ref={courseDropdownRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isArchived) {
+                      setIsCourseMenuOpen(!isCourseMenuOpen);
+                      setIsYearMenuOpen(false);
                     }
                   }}
-                  className={`group rounded-2xl border bg-white p-3 shadow-2xs transition-all text-left ${
+                  className={`w-full text-left rounded-2xl border bg-white p-3 shadow-2xs transition-all group flex items-start justify-between ${
                     isArchived
                       ? 'border-[#E5E0EB] cursor-default'
+                      : isCourseMenuOpen
+                      ? 'border-[#7026B7] ring-2 ring-[#7026B7]/20 cursor-pointer'
                       : 'border-[#E5E0EB] hover:border-[#7026B7] hover:shadow-xs cursor-pointer'
                   }`}
                   title={isArchived ? undefined : 'Click to change course'}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="min-w-0 pr-1">
                     <p className="text-[10px] font-bold text-[#756883] uppercase">Program / Course</p>
-                    {!isArchived && (
-                      <span className="text-[10px] font-bold text-[#7026B7] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
-                        <Pencil className="h-3 w-3" /> Edit
-                      </span>
-                    )}
+                    <p className="font-bold text-[#24133F] mt-0.5 truncate">{currentStudent.course || '—'}</p>
                   </div>
-                  <p className="font-bold text-[#24133F] mt-0.5">{currentStudent.course || '—'}</p>
-                </div>
-              ) : (
-                <div className="rounded-2xl border-2 border-[#7026B7] bg-white p-2.5 shadow-xs">
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[10px] font-extrabold text-[#7026B7] uppercase">
-                      Select Program / Course
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingCourse(false)}
-                      className="text-[10px] font-bold text-[#756883] hover:text-[#24133F] cursor-pointer"
-                    >
-                      Cancel
-                    </button>
+                  {!isArchived && (
+                    <ChevronDown
+                      className={`h-4 w-4 text-[#756883] transition-transform shrink-0 mt-0.5 group-hover:text-[#7026B7] ${
+                        isCourseMenuOpen ? 'rotate-180 text-[#7026B7]' : ''
+                      }`}
+                    />
+                  )}
+                </button>
+
+                {/* Floating Course Menu (No layout shifts) */}
+                {isCourseMenuOpen && (
+                  <div className="absolute top-full left-0 mt-1.5 w-64 bg-white rounded-2xl border border-[#E5E0EB] shadow-xl z-50 p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+                    <p className="text-[10px] font-black text-[#A59AAB] uppercase px-2.5 py-1">
+                      Select Course
+                    </p>
+                    {COURSE_OPTIONS.map((c) => {
+                      const isSelected = c === currentStudent.course;
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => void handleSelectCourse(c)}
+                          className={`w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#F2ECF9] text-[#7026B7] font-bold'
+                              : 'text-[#24133F] hover:bg-[#FAF8FC]'
+                          }`}
+                        >
+                          <span className="truncate">{c}</span>
+                          {isSelected && <Check className="h-3.5 w-3.5 text-[#7026B7] shrink-0 ml-1" />}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <Dropdown
-                    value={currentStudent.course || 'BS Information Technology'}
-                    onChange={(val) => void handleSelectCourse(val)}
-                    buttonClassName="h-9 w-full rounded-xl border-[#D8B4ED] text-xs bg-white"
-                    options={COURSE_OPTIONS}
-                  />
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Year Level Card */}
-              {!isEditingYear ? (
-                <div
-                  role="button"
-                  tabIndex={isArchived ? -1 : 0}
-                  onClick={() => !isArchived && setIsEditingYear(true)}
-                  onKeyDown={(e) => {
-                    if (!isArchived && (e.key === 'Enter' || e.key === ' ')) {
-                      setIsEditingYear(true);
+              <div ref={yearDropdownRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isArchived) {
+                      setIsYearMenuOpen(!isYearMenuOpen);
+                      setIsCourseMenuOpen(false);
                     }
                   }}
-                  className={`group rounded-2xl border bg-white p-3 shadow-2xs transition-all text-left ${
+                  className={`w-full text-left rounded-2xl border bg-white p-3 shadow-2xs transition-all group flex items-start justify-between ${
                     isArchived
                       ? 'border-[#E5E0EB] cursor-default'
+                      : isYearMenuOpen
+                      ? 'border-[#7026B7] ring-2 ring-[#7026B7]/20 cursor-pointer'
                       : 'border-[#E5E0EB] hover:border-[#7026B7] hover:shadow-xs cursor-pointer'
                   }`}
                   title={isArchived ? undefined : 'Click to change year level'}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="min-w-0 pr-1">
                     <p className="text-[10px] font-bold text-[#756883] uppercase">Year Level</p>
-                    {!isArchived && (
-                      <span className="text-[10px] font-bold text-[#7026B7] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
-                        <Pencil className="h-3 w-3" /> Edit
-                      </span>
-                    )}
+                    <p className="font-bold text-[#24133F] mt-0.5">{yearLabel(currentStudent.year_level)}</p>
                   </div>
-                  <p className="font-bold text-[#24133F] mt-0.5">{yearLabel(currentStudent.year_level)}</p>
-                </div>
-              ) : (
-                <div className="rounded-2xl border-2 border-[#7026B7] bg-white p-2.5 shadow-xs">
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[10px] font-extrabold text-[#7026B7] uppercase">
+                  {!isArchived && (
+                    <ChevronDown
+                      className={`h-4 w-4 text-[#756883] transition-transform shrink-0 mt-0.5 group-hover:text-[#7026B7] ${
+                        isYearMenuOpen ? 'rotate-180 text-[#7026B7]' : ''
+                      }`}
+                    />
+                  )}
+                </button>
+
+                {/* Floating Year Menu (No layout shifts) */}
+                {isYearMenuOpen && (
+                  <div className="absolute top-full right-0 mt-1.5 w-48 bg-white rounded-2xl border border-[#E5E0EB] shadow-xl z-50 p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+                    <p className="text-[10px] font-black text-[#A59AAB] uppercase px-2.5 py-1">
                       Select Year Level
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingYear(false)}
-                      className="text-[10px] font-bold text-[#756883] hover:text-[#24133F] cursor-pointer"
-                    >
-                      Cancel
-                    </button>
+                    </p>
+                    {YEAR_OPTIONS.map((y) => {
+                      const isSelected = y.value === currentStudent.year_level;
+                      return (
+                        <button
+                          key={y.value}
+                          type="button"
+                          onClick={() => void handleSelectYear(y.value)}
+                          className={`w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#F2ECF9] text-[#7026B7] font-bold'
+                              : 'text-[#24133F] hover:bg-[#FAF8FC]'
+                          }`}
+                        >
+                          <span>{y.label}</span>
+                          {isSelected && <Check className="h-3.5 w-3.5 text-[#7026B7] shrink-0 ml-1" />}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <Dropdown
-                    value={String(currentStudent.year_level || 1)}
-                    onChange={(val) => void handleSelectYear(val)}
-                    buttonClassName="h-9 w-full rounded-xl border-[#D8B4ED] text-xs bg-white"
-                    options={YEAR_OPTIONS}
-                  />
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
@@ -731,7 +763,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                 <div className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden shadow-xs divide-y divide-[#E5E0EB]">
                   {groupedScans.map((group) => (
                     <div key={`${group.event}-${group.date}`}>
-                      {/* Subtle Date Header */}
+                      {/* Date Header */}
                       <div className="flex items-center justify-between bg-[#FAF8FC] px-4 py-2 text-xs border-b border-[#F0E8FC]">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-[#24133F]">{group.event}</span>
@@ -804,42 +836,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                       : 'Link an RFID card first to track automatic event attendance.'}
                   </p>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* ARCHIVE ACTION BAR (At bottom of drawer) */}
-          <div className="pt-4 border-t border-[#E5E0EB]">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <p className="text-xs font-bold text-[#24133F]">Student Record Status</p>
-                <p className="text-[11px] text-[#756883] mt-0.5">
-                  {isArchived
-                    ? 'Student is archived. Restore anytime to re-enable card pairing and active rosters.'
-                    : 'Archive student to remove from active lists. Historical attendance records are permanently kept.'}
-                </p>
-              </div>
-
-              {isArchived ? (
-                <Button
-                  variant="success"
-                  size="sm"
-                  onClick={() => onRestoreStudent?.(currentStudent.id)}
-                  leftIcon={<ArchiveRestore className="h-3.5 w-3.5" />}
-                  className="shrink-0 self-start sm:self-auto"
-                >
-                  Restore Student
-                </Button>
-              ) : (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setIsArchiveConfirmOpen(true)}
-                  leftIcon={<Archive className="h-3.5 w-3.5 text-[#756883]" />}
-                  className="shrink-0 self-start sm:self-auto text-xs text-[#756883] hover:text-rose-600 hover:border-rose-300"
-                >
-                  Archive Student
-                </Button>
               )}
             </div>
           </div>
