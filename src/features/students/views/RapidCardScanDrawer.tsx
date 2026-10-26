@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { Drawer } from '../../../components/common/Drawer';
 import { soundManager } from '../../../utils/audioFeedback';
 import { toast } from '../../../context';
@@ -21,7 +22,11 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [assignedCount, setAssignedCount] = useState(0);
-  const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
+  const [lastScanned, setLastScanned] = useState<{
+    uid: string;
+    studentName: string;
+    studentId: string;
+  } | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -29,25 +34,28 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
     if (isOpen) {
       setInputValue('');
       setAssignedCount(0);
-      setCurrentStudentIndex(0);
+      setLastScanned(null);
       const timer = setTimeout(() => inputRef.current?.focus(), 120);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, cardlessStudents.length]);
+  }, [isOpen]);
 
   const handleContainerClick = () => {
     inputRef.current?.focus();
   };
 
+  const currentStudent = cardlessStudents[0];
+  const upcomingStudents = cardlessStudents.slice(1, 4);
+
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      const rawUid = inputValue.trim();
+      const rawUid = (e.currentTarget.value || inputValue).trim();
       setInputValue('');
 
       if (!rawUid) return;
 
-      const targetStudent = cardlessStudents[currentStudentIndex];
+      const targetStudent = currentStudent;
       if (!targetStudent) {
         soundManager.playErrorBuzz();
         toast.info('All cardless students in queue have been assigned.');
@@ -58,8 +66,12 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
       if (res.success) {
         soundManager.playSuccessBeep();
         setAssignedCount((prev) => prev + 1);
+        setLastScanned({
+          uid: rawUid,
+          studentName: targetStudent.name,
+          studentId: targetStudent.student_id,
+        });
         toast.success(`Card linked to ${targetStudent.name}`);
-        setCurrentStudentIndex((prev) => prev + 1);
       } else {
         soundManager.playErrorBuzz();
         toast.error(res.message);
@@ -67,16 +79,12 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
     }
   };
 
-  const currentStudent = cardlessStudents[currentStudentIndex];
-  const upcomingStudents = cardlessStudents.slice(currentStudentIndex + 1, currentStudentIndex + 4);
-  const remainingCount = Math.max(0, cardlessStudents.length - currentStudentIndex);
-
   return (
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
       title="Rapid card scanner"
-      description={`Continuous USB reader capture. ${remainingCount} student${remainingCount === 1 ? '' : 's'} awaiting cards.`}
+      description={`Continuous USB reader capture. ${cardlessStudents.length} student${cardlessStudents.length === 1 ? '' : 's'} awaiting cards.`}
       maxWidth="lg"
       footer={
         <div className="flex items-center justify-between">
@@ -100,10 +108,10 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between border-b border-[#F1EEF4] pb-2.5">
                 <span className="text-xs font-semibold text-[#756883]">
-                  Assigning Student {currentStudentIndex + 1} of {cardlessStudents.length}
+                  {cardlessStudents.length} student{cardlessStudents.length === 1 ? '' : 's'} remaining
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-xs text-amber-700 font-semibold">
-                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
                   Waiting for card tap
                 </span>
               </div>
@@ -140,7 +148,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
                     {upcomingStudents.map((st, i) => (
                       <div key={st.id} className="flex items-center justify-between text-xs text-[#756883]">
                         <span className="font-medium text-[#24133F]">
-                          {currentStudentIndex + 2 + i}. {st.name}
+                          {i + 2}. {st.name}
                         </span>
                         <span className="font-mono text-[11px] text-[#A59AAB]">{st.student_id}</span>
                       </div>
@@ -182,6 +190,24 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
               placeholder="Tap physical RFID card on scanner..."
               className="w-full rounded-xl border border-[#D5CEDD] bg-[#FAF8FC] px-3.5 py-2.5 text-xs font-mono font-bold text-[#24133F] placeholder:text-[#A59AAB] focus:border-[#7026B7] focus:bg-white focus:outline-none"
             />
+            {lastScanned && (
+              <div className="mt-3 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/80 px-3.5 py-2.5 text-xs text-emerald-900 animate-in fade-in duration-150">
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <div>
+                    <p className="font-bold">
+                      Card linked to {lastScanned.studentName}
+                    </p>
+                    <p className="font-mono text-[11px] text-emerald-700 mt-0.5">
+                      UID: <span className="font-bold">{lastScanned.uid}</span> · ID: {lastScanned.studentId}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
+                  Linked ✓
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
