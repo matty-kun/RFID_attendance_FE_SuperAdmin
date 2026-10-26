@@ -21,6 +21,7 @@ import { useToast } from '../context';
 import { Button } from '../components/common/Button';
 import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
+import { DeleteConfirmationModal } from '../components/common/DeleteConfirmationModal';
 import { CreateEventModal } from '../features/events/views/CreateEventModal';
 import { EditTimeWindowDrawer } from '../features/events/views/EditTimeWindowDrawer';
 import {
@@ -104,6 +105,9 @@ export function AttendancePage() {
 
   const [isEventMenuOpen, setIsEventMenuOpen] = useState(false);
   const [isDeletingEvent, setIsDeletingEvent] = useState(false);
+  const [isDeleteEventModalOpen, setIsDeleteEventModalOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<SessionItem | null>(null);
+  const [isDeletingSession, setIsDeletingSession] = useState(false);
   const [isEventExpanded, setIsEventExpanded] = useState(true);
   const [expandedDayId, setExpandedDayId] = useState<string>('d1');
 
@@ -371,18 +375,19 @@ export function AttendancePage() {
     }
   };
 
-  const handleDeleteSession = async (session: SessionItem) => {
-    setOpenMenuSessionId(null);
-    const confirmMsg = `Are you sure you want to delete session "${session.name}"?`;
-    if (!window.confirm(confirmMsg)) return;
-
+  const handleDeleteSessionConfirm = async () => {
+    if (!sessionToDelete) return;
+    setIsDeletingSession(true);
     try {
-      await adminService.deleteSession(session.id);
-      showFeedback(`Session "${session.name}" deleted successfully.`, 'delete');
+      await adminService.deleteSession(sessionToDelete.id);
+      showFeedback(`Session "${sessionToDelete.name}" deleted successfully.`, 'delete');
+      setSessionToDelete(null);
       await loadSchedule(selectedEventId);
     } catch (err: any) {
       const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to delete session.';
       showFeedback(apiMsg, 'warning');
+    } finally {
+      setIsDeletingSession(false);
     }
   };
 
@@ -425,17 +430,14 @@ export function AttendancePage() {
     }
   };
 
-  const handleDeleteEvent = async () => {
+  const handleDeleteEventConfirm = async () => {
     if (!eventData) return;
-    const confirmMsg = `Are you sure you want to delete event "${eventData.name}"? This will remove all associated sessions without attendance records. Events with student attendance records cannot be deleted.`;
-    if (!window.confirm(confirmMsg)) return;
-
     setIsDeletingEvent(true);
-    setIsEventMenuOpen(false);
     try {
       await adminService.deleteEvent(eventData.id);
       showFeedback(`Event "${eventData.name}" deleted successfully.`, 'delete');
       localStorage.removeItem('presnt_active_event_id');
+      setIsDeleteEventModalOpen(false);
       await loadSchedule();
     } catch (err: any) {
       const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to delete event.';
@@ -665,12 +667,15 @@ export function AttendancePage() {
                     <div className="absolute right-0 top-full mt-1 z-30 w-44 rounded-xl border border-[#E5E0EB] bg-white p-1 shadow-lg animate-in fade-in zoom-in-95 duration-100">
                       <button
                         type="button"
-                        onClick={handleDeleteEvent}
+                        onClick={() => {
+                          setIsEventMenuOpen(false);
+                          setIsDeleteEventModalOpen(true);
+                        }}
                         disabled={isDeletingEvent}
                         className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5 text-rose-500" />
-                        <span>{isDeletingEvent ? 'Deleting...' : 'Delete Event'}</span>
+                        <span>Delete Event</span>
                       </button>
                     </div>
                   </>
@@ -849,7 +854,8 @@ export function AttendancePage() {
                                         type="button"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          void handleDeleteSession(session);
+                                          setOpenMenuSessionId(null);
+                                          setSessionToDelete(session);
                                         }}
                                         className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
                                       >
@@ -1006,6 +1012,44 @@ export function AttendancePage() {
         initialStart={startTimeInput}
         initialEnd={endTimeInput}
         onSave={handleSaveEditTime}
+      />
+
+      {/* Delete Event Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={isDeleteEventModalOpen}
+        onClose={() => setIsDeleteEventModalOpen(false)}
+        onConfirm={() => void handleDeleteEventConfirm()}
+        title="Delete Event"
+        itemName={eventData ? `event "${eventData.name}"` : undefined}
+        description={
+          eventData ? (
+            <>
+              Are you sure you want to delete event <span className="font-bold text-[#24133F]">"{eventData.name}"</span>?
+              This will remove all associated sessions without attendance records. Events with student attendance records cannot be deleted.
+            </>
+          ) : undefined
+        }
+        confirmLabel="Delete Event"
+        isDeleting={isDeletingEvent}
+      />
+
+      {/* Delete Session Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={Boolean(sessionToDelete)}
+        onClose={() => setSessionToDelete(null)}
+        onConfirm={() => void handleDeleteSessionConfirm()}
+        title="Delete Session"
+        itemName={sessionToDelete ? `session "${sessionToDelete.name}"` : undefined}
+        description={
+          sessionToDelete ? (
+            <>
+              Are you sure you want to delete session <span className="font-bold text-[#24133F]">"{sessionToDelete.name}"</span>?
+              This session and its configured checkpoint assignments will be permanently removed.
+            </>
+          ) : undefined
+        }
+        confirmLabel="Delete Session"
+        isDeleting={isDeletingSession}
       />
     </div>
   );

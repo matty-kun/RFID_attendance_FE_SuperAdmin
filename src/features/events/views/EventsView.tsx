@@ -4,6 +4,7 @@ import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
+import { DeleteConfirmationModal } from '../../../components/common/DeleteConfirmationModal';
 import { Plus, RefreshCw, Search, Sparkles, Calendar, Trash2, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getEventStatus } from '../../../utils/status';
@@ -34,6 +35,7 @@ export const EventsView: React.FC = () => {
   } = useEventsViewModel();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [eventToDelete, setEventToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const filteredEvents = useMemo(() => {
     if (!searchQuery.trim()) return events;
@@ -217,7 +219,7 @@ export const EventsView: React.FC = () => {
                         <button
                           type="button"
                           disabled={isDeleting}
-                          onClick={() => void handleDeleteEvent(ev.id, ev.name)}
+                          onClick={() => setEventToDelete({ id: ev.id, name: ev.name })}
                           title="Delete Event"
                           className="rounded-lg p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50"
                         >
@@ -306,6 +308,31 @@ export const EventsView: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Event Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={Boolean(eventToDelete)}
+        onClose={() => setEventToDelete(null)}
+        onConfirm={async () => {
+          if (!eventToDelete) return;
+          const success = await handleDeleteEvent(eventToDelete.id, eventToDelete.name);
+          if (success) {
+            setEventToDelete(null);
+          }
+        }}
+        title="Delete Event"
+        itemName={eventToDelete ? `event "${eventToDelete.name}"` : undefined}
+        description={
+          eventToDelete ? (
+            <>
+              Are you sure you want to delete event <span className="font-bold text-[#24133F]">"{eventToDelete.name}"</span>?
+              This will remove all associated sessions without attendance records. Events with student attendance records cannot be deleted.
+            </>
+          ) : undefined
+        }
+        confirmLabel="Delete Event"
+        isDeleting={isDeleting}
+      />
     </div>
   );
 };

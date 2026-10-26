@@ -130,9 +130,6 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
   };
 
   const handleDeleteEvent = async (id: string, eventName: string): Promise<boolean> => {
-    const confirmMsg = `Are you sure you want to delete event "${eventName}"? This will delete all its sessions without attendance records. Events with student attendance records cannot be deleted.`;
-    if (!window.confirm(confirmMsg)) return false;
-
     setIsDeleting(true);
     try {
       await eventService.deleteEvent(id);
