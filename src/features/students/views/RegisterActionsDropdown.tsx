@@ -129,7 +129,7 @@ export const RegisterActionsDropdown: React.FC<RegisterActionsDropdownProps> = (
                     USB Reader
                   </span>
                 </div>
-                <p className="text-[11px] text-[#756883] line-clamp-1">Zero-click continuous swipe to pool or queue</p>
+                <p className="text-[11px] text-[#756883] line-clamp-1">Sequential tap-to-pair for students without a card</p>
               </div>
             </button>
 

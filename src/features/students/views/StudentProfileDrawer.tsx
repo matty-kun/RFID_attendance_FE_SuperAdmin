@@ -1000,7 +1000,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       >
         <div className="space-y-3 pt-1">
           <p className="text-xs text-[#756883] leading-relaxed">
-            Archiving moves this student to the Archived roster. Any linked card will be returned to the inventory pool.
+            Archiving moves this student to the Archived roster. Any linked card will be unassigned.
             All historical event attendance records remain permanently preserved.
           </p>
           <div className="pt-2 flex items-center justify-end gap-2">

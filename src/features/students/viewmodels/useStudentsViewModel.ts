@@ -345,7 +345,7 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
       if (oldUid) {
         if (reason === 'returned') {
           handleCardScannedForInventory(oldUid);
-          toast.success(`Card ${oldUid} unlinked and returned to unassigned card pool.`);
+          toast.success(`Card ${oldUid} unlinked.`);
         } else {
           // Report lost: Add to lost cards archive
           const nextCardNumber = inventoryCards.length + 1;
