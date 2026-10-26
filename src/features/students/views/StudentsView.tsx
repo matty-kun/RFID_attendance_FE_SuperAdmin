@@ -233,10 +233,22 @@ export const StudentsView: React.FC = () => {
 
       {/* Main Section */}
       <div className="space-y-3">
-        {/* Toolbar: Search & Filters ON THE LEFT, 3 Tabs ON THE RIGHT */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-          {/* LEFT: Search bar & Contextual Filter Dropdowns */}
+        {/* Unified Filter Toolbar (Dropdown View Filter + Contextual Filters) */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex flex-wrap items-center gap-2 flex-1">
+            {/* View / Type Filter Dropdown */}
+            <Dropdown
+              value={activeTab}
+              onChange={(val: any) => setActiveTab(val)}
+              options={[
+                { value: 'students', label: `Active Students (${activeStudents.length})` },
+                { value: 'cards', label: `Card Inventory (${inventoryCards.length})` },
+                { value: 'archived', label: `Archived Records (${archivedStudents.length + lostCards.length})` },
+              ]}
+              buttonClassName="h-10 min-w-[200px] font-bold text-brand-700 bg-brand-50 border-brand-200"
+            />
+
+            {/* Live Search Input */}
             <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-slate-500 sm:max-w-[280px]">
               <Search className="h-4 w-4" />
               <span className="sr-only">Search</span>
@@ -302,43 +314,6 @@ export const StudentsView: React.FC = () => {
                 </Button>
               </>
             )}
-          </div>
-
-          {/* RIGHT: 3 Main Tabs (Active Students | Card Inventory | Archived) */}
-          <div className="inline-flex items-center gap-1 p-1 bg-slate-100 border border-slate-200 rounded-2xl shrink-0 self-start lg:self-auto">
-            <button
-              type="button"
-              onClick={() => setActiveTab('students')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                activeTab === 'students'
-                  ? 'bg-white text-brand-700 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              Active Students ({activeStudents.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('cards')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                activeTab === 'cards'
-                  ? 'bg-white text-brand-700 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              Card Inventory ({inventoryCards.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('archived')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                activeTab === 'archived'
-                  ? 'bg-white text-brand-700 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              Archived ({archivedStudents.length + lostCards.length})
-            </button>
           </div>
         </div>
 
