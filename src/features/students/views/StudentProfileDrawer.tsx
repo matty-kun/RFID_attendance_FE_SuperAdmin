@@ -216,7 +216,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'time_in' | 'time_out'>('all');
   const [copiedUid, setCopiedUid] = useState(false);
-  const [isUnlinkModalOpen, setIsUnlinkModalOpen] = useState(false);
+  const [isUnlinking, setIsUnlinking] = useState(false);
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
 
   // Cache student reference so the drawer can animate out smoothly when closing
@@ -529,56 +529,94 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                 </p>
               </div>
             </div>
-          ) : (
-            /* 3D Tactile Card Action Button */
-            currentStudent.rfid_uid ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="secondary"
-                  size="md"
-                  onClick={handleCopyUid}
-                  className="flex-1 font-mono text-xs justify-center"
-                  leftIcon={copiedUid ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4 text-[#756883]" />}
+          ) : currentStudent.rfid_uid && isUnlinking ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2.5 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800">
+                  Unlinking Card {currentStudent.rfid_uid}:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsUnlinking(false)}
+                  className="text-[11px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
                 >
-                  Card UID: {currentStudent.rfid_uid}
-                </Button>
+                  Cancel
+                </button>
+              </div>
 
-                <Button
-                  variant="danger"
-                  size="md"
-                  onClick={() => setIsUnlinkModalOpen(true)}
-                  leftIcon={<Unlink className="h-4 w-4" />}
-                  title="Unlink RFID Card"
-                >
-                  Unlink
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                {availableCards.length > 0 && (
-                  <Button
-                    variant="success"
-                    size="md"
-                    onClick={() => onQuickPair(currentStudent.id, availableCards[0].uid)}
-                    className="flex-1 justify-center"
-                    leftIcon={<LinkIcon className="h-4 w-4" />}
-                  >
-                    Pair Card #{availableCards[0].cardNumber}
-                  </Button>
-                )}
-                <Button
-                  variant="primary"
-                  size="md"
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
                   onClick={() => {
-                    onClose();
-                    onOpenRapidScan();
+                    setIsUnlinking(false);
+                    onUnlinkCard(currentStudent.id, 'returned');
                   }}
-                  leftIcon={<Zap className="h-4 w-4 fill-current" />}
+                  className="p-2.5 rounded-xl border border-brand-200 bg-white hover:bg-brand-50 hover:border-brand-300 transition-all text-left cursor-pointer shadow-2xs group"
                 >
-                  Scan card
-                </Button>
+                  <p className="text-xs font-extrabold text-brand-700">Return to Pool</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">Card intact · ready for next student</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUnlinking(false);
+                    onUnlinkCard(currentStudent.id, 'lost');
+                  }}
+                  className="p-2.5 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 transition-all text-left cursor-pointer shadow-2xs group"
+                >
+                  <p className="text-xs font-extrabold text-rose-700">Report Lost</p>
+                  <p className="text-[10px] text-rose-600/80 mt-0.5 leading-tight">Revokes card &bull; moves to Archived</p>
+                </button>
               </div>
-            )
+            </div>
+          ) : currentStudent.rfid_uid ? (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={handleCopyUid}
+                className="flex-1 font-mono text-xs justify-center"
+                leftIcon={copiedUid ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4 text-slate-400" />}
+              >
+                Card UID: {currentStudent.rfid_uid}
+              </Button>
+
+              <Button
+                variant="danger"
+                size="md"
+                onClick={() => setIsUnlinking(true)}
+                leftIcon={<Unlink className="h-4 w-4" />}
+                title="Unlink RFID Card"
+              >
+                Unlink
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              {availableCards.length > 0 && (
+                <Button
+                  variant="success"
+                  size="md"
+                  onClick={() => onQuickPair(currentStudent.id, availableCards[0].uid)}
+                  className="flex-1 justify-center"
+                  leftIcon={<LinkIcon className="h-4 w-4" />}
+                >
+                  Pair Card #{availableCards[0].cardNumber}
+                </Button>
+              )}
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => {
+                  onClose();
+                  onOpenRapidScan();
+                }}
+                leftIcon={<Zap className="h-4 w-4 fill-current" />}
+              >
+                Scan card
+              </Button>
+            </div>
           )}
 
           {/* OVERVIEW SECTION: Single-layer Clean Cards with Floating Dropdown */}
@@ -841,65 +879,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Unlink Reason Confirmation Modal */}
-      <Modal
-        isOpen={isUnlinkModalOpen}
-        onClose={() => setIsUnlinkModalOpen(false)}
-        title="Unlink RFID Card"
-        description={`Unlinking Card ${currentStudent.rfid_uid} from ${currentStudent.name}. All past attendance records remain permanently preserved.`}
-        maxWidth="sm"
-      >
-        <div className="space-y-3 pt-1">
-          <p className="text-xs font-semibold text-[#756883]">
-            Select the reason for unlinking this card:
-          </p>
-
-          <button
-            type="button"
-            onClick={() => {
-              setIsUnlinkModalOpen(false);
-              onUnlinkCard(currentStudent.id, 'lost');
-            }}
-            className="w-full text-left p-3.5 rounded-2xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100/70 transition-colors cursor-pointer group"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-rose-700">Card Reported Lost</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full border border-rose-200">Revoke</span>
-            </div>
-            <p className="text-[11px] text-rose-600/90 mt-1 leading-relaxed">
-              Card is lost or stolen. Permanently deactivates UID from active pool so it cannot be scanned or re-issued. Student is freed to receive a replacement card.
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setIsUnlinkModalOpen(false);
-              onUnlinkCard(currentStudent.id, 'returned');
-            }}
-            className="w-full text-left p-3.5 rounded-2xl border border-[#E5E0EB] bg-[#FAF8FC] hover:bg-[#F2ECF9] transition-colors cursor-pointer group"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-slate-900">Card Returned / Swapped</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-brand-700 bg-brand-100 px-2 py-0.5 rounded-full border border-brand-200">Return to Pool</span>
-            </div>
-            <p className="text-[11px] text-[#756883] mt-1 leading-relaxed">
-              Card is physically intact. Detaches UID from student and places it back in the Unassigned Card Pool for other students.
-            </p>
-          </button>
-
-          <div className="pt-2 flex justify-end">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setIsUnlinkModalOpen(false)}
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Archive Student Confirmation Modal */}
       <Modal

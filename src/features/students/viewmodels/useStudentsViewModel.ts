@@ -10,6 +10,17 @@ import { studentService } from '../services';
 import { toast } from '../../../context';
 
 const ARCHIVED_STORAGE_KEY = 'presnt_archived_students';
+const LOST_CARDS_STORAGE_KEY = 'presnt_lost_cards';
+
+export interface LostCardRecord {
+  id: string;
+  cardNumber: number;
+  uid: string;
+  previousStudentName?: string;
+  previousStudentId?: string;
+  revokedAt: string;
+  reason: 'lost';
+}
 
 export interface UseStudentsViewModelReturn {
   students: StudentRecord[];
@@ -27,6 +38,7 @@ export interface UseStudentsViewModelReturn {
   inventoryCards: InventoryCard[];
   unassignedCards: InventoryCard[];
   cardlessStudents: StudentRecord[];
+  lostCards: LostCardRecord[];
 
   // Modals & Drawers
   isAddDrawerOpen: boolean;
@@ -40,6 +52,7 @@ export interface UseStudentsViewModelReturn {
   archivedStudentIds: string[];
   handleArchiveStudent: (studentId: string) => Promise<void>;
   handleRestoreStudent: (studentId: string) => Promise<void>;
+  handleRestoreLostCard: (uid: string) => void;
 
   // Actions
   handleRegisterStudent: (payload: RegisterStudentPayload) => Promise<void>;
@@ -60,10 +73,20 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Archived Students IDs (Persisted to localStorage to avoid PostgreSQL ON DELETE RESTRICT violations)
+  // Archived Students IDs (Persisted to localStorage)
   const [archivedStudentIds, setArchivedStudentIds] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem(ARCHIVED_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Lost / Revoked RFID Cards (Persisted to localStorage)
+  const [lostCards, setLostCards] = useState<LostCardRecord[]>(() => {
+    try {
+      const stored = localStorage.getItem(LOST_CARDS_STORAGE_KEY);
       return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
@@ -102,7 +125,7 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
 
   const filteredStudents = useMemo(() => students, [students]);
 
-  // Combine assigned cards from real backend students with unassigned cards scanned into the pool
+  // Combine assigned cards from real backend students + unassigned cards + lost cards
   const inventoryCards = useMemo<InventoryCard[]>(() => {
     const assignedFromStudents: InventoryCard[] = students
       .filter((s): s is StudentRecord & { rfid_uid: string } => Boolean(s.rfid_uid))
@@ -117,15 +140,27 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
       }));
 
     const assignedUids = new Set(assignedFromStudents.map((c) => c.uid.toUpperCase()));
+    const lostUids = new Set(lostCards.map((c) => c.uid.toUpperCase()));
+
     const remainingUnassigned = unassignedPool
-      .filter((c) => !assignedUids.has(c.uid.toUpperCase()))
+      .filter((c) => !assignedUids.has(c.uid.toUpperCase()) && !lostUids.has(c.uid.toUpperCase()))
       .map((c, idx) => ({
         ...c,
         cardNumber: assignedFromStudents.length + idx + 1,
       }));
 
-    return [...remainingUnassigned, ...assignedFromStudents];
-  }, [students, unassignedPool]);
+    const formattedLostCards: InventoryCard[] = lostCards.map((l, idx) => ({
+      id: l.id,
+      cardNumber: assignedFromStudents.length + remainingUnassigned.length + idx + 1,
+      uid: l.uid,
+      status: 'lost' as const,
+      assignedToStudentId: l.previousStudentId,
+      assignedToStudentName: l.previousStudentName,
+      registeredAt: l.revokedAt,
+    }));
+
+    return [...remainingUnassigned, ...assignedFromStudents, ...formattedLostCards];
+  }, [students, unassignedPool, lostCards]);
 
   // Unassigned cards available for pairing
   const unassignedCards = useMemo(
@@ -312,8 +347,22 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
           handleCardScannedForInventory(oldUid);
           toast.success(`Card ${oldUid} unlinked and returned to unassigned card pool.`);
         } else {
+          // Report lost: Add to lost cards archive
+          const nextCardNumber = inventoryCards.length + 1;
+          const newLostCard: LostCardRecord = {
+            id: `lost-${Date.now()}`,
+            cardNumber: nextCardNumber,
+            uid: oldUid,
+            previousStudentName: targetStudent?.name,
+            previousStudentId: targetStudent?.student_id,
+            revokedAt: new Date().toISOString(),
+            reason: 'lost',
+          };
+          const updatedLost = [newLostCard, ...lostCards.filter((c) => c.uid !== oldUid)];
+          setLostCards(updatedLost);
+          localStorage.setItem(LOST_CARDS_STORAGE_KEY, JSON.stringify(updatedLost));
           setUnassignedPool((prev) => prev.filter((c) => c.uid.toUpperCase() !== oldUid.toUpperCase()));
-          toast.success(`Card ${oldUid} reported lost and permanently revoked. Student can now receive a replacement card.`);
+          toast.success(`Card ${oldUid} reported lost and moved to Archived Cards.`);
         }
       } else {
         toast.success('Card unlinked successfully.');
@@ -324,6 +373,17 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
       const msg = err?.response?.data?.error?.message || err?.message || 'Failed to unlink card.';
       toast.error(msg);
     }
+  };
+
+  const handleRestoreLostCard = (uid: string) => {
+    const cleaned = uid.trim().toUpperCase();
+    const updatedLost = lostCards.filter((c) => c.uid.toUpperCase() !== cleaned);
+    setLostCards(updatedLost);
+    localStorage.setItem(LOST_CARDS_STORAGE_KEY, JSON.stringify(updatedLost));
+
+    // Return to unassigned pool
+    handleCardScannedForInventory(cleaned);
+    toast.success(`Card ${cleaned} restored to available stock pool.`);
   };
 
   const handleArchiveStudent = async (studentId: string) => {
@@ -397,6 +457,7 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     inventoryCards,
     unassignedCards,
     cardlessStudents,
+    lostCards,
 
     // Drawers & Modals
     isAddDrawerOpen,
@@ -410,6 +471,7 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     archivedStudentIds,
     handleArchiveStudent,
     handleRestoreStudent,
+    handleRestoreLostCard,
 
     // Handlers
     handleRegisterStudent,
