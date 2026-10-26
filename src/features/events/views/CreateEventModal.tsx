@@ -171,7 +171,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     inTime: '7:00 AM - 8:30 AM',
     inOfficers: [],
     hasOut: true,
-    outTime: '11:30 AM - 12:30 PM',
+    outTime: '11:00 AM - 12:00 PM',
     outOfficers: [],
   });
 
@@ -377,7 +377,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
       const activeConfigs: Array<{ name: string; slot: SessionTimeSlot; defaults: [string, string, string, string] }> = [];
       if (morningEnabled) {
-        activeConfigs.push({ name: 'Morning Session', slot: morningSlot, defaults: ['07:00', '08:30', '11:30', '12:30'] });
+        activeConfigs.push({ name: 'Morning Session', slot: morningSlot, defaults: ['07:00', '08:30', '11:00', '12:00'] });
       }
       if (afternoonEnabled) {
         activeConfigs.push({ name: 'Afternoon Session', slot: afternoonSlot, defaults: ['13:00', '14:30', '16:30', '17:30'] });
@@ -1319,6 +1319,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         isOpen={editingTimeSlot.isOpen}
         onClose={() => setEditingTimeSlot((prev) => ({ ...prev, isOpen: false }))}
         sessionTitle={`${editingTimeSlot.sessionType} Session`}
+        sessionType={editingTimeSlot.sessionType}
         windowType={editingTimeSlot.slot}
         dateStr={`Day ${selectedDayTab} · ${formatDateDisplay(startDate)}`}
         initialStart={editingTimeSlot.start}

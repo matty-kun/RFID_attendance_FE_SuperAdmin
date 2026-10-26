@@ -11,6 +11,8 @@ export const adminService = {
   getEvents: () => request.get<EventRecord[]>('/events'),
   createEvent: (payload: Partial<EventRecord>) =>
     request.post<EventRecord>('/events', payload),
+  deleteEvent: (eventId: string) =>
+    request.delete<{ message: string }>(`/events/${encodeURIComponent(eventId)}`),
   getSessions: (eventId: string) =>
     request.get<SessionRecord[]>(
       `/events/${encodeURIComponent(eventId)}/sessions`
@@ -22,6 +24,8 @@ export const adminService = {
     ),
   updateSession: (sessionId: string, payload: Partial<SessionRecord>) =>
     request.patch<SessionRecord>(`/sessions/${encodeURIComponent(sessionId)}`, payload),
+  deleteSession: (sessionId: string) =>
+    request.delete<{ message: string }>(`/sessions/${encodeURIComponent(sessionId)}`),
   getSessionLocations: (sessionId: string) =>
     request.get<SessionLocations>(`/sessions/${encodeURIComponent(sessionId)}/locations`),
   saveSessionLocations: (sessionId: string, payload: { time_in_location_ids: string[]; time_out_location_ids: string[] }) =>

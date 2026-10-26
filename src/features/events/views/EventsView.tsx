@@ -4,7 +4,7 @@ import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
-import { Plus, RefreshCw, Search, Sparkles, Calendar } from 'lucide-react';
+import { Plus, RefreshCw, Search, Sparkles, Calendar, Trash2, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getEventStatus } from '../../../utils/status';
 
@@ -13,9 +13,12 @@ export const EventsView: React.FC = () => {
     events,
     isLoading,
     error,
+    activeEventId,
+    setActiveEventId,
     isModalOpen,
     setIsModalOpen,
     isSubmitting,
+    isDeleting,
     formError,
     name,
     setName,
@@ -27,6 +30,7 @@ export const EventsView: React.FC = () => {
     setEndDate,
     loadEvents,
     handleCreate,
+    handleDeleteEvent,
   } = useEventsViewModel();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,14 +45,27 @@ export const EventsView: React.FC = () => {
     );
   }, [events, searchQuery]);
 
+  const activeEvent = useMemo(() => {
+    return events.find((e) => e.id === activeEventId);
+  }, [events, activeEventId]);
+
   return (
     <div className="mx-auto w-full max-w-[1120px] space-y-4 text-[#24133F]">
       {/* Top Header */}
-      <div>
-        <h1 className="text-[22px] font-extrabold leading-tight">Campus Events</h1>
-        <p className="text-[11px] text-[#756883]">
-          Manage university celebrations, sports leagues, and departmental assemblies.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h1 className="text-[22px] font-extrabold leading-tight">Campus Events</h1>
+          <p className="text-[11px] text-[#756883]">
+            Manage university celebrations, sports leagues, and departmental assemblies.
+          </p>
+        </div>
+        {activeEvent && (
+          <div className="flex items-center gap-2 rounded-2xl bg-brand-50 border border-brand-200 px-3.5 py-1.5 text-xs text-brand-900 shadow-2xs">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-semibold text-[11px] text-[#756883]">Current Active Event:</span>
+            <span className="font-bold text-brand-700">{activeEvent.name}</span>
+          </div>
+        )}
       </div>
 
       {/* Toolbar */}
@@ -94,11 +111,12 @@ export const EventsView: React.FC = () => {
             </button>
           </div>
         )}
-        <table className="w-full min-w-[630px] text-left text-xs">
+        <table className="w-full min-w-[680px] text-left text-xs">
           <thead>
             <tr className="bg-[#F4F6FA] text-[10px] uppercase text-[#637596]">
               <th className="rounded-l-xl px-3 py-3 font-medium">Event Name</th>
               <th className="px-3 py-3 font-medium">Status</th>
+              <th className="px-3 py-3 font-medium">Active Selection</th>
               <th className="px-3 py-3 font-medium">Start Date</th>
               <th className="px-3 py-3 font-medium">End Date</th>
               <th className="rounded-r-xl px-3 py-3 font-medium text-right">Actions</th>
@@ -107,13 +125,13 @@ export const EventsView: React.FC = () => {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="py-10 text-center text-xs text-[#756883]">
+                <td colSpan={6} className="py-10 text-center text-xs text-[#756883]">
                   Loading campus events…
                 </td>
               </tr>
             ) : error && events.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-10 text-center text-xs text-rose-600">
+                <td colSpan={6} className="py-10 text-center text-xs text-rose-600">
                   Unable to load campus events.{' '}
                   <button type="button" onClick={() => void loadEvents()} className="font-bold underline">
                     Retry
@@ -122,17 +140,31 @@ export const EventsView: React.FC = () => {
               </tr>
             ) : filteredEvents.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-10 text-center text-xs text-[#756883]">
+                <td colSpan={6} className="py-10 text-center text-xs text-[#756883]">
                   {searchQuery ? 'No campus events match your search.' : 'No campus events registered yet. Click "Create Event" to add one.'}
                 </td>
               </tr>
             ) : (
               filteredEvents.map((ev) => {
                 const status = getEventStatus(ev.start_date, ev.end_date);
+                const isActive = ev.id === activeEventId;
+
                 return (
-                  <tr key={ev.id} className="border-b border-[#EEF0F4] last:border-b-0 hover:bg-[#FAF8FC]">
+                  <tr
+                    key={ev.id}
+                    className={`border-b border-[#EEF0F4] last:border-b-0 hover:bg-[#FAF8FC] transition-colors ${
+                      isActive ? 'bg-[#FAF7FD]/60' : ''
+                    }`}
+                  >
                     <td className="px-3 py-3">
-                      <div className="font-bold text-slate-900 text-sm">{ev.name}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="font-bold text-slate-900 text-sm">{ev.name}</div>
+                        {isActive && (
+                          <span className="flex items-center gap-1 rounded-full bg-brand-50 border border-brand-200 px-2 py-0.5 text-[10px] font-bold text-brand-700">
+                            ★ Active
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-[#756883] mt-0.5 line-clamp-1 max-w-xs">
                         {ev.description || 'No description provided'}
                       </div>
@@ -151,6 +183,22 @@ export const EventsView: React.FC = () => {
                         {status}
                       </Badge>
                     </td>
+                    <td className="px-3 py-3">
+                      {isActive ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-700">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-brand-700" />
+                          Selected
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setActiveEventId(ev.id)}
+                          className="rounded-lg border border-[#E5E0EB] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#756883] hover:border-brand-700 hover:text-brand-700 hover:bg-[#FAF7FD] transition-all shadow-2xs"
+                        >
+                          Set as Active
+                        </button>
+                      )}
+                    </td>
                     <td className="px-3 py-3 text-xs font-medium text-[#637596]">
                       {new Date(`${ev.start_date}T00:00:00+08:00`).toLocaleDateString('en-PH', { dateStyle: 'medium' })}
                     </td>
@@ -158,13 +206,24 @@ export const EventsView: React.FC = () => {
                       {new Date(`${ev.end_date}T00:00:00+08:00`).toLocaleDateString('en-PH', { dateStyle: 'medium' })}
                     </td>
                     <td className="px-3 py-3 text-right">
-                      <Link
-                        to={`/sessions?eventId=${ev.id}`}
-                        className="inline-flex items-center gap-1 text-xs font-bold text-brand-700 hover:text-brand-800 transition-colors"
-                      >
-                        <Calendar className="h-3.5 w-3.5" />
-                        Sessions →
-                      </Link>
+                      <div className="inline-flex items-center gap-2">
+                        <Link
+                          to={`/sessions?eventId=${ev.id}`}
+                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-brand-700 hover:bg-brand-50 transition-colors"
+                        >
+                          <Calendar className="h-3.5 w-3.5" />
+                          <span>Sessions →</span>
+                        </Link>
+                        <button
+                          type="button"
+                          disabled={isDeleting}
+                          onClick={() => void handleDeleteEvent(ev.id, ev.name)}
+                          title="Delete Event"
+                          className="rounded-lg p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

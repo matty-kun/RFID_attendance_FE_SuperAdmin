@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Clock, Calendar, Check } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Clock, Calendar, Check, AlertCircle } from 'lucide-react';
 import { Drawer } from '../../../components/common/Drawer';
 import { TimePicker } from '../../../components/common/TimePicker';
 
@@ -7,6 +7,7 @@ export interface EditTimeWindowDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   sessionTitle: string;
+  sessionType?: 'Morning' | 'Afternoon' | 'Evening';
   windowType?: 'IN' | 'OUT' | 'Session';
   dateStr?: string;
   initialStart: string; // "07:00"
@@ -26,6 +27,7 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
   isOpen,
   onClose,
   sessionTitle,
+  sessionType,
   windowType = 'Session',
   dateStr,
   initialStart,
@@ -33,34 +35,94 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
   onSave,
 }) => {
   const [activeTab, setActiveTab] = useState<'start' | 'end'>('start');
-  const [start, setStart] = useState(initialStart || '07:00');
-  const [end, setEnd] = useState(initialEnd || '08:30');
+
+  const detectedSessionType: 'Morning' | 'Afternoon' | 'Evening' | undefined = useMemo(() => {
+    if (sessionType) return sessionType;
+    const lower = sessionTitle.toLowerCase();
+    if (lower.includes('morning')) return 'Morning';
+    if (lower.includes('afternoon')) return 'Afternoon';
+    if (lower.includes('evening')) return 'Evening';
+    return undefined;
+  }, [sessionType, sessionTitle]);
+
+  const defaultBounds = useMemo(() => {
+    if (detectedSessionType === 'Morning') {
+      return { defaultStart: '07:00', defaultEnd: '08:30', min: '06:00', max: '12:00' };
+    }
+    if (detectedSessionType === 'Afternoon') {
+      return { defaultStart: '13:00', defaultEnd: '14:30', min: '12:00', max: '18:00' };
+    }
+    if (detectedSessionType === 'Evening') {
+      return { defaultStart: '18:00', defaultEnd: '19:30', min: '18:00', max: '23:30' };
+    }
+    return { defaultStart: '07:00', defaultEnd: '08:30', min: '00:00', max: '23:30' };
+  }, [detectedSessionType]);
+
+  const clampTimeToBound = (t: string, fallback: string) => {
+    if (!t) return fallback;
+    if (t < defaultBounds.min) return defaultBounds.min;
+    if (t > defaultBounds.max) return defaultBounds.max;
+    return t;
+  };
+
+  const [start, setStart] = useState(() => clampTimeToBound(initialStart, defaultBounds.defaultStart));
+  const [end, setEnd] = useState(() => clampTimeToBound(initialEnd, defaultBounds.defaultEnd));
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      setStart(initialStart || '07:00');
-      setEnd(initialEnd || '08:30');
+      const clampedStart = clampTimeToBound(initialStart, defaultBounds.defaultStart);
+      const clampedEnd = clampTimeToBound(initialEnd, defaultBounds.defaultEnd);
+      setStart(clampedStart);
+      setEnd(clampedEnd >= clampedStart ? clampedEnd : defaultBounds.max);
       setActiveTab('start');
+      setValidationError(null);
     }
-  }, [isOpen, initialStart, initialEnd]);
+  }, [isOpen, initialStart, initialEnd, defaultBounds]);
 
   const handleTimeChange = (val: string) => {
+    setValidationError(null);
     if (activeTab === 'start') {
       setStart(val);
-      // Auto-advance end if start >= end
       if (val >= end) {
         const [h, m] = val.split(':').map(Number);
-        const totalMinutes = (h || 0) * 60 + (m || 0) + 90;
+        const totalMinutes = (h || 0) * 60 + (m || 0) + 60;
         const newH = Math.floor(totalMinutes / 60) % 24;
         const newM = totalMinutes % 60;
-        setEnd(`${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`);
+        const proposedEnd = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+        if (proposedEnd <= defaultBounds.max) {
+          setEnd(proposedEnd);
+        } else {
+          setEnd(defaultBounds.max);
+        }
       }
     } else {
+      if (val <= start) {
+        setValidationError('End time must be after start time.');
+        return;
+      }
       setEnd(val);
     }
   };
 
   const handleSave = () => {
+    if (start >= end) {
+      setValidationError('Start time must be strictly before end time.');
+      return;
+    }
+    if (detectedSessionType === 'Morning' && end > '12:00') {
+      setValidationError('Morning session times cannot exceed 12:00 PM.');
+      return;
+    }
+    if (detectedSessionType === 'Afternoon' && (start < '12:00' || end > '18:00')) {
+      setValidationError('Afternoon session times must be between 12:00 PM and 6:00 PM.');
+      return;
+    }
+    if (detectedSessionType === 'Evening' && start < '18:00') {
+      setValidationError('Evening session times must start from 6:00 PM onwards.');
+      return;
+    }
+
     const formatted = `${formatTo12(start)} - ${formatTo12(end)}`;
     onSave(start, end, formatted);
     onClose();
@@ -74,7 +136,7 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
       description="Configure attendance scanning window"
       icon={<Clock className="h-5 w-5" />}
       contextBox={
-        <div className="rounded-2xl border border-[#E5E0EB] bg-[#F9F7FA] p-3.5">
+        <div className="rounded-2xl border border-[#E5E0EB] bg-[#F9F7FA] p-3.5 space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-[#24133F]">{sessionTitle}</span>
             {windowType === 'IN' && (
@@ -94,9 +156,16 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
             )}
           </div>
           {dateStr && (
-            <div className="mt-2 flex items-center gap-1.5 text-xs text-[#756883]">
+            <div className="flex items-center gap-1.5 text-xs text-[#756883]">
               <Calendar className="h-3.5 w-3.5" />
               <span>{dateStr}</span>
+            </div>
+          )}
+          {detectedSessionType && (
+            <div className="text-[11px] font-semibold text-brand-700">
+              {detectedSessionType === 'Morning' && '• Morning Session time is restricted up to 12:00 PM max.'}
+              {detectedSessionType === 'Afternoon' && '• Afternoon Session time is restricted between 12:00 PM and 6:00 PM.'}
+              {detectedSessionType === 'Evening' && '• Evening Session time is restricted from 6:00 PM onwards.'}
             </div>
           )}
         </div>
@@ -113,7 +182,7 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
           <button
             type="button"
             onClick={handleSave}
-            className="flex items-center gap-1.5 rounded-xl bg-[#7026B7] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#631FA4] shadow-[0_4px_0_0_#451475] active:translate-y-[2px] active:shadow-none transition-all"
+            className="flex items-center gap-1.5 rounded-xl bg-brand-700 px-5 py-2.5 text-xs font-bold text-white hover:bg-brand-800 shadow-[0_4px_0_0_#451475] active:translate-y-[2px] active:shadow-none transition-all"
           >
             <Check className="h-3.5 w-3.5" />
             <span>Save Window</span>
@@ -122,6 +191,13 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
       }
     >
       <div className="flex-1 flex flex-col space-y-4 min-h-0">
+        {validationError && (
+          <div className="flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+            <span>{validationError}</span>
+          </div>
+        )}
+
         {/* Dual Start / End Tab Toggle */}
         <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#F6F4F8] p-1.5 border border-[#E5E0EB] shrink-0">
           <button
@@ -155,11 +231,14 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
           </button>
         </div>
 
-        {/* TimePicker */}
+        {/* TimePicker with dynamic constraints */}
         <TimePicker
           label={`Select ${activeTab === 'start' ? 'Start' : 'End'} Time`}
           value={activeTab === 'start' ? start : end}
           onChange={handleTimeChange}
+          sessionType={detectedSessionType}
+          minTime={activeTab === 'end' ? start : defaultBounds.min}
+          maxTime={defaultBounds.max}
           className="flex-1 flex flex-col min-h-0"
           gridContainerClassName="flex-1 min-h-[360px] max-h-none"
         />

@@ -103,6 +103,7 @@ export function AttendancePage() {
   const [error, setError] = useState('');
 
   const [isEventMenuOpen, setIsEventMenuOpen] = useState(false);
+  const [isDeletingEvent, setIsDeletingEvent] = useState(false);
   const [isEventExpanded, setIsEventExpanded] = useState(true);
   const [expandedDayId, setExpandedDayId] = useState<string>('d1');
 
@@ -241,9 +242,15 @@ export function AttendancePage() {
         setEventData(null);
         return;
       }
-      const targetId = preferredEventId || selectedEventId || allEvents[0].id;
+      const savedActiveId = localStorage.getItem('presnt_active_event_id');
+      const targetId =
+        preferredEventId ||
+        (savedActiveId && allEvents.some((e) => e.id === savedActiveId) ? savedActiveId : null) ||
+        selectedEventId ||
+        allEvents[0].id;
       const targetEvent = allEvents.find((e) => e.id === targetId) || allEvents[0];
       setSelectedEventId(targetEvent.id);
+      localStorage.setItem('presnt_active_event_id', targetEvent.id);
       await buildEventSchedule(targetEvent);
     } catch (err: any) {
       setError(err?.response?.data?.error?.message || 'Could not load attendance schedule. Try again.');
@@ -360,12 +367,19 @@ export function AttendancePage() {
     }
   };
 
-  const handleUnsupportedDeleteSession = (session: SessionItem) => {
+  const handleDeleteSession = async (session: SessionItem) => {
     setOpenMenuSessionId(null);
-    showFeedback(
-      `Deleting session "${session.name}" is not supported by the backend API to preserve attendance audit history.`,
-      'warning'
-    );
+    const confirmMsg = `Are you sure you want to delete session "${session.name}"?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      await adminService.deleteSession(session.id);
+      showFeedback(`Session "${session.name}" deleted successfully.`, 'delete');
+      await loadSchedule(selectedEventId);
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to delete session.';
+      showFeedback(apiMsg, 'warning');
+    }
   };
 
   const handleCopyFromDay1 = async (targetDayId: string) => {
@@ -407,12 +421,24 @@ export function AttendancePage() {
     }
   };
 
-  const handleUnsupportedDeleteEvent = () => {
+  const handleDeleteEvent = async () => {
+    if (!eventData) return;
+    const confirmMsg = `Are you sure you want to delete event "${eventData.name}"? This will remove all associated sessions without attendance records. Events with student attendance records cannot be deleted.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsDeletingEvent(true);
     setIsEventMenuOpen(false);
-    showFeedback(
-      'Deleting an event is not supported by the backend API to preserve linked sessions and attendance records.',
-      'warning'
-    );
+    try {
+      await adminService.deleteEvent(eventData.id);
+      showFeedback(`Event "${eventData.name}" deleted successfully.`, 'delete');
+      localStorage.removeItem('presnt_active_event_id');
+      await loadSchedule();
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to delete event.';
+      showFeedback(apiMsg, 'warning');
+    } finally {
+      setIsDeletingEvent(false);
+    }
   };
 
   const handleEventPublished = (createdEvent: EventRecord) => {
@@ -508,20 +534,26 @@ export function AttendancePage() {
             )}
           </div>
 
-          {events.length > 1 && (
-            <Dropdown
-              value={selectedEventId}
-              onChange={(val) => {
-                setSelectedEventId(val);
-                const found = events.find((e) => e.id === val);
-                if (found) void buildEventSchedule(found);
-              }}
-              buttonClassName="h-10 rounded-xl"
-              options={events.map((ev) => ({
-                value: ev.id,
-                label: ev.name,
-              }))}
-            />
+          {events.length > 0 && (
+            <div className="flex items-center gap-1.5 rounded-xl border border-[#E5E0EB] bg-white px-3 py-1 text-xs shadow-2xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#756883] shrink-0">
+                Active Event:
+              </span>
+              <Dropdown
+                value={selectedEventId}
+                onChange={(val) => {
+                  setSelectedEventId(val);
+                  localStorage.setItem('presnt_active_event_id', val);
+                  const found = events.find((e) => e.id === val);
+                  if (found) void buildEventSchedule(found);
+                }}
+                buttonClassName="h-8 border-none bg-transparent font-bold text-slate-900 text-xs px-1"
+                options={events.map((ev) => ({
+                  value: ev.id,
+                  label: ev.name,
+                }))}
+              />
+            </div>
           )}
 
           <Dropdown
@@ -628,12 +660,12 @@ export function AttendancePage() {
                     <div className="absolute right-0 top-full mt-1 z-30 w-44 rounded-xl border border-[#E5E0EB] bg-white p-1 shadow-lg animate-in fade-in zoom-in-95 duration-100">
                       <button
                         type="button"
-                        onClick={handleUnsupportedDeleteEvent}
-                        title="Deleting events is not supported by the backend API"
-                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-400 cursor-not-allowed"
+                        onClick={handleDeleteEvent}
+                        disabled={isDeletingEvent}
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        <span>Delete Event (Unsupported)</span>
+                        <Trash2 className="h-3.5 w-3.5 text-rose-500" />
+                        <span>{isDeletingEvent ? 'Deleting...' : 'Delete Event'}</span>
                       </button>
                     </div>
                   </>
@@ -812,13 +844,12 @@ export function AttendancePage() {
                                         type="button"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          handleUnsupportedDeleteSession(session);
+                                          void handleDeleteSession(session);
                                         }}
-                                        title="Deleting sessions is not supported by the backend API"
-                                        className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 font-semibold text-slate-400 cursor-not-allowed"
+                                        className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
                                       >
-                                        <Trash2 className="h-3.5 w-3.5 text-slate-400" />
-                                        Delete session (Unsupported)
+                                        <Trash2 className="h-3.5 w-3.5 text-rose-500" />
+                                        Delete session
                                       </button>
                                     </div>
                                   </>

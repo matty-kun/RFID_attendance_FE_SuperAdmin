@@ -9,4 +9,8 @@ export const eventService = {
   async createEvent(payload: CreateEventPayload): Promise<EventRecord> {
     return adminService.createEvent(payload) as Promise<EventRecord>;
   },
+
+  async deleteEvent(id: string): Promise<void> {
+    await adminService.deleteEvent(id);
+  },
 };
