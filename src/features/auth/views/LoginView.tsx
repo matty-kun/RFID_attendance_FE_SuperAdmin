@@ -1,68 +1,222 @@
 import { useRef, useState } from 'react';
 import { AlertCircle, Eye, EyeOff, KeyRound, User } from 'lucide-react';
 import { useLoginViewModel } from '../viewmodels';
+import hawiPeekingImg from '../../../assets/illustrations/Hawi Peeking.png';
+import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
 
 export function LoginView() {
   const {
-    identifier, setIdentifier, password, setPassword, isLoading, error, clearError, handleSubmit,
+    identifier,
+    setIdentifier,
+    password,
+    setPassword,
+    isLoading,
+    error,
+    clearError,
+    handleSubmit,
   } = useLoginViewModel();
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const helpDialog = useRef<HTMLDialogElement>(null);
 
-  return <div className="flex min-h-screen flex-col bg-[#EAE1F8] font-sans">
-    <header className="px-6 pt-8 text-center sm:pt-10">
-      <p className="text-[34px] font-extrabold leading-tight tracking-tight text-[#4A1D75]">Presnt</p>
-      <p className="mt-1 text-sm font-semibold text-[#756883]">Super Admin Portal</p>
-    </header>
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#F4F1F8] p-4 sm:p-6 lg:p-8 font-sans select-none">
+      <div className="relative w-full max-w-[960px] overflow-hidden rounded-[32px] border border-[#E5E0EB] bg-white shadow-2xl grid grid-cols-1 md:grid-cols-2">
+        {/* Left Hero Panel */}
+        <div className="relative flex flex-col justify-between bg-[#EBE2F9] p-8 sm:p-10 lg:p-12 min-h-[460px] md:min-h-[580px] overflow-hidden">
+          {/* Top Headline Content */}
+          <div className="relative z-10 max-w-sm">
+            <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#8B78A5]">
+              Welcome to Presnt
+            </span>
+            <h1 className="mt-4 text-3xl sm:text-4xl lg:text-[42px] font-black leading-[1.1] tracking-tight text-[#1B0B36]">
+              Attendance in <span className="block text-[#8B2CCB]">Seconds.</span>
+            </h1>
+            <p className="mt-3 text-sm font-semibold text-[#756883] leading-relaxed max-w-[280px]">
+              Your central hub for managing campus attendance.
+            </p>
+          </div>
 
-    <main className="flex flex-1 items-end justify-center pt-40 sm:items-center sm:px-6 sm:pb-10">
-      <section aria-labelledby="login-title" className="relative w-full max-w-[440px] rounded-t-[28px] border border-[#E5E0EB] bg-white px-5 pb-8 pt-24 sm:rounded-[28px] sm:px-8 sm:pb-9">
-        <img src="/illustrations/hawi-sitting.png" alt="Hawi mascot sitting above the sign-in form" className="pointer-events-none absolute -top-[175px] left-1/2 h-[220px] w-[220px] -translate-x-1/2 object-contain" />
-        <div className="mb-6 text-center">
-          <h1 id="login-title" className="text-2xl font-extrabold text-[#24133F]">Welcome back!</h1>
-          <p className="mt-1 text-sm text-[#756883]">Sign in to manage Presnt.</p>
+          {/* Hawi Mascot Peeking from bottom right */}
+          <div className="pointer-events-none absolute -bottom-6 -right-6 md:-bottom-8 md:-right-8 z-0">
+            <img
+              src={hawiPeekingImg}
+              alt="Hawi mascot"
+              className="h-[280px] sm:h-[320px] md:h-[360px] w-auto object-contain drop-shadow-xl"
+            />
+          </div>
         </div>
 
-        {error && <div role="alert" className="mb-4 flex items-start gap-2 rounded-[14px] border border-[#EF3340] bg-[#FDE8EA] px-3.5 py-2.5 text-[13px] font-semibold text-[#B91C2A]">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}
-        </div>}
-
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label htmlFor="super-admin-email" className="mb-1.5 block text-[13px] font-semibold text-[#24133F]">Super Admin Email</label>
-            <div className="flex h-[50px] items-center gap-3 rounded-[14px] border-[1.2px] border-[#E5E0EB] bg-white px-4 focus-within:border-[#6D21A8]">
-              <User className="h-[18px] w-[18px] shrink-0 text-[#756883]" />
-              <input id="super-admin-email" type="email" autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="Your registered email" value={identifier} onChange={(event) => { setIdentifier(event.target.value); clearError(); }} disabled={isLoading} required className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#24133F] outline-none placeholder:font-medium placeholder:text-[#A59CAC]" />
-            </div>
+        {/* Right Form Panel */}
+        <div className="flex flex-col justify-between bg-white p-8 sm:p-10 lg:p-12">
+          {/* Top Logo */}
+          <div className="text-center">
+            <span className="text-2xl font-black tracking-tight text-[#7C27BD]">
+              Presnt
+            </span>
           </div>
 
-          <div>
-            <label htmlFor="super-admin-password" className="mb-1.5 block text-[13px] font-semibold text-[#24133F]">Password</label>
-            <div className="flex h-[50px] items-center gap-3 rounded-[14px] border-[1.2px] border-[#E5E0EB] bg-white px-4 focus-within:border-[#6D21A8]">
-              <KeyRound className="h-[18px] w-[18px] shrink-0 text-[#756883]" />
-              <input id="super-admin-password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Enter your password" value={password} onChange={(event) => { setPassword(event.target.value); clearError(); }} disabled={isLoading} required className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#24133F] outline-none placeholder:font-medium placeholder:text-[#A59CAC]" />
-              <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="text-[#756883] hover:text-[#6D21A8] focus-visible:outline-2 focus-visible:outline-[#6D21A8]">
-                {showPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
+          {/* Form Content */}
+          <div className="my-auto py-6 max-w-sm mx-auto w-full">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#24133F]">
+                <span className="text-[#8B2CCB]">Login</span> to your account
+              </h2>
+              <p className="mt-1 text-xs font-semibold text-[#756883]">
+                welcome! Enter your details to login to your account
+              </p>
+            </div>
+
+            {error && (
+              <div
+                role="alert"
+                className="mb-4 flex items-start gap-2 rounded-2xl border border-[#EF3340]/20 bg-[#FDE8EA] px-3.5 py-2.5 text-xs font-bold text-[#B91C2A]"
+              >
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Admin ID / Identifier */}
+              <div>
+                <label
+                  htmlFor="admin-identifier"
+                  className="mb-1.5 block text-xs font-bold text-[#24133F]"
+                >
+                  Admin ID
+                </label>
+                <div className="flex h-11 items-center gap-2.5 rounded-2xl border border-[#D8B4ED] bg-white px-3.5 transition-all focus-within:border-[#7026B7] focus-within:ring-2 focus-within:ring-[#7026B7]/20">
+                  <User className="h-4 w-4 text-[#756883] shrink-0" />
+                  <input
+                    id="admin-identifier"
+                    type="text"
+                    autoComplete="username"
+                    placeholder="Enter your ID number"
+                    value={identifier}
+                    onChange={(e) => {
+                      setIdentifier(e.target.value);
+                      clearError();
+                    }}
+                    disabled={isLoading}
+                    required
+                    className="h-full min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#24133F] outline-none placeholder:font-normal placeholder:text-[#A59CAC]"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div>
+                <label
+                  htmlFor="admin-password"
+                  className="mb-1.5 block text-xs font-bold text-[#24133F]"
+                >
+                  Password
+                </label>
+                <div className="flex h-11 items-center gap-2.5 rounded-2xl border border-[#D8B4ED] bg-white px-3.5 transition-all focus-within:border-[#7026B7] focus-within:ring-2 focus-within:ring-[#7026B7]/20">
+                  <KeyRound className="h-4 w-4 text-[#756883] shrink-0" />
+                  <input
+                    id="admin-password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    placeholder="Enter your Password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      clearError();
+                    }}
+                    disabled={isLoading}
+                    required
+                    className="h-full min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#24133F] outline-none placeholder:font-normal placeholder:text-[#A59CAC]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="text-[#756883] hover:text-[#7026B7] cursor-pointer transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Remember me & Forgot Password */}
+              <div className="flex items-center justify-between text-xs pt-0.5">
+                <label className="flex items-center gap-2 text-[#756883] font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 rounded-md border-[#D8B4ED] text-[#7026B7] focus:ring-[#7026B7] cursor-pointer"
+                  />
+                  <span>Remember me</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => helpDialog.current?.showModal()}
+                  className="font-bold text-[#7026B7] hover:underline cursor-pointer"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+
+              {/* Sign In 3D Tactile Button */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="mt-3 flex h-11 w-full items-center justify-center rounded-2xl bg-[#7026B7] text-sm font-bold text-white shadow-[0_4px_0_0_#451475] transition-all hover:bg-[#621FA3] active:translate-y-[2px] active:shadow-[0_1px_0_0_#451475] disabled:opacity-60 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7026B7]"
+              >
+                {isLoading ? 'Signing in…' : 'Sign In'}
               </button>
-            </div>
+            </form>
+
+            {/* New here? Create account */}
+            <p className="mt-5 text-center text-xs font-medium text-[#756883]">
+              New here?{' '}
+              <button
+                type="button"
+                onClick={() => helpDialog.current?.showModal()}
+                className="font-bold text-[#7026B7] hover:underline cursor-pointer"
+              >
+                Create account
+              </button>
+            </p>
           </div>
 
-          <button type="submit" disabled={isLoading} className="mt-2 flex h-[50px] w-full items-center justify-center rounded-[18px] bg-[#6C2BD9] text-[17px] font-extrabold text-white shadow-[0_6px_0_0_#431475] transition-all hover:bg-[#5F22C5] active:translate-y-1 active:shadow-[0_2px_0_0_#431475] disabled:cursor-wait disabled:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6D21A8]">
-            {isLoading ? 'Signing in…' : 'Login'}
-          </button>
-        </form>
+          {/* Footer Copyright */}
+          <div className="text-center pt-2">
+            <p className="text-[11px] font-medium text-[#A59AAB]">
+              © 2026 Presnt. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </div>
 
-        <p className="mt-6 text-center text-[13px] font-semibold text-[#24133F]">Forgot Password?{' '}
-          <button type="button" onClick={() => helpDialog.current?.showModal()} className="font-bold text-[#7C3AED] hover:underline focus-visible:outline-2 focus-visible:outline-[#6D21A8]">Click here</button>
+      {/* Help Dialog */}
+      <dialog
+        ref={helpDialog}
+        aria-labelledby="password-help-title"
+        className="w-[min(360px,calc(100%-32px))] rounded-[28px] border border-[#E5E0EB] bg-white p-6 text-center text-[#24133F] shadow-2xl backdrop:bg-[#1A0B2E]/40 backdrop:backdrop-blur-sm"
+      >
+        <img
+          src={hawiQuestionImg}
+          alt="Hawi question illustration"
+          className="mx-auto mb-3 h-28 w-28 object-contain"
+        />
+        <h2 id="password-help-title" className="text-xl font-extrabold text-[#24133F]">
+          Need Assistance?
+        </h2>
+        <p className="mt-2 text-xs text-[#756883] leading-relaxed">
+          Super Admin accounts are provisioned by institution administrators. Contact IT Services to request an account or reset your credentials.
         </p>
-      </section>
-    </main>
-
-    <dialog ref={helpDialog} aria-labelledby="password-help-title" className="w-[min(340px,calc(100%-32px))] rounded-[24px] border border-[#E5E0EB] bg-white p-6 text-center text-[#24133F] backdrop:bg-[#24133F]/45">
-      <img src="/illustrations/hawi-question.png" alt="" className="mx-auto mb-3 h-28 w-28 object-contain" />
-      <h2 id="password-help-title" className="text-xl font-extrabold">Forgot Password?</h2>
-      <p className="mt-2 text-sm text-[#756883]">Contact IT Services to reset your Super Admin password.</p>
-      <button type="button" onClick={() => helpDialog.current?.close()} className="mt-5 w-full rounded-[14px] bg-[#6C2BD9] px-4 py-3 font-bold text-white shadow-[0_3px_0_0_#431475]">Got It</button>
-    </dialog>
-  </div>;
+        <button
+          type="button"
+          onClick={() => helpDialog.current?.close()}
+          className="mt-5 w-full rounded-2xl bg-[#7026B7] py-2.5 text-xs font-bold text-white shadow-[0_3px_0_0_#451475] hover:bg-[#621FA3] active:translate-y-[1px] active:shadow-none cursor-pointer"
+        >
+          Got It
+        </button>
+      </dialog>
+    </div>
+  );
 }
