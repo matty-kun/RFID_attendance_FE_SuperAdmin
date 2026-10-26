@@ -19,6 +19,7 @@ export interface AttendanceRecord {
     id?: string;
     name: string;
     date?: string;
+    event_id?: string;
   };
   location?: {
     id?: string;

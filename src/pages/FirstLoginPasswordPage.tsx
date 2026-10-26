@@ -35,8 +35,9 @@ export function FirstLoginPasswordPage() {
         logout();
         navigate('/login', { replace: true });
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Could not change password. Try again.');
+    } catch (err: any) {
+      const apiMessage = err?.response?.data?.error?.message || err?.response?.data?.message;
+      setError(apiMessage || (err instanceof Error ? err.message : 'Could not change password. Try again.'));
     } finally {
       setSubmitting(false);
     }

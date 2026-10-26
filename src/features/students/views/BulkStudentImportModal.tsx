@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Modal } from '../../../components/common/Modal';
+import { Input } from '../../../components/common/Input';
 import { toast } from '../../../context';
 import type { BulkImportStudentRow, InventoryCard } from '../models';
 
@@ -25,6 +26,7 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
 }) => {
   const [parsedRows, setParsedRows] = useState<BulkImportStudentRow[]>([]);
   const [fileName, setFileName] = useState('');
+  const [defaultTemporaryPassword, setDefaultTemporaryPassword] = useState('');
   const [autoPairWithInventory, setAutoPairWithInventory] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -47,6 +49,7 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
             course: parts[3] || 'BS Information Technology',
             year_level: Number(parts[4]) || 1,
             rfid_uid: parts[5] || undefined,
+            temporary_password: parts[6] || undefined,
           });
         }
       }
@@ -100,13 +103,27 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
 
   const handleConfirmImport = async () => {
     if (parsedRows.length === 0) return;
+    const missingPasswords = parsedRows.some(
+      (r) => (!r.temporary_password || r.temporary_password.length < 12) && defaultTemporaryPassword.length < 12
+    );
+    if (missingPasswords) {
+      toast.error('Please enter a default Temporary Password (at least 12 characters) for imported student accounts.');
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      await onImport(parsedRows, autoPairWithInventory);
-      toast.success(`Imported ${parsedRows.length} students successfully!`);
+      const rowsWithPasswords = parsedRows.map((row) => ({
+        ...row,
+        temporary_password:
+          row.temporary_password && row.temporary_password.length >= 12
+            ? row.temporary_password
+            : defaultTemporaryPassword,
+      }));
+      await onImport(rowsWithPasswords, autoPairWithInventory);
       onClose();
     } catch {
-      toast.error('Failed to import students.');
+      // Errors are handled and reported in onImport
     } finally {
       setIsProcessing(false);
     }
@@ -117,11 +134,11 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Bulk import students"
-      description="Upload your student roster file. You can automatically pair available RFID cards in sequence."
+      description="Upload your student roster file. Each row will be registered in the backend with a temporary password."
       maxWidth="lg"
     >
       <div className="space-y-4 pt-1">
-        {/* Dropzone with Anti-Slop typography (no cartoon/cloud icons) */}
+        {/* Dropzone */}
         <div className="rounded-2xl border border-dashed border-[#D5CEDD] bg-[#FAF8FC] p-6 text-center hover:border-[#7026B7] transition-all">
           <p className="text-sm font-bold text-[#24133F]">
             {fileName ? fileName : 'Upload student CSV or Excel roster'}
@@ -144,6 +161,24 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Default Temporary Password for Backend Registration */}
+        {parsedRows.length > 0 && (
+          <div className="rounded-xl border border-[#E5E0EB] bg-white p-3.5 space-y-2">
+            <Input
+              label="Default Temporary Password (min 12 chars)"
+              type="password"
+              placeholder="Required for creating student accounts"
+              value={defaultTemporaryPassword}
+              onChange={(e) => setDefaultTemporaryPassword(e.target.value)}
+              minLength={12}
+              required
+            />
+            <p className="text-[11px] text-[#756883]">
+              Students must change this temporary password after their first login.
+            </p>
+          </div>
+        )}
 
         {/* Auto-Pairing Option with Inventory Pool */}
         {parsedRows.length > 0 && (
@@ -213,7 +248,7 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
           </div>
         )}
 
-        {/* Footer Actions: Clean 3D Tactile Button, No Cancel Button */}
+        {/* Footer Actions */}
         <div className="pt-3 border-t border-[#F1EEF4] flex items-center justify-end">
           <button
             type="button"

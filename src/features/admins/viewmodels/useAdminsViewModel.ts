@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AdminRecord } from '../models';
 import { adminManagementService } from '../services';
-import { isDevPreview } from '../../auth/devPreview';
-import { previewAdmins } from '../models/previewAdmins';
+import { toast } from '../../../context';
 
 export interface UseAdminsViewModelReturn {
   admins: AdminRecord[];
@@ -10,6 +9,7 @@ export interface UseAdminsViewModelReturn {
   isModalOpen: boolean;
   setIsModalOpen: (open: boolean) => void;
   isSubmitting: boolean;
+  formError: string | null;
   name: string;
   setName: (v: string) => void;
   email: string;
@@ -33,6 +33,7 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -48,14 +49,11 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     setIsLoading(true);
     setError('');
     try {
-      const data = isDevPreview() ? (() => {
-        const matching = previewAdmins.filter((admin) => `${admin.name} ${admin.email} ${admin.role}`.toLowerCase().includes(searchQuery.trim().toLowerCase()));
-        return { admins: matching.slice((page - 1) * 25, page * 25), total: matching.length };
-      })() : await adminManagementService.getAdmins(page, searchQuery.trim());
+      const data = await adminManagementService.getAdmins(page, searchQuery.trim());
       setAdmins(data.admins);
       setTotal(data.total);
-    } catch {
-      setError('Could not load administrators. Try again.');
+    } catch (err: any) {
+      setError(err?.response?.data?.error?.message || 'Could not load administrators. Try again.');
     } finally {
       setIsLoading(false);
     }
@@ -68,22 +66,33 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name.trim() || !email.trim()) {
+      setFormError('Full name and email address are required.');
+      return;
+    }
+    if (temporaryPassword.length < 12) {
+      setFormError('Temporary password must be at least 12 characters.');
+      return;
+    }
+    setFormError(null);
     setIsSubmitting(true);
     try {
-      const newAdmin: AdminRecord = isDevPreview() ? {
-        id: `preview-admin-${Date.now()}`,
-        auth_user_id: `preview-auth-${Date.now()}`,
-        name, email, role, created_at: new Date().toISOString(),
-      } : await adminManagementService.createAdmin({ name, email, role, temporary_password: temporaryPassword });
-      if (isDevPreview()) previewAdmins.unshift(newAdmin);
-      setAdmins((prev) => [newAdmin, ...prev].slice(0, 25));
-      setTotal((previous) => previous + 1);
+      await adminManagementService.createAdmin({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        role,
+        temporary_password: temporaryPassword,
+      });
+      toast.success(`Admin "${name.trim()}" registered successfully.`);
       setIsModalOpen(false);
       setName('');
       setEmail('');
       setTemporaryPassword('');
-    } catch {
-      // The shared API error banner shows the server error; keep the form open.
+      await loadAdmins();
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to register administrator.';
+      setFormError(apiMsg);
+      toast.error(apiMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -95,6 +104,7 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     isModalOpen,
     setIsModalOpen,
     isSubmitting,
+    formError,
     name,
     setName,
     email,

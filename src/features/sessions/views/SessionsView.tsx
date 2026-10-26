@@ -6,7 +6,7 @@ import { Dropdown } from '../../../components/common/Dropdown';
 import { Badge } from '../../../components/common/Badge';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
-import { Clock, MapPin, Pencil, Plus, Sparkles } from 'lucide-react';
+import { Clock, MapPin, Pencil, Plus, RefreshCw, Sparkles } from 'lucide-react';
 import { getEventStatus, getSessionStatus } from '../../../utils/status';
 import { SessionLocationsDialog } from './SessionLocationsDialog';
 
@@ -20,6 +20,8 @@ export const SessionsView: React.FC = () => {
     events,
     selectedEventId,
     setSelectedEventId,
+    isLoading,
+    error,
     isModalOpen,
     setIsModalOpen,
     isSubmitting,
@@ -39,6 +41,7 @@ export const SessionsView: React.FC = () => {
     setTimeOutStart,
     timeOutEnd,
     setTimeOutEnd,
+    loadData,
     handleCreate,
   } = useSessionsViewModel(initialEventId);
 
@@ -62,7 +65,16 @@ export const SessionsView: React.FC = () => {
             label: `${ev.name} (${getEventStatus(ev.start_date, ev.end_date)})`,
           }))}
         />
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void loadData()}
+            isLoading={isLoading}
+            leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+          >
+            Refresh
+          </Button>
           <Button
             variant="primary"
             leftIcon={<Plus className="h-4 w-4" />}
@@ -76,6 +88,14 @@ export const SessionsView: React.FC = () => {
 
       {/* Sessions Table */}
       <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5">
+        {error && (
+          <div role="alert" className="mb-2 flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+            <span>{error}</span>
+            <button type="button" onClick={() => void loadData()} className="underline">
+              Retry
+            </button>
+          </div>
+        )}
         <table className="w-full min-w-[720px] text-left text-xs">
           <thead>
             <tr className="bg-[#F4F6FA] text-[10px] uppercase text-[#637596]">
@@ -88,10 +108,27 @@ export const SessionsView: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {sessions.length === 0 ? (
+            {isLoading ? (
               <tr>
                 <td colSpan={6} className="py-10 text-center text-xs text-[#756883]">
-                  No sessions found for this event. Click "Create Session" above to add one.
+                  Loading sessions…
+                </td>
+              </tr>
+            ) : error && sessions.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-10 text-center text-xs text-rose-600">
+                  Unable to load sessions.{' '}
+                  <button type="button" onClick={() => void loadData()} className="font-bold underline">
+                    Retry
+                  </button>
+                </td>
+              </tr>
+            ) : sessions.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-10 text-center text-xs text-[#756883]">
+                  {events.length === 0
+                    ? 'No campus events found. Create an event first before configuring sessions.'
+                    : 'No sessions found for this event. Click "Create Session" above to add one.'}
                 </td>
               </tr>
             ) : (
@@ -120,7 +157,7 @@ export const SessionsView: React.FC = () => {
                       </Badge>
                     </td>
                     <td className="px-3 py-3 text-xs font-medium text-[#637596]">
-                      {new Date(ses.date).toLocaleDateString('en-PH', { dateStyle: 'medium' })}
+                      {new Date(`${ses.date}T00:00:00+08:00`).toLocaleDateString('en-PH', { dateStyle: 'medium' })}
                     </td>
                     <td className="px-3 py-3 text-xs font-semibold">
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#E4F7EB] text-[#16883F] font-mono text-[11px]">

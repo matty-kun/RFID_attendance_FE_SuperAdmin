@@ -6,6 +6,7 @@ import { toast } from '../../../context';
 export interface UseEventsViewModelReturn {
   events: EventRecord[];
   isLoading: boolean;
+  error: string | null;
   isModalOpen: boolean;
   setIsModalOpen: (open: boolean) => void;
   isSubmitting: boolean;
@@ -25,6 +26,7 @@ export interface UseEventsViewModelReturn {
 export const useEventsViewModel = (): UseEventsViewModelReturn => {
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -37,22 +39,27 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
 
   const loadEvents = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const data = await eventService.getEvents();
       setEvents(data);
-    } catch {
-      setEvents([]);
+    } catch (err: any) {
+      setError(err?.response?.data?.error?.message || 'Could not load campus events. Try again.');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadEvents();
+    void loadEvents();
   }, [loadEvents]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name.trim()) {
+      setFormError('Event name is required.');
+      return;
+    }
     if (startDate > endDate) {
       setFormError('End date must be on or after the start date.');
       return;
@@ -61,13 +68,13 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
     setIsSubmitting(true);
     try {
       const payload: CreateEventPayload = {
-        name,
-        description: description || null,
+        name: name.trim(),
+        description: description.trim() || null,
         start_date: startDate,
         end_date: endDate,
       };
       await eventService.createEvent(payload);
-      toast.success(`Event "${name}" created successfully`);
+      toast.success(`Event "${name.trim()}" created successfully`);
       setIsModalOpen(false);
       setName('');
       setDescription('');
@@ -75,7 +82,9 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
       setEndDate('');
       await loadEvents();
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to create event');
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to create event';
+      setFormError(apiMsg);
+      toast.error(apiMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -84,6 +93,7 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
   return {
     events,
     isLoading,
+    error,
     isModalOpen,
     setIsModalOpen,
     isSubmitting,

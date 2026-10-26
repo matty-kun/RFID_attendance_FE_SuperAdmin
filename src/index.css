@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
 
 @keyframes nav-settle {
   from { opacity: .35; transform: translateY(6px) scale(.92); }

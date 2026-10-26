@@ -4,13 +4,15 @@ import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
-import { Plus, Search, Sparkles, Calendar } from 'lucide-react';
+import { Plus, RefreshCw, Search, Sparkles, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getEventStatus } from '../../../utils/status';
 
 export const EventsView: React.FC = () => {
   const {
     events,
+    isLoading,
+    error,
     isModalOpen,
     setIsModalOpen,
     isSubmitting,
@@ -23,6 +25,7 @@ export const EventsView: React.FC = () => {
     setStartDate,
     endDate,
     setEndDate,
+    loadEvents,
     handleCreate,
   } = useEventsViewModel();
 
@@ -61,7 +64,16 @@ export const EventsView: React.FC = () => {
             className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
           />
         </label>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void loadEvents()}
+            isLoading={isLoading}
+            leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+          >
+            Refresh
+          </Button>
           <Button
             variant="primary"
             leftIcon={<Plus className="h-4 w-4" />}
@@ -74,6 +86,14 @@ export const EventsView: React.FC = () => {
 
       {/* Events Table */}
       <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5">
+        {error && (
+          <div role="alert" className="mb-2 flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+            <span>{error}</span>
+            <button type="button" onClick={() => void loadEvents()} className="underline">
+              Retry
+            </button>
+          </div>
+        )}
         <table className="w-full min-w-[630px] text-left text-xs">
           <thead>
             <tr className="bg-[#F4F6FA] text-[10px] uppercase text-[#637596]">
@@ -85,7 +105,22 @@ export const EventsView: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredEvents.length === 0 ? (
+            {isLoading ? (
+              <tr>
+                <td colSpan={5} className="py-10 text-center text-xs text-[#756883]">
+                  Loading campus events…
+                </td>
+              </tr>
+            ) : error && events.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-10 text-center text-xs text-rose-600">
+                  Unable to load campus events.{' '}
+                  <button type="button" onClick={() => void loadEvents()} className="font-bold underline">
+                    Retry
+                  </button>
+                </td>
+              </tr>
+            ) : filteredEvents.length === 0 ? (
               <tr>
                 <td colSpan={5} className="py-10 text-center text-xs text-[#756883]">
                   {searchQuery ? 'No campus events match your search.' : 'No campus events registered yet. Click "Create Event" to add one.'}
@@ -117,10 +152,10 @@ export const EventsView: React.FC = () => {
                       </Badge>
                     </td>
                     <td className="px-3 py-3 text-xs font-medium text-[#637596]">
-                      {new Date(ev.start_date).toLocaleDateString('en-PH', { dateStyle: 'medium' })}
+                      {new Date(`${ev.start_date}T00:00:00+08:00`).toLocaleDateString('en-PH', { dateStyle: 'medium' })}
                     </td>
                     <td className="px-3 py-3 text-xs font-medium text-[#637596]">
-                      {new Date(ev.end_date).toLocaleDateString('en-PH', { dateStyle: 'medium' })}
+                      {new Date(`${ev.end_date}T00:00:00+08:00`).toLocaleDateString('en-PH', { dateStyle: 'medium' })}
                     </td>
                     <td className="px-3 py-3 text-right">
                       <Link
