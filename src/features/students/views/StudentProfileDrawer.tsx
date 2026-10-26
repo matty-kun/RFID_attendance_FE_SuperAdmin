@@ -8,7 +8,6 @@ import {
   Check,
   ChevronDown,
   Unlink,
-  Zap,
   Link as LinkIcon,
   X,
   Clock,
@@ -16,6 +15,8 @@ import {
   Pencil,
   Archive,
   ArchiveRestore,
+  CreditCard,
+  Radio,
 } from 'lucide-react';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
@@ -219,6 +220,26 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   const [isUnlinking, setIsUnlinking] = useState(false);
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
 
+  // Inline RFID Card Scanning & Pairing
+  const [isScanningCard, setIsScanningCard] = useState(false);
+  const [inlineCardUid, setInlineCardUid] = useState('');
+  const [isPairingCard, setIsPairingCard] = useState(false);
+  const cardInputRef = useRef<HTMLInputElement>(null);
+
+  const handleInlineCardSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanUid = inlineCardUid.trim();
+    if (!cleanUid || !currentStudent) return;
+    setIsPairingCard(true);
+    try {
+      await onQuickPair(currentStudent.id, cleanUid);
+      setIsScanningCard(false);
+      setInlineCardUid('');
+    } finally {
+      setIsPairingCard(false);
+    }
+  };
+
   // Cache student reference so the drawer can animate out smoothly when closing
   const activeStudentRef = useRef<StudentRecord | null>(student);
   if (student) {
@@ -259,6 +280,9 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       setIsEditingName(false);
       setIsCourseMenuOpen(false);
       setIsYearMenuOpen(false);
+      setIsScanningCard(false);
+      setInlineCardUid('');
+      setIsUnlinking(false);
     }
   }, [currentStudent]);
 
@@ -509,8 +533,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         <div className="flex-1 p-5 pt-3 pb-8 space-y-4 relative z-20 bg-white">
           {/* Subheading Handle */}
           <div className="flex items-center justify-between">
-            <p className="text-xs font-extrabold text-[#756883] uppercase tracking-wider">
-              @{currentStudent.student_id} · ENROLLED {currentStudent.created_at ? new Date(currentStudent.created_at).getFullYear() : '2023'}
+            <p className="text-xs font-extrabold text-[#756883] tracking-wider">
+              @{currentStudent.student_id}
             </p>
             {isArchived && (
               <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
@@ -571,51 +595,151 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               </div>
             </div>
           ) : currentStudent.rfid_uid ? (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={handleCopyUid}
-                className="flex-1 font-mono text-xs justify-center"
-                leftIcon={copiedUid ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4 text-slate-400" />}
-              >
-                Card UID: {currentStudent.rfid_uid}
-              </Button>
+            <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/40 via-white to-white p-3.5 shadow-2xs">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                    <CreditCard className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">RFID Card</p>
+                      <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                        Active
+                      </span>
+                    </div>
+                    <p className="font-mono text-xs font-bold text-slate-900 truncate mt-0.5">
+                      {currentStudent.rfid_uid}
+                    </p>
+                  </div>
+                </div>
 
-              <Button
-                variant="danger"
-                size="md"
-                onClick={() => setIsUnlinking(true)}
-                leftIcon={<Unlink className="h-4 w-4" />}
-                title="Unlink RFID Card"
-              >
-                Unlink
-              </Button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleCopyUid}
+                    leftIcon={copiedUid ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-slate-400" />}
+                    title="Copy Card UID"
+                  >
+                    {copiedUid ? 'Copied' : 'Copy'}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => setIsUnlinking(true)}
+                    leftIcon={<Unlink className="h-3.5 w-3.5" />}
+                    title="Unlink RFID Card"
+                  >
+                    Unlink
+                  </Button>
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              {availableCards.length > 0 && (
-                <Button
-                  variant="success"
-                  size="md"
-                  onClick={() => onQuickPair(currentStudent.id, availableCards[0].uid)}
-                  className="flex-1 justify-center"
-                  leftIcon={<LinkIcon className="h-4 w-4" />}
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-3.5 transition-all">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-200/80 text-slate-500">
+                    <CreditCard className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-slate-800">No RFID Card Assigned</p>
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-md">
+                        Unpaired
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                      Link a card to track automated event attendance
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {availableCards.length > 0 && !isScanningCard && (
+                    <Button
+                      variant="success"
+                      size="sm"
+                      onClick={() => onQuickPair(currentStudent.id, availableCards[0].uid)}
+                      leftIcon={<LinkIcon className="h-3.5 w-3.5" />}
+                      title={`Quick pair card #${availableCards[0].cardNumber}`}
+                    >
+                      Pair #{availableCards[0].cardNumber}
+                    </Button>
+                  )}
+                  {!isScanningCard ? (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        setIsScanningCard(true);
+                        setTimeout(() => cardInputRef.current?.focus(), 80);
+                      }}
+                      leftIcon={<Radio className="h-3.5 w-3.5" />}
+                    >
+                      Scan / Link Card
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Inline RFID Card Scanner / Manual Input */}
+              {isScanningCard && (
+                <form
+                  onSubmit={handleInlineCardSubmit}
+                  className="mt-3 pt-3 border-t border-slate-200/80 flex flex-col gap-2 animate-in fade-in duration-150"
                 >
-                  Pair Card #{availableCards[0].cardNumber}
-                </Button>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        ref={cardInputRef}
+                        type="text"
+                        value={inlineCardUid}
+                        onChange={(e) => setInlineCardUid(e.target.value)}
+                        placeholder="Tap RFID card on reader or enter UID..."
+                        className="w-full rounded-xl border border-brand-300 bg-white px-3 py-1.5 text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        size="sm"
+                        disabled={!inlineCardUid.trim() || isPairingCard}
+                        isLoading={isPairingCard}
+                      >
+                        Link Card
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setIsScanningCard(false);
+                          setInlineCardUid('');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 px-0.5">
+                    <span>Press Enter after tapping card</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onOpenRapidScan();
+                      }}
+                      className="text-brand-700 hover:text-brand-800 font-bold hover:underline cursor-pointer"
+                    >
+                      Open Rapid Scanner &rarr;
+                    </button>
+                  </div>
+                </form>
               )}
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => {
-                  onClose();
-                  onOpenRapidScan();
-                }}
-                leftIcon={<Zap className="h-4 w-4 fill-current" />}
-              >
-                Scan card
-              </Button>
             </div>
           )}
 
