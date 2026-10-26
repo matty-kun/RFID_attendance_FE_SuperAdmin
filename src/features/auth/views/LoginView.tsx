@@ -20,175 +20,173 @@ export function LoginView() {
   const helpDialog = useRef<HTMLDialogElement>(null);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F4F1F8] p-4 sm:p-6 lg:p-8 font-sans select-none">
-      <div className="relative w-full max-w-[960px] overflow-hidden rounded-[32px] border border-[#E5E0EB] bg-white shadow-2xl grid grid-cols-1 md:grid-cols-2">
-        {/* Left Hero Panel */}
-        <div className="relative flex flex-col justify-between bg-[#EBE2F9] p-8 sm:p-10 lg:p-12 min-h-[460px] md:min-h-[580px] overflow-hidden">
-          {/* Top Headline Content */}
-          <div className="relative z-10 max-w-sm">
-            <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#8B78A5]">
-              Welcome to Presnt
-            </span>
-            <h1 className="mt-4 text-3xl sm:text-4xl lg:text-[42px] font-black leading-[1.1] tracking-tight text-[#1B0B36]">
-              Attendance in <span className="block text-[#8B2CCB]">Seconds.</span>
-            </h1>
-            <p className="mt-3 text-sm font-semibold text-[#756883] leading-relaxed max-w-[280px]">
-              Your central hub for managing campus attendance.
+    <div className="min-h-screen w-full bg-white grid grid-cols-1 md:grid-cols-2 font-sans select-none overflow-x-hidden">
+      {/* Left Hero Panel */}
+      <div className="relative flex flex-col justify-between bg-[#EBE2F9] p-8 sm:p-12 md:p-14 lg:p-20 min-h-[440px] md:min-h-screen overflow-hidden">
+        {/* Top Headline Content */}
+        <div className="relative z-10 max-w-md">
+          <span className="text-xs font-extrabold uppercase tracking-widest text-[#8B78A5]">
+            Welcome to Presnt
+          </span>
+          <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl lg:text-[52px] font-black leading-[1.08] tracking-tight text-[#1B0B36]">
+            Attendance in <span className="block text-[#8B2CCB]">Seconds.</span>
+          </h1>
+          <p className="mt-4 text-sm sm:text-base font-semibold text-[#756883] leading-relaxed max-w-xs">
+            Your central hub for managing campus attendance.
+          </p>
+        </div>
+
+        {/* Hawi Mascot Peeking from bottom right */}
+        <div className="pointer-events-none absolute -bottom-4 -right-4 sm:-bottom-6 sm:-right-6 md:-bottom-8 md:-right-8 z-0">
+          <img
+            src={hawiPeekingImg}
+            alt="Hawi mascot"
+            className="h-[280px] sm:h-[380px] md:h-[460px] lg:h-[520px] w-auto object-contain drop-shadow-xl"
+          />
+        </div>
+      </div>
+
+      {/* Right Form Panel */}
+      <div className="flex flex-col justify-between bg-white p-8 sm:p-12 md:p-14 lg:p-20 min-h-[520px] md:min-h-screen">
+        {/* Top Logo */}
+        <div className="text-center">
+          <span className="text-2xl sm:text-3xl font-black tracking-tight text-[#7C27BD]">
+            Presnt
+          </span>
+        </div>
+
+        {/* Form Content */}
+        <div className="my-auto py-8 max-w-[380px] mx-auto w-full">
+          <div className="text-center mb-7">
+            <h2 className="text-2xl sm:text-[28px] font-extrabold tracking-tight text-[#24133F]">
+              <span className="text-[#8B2CCB]">Login</span> to your account
+            </h2>
+            <p className="mt-1.5 text-xs sm:text-sm font-semibold text-[#756883]">
+              welcome! Enter your details to login to your account
             </p>
           </div>
 
-          {/* Hawi Mascot Peeking from bottom right */}
-          <div className="pointer-events-none absolute -bottom-6 -right-6 md:-bottom-8 md:-right-8 z-0">
-            <img
-              src={hawiPeekingImg}
-              alt="Hawi mascot"
-              className="h-[280px] sm:h-[320px] md:h-[360px] w-auto object-contain drop-shadow-xl"
-            />
-          </div>
-        </div>
+          {error && (
+            <div
+              role="alert"
+              className="mb-4 flex items-start gap-2 rounded-2xl border border-[#EF3340]/20 bg-[#FDE8EA] px-3.5 py-2.5 text-xs font-bold text-[#B91C2A]"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
-        {/* Right Form Panel */}
-        <div className="flex flex-col justify-between bg-white p-8 sm:p-10 lg:p-12">
-          {/* Top Logo */}
-          <div className="text-center">
-            <span className="text-2xl font-black tracking-tight text-[#7C27BD]">
-              Presnt
-            </span>
-          </div>
-
-          {/* Form Content */}
-          <div className="my-auto py-6 max-w-sm mx-auto w-full">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#24133F]">
-                <span className="text-[#8B2CCB]">Login</span> to your account
-              </h2>
-              <p className="mt-1 text-xs font-semibold text-[#756883]">
-                welcome! Enter your details to login to your account
-              </p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Admin ID / Identifier */}
+            <div>
+              <label
+                htmlFor="admin-identifier"
+                className="mb-1.5 block text-xs font-bold text-[#24133F]"
+              >
+                Admin ID
+              </label>
+              <div className="flex h-11 items-center gap-2.5 rounded-2xl border border-[#D8B4ED] bg-white px-3.5 transition-all focus-within:border-[#7026B7] focus-within:ring-2 focus-within:ring-[#7026B7]/20">
+                <User className="h-4 w-4 text-[#756883] shrink-0" />
+                <input
+                  id="admin-identifier"
+                  type="text"
+                  autoComplete="username"
+                  placeholder="Enter your ID number"
+                  value={identifier}
+                  onChange={(e) => {
+                    setIdentifier(e.target.value);
+                    clearError();
+                  }}
+                  disabled={isLoading}
+                  required
+                  className="h-full min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#24133F] outline-none placeholder:font-normal placeholder:text-[#A59CAC]"
+                />
+              </div>
             </div>
 
-            {error && (
-              <div
-                role="alert"
-                className="mb-4 flex items-start gap-2 rounded-2xl border border-[#EF3340]/20 bg-[#FDE8EA] px-3.5 py-2.5 text-xs font-bold text-[#B91C2A]"
+            {/* Password */}
+            <div>
+              <label
+                htmlFor="admin-password"
+                className="mb-1.5 block text-xs font-bold text-[#24133F]"
               >
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Admin ID / Identifier */}
-              <div>
-                <label
-                  htmlFor="admin-identifier"
-                  className="mb-1.5 block text-xs font-bold text-[#24133F]"
-                >
-                  Admin ID
-                </label>
-                <div className="flex h-11 items-center gap-2.5 rounded-2xl border border-[#D8B4ED] bg-white px-3.5 transition-all focus-within:border-[#7026B7] focus-within:ring-2 focus-within:ring-[#7026B7]/20">
-                  <User className="h-4 w-4 text-[#756883] shrink-0" />
-                  <input
-                    id="admin-identifier"
-                    type="text"
-                    autoComplete="username"
-                    placeholder="Enter your ID number"
-                    value={identifier}
-                    onChange={(e) => {
-                      setIdentifier(e.target.value);
-                      clearError();
-                    }}
-                    disabled={isLoading}
-                    required
-                    className="h-full min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#24133F] outline-none placeholder:font-normal placeholder:text-[#A59CAC]"
-                  />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div>
-                <label
-                  htmlFor="admin-password"
-                  className="mb-1.5 block text-xs font-bold text-[#24133F]"
-                >
-                  Password
-                </label>
-                <div className="flex h-11 items-center gap-2.5 rounded-2xl border border-[#D8B4ED] bg-white px-3.5 transition-all focus-within:border-[#7026B7] focus-within:ring-2 focus-within:ring-[#7026B7]/20">
-                  <KeyRound className="h-4 w-4 text-[#756883] shrink-0" />
-                  <input
-                    id="admin-password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    placeholder="Enter your Password"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      clearError();
-                    }}
-                    disabled={isLoading}
-                    required
-                    className="h-full min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#24133F] outline-none placeholder:font-normal placeholder:text-[#A59CAC]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    className="text-[#756883] hover:text-[#7026B7] cursor-pointer transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Remember me & Forgot Password */}
-              <div className="flex items-center justify-between text-xs pt-0.5">
-                <label className="flex items-center gap-2 text-[#756883] font-medium cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 rounded-md border-[#D8B4ED] text-[#7026B7] focus:ring-[#7026B7] cursor-pointer"
-                  />
-                  <span>Remember me</span>
-                </label>
+                Password
+              </label>
+              <div className="flex h-11 items-center gap-2.5 rounded-2xl border border-[#D8B4ED] bg-white px-3.5 transition-all focus-within:border-[#7026B7] focus-within:ring-2 focus-within:ring-[#7026B7]/20">
+                <KeyRound className="h-4 w-4 text-[#756883] shrink-0" />
+                <input
+                  id="admin-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  placeholder="Enter your Password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    clearError();
+                  }}
+                  disabled={isLoading}
+                  required
+                  className="h-full min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#24133F] outline-none placeholder:font-normal placeholder:text-[#A59CAC]"
+                />
                 <button
                   type="button"
-                  onClick={() => helpDialog.current?.showModal()}
-                  className="font-bold text-[#7026B7] hover:underline cursor-pointer"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="text-[#756883] hover:text-[#7026B7] cursor-pointer transition-colors"
                 >
-                  Forgot Password?
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+            </div>
 
-              {/* Sign In 3D Tactile Button */}
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="mt-3 flex h-11 w-full items-center justify-center rounded-2xl bg-[#7026B7] text-sm font-bold text-white shadow-[0_4px_0_0_#451475] transition-all hover:bg-[#621FA3] active:translate-y-[2px] active:shadow-[0_1px_0_0_#451475] disabled:opacity-60 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7026B7]"
-              >
-                {isLoading ? 'Signing in…' : 'Sign In'}
-              </button>
-            </form>
-
-            {/* New here? Create account */}
-            <p className="mt-5 text-center text-xs font-medium text-[#756883]">
-              New here?{' '}
+            {/* Remember me & Forgot Password */}
+            <div className="flex items-center justify-between text-xs pt-0.5">
+              <label className="flex items-center gap-2 text-[#756883] font-medium cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded-md border-[#D8B4ED] text-[#7026B7] focus:ring-[#7026B7] cursor-pointer"
+                />
+                <span>Remember me</span>
+              </label>
               <button
                 type="button"
                 onClick={() => helpDialog.current?.showModal()}
                 className="font-bold text-[#7026B7] hover:underline cursor-pointer"
               >
-                Create account
+                Forgot Password?
               </button>
-            </p>
-          </div>
+            </div>
 
-          {/* Footer Copyright */}
-          <div className="text-center pt-2">
-            <p className="text-[11px] font-medium text-[#A59AAB]">
-              © 2026 Presnt. All rights reserved.
-            </p>
-          </div>
+            {/* Sign In 3D Tactile Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="mt-3 flex h-11 w-full items-center justify-center rounded-2xl bg-[#7026B7] text-sm font-bold text-white shadow-[0_4px_0_0_#451475] transition-all hover:bg-[#621FA3] active:translate-y-[2px] active:shadow-[0_1px_0_0_#451475] disabled:opacity-60 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7026B7]"
+            >
+              {isLoading ? 'Signing in…' : 'Sign In'}
+            </button>
+          </form>
+
+          {/* New here? Create account */}
+          <p className="mt-6 text-center text-xs font-medium text-[#756883]">
+            New here?{' '}
+            <button
+              type="button"
+              onClick={() => helpDialog.current?.showModal()}
+              className="font-bold text-[#7026B7] hover:underline cursor-pointer"
+            >
+              Create account
+            </button>
+          </p>
+        </div>
+
+        {/* Footer Copyright */}
+        <div className="text-center pt-4">
+          <p className="text-xs font-medium text-[#A59AAB]">
+            © 2026 Presnt. All rights reserved.
+          </p>
         </div>
       </div>
 
