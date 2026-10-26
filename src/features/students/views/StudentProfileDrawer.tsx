@@ -16,6 +16,7 @@ import {
   ArchiveRestore,
   CreditCard,
   Radio,
+  Loader2,
 } from 'lucide-react';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
@@ -463,7 +464,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   className="text-2xl font-black text-[#15344F] tracking-tight bg-transparent border-b-2 border-[#15344F] outline-none px-0 py-0 w-full"
                 />
                 {isSavingName && (
-                  <span className="text-xs font-bold text-[#15344F] shrink-0 animate-pulse">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#15344F] shrink-0">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#15344F]" />
                     Saving…
                   </span>
                 )}

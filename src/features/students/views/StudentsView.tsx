@@ -12,6 +12,7 @@ import {
   Search,
   Radio,
   ArchiveRestore,
+  Loader2,
 } from 'lucide-react';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
 import hawiFindingImg from '../../../assets/illustrations/Hawi Finding.png';
@@ -324,17 +325,20 @@ export const StudentsView: React.FC = () => {
               <img
                 src={isLoading ? hawiFindingImg : hawiQuestionImg}
                 alt={isLoading ? 'Loading students...' : 'No students found'}
-                className={`w-24 h-24 object-contain mb-3 ${isLoading ? 'animate-pulse' : ''}`}
+                className="w-24 h-24 object-contain mb-3"
               />
-              <p className="text-sm font-bold text-slate-900">
-                {isLoading
-                  ? 'Loading students…'
-                  : error
-                  ? 'Unable to load students.'
-                  : studentTab === 'archived'
-                  ? 'No archived students.'
-                  : 'No active students found.'}
-              </p>
+              <div className="flex items-center justify-center gap-2">
+                {isLoading && <Loader2 className="h-4 w-4 animate-spin text-brand-600" />}
+                <p className="text-sm font-bold text-slate-900">
+                  {isLoading
+                    ? 'Loading students…'
+                    : error
+                    ? 'Unable to load students.'
+                    : studentTab === 'archived'
+                    ? 'No archived students.'
+                    : 'No active students found.'}
+                </p>
+              </div>
               <p className="text-xs text-slate-500 max-w-xs mt-1">
                 {error
                   ? 'Check your backend connection and try again.'

@@ -18,6 +18,7 @@ import {
   Trash2,
   X,
   ArrowLeft,
+  Loader2,
 } from 'lucide-react';
 import { useToast } from '../context';
 import { Button } from '../components/common/Button';
@@ -700,9 +701,12 @@ export function AttendancePage() {
           <img
             src={hawiFindingImg}
             alt="Loading attendance schedule…"
-            className="w-24 h-24 object-contain mb-3 animate-pulse"
+            className="w-24 h-24 object-contain mb-3"
           />
-          <p className="text-sm font-bold text-[#24133F]">Loading attendance schedule…</p>
+          <div className="flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-[#7026B7]" />
+            <p className="text-sm font-bold text-[#24133F]">Loading attendance schedule…</p>
+          </div>
           <p className="text-xs text-[#756883] mt-1">Fetching events, sessions, and checkpoint mappings.</p>
         </div>
       ) : eventData ? (

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import hawiFindingImg from '../../assets/illustrations/Hawi Finding.png';
 
@@ -12,9 +13,12 @@ export const ProtectedRoute: React.FC = () => {
         <img
           src={hawiFindingImg}
           alt="Loading..."
-          className="w-24 h-24 object-contain animate-pulse"
+          className="w-24 h-24 object-contain"
         />
-        <p className="text-sm font-bold text-[#24133F]">Verifying Super Admin Authorization...</p>
+        <div className="flex items-center gap-2">
+          <Loader2 className="w-4 h-4 animate-spin text-[#7026B7]" />
+          <p className="text-sm font-bold text-[#24133F]">Verifying Super Admin Authorization...</p>
+        </div>
       </div>
     );
   }
