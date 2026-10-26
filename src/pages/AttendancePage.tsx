@@ -417,7 +417,7 @@ export function AttendancePage() {
     setIsDeletingSession(true);
     try {
       await adminService.deleteSession(sessionToDelete.id);
-      showFeedback(`Session "${sessionToDelete.name}" deleted successfully.`, 'delete');
+      showFeedback(`Session "${sessionToDelete.name}" deleted successfully.`, 'success');
       setSessionToDelete(null);
       await loadSchedule(selectedEventId);
     } catch (err: any) {
@@ -472,7 +472,7 @@ export function AttendancePage() {
     setIsDeletingEvent(true);
     try {
       await adminService.deleteEvent(eventToDelete.id);
-      showFeedback(`Event "${eventToDelete.name}" deleted successfully.`, 'delete');
+      showFeedback(`Event "${eventToDelete.name}" deleted successfully.`, 'success');
       if (serverActiveId === eventToDelete.id) {
         localStorage.removeItem('presnt_active_event_id');
         setServerActiveId(null);
