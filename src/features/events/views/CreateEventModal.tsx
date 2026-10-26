@@ -19,11 +19,13 @@ import {
 } from 'lucide-react';
 import { Checkbox } from '../../../components/common/Checkbox';
 import { toast } from '../../../context';
+import { adminService } from '../../../services/adminService';
 import { EditTimeWindowDrawer } from './EditTimeWindowDrawer';
 import {
   AssignOfficersDrawer,
   type AssignedOfficer,
 } from './AssignOfficersDrawer';
+import type { EventRecord } from '../../../types';
 
 export interface SessionTimeSlot {
   hasIn: boolean;
@@ -37,7 +39,39 @@ export interface SessionTimeSlot {
 export interface CreateEventModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onPublished?: (eventData: any) => void;
+  onPublished?: (createdEvent: EventRecord) => void;
+}
+
+function getTodayYMD() {
+  const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  return now.toISOString().slice(0, 10);
+}
+
+function parseSlotTimeToHHMMSS(windowStr: string, defaultStart: string, defaultEnd: string) {
+  try {
+    const parts = windowStr.split('-').map((s) => s.trim());
+    const to24 = (t: string, fallback: string) => {
+      if (!t) return `${fallback}:00`;
+      const [time, periodRaw] = t.split(' ');
+      const [hStr, mStr] = (time || '').split(':');
+      let hr = parseInt(hStr, 10);
+      const min = parseInt(mStr, 10) || 0;
+      if (isNaN(hr)) return `${fallback}:00`;
+      const period = periodRaw?.toUpperCase();
+      if (period === 'PM' && hr < 12) hr += 12;
+      if (period === 'AM' && hr === 12) hr = 0;
+      return `${String(hr).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
+    };
+    const endPeriodMatch = parts[1]?.match(/(AM|PM)/i);
+    const endPeriod = endPeriodMatch ? endPeriodMatch[1].toUpperCase() : 'AM';
+    const startRaw = parts[0]?.match(/(AM|PM)/i) ? parts[0] : `${parts[0]} ${endPeriod}`;
+    return {
+      start: to24(startRaw, defaultStart),
+      end: to24(parts[1] || '', defaultEnd),
+    };
+  } catch {
+    return { start: `${defaultStart}:00`, end: `${defaultEnd}:00` };
+  }
 }
 
 export const CreateEventModal: React.FC<CreateEventModalProps> = ({
@@ -48,9 +82,18 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [isMounted, setIsMounted] = useState(isOpen);
   const [isVisible, setIsVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState<number>(1);
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const today = useMemo(() => getTodayYMD(), []);
+  const [eventName, setEventName] = useState('');
+  const [eventDescription, setEventDescription] = useState('');
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
+  const [calendarMonth, setCalendarMonth] = useState(() => Number(today.slice(5, 7)) - 1);
+  const [calendarYear, setCalendarYear] = useState(() => Number(today.slice(0, 4)));
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
     if (isOpen) {
       setIsMounted(true);
       const rAF = requestAnimationFrame(() => {
@@ -65,16 +108,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
-
-  // Form State
-  const [eventName, setEventName] = useState('CITE FESTIVAL');
-  const [eventDescription, setEventDescription] = useState(
-    'CITE Fest is an annual department festival that celebrates the talents, creativity, and teamwork of CITE students through various academic, sports, and recreational activities. It promotes camaraderie, collaboration, and school spirit among students and faculty.'
-  );
-  const [startDate, setStartDate] = useState('2026-10-02');
-  const [endDate, setEndDate] = useState('2026-10-05');
-  const [calendarMonth, setCalendarMonth] = useState(9); // 9 = October
-  const [calendarYear, setCalendarYear] = useState(2026);
 
   const calculatedDays = useMemo(() => {
     if (!startDate || !endDate) return 1;
@@ -96,7 +129,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   // Step 3 state: dynamically generate days based on selected dates
   const eventDaysList = useMemo(() => {
-    if (!startDate || !endDate) return [{ num: 1, label: 'Day 1', shortDate: 'Oct 2', fullDate: 'October 2, 2026' }];
+    if (!startDate || !endDate) {
+      return [{ num: 1, ymd: today, label: 'Day 1', shortDate: 'Day 1', fullDate: formatDateDisplay(today) }];
+    }
     const d1 = new Date(`${startDate}T00:00:00`);
     const d2 = new Date(`${endDate}T00:00:00`);
     const diffTime = d2.getTime() - d1.getTime();
@@ -105,17 +140,22 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     return Array.from({ length: count }, (_, i) => {
       const curDate = new Date(d1);
       curDate.setDate(d1.getDate() + i);
+      const y = curDate.getFullYear();
+      const m = String(curDate.getMonth() + 1).padStart(2, '0');
+      const d = String(curDate.getDate()).padStart(2, '0');
+      const ymd = `${y}-${m}-${d}`;
       const shortMonth = curDate.toLocaleDateString('en-US', { month: 'short' });
       const dayNum = curDate.getDate();
       const fullDate = curDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
       return {
         num: i + 1,
+        ymd,
         label: `Day ${i + 1}`,
         shortDate: `${shortMonth} ${dayNum}`,
         fullDate,
       };
     });
-  }, [startDate, endDate]);
+  }, [startDate, endDate, today]);
 
   const [selectedDayTab, setSelectedDayTab] = useState<number>(1);
   const [morningEnabled, setMorningEnabled] = useState(true);
@@ -126,32 +166,31 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [afternoonExpanded, setAfternoonExpanded] = useState(true);
   const [eveningExpanded, setEveningExpanded] = useState(true);
 
-  // Dynamic session slots & officers
   const [morningSlot, setMorningSlot] = useState<SessionTimeSlot>({
     hasIn: true,
-    inTime: '7:00 - 8:30 AM',
-    inOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'Cite Building', status: 'Online' }],
+    inTime: '7:00 AM - 8:30 AM',
+    inOfficers: [],
     hasOut: true,
-    outTime: '12:00 - 1:30 PM',
-    outOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'Cite Building', status: 'Online' }],
+    outTime: '11:30 AM - 12:30 PM',
+    outOfficers: [],
   });
 
   const [afternoonSlot, setAfternoonSlot] = useState<SessionTimeSlot>({
     hasIn: true,
-    inTime: '1:00 - 2:30 PM',
-    inOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'Cite Building', status: 'Online' }],
+    inTime: '1:00 PM - 2:30 PM',
+    inOfficers: [],
     hasOut: true,
-    outTime: '5:00 - 6:30 PM',
-    outOfficers: [{ id: 'adm-3', name: 'Nonoy Kaibo', initials: 'NK', role: 'Admin', location: 'Cite Building', status: 'Online' }],
+    outTime: '4:30 PM - 5:30 PM',
+    outOfficers: [],
   });
 
   const [eveningSlot, setEveningSlot] = useState<SessionTimeSlot>({
     hasIn: true,
-    inTime: '6:00 - 7:30 PM',
-    inOfficers: [{ id: 'adm-1', name: 'Ako si batman', initials: 'AB', role: 'Admin', location: 'Gymnasium', status: 'Online' }],
+    inTime: '6:00 PM - 7:30 PM',
+    inOfficers: [],
     hasOut: true,
-    outTime: '9:00 - 10:30 PM',
-    outOfficers: [{ id: 'adm-1', name: 'Ako si batman', initials: 'AB', role: 'Admin', location: 'Gymnasium', status: 'Online' }],
+    outTime: '8:30 PM - 9:30 PM',
+    outOfficers: [],
   });
 
   const handleToggleWindow = (
@@ -188,7 +227,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     return 'Disabled';
   };
 
-  // Time Window Edit Modal State (with Start & End tabs)
   const [editingTimeSlot, setEditingTimeSlot] = useState<{
     isOpen: boolean;
     sessionType: 'Morning' | 'Afternoon' | 'Evening';
@@ -204,26 +242,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   });
 
   const parseSlotTime = (windowStr: string) => {
-    try {
-      const parts = windowStr.split('-').map((s) => s.trim());
-      const to24 = (t: string) => {
-        const [time, period] = t.split(' ');
-        const [h, m] = time.split(':').map(Number);
-        let hr = h;
-        if (period?.toUpperCase() === 'PM' && hr < 12) hr += 12;
-        if (period?.toUpperCase() === 'AM' && hr === 12) hr = 0;
-        return `${String(hr).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
-      };
-      return {
-        start: parts[0] ? to24(parts[0]) : '07:00',
-        end: parts[1] ? to24(parts[1]) : '08:30',
-      };
-    } catch {
-      return { start: '07:00', end: '08:30' };
-    }
+    const parsed = parseSlotTimeToHHMMSS(windowStr, '07:00', '08:30');
+    return {
+      start: parsed.start.slice(0, 5),
+      end: parsed.end.slice(0, 5),
+    };
   };
-
-
 
   const handleOpenEditTimeSlot = (
     sessionType: 'Morning' | 'Afternoon' | 'Evening',
@@ -240,8 +264,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     });
   };
 
-
-
   const handleSaveSlotTime = (_start: string, _end: string, formatted: string) => {
     const { sessionType, slot } = editingTimeSlot;
     const updateSlot = (s: SessionTimeSlot): SessionTimeSlot => ({
@@ -256,7 +278,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setEditingTimeSlot((prev) => ({ ...prev, isOpen: false }));
   };
 
-  // Drawer state for assigning officers
   const [drawerConfig, setDrawerConfig] = useState<{
     isOpen: boolean;
     sessionType: 'Morning' | 'Afternoon' | 'Evening';
@@ -307,9 +328,21 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const resetForm = () => {
     setCurrentStep(1);
+    setEventName('');
+    setEventDescription('');
+    setStartDate(today);
+    setEndDate(today);
   };
 
   const handleNext = () => {
+    if (currentStep === 1 && !eventName.trim()) {
+      toast.error('Please enter an Event Name before continuing.');
+      return;
+    }
+    if (currentStep === 2 && (!startDate || !endDate || startDate > endDate)) {
+      toast.error('Please select a valid Start Date and End Date.');
+      return;
+    }
     if (currentStep < 4) {
       setCurrentStep((prev) => prev + 1);
     }
@@ -321,19 +354,84 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     }
   };
 
-  const handlePublish = () => {
-    if (onPublished) {
-      onPublished({
-        name: eventName,
-        description: eventDescription,
-        startDate,
-        endDate,
-        daysCount,
-      });
-    } else {
-      toast.success(`Event "${eventName}" published successfully!`);
+  const handlePublish = async () => {
+    if (!eventName.trim()) {
+      toast.error('Event Name is required.');
+      setCurrentStep(1);
+      return;
     }
-    handleCloseModal();
+    if (!startDate || !endDate || startDate > endDate) {
+      toast.error('Valid Start Date and End Date are required.');
+      setCurrentStep(2);
+      return;
+    }
+
+    setIsPublishing(true);
+    try {
+      const createdEvent = await adminService.createEvent({
+        name: eventName.trim(),
+        description: eventDescription.trim() || null,
+        start_date: startDate,
+        end_date: endDate,
+      });
+
+      const activeConfigs: Array<{ name: string; slot: SessionTimeSlot; defaults: [string, string, string, string] }> = [];
+      if (morningEnabled) {
+        activeConfigs.push({ name: 'Morning Session', slot: morningSlot, defaults: ['07:00', '08:30', '11:30', '12:30'] });
+      }
+      if (afternoonEnabled) {
+        activeConfigs.push({ name: 'Afternoon Session', slot: afternoonSlot, defaults: ['13:00', '14:30', '16:30', '17:30'] });
+      }
+      if (eveningEnabled) {
+        activeConfigs.push({ name: 'Evening Session', slot: eveningSlot, defaults: ['18:00', '19:30', '20:30', '21:30'] });
+      }
+
+      for (const dayObj of eventDaysList) {
+        for (const cfg of activeConfigs) {
+          const inWindow = parseSlotTimeToHHMMSS(cfg.slot.inTime, cfg.defaults[0], cfg.defaults[1]);
+          const outWindow = parseSlotTimeToHHMMSS(cfg.slot.outTime, cfg.defaults[2], cfg.defaults[3]);
+
+          // Ensure strict chronological order required by backend validator:
+          // time_in_start < time_in_end <= time_out_start < time_out_end
+          const time_in_start = inWindow.start;
+          const time_in_end = inWindow.end > time_in_start ? inWindow.end : cfg.defaults[1] + ':00';
+          const time_out_start = outWindow.start >= time_in_end ? outWindow.start : time_in_end;
+          const time_out_end = outWindow.end > time_out_start ? outWindow.end : cfg.defaults[3] + ':00';
+
+          const createdSession = await adminService.createSession(createdEvent.id, {
+            name: eventDaysList.length > 1 ? `Day ${dayObj.num} - ${cfg.name}` : cfg.name,
+            date: dayObj.ymd,
+            time_in_start,
+            time_in_end,
+            time_out_start,
+            time_out_end,
+          });
+
+          const timeInLocationIds = Array.from(
+            new Set(cfg.slot.inOfficers.map((o) => o.locationId).filter((id): id is string => Boolean(id)))
+          );
+          const timeOutLocationIds = Array.from(
+            new Set(cfg.slot.outOfficers.map((o) => o.locationId).filter((id): id is string => Boolean(id)))
+          );
+
+          if (timeInLocationIds.length > 0 || timeOutLocationIds.length > 0) {
+            await adminService.saveSessionLocations(createdSession.id, {
+              time_in_location_ids: timeInLocationIds,
+              time_out_location_ids: timeOutLocationIds.length > 0 ? timeOutLocationIds : timeInLocationIds,
+            });
+          }
+        }
+      }
+
+      toast.success(`Event "${createdEvent.name}" published to the backend!`);
+      onPublished?.(createdEvent);
+      handleCloseModal();
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to publish event.';
+      toast.error(apiMsg);
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const handleCloseModal = () => {
@@ -353,7 +451,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       <div
         role="presentation"
         onMouseDown={(e) => {
-          if (e.target === e.currentTarget) handleCloseModal();
+          if (e.target === e.currentTarget && !isPublishing) handleCloseModal();
         }}
         className={cn(
           'fixed inset-0 z-[100] flex items-center justify-center bg-[#170D29]/40 p-4 backdrop-blur-md transition-opacity duration-180 ease-out',
@@ -385,6 +483,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             <button
               type="button"
               onClick={handleCloseModal}
+              disabled={isPublishing}
               className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F]"
             >
               <X className="h-5 w-5" />
@@ -459,7 +558,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   type="text"
                   value={eventName}
                   onChange={(e) => setEventName(e.target.value)}
-                  placeholder="Enter event name"
+                  placeholder="Enter event name (e.g. Foundation Day 2026)"
                   className="mt-1.5 w-full rounded-2xl border border-[#E5E0EB] px-4 py-2.5 text-xs text-[#24133F] placeholder-[#756883] focus:border-[#451475] focus:outline-none"
                 />
               </div>
@@ -481,7 +580,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
               <div className="flex items-center gap-2 rounded-2xl bg-[#F9F7FA] p-3.5 text-xs text-[#756883]">
                 <Info className="h-4 w-4 shrink-0 text-[#451475]" />
-                <span>The information you provide here will be visible to all users once the event is publish</span>
+                <span>The information you provide here will be visible to all users once the event is published.</span>
               </div>
             </div>
           ) : currentStep === 2 ? (
@@ -495,7 +594,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 </p>
               </div>
 
-              {/* Selected Dates Display (No dropdown) */}
+              {/* Selected Dates Display */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-2xl border border-[#E5E0EB] bg-white px-4 py-3 shadow-xs">
                   <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">Start Date</span>
@@ -577,12 +676,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
                     const cells = [];
 
-                    // Blank leading days
                     for (let i = 0; i < firstDay; i++) {
                       cells.push(<div key={`blank-${i}`} className="h-8" />);
                     }
 
-                    // Days in month
                     for (let day = 1; day <= daysInMonth; day++) {
                       const dayStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                       const isStart = dayStr === startDate;
@@ -590,23 +687,19 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       const inRange = startDate && endDate && dayStr > startDate && dayStr < endDate;
                       const hasRange = startDate && endDate && startDate !== endDate;
 
-                      // Check day of week for rounding row ends (0 = Sunday, 6 = Saturday)
                       const dayOfWeek = (firstDay + day - 1) % 7;
                       const isRowStart = dayOfWeek === 0;
                       const isRowEnd = dayOfWeek === 6;
 
                       cells.push(
                         <div key={day} className="relative flex h-9 items-center justify-center py-0.5">
-                          {/* Seamless continuous range background strip */}
                           {hasRange && (
                             <>
-                              {/* Background for start date: right half filled, rounded if on Saturday */}
                               {isStart && (
                                 <div className={`absolute right-0 top-0.5 bottom-0.5 left-1/2 bg-[#E9D5FF]/60 ${
                                   isRowEnd ? 'rounded-r-full' : ''
                                 }`} />
                               )}
-                              {/* Background for in-between dates: full width, rounded on row edges */}
                               {inRange && (
                                 <div className={`absolute inset-x-0 top-0.5 bottom-0.5 bg-[#E9D5FF]/60 ${
                                   isRowStart && isRowEnd
@@ -618,7 +711,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                     : ''
                                 }`} />
                               )}
-                              {/* Background for end date: left half filled, rounded if on Sunday */}
                               {isEnd && (
                                 <div className={`absolute left-0 top-0.5 bottom-0.5 right-1/2 bg-[#E9D5FF]/60 ${
                                   isRowStart ? 'rounded-l-full' : ''
@@ -627,7 +719,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                             </>
                           )}
 
-                          {/* Date button circle */}
                           <button
                             type="button"
                             onClick={() => {
@@ -686,7 +777,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 <p className="text-xs text-[#756883]">Configure the attendance sessions for each day of your event.</p>
               </div>
 
-              {/* Unified Segmented Day Selector Bar (Balanced & Centered with equal-width tabs) */}
+              {/* Day Selector Bar */}
               <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB] p-1.5 shadow-2xs">
                 <div className="grid grid-flow-col auto-cols-fr gap-1.5 overflow-x-auto">
                   {eventDaysList.map((d) => {
@@ -714,12 +805,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 </div>
               </div>
 
-              {/* Day Schedule Header (Dynamic based on selected tab) */}
+              {/* Day Schedule Header */}
               <div className="pt-1">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-xs font-bold text-[#24133F]">
-                      Day {selectedDayTab} - {eventDaysList.find((d) => d.num === selectedDayTab)?.fullDate || 'October 2, 2026'}
+                      Day {selectedDayTab} - {eventDaysList.find((d) => d.num === selectedDayTab)?.fullDate || formatDateDisplay(startDate)}
                     </h4>
                     <p className="text-[11px] text-[#756883]">Configure sessions and attendance windows for this day.</p>
                   </div>
@@ -738,7 +829,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 </div>
               </div>
 
-              {/* Session Cards (Direct inline toggle in card header) */}
+              {/* Session Cards */}
               {[
                 {
                   type: 'Morning' as const,
@@ -779,7 +870,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       : 'border-[#F1EEF4] bg-[#FAF8FB]/60 p-3.5 opacity-75'
                   }`}
                 >
-                  {/* Card Header with Direct Checkbox Toggle */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Checkbox
@@ -834,7 +924,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
                   {session.enabled && session.expanded && (
                         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                          {/* IN Slot Card or Add Button */}
+                          {/* IN Slot Card */}
                           {session.slot.hasIn ? (
                             <div className="rounded-2xl border border-[#F1EEF4] bg-[#FAF8FB]/50 p-3.5 space-y-2.5">
                               <div className="flex items-center justify-between">
@@ -877,7 +967,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                       )
                                     }
                                     className="group flex items-center gap-1.5 rounded-full bg-white border border-[#E5E0EB] hover:border-[#451475] pl-1.5 pr-2.5 py-1 text-[11px] font-semibold text-[#24133F] transition-colors shadow-2xs"
-                                    title="Click to view/change assignment"
                                   >
                                     <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#E9D5FF] text-[9px] font-bold text-[#6D21A8]">
                                       {off.initials}
@@ -923,7 +1012,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                             </button>
                           )}
 
-                          {/* OUT Slot Card or Add Button */}
+                          {/* OUT Slot Card */}
                           {session.slot.hasOut ? (
                             <div className="rounded-2xl border border-[#F1EEF4] bg-[#FAF8FB]/50 p-3.5 space-y-2.5">
                               <div className="flex items-center justify-between">
@@ -966,7 +1055,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                       )
                                     }
                                     className="group flex items-center gap-1.5 rounded-full bg-white border border-[#E5E0EB] hover:border-[#451475] pl-1.5 pr-2.5 py-1 text-[11px] font-semibold text-[#24133F] transition-colors shadow-2xs"
-                                    title="Click to view/change assignment"
                                   >
                                     <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#E9D5FF] text-[9px] font-bold text-[#6D21A8]">
                                       {off.initials}
@@ -1044,10 +1132,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   </div>
                   <div className="mt-3">
                     <p className="text-[10px] text-[#756883]">Event Name</p>
-                    <p className="text-xs font-bold text-[#24133F]">{eventName}</p>
+                    <p className="text-xs font-bold text-[#24133F]">{eventName || 'Untitled Event'}</p>
                     <p className="mt-2 text-[10px] text-[#756883]">Description</p>
                     <p className="text-[11px] leading-relaxed text-[#756883] line-clamp-3">
-                      {eventDescription}
+                      {eventDescription || 'No description provided'}
                     </p>
                   </div>
                 </div>
@@ -1070,15 +1158,15 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   <div className="mt-3 grid grid-cols-3 gap-2">
                     <div>
                       <p className="text-[10px] text-[#756883]">Start Date</p>
-                      <p className="text-[11px] font-bold text-[#24133F]">October 2, 2026</p>
+                      <p className="text-[11px] font-bold text-[#24133F]">{formatDateDisplay(startDate)}</p>
                     </div>
                     <div>
                       <p className="text-[10px] text-[#756883]">End Date</p>
-                      <p className="text-[11px] font-bold text-[#24133F]">October 5, 2026</p>
+                      <p className="text-[11px] font-bold text-[#24133F]">{formatDateDisplay(endDate)}</p>
                     </div>
                     <div>
                       <p className="text-[10px] text-[#756883]">Total Event Days</p>
-                      <p className="text-[11px] font-bold text-[#24133F]">4 days</p>
+                      <p className="text-[11px] font-bold text-[#24133F]">{daysCount} {daysCount === 1 ? 'day' : 'days'}</p>
                     </div>
                   </div>
                 </div>
@@ -1101,83 +1189,76 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 </div>
 
                 <div className="mt-4 space-y-4">
-                  {['Day 1 - October 2', 'Day 2 - October 3', 'Day 3 - October 4', 'Day 4 - October 5'].map(
-                    (dayLabel) => (
-                      <div key={dayLabel} className="rounded-xl border border-[#F1EEF4] p-3">
-                        <p className="text-xs font-bold text-[#24133F]">{dayLabel}</p>
-                        <div className="mt-2 space-y-2 text-xs">
-                          {morningEnabled && (
-                            <div className="flex items-center justify-between py-1">
-                              <div>
-                                <span className="font-semibold text-[#24133F]">Morning</span>
-                                <span className="ml-2 text-[11px] text-[#756883]">
-                                  {morningSlot.hasIn && morningSlot.hasOut
-                                    ? `${morningSlot.inTime} · ${morningSlot.outTime}`
-                                    : morningSlot.hasIn
-                                    ? morningSlot.inTime
-                                    : morningSlot.outTime}
-                                </span>
-                              </div>
-                              <span className="flex items-center gap-1 text-[11px] text-[#756883]">
-                                <MapPin className="h-3 w-3" /> CITE Building
-                              </span>
-                              <span className="rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[10px] font-bold text-[#3B82F6]">
+                  {eventDaysList.map((dayObj) => (
+                    <div key={dayObj.ymd} className="rounded-xl border border-[#F1EEF4] p-3">
+                      <p className="text-xs font-bold text-[#24133F]">{dayObj.label} - {dayObj.fullDate}</p>
+                      <div className="mt-2 space-y-2 text-xs">
+                        {morningEnabled && (
+                          <div className="flex items-center justify-between py-1">
+                            <div>
+                              <span className="font-semibold text-[#24133F]">Morning</span>
+                              <span className="ml-2 text-[11px] text-[#756883]">
                                 {morningSlot.hasIn && morningSlot.hasOut
-                                  ? 'IN and OUT'
+                                  ? `${morningSlot.inTime} · ${morningSlot.outTime}`
                                   : morningSlot.hasIn
-                                  ? 'IN Only'
-                                  : 'OUT Only'}
+                                  ? morningSlot.inTime
+                                  : morningSlot.outTime}
                               </span>
-                              <div className="flex -space-x-1">
-                                {morningSlot.inOfficers.map((off) => (
-                                  <span
-                                    key={off.id}
-                                    className="h-5 w-5 rounded-full bg-purple-200 border border-white text-[9px] font-bold text-purple-800 flex items-center justify-center"
-                                  >
-                                    {off.initials}
-                                  </span>
-                                ))}
-                              </div>
                             </div>
-                          )}
-                          {afternoonEnabled && (
-                            <div className="flex items-center justify-between py-1">
-                              <div>
-                                <span className="font-semibold text-[#24133F]">Afternoon</span>
-                                <span className="ml-2 text-[11px] text-[#756883]">
-                                  {afternoonSlot.hasIn && afternoonSlot.hasOut
-                                    ? `${afternoonSlot.inTime} · ${afternoonSlot.outTime}`
-                                    : afternoonSlot.hasIn
-                                    ? afternoonSlot.inTime
-                                    : afternoonSlot.outTime}
-                                </span>
-                              </div>
-                              <span className="flex items-center gap-1 text-[11px] text-[#756883]">
-                                <MapPin className="h-3 w-3" /> CITE Building
-                              </span>
-                              <span className="rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[10px] font-bold text-[#3B82F6]">
+                            <span className="rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[10px] font-bold text-[#3B82F6]">
+                              {morningSlot.hasIn && morningSlot.hasOut
+                                ? 'IN and OUT'
+                                : morningSlot.hasIn
+                                ? 'IN Only'
+                                : 'OUT Only'}
+                            </span>
+                          </div>
+                        )}
+                        {afternoonEnabled && (
+                          <div className="flex items-center justify-between py-1">
+                            <div>
+                              <span className="font-semibold text-[#24133F]">Afternoon</span>
+                              <span className="ml-2 text-[11px] text-[#756883]">
                                 {afternoonSlot.hasIn && afternoonSlot.hasOut
-                                  ? 'IN and OUT'
+                                  ? `${afternoonSlot.inTime} · ${afternoonSlot.outTime}`
                                   : afternoonSlot.hasIn
-                                  ? 'IN Only'
-                                  : 'OUT Only'}
+                                  ? afternoonSlot.inTime
+                                  : afternoonSlot.outTime}
                               </span>
-                              <div className="flex -space-x-1">
-                                {afternoonSlot.inOfficers.map((off) => (
-                                  <span
-                                    key={off.id}
-                                    className="h-5 w-5 rounded-full bg-blue-200 border border-white text-[9px] font-bold text-blue-800 flex items-center justify-center"
-                                  >
-                                    {off.initials}
-                                  </span>
-                                ))}
-                              </div>
                             </div>
-                          )}
-                        </div>
+                            <span className="rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[10px] font-bold text-[#3B82F6]">
+                              {afternoonSlot.hasIn && afternoonSlot.hasOut
+                                ? 'IN and OUT'
+                                : afternoonSlot.hasIn
+                                ? 'IN Only'
+                                : 'OUT Only'}
+                            </span>
+                          </div>
+                        )}
+                        {eveningEnabled && (
+                          <div className="flex items-center justify-between py-1">
+                            <div>
+                              <span className="font-semibold text-[#24133F]">Evening</span>
+                              <span className="ml-2 text-[11px] text-[#756883]">
+                                {eveningSlot.hasIn && eveningSlot.hasOut
+                                  ? `${eveningSlot.inTime} · ${eveningSlot.outTime}`
+                                  : eveningSlot.hasIn
+                                  ? eveningSlot.inTime
+                                  : eveningSlot.outTime}
+                              </span>
+                            </div>
+                            <span className="rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[10px] font-bold text-[#3B82F6]">
+                              {eveningSlot.hasIn && eveningSlot.hasOut
+                                ? 'IN and OUT'
+                                : eveningSlot.hasIn
+                                ? 'IN Only'
+                                : 'OUT Only'}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    )
-                  )}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -1191,7 +1272,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="rounded-2xl border border-[#E5E0EB] px-5 py-2.5 text-xs font-bold text-[#24133F] hover:bg-slate-50 transition-colors"
+                  disabled={isPublishing}
+                  className="rounded-2xl border border-[#E5E0EB] px-5 py-2.5 text-xs font-bold text-[#24133F] hover:bg-slate-50 transition-colors disabled:opacity-50"
                 >
                   Back
                 </button>
@@ -1199,7 +1281,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="rounded-2xl border border-[#E5E0EB] px-5 py-2.5 text-xs font-bold text-[#756883] hover:bg-slate-50 transition-colors"
+                  disabled={isPublishing}
+                  className="rounded-2xl border border-[#E5E0EB] px-5 py-2.5 text-xs font-bold text-[#756883] hover:bg-slate-50 transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -1217,18 +1300,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={handleCloseModal}
-                    className="rounded-2xl border border-[#E5E0EB] px-5 py-2.5 text-xs font-bold text-[#24133F] hover:bg-slate-50 transition-colors"
-                  >
-                    Save as Draft
-                  </button>
-                  <button
-                    type="button"
                     onClick={handlePublish}
-                    className="flex items-center gap-2 rounded-2xl bg-[#451475] px-6 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_0_#2B0C4A] hover:bg-[#38105F] active:translate-y-[2px] active:shadow-none transition-all"
+                    disabled={isPublishing}
+                    className="flex items-center gap-2 rounded-2xl bg-[#451475] px-6 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_0_#2B0C4A] hover:bg-[#38105F] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-60"
                   >
                     <Send className="h-3.5 w-3.5" />
-                    Publish Event
+                    {isPublishing ? 'Publishing…' : 'Publish Event'}
                   </button>
                 </div>
               )}

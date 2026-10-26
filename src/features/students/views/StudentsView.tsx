@@ -13,6 +13,7 @@ import {
   Link as LinkIcon,
   Unlink,
   Radio,
+  RefreshCw,
 } from 'lucide-react';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
 
@@ -44,13 +45,14 @@ export const StudentsView: React.FC = () => {
     handleBulkImport,
     handleQuickPair,
     handleUnlinkCard,
+    loadStudents,
   } = useStudentsViewModel();
 
   const [isCardPoolOpen, setIsCardPoolOpen] = useState(false);
   const [courseFilter, setCourseFilter] = useState('all');
   const [rfidFilter, setRfidFilter] = useState('all');
 
-  // Stats calculation
+  // Stats calculation from real backend records
   const verifiedCount = useMemo(() => students.filter((s) => Boolean(s.rfid_uid)).length, [students]);
   const unverifiedCount = useMemo(() => students.filter((s) => !s.rfid_uid).length, [students]);
   const pairableCount = useMemo(
@@ -91,45 +93,55 @@ export const StudentsView: React.FC = () => {
           </p>
         </div>
 
-        {/* Split Dropdown Action Button (matches Reports ExportButton) */}
-        <RegisterActionsDropdown
-          onAddStudent={() => setIsAddDrawerOpen(true)}
-          onRapidScan={() => setIsRapidScanOpen(true)}
-          onBulkImport={() => setIsBulkImportOpen(true)}
-          onAutoPair={handleAutoPairSequential}
-          onOpenCardPool={() => setIsCardPoolOpen(true)}
-          pairableCount={pairableCount}
-        />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void loadStudents()}
+            isLoading={isLoading}
+            leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+          >
+            Refresh
+          </Button>
+          <RegisterActionsDropdown
+            onAddStudent={() => setIsAddDrawerOpen(true)}
+            onRapidScan={() => setIsRapidScanOpen(true)}
+            onBulkImport={() => setIsBulkImportOpen(true)}
+            onAutoPair={handleAutoPairSequential}
+            onOpenCardPool={() => setIsCardPoolOpen(true)}
+            pairableCount={pairableCount}
+          />
+        </div>
       </div>
 
-      {/* KPI Headline Metrics: Unified container split by 1px rules (Anti-Slop / design-taste-frontend §5) */}
+      {/* KPI Headline Metrics */}
       <div className="rounded-2xl border border-[#E5E0EB] bg-white grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-[#E5E0EB]">
         <div className="p-4 sm:p-5">
           <p className="text-xs font-medium text-[#756883]">Total students</p>
           <p className="text-2xl font-bold tracking-tight text-[#24133F] mt-1 tabular-nums">
-            {total.toLocaleString()}
+            {isLoading && students.length === 0 ? '—' : total.toLocaleString()}
           </p>
           <p className="text-[11px] text-[#A59AAB] mt-0.5">Enrolled student roster</p>
         </div>
 
         <div className="p-4 sm:p-5">
-          <p className="text-xs font-medium text-[#756883]">Verified RFID cards</p>
+          <p className="text-xs font-medium text-[#756883]">Verified RFID cards (current page)</p>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-bold tracking-tight text-[#16883F] tabular-nums">
-              {verifiedCount.toLocaleString()}
+              {isLoading && students.length === 0 ? '—' : verifiedCount.toLocaleString()}
             </span>
             <span className="text-[11px] font-semibold text-emerald-700">
-              {total > 0 ? `${Math.round((verifiedCount / total) * 100)}%` : '0%'}
+              {students.length > 0 ? `${Math.round((verifiedCount / students.length) * 100)}%` : '0%'}
             </span>
           </div>
           <p className="text-[11px] text-[#A59AAB] mt-0.5">Active cards in circulation</p>
         </div>
 
         <div className="p-4 sm:p-5">
-          <p className="text-xs font-medium text-[#756883]">No card assigned</p>
+          <p className="text-xs font-medium text-[#756883]">No card assigned (current page)</p>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-bold tracking-tight text-[#24133F] tabular-nums">
-              {unverifiedCount.toLocaleString()}
+              {isLoading && students.length === 0 ? '—' : unverifiedCount.toLocaleString()}
             </span>
             {unverifiedCount > 0 && (
               <span className="text-[11px] font-semibold text-amber-700">
@@ -138,7 +150,7 @@ export const StudentsView: React.FC = () => {
             )}
           </div>
           <p className="text-[11px] text-[#A59AAB] mt-0.5">
-            {unverifiedCount === 0 ? 'All students equipped' : 'Awaiting card pairing'}
+            {unverifiedCount === 0 ? 'All listed students equipped' : 'Awaiting card pairing'}
           </p>
         </div>
 
@@ -161,16 +173,16 @@ export const StudentsView: React.FC = () => {
               {unassignedCards.length.toLocaleString()}
             </span>
             <span className="text-[11px] font-semibold text-[#7026B7]">
-              {unassignedCards.length > 0 ? 'In stock' : 'Depleted'}
+              {unassignedCards.length > 0 ? 'In stock' : 'Empty'}
             </span>
           </div>
           <p className="text-[11px] text-[#A59AAB] mt-0.5">
-            {pairableCount > 0 ? `${pairableCount} ready to auto-pair` : 'Available to assign'}
+            {unassignedCards.length > 0 ? `${unassignedCards.length} ready for new students` : 'Scan blank cards to add to pool'}
           </p>
         </button>
       </div>
 
-      {/* Main Student Section (No tabs, clean table focus) */}
+      {/* Main Student Section */}
       <div className="space-y-3">
         {/* Controls Bar */}
         <div className="flex flex-wrap items-center gap-2">
@@ -211,7 +223,14 @@ export const StudentsView: React.FC = () => {
 
         {/* Students Table */}
         <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5">
-          {error && <p role="alert" className="px-3 py-2 text-sm text-rose-600">{error}</p>}
+          {error && (
+            <div role="alert" className="mb-2 flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+              <span>{error}</span>
+              <button type="button" onClick={() => void loadStudents()} className="underline">
+                Retry
+              </button>
+            </div>
+          )}
           <table className="w-full min-w-[760px] text-left text-xs">
             <thead>
               <tr className="border-b border-[#E9EDF4] text-xs font-medium text-[#756883]">
@@ -270,12 +289,12 @@ export const StudentsView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleUnlinkCard(student.id)}
-                        title="Unlink RFID Card"
-                        aria-label={`Unlink RFID card from ${student.name}`}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-1 rounded-lg transition-colors"
+                        title="Unlinking existing student RFID cards is not supported by the backend API"
+                        aria-label={`Unlink RFID card from ${student.name} unavailable`}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg opacity-60 cursor-not-allowed"
                       >
                         <Unlink className="w-3 h-3" />
-                        Unlink
+                        Linked
                       </button>
                     ) : (
                       <div className="flex items-center justify-end gap-1.5">
@@ -283,8 +302,8 @@ export const StudentsView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleQuickPair(student.id, unassignedCards[0].uid)}
-                            title={`Pair with card #${unassignedCards[0].cardNumber}`}
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition-colors"
+                            title="Updating existing student RFID cards is not supported by the backend API"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg opacity-60 cursor-not-allowed"
                           >
                             <LinkIcon className="w-3 h-3" />
                             Pair Pool #{unassignedCards[0].cardNumber}
@@ -293,11 +312,11 @@ export const StudentsView: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setIsRapidScanOpen(true)}
-                          title="Scan with USB reader"
+                          title="Scan blank cards into pool"
                           className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7026B7] bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-1 rounded-lg transition-colors"
                         >
                           <Zap className="w-3 h-3" />
-                          Scan Tap
+                          Scan Pool
                         </button>
                       </div>
                     )}
@@ -315,14 +334,16 @@ export const StudentsView: React.FC = () => {
                 className="w-24 h-24 object-contain mb-3"
               />
               <p className="text-sm font-bold text-[#24133F]">
-                {isLoading ? 'Loading students…' : error ? 'Unable to load students.' : 'No students found'}
+                {isLoading ? 'Loading students…' : error ? 'Unable to load students.' : 'No students found.'}
               </p>
               <p className="text-xs text-[#756883] max-w-xs mt-1">
-                {searchQuery || courseFilter !== 'all' || rfidFilter !== 'all'
+                {error
+                  ? 'Check your backend connection and try again.'
+                  : searchQuery || courseFilter !== 'all' || rfidFilter !== 'all'
                   ? 'Try clearing or relaxing your filters.'
                   : 'Get started by adding a student or importing a bulk CSV roster.'}
               </p>
-              {!isLoading && !searchQuery && courseFilter === 'all' && (
+              {!isLoading && !error && !searchQuery && courseFilter === 'all' && (
                 <div className="flex items-center gap-2 mt-4">
                   <Button variant="primary" size="sm" onClick={() => setIsAddDrawerOpen(true)}>
                     + Add Student

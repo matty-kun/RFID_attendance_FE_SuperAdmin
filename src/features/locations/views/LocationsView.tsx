@@ -3,11 +3,11 @@ import { useLocationsViewModel } from '../viewmodels';
 import { Button } from '../../../components/common/Button';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
-import { MapPin, Plus, Search, Sparkles } from 'lucide-react';
+import { MapPin, Plus, RefreshCw, Search, Sparkles } from 'lucide-react';
 
 export const LocationsView = () => {
   const {
-    locations, isLoading, isModalOpen, setIsModalOpen, isSubmitting,
+    locations, isLoading, error, isModalOpen, setIsModalOpen, isSubmitting, formError,
     name, setName, loadLocations, handleCreate,
   } = useLocationsViewModel();
 
@@ -43,7 +43,16 @@ export const LocationsView = () => {
             className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
           />
         </label>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void loadLocations()}
+            isLoading={isLoading}
+            leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+          >
+            Refresh
+          </Button>
           <Button
             variant="primary"
             leftIcon={<Plus className="h-4 w-4" />}
@@ -56,6 +65,14 @@ export const LocationsView = () => {
 
       {/* Locations Table */}
       <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5">
+        {error && (
+          <div role="alert" className="mb-2 flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+            <span>{error}</span>
+            <button type="button" onClick={() => void loadLocations()} className="underline">
+              Retry
+            </button>
+          </div>
+        )}
         <table className="w-full min-w-[500px] text-left text-xs">
           <thead>
             <tr className="bg-[#F4F6FA] text-[10px] uppercase text-[#637596]">
@@ -70,23 +87,25 @@ export const LocationsView = () => {
                   Loading checkpoints…
                 </td>
               </tr>
+            ) : error && locations.length === 0 ? (
+              <tr>
+                <td colSpan={2} className="py-10 text-center text-xs text-rose-600">
+                  Unable to load checkpoints.{' '}
+                  <button
+                    type="button"
+                    className="font-bold underline"
+                    onClick={() => void loadLocations()}
+                  >
+                    Retry
+                  </button>
+                </td>
+              </tr>
             ) : filteredLocations.length === 0 ? (
               <tr>
                 <td colSpan={2} className="py-10 text-center text-xs text-[#756883]">
-                  {searchQuery ? (
-                    'No checkpoints match your search.'
-                  ) : (
-                    <>
-                      No checkpoints to display.{' '}
-                      <button
-                        type="button"
-                        className="font-bold text-brand-700 underline"
-                        onClick={loadLocations}
-                      >
-                        Retry
-                      </button>
-                    </>
-                  )}
+                  {searchQuery
+                    ? 'No checkpoints match your search.'
+                    : 'No checkpoints registered yet. Click "Add Location" to register one.'}
                 </td>
               </tr>
             ) : (
@@ -123,6 +142,11 @@ export const LocationsView = () => {
         description="This location can be assigned to attendance sessions for RFID tap scanning."
       >
         <form onSubmit={handleCreate} className="mt-2 space-y-4">
+          {formError && (
+            <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+              {formError}
+            </p>
+          )}
           <Input
             label="Location Name"
             placeholder="e.g. Gymnasium Gate 1"

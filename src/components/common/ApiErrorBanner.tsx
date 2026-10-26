@@ -5,8 +5,13 @@ export function ApiErrorBanner() {
 
   useEffect(() => {
     const onError = (event: Event) => setMessage((event as CustomEvent<string>).detail);
+    const onSuccess = () => setMessage(null);
     window.addEventListener('api-error', onError);
-    return () => window.removeEventListener('api-error', onError);
+    window.addEventListener('api-success', onSuccess);
+    return () => {
+      window.removeEventListener('api-error', onError);
+      window.removeEventListener('api-success', onSuccess);
+    };
   }, []);
 
   if (!message) return null;

@@ -1,58 +1,131 @@
-import { useMemo, useState } from 'react';
-import { Check, Search, Users } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertCircle, Check, RefreshCw, Search, Users } from 'lucide-react';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { Dropdown } from '../components/common/Dropdown';
 import { Button } from '../components/common/Button';
-import { auditLogRecords } from './auditPreviewRecords';
+import { attendanceService } from '../features/attendance/services';
+import { adminService } from '../services/adminService';
+import type { AttendanceFilterType, AttendanceRecord } from '../features/attendance/models';
+import type { AdminRecord } from '../types';
 
 function formatTimestamp(timestamp: string) {
   const date = new Date(timestamp);
-  const month = date.toLocaleDateString('en-US', { month: 'short' });
-  const day = date.getDate();
+  const month = date.toLocaleDateString('en-US', { month: 'short', timeZone: 'Asia/Manila' });
+  const day = date.toLocaleDateString('en-US', { day: 'numeric', timeZone: 'Asia/Manila' });
   const time = date.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
+    timeZone: 'Asia/Manila',
   });
   return `${month} ${day} · ${time}`;
 }
 
+function getInitials(fullName: string) {
+  return (
+    fullName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() || '')
+      .join('') || 'SA'
+  );
+}
+
 export function AuditLogPage() {
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [admins, setAdmins] = useState<AdminRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
   const [search, setSearch] = useState('');
-  const [startDate, setStartDate] = useState('2026-09-29');
-  const [endDate, setEndDate] = useState('2026-10-02');
-  const [actionFilter, setActionFilter] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [actionFilter, setActionFilter] = useState<AttendanceFilterType>('all');
   const [userFilter, setUserFilter] = useState('all');
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const [totalServer, setTotalServer] = useState(0);
+  const pageSize = 30;
 
-  // Extract unique actions & users for filters
-  const uniqueActions = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const record of auditLogRecords) {
-      map.set(record.action, record.actionLabel);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [attendanceRes, adminsRes] = await Promise.all([
+        attendanceService.getRecentAttendance(page, actionFilter, startDate, endDate, pageSize),
+        adminService.getAdmins(1, '', 100).catch(() => ({ admins: [], total: 0, page: 1, limit: 100 })),
+      ]);
+      setRecords(attendanceRes.records);
+      setTotalServer(attendanceRes.total);
+      setAdmins(adminsRes.admins);
+    } catch (err: any) {
+      setError(err?.response?.data?.error?.message || 'Could not load audit log records. Try again.');
+    } finally {
+      setLoading(false);
     }
-    return Array.from(map.entries());
-  }, []);
+  }, [page, actionFilter, startDate, endDate]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  const adminMap = useMemo(() => {
+    const map = new Map<string, AdminRecord>();
+    for (const admin of admins) {
+      map.set(admin.id, admin);
+    }
+    return map;
+  }, [admins]);
+
+  // Transform real attendance records into audit entries
+  const mappedEntries = useMemo(() => {
+    return records.map((rec) => {
+      const admin = adminMap.get(rec.recorded_by);
+      const adminName = admin?.name || `Admin (${rec.recorded_by.slice(0, 8)})`;
+      const isTimeIn = rec.type === 'time_in';
+      const actionLabel = isTimeIn ? 'Time In Recorded' : 'Time Out Recorded';
+      const badgeClass = isTimeIn
+        ? 'bg-[#10B981] text-white'
+        : 'bg-[#3B82F6] text-white';
+      const studentName = rec.student?.name || 'Student';
+      const studentNumber = rec.student?.student_id || rec.student_id.slice(0, 8);
+      const sessionName = rec.session?.name || rec.session_id.slice(0, 8);
+      const locationName = rec.location?.name || rec.location_id.slice(0, 8);
+
+      return {
+        id: rec.id,
+        timestamp: rec.recorded_at,
+        user: {
+          id: rec.recorded_by,
+          name: adminName,
+          initials: getInitials(adminName),
+          avatarBg: isTimeIn ? 'bg-[#DFE8F8]' : 'bg-[#F0E8FC]',
+          avatarColor: isTimeIn ? 'text-[#294B85]' : 'text-[#5B21B6]',
+        },
+        action: rec.type,
+        actionLabel,
+        badgeClass,
+        description: `${studentName} (${studentNumber}) scanned at ${locationName} · ${sessionName}`,
+        relatedRecord: studentNumber,
+      };
+    });
+  }, [records, adminMap]);
 
   const uniqueUsers = useMemo(() => {
-    return Array.from(new Set(auditLogRecords.map((r) => r.user.name))).sort();
-  }, []);
+    const names = new Set<string>();
+    for (const admin of admins) {
+      names.add(admin.name);
+    }
+    for (const entry of mappedEntries) {
+      names.add(entry.user.name);
+    }
+    return Array.from(names).sort();
+  }, [admins, mappedEntries]);
 
-  // Filtered entries
   const filtered = useMemo(() => {
-    return auditLogRecords.filter((record) => {
-      // Date filter
-      if (startDate && record.timestamp.slice(0, 10) < startDate) return false;
-      if (endDate && record.timestamp.slice(0, 10) > endDate) return false;
-
-      // Action filter
-      if (actionFilter !== 'all' && record.action !== actionFilter) return false;
-
-      // User filter
+    return mappedEntries.filter((record) => {
       if (userFilter !== 'all' && record.user.name !== userFilter) return false;
 
-      // Search query
       if (search.trim()) {
         const query = search.toLowerCase();
         const matchesDate = formatTimestamp(record.timestamp).toLowerCase().includes(query);
@@ -65,25 +138,36 @@ export function AuditLogPage() {
 
       return true;
     });
-  }, [search, startDate, endDate, actionFilter, userFilter]);
+  }, [mappedEntries, userFilter, search]);
 
-  const total = filtered.length;
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const hasClientFilter = Boolean(search.trim()) || userFilter !== 'all';
+  const totalCount = hasClientFilter ? filtered.length : totalServer;
+  const pageCount = Math.max(1, Math.ceil(totalServer / pageSize));
 
   return (
     <section aria-labelledby="audit-log-heading" className="mx-auto w-full max-w-[1120px] pt-1 text-[#24133F]">
-      {/* Title & Subtitle Matching Figma Mockup */}
-      <div className="mb-4">
-        <h1 id="audit-log-heading" className="text-[26px] font-extrabold leading-tight tracking-tight">
-          Audit Log
-        </h1>
-        <p className="text-xs text-[#756883] mt-0.5">
-          Every change and decision, recorded
-        </p>
+      {/* Title & Subtitle */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 id="audit-log-heading" className="text-[26px] font-extrabold leading-tight tracking-tight">
+            Audit Log
+          </h1>
+          <p className="text-xs text-[#756883] mt-0.5">
+            Immutable attendance scan records and officer activity
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => void loadData()}
+          isLoading={loading}
+          leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+        >
+          Refresh
+        </Button>
       </div>
 
-      {/* Filter Bar Matching Figma Mockup */}
+      {/* Filter Bar */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {/* Search Input */}
         <label className="flex h-10 min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[320px]">
@@ -94,7 +178,6 @@ export function AuditLogPage() {
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
-              setPage(1);
             }}
             placeholder="Search Date, user, action or record"
             className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
@@ -111,18 +194,32 @@ export function AuditLogPage() {
             setPage(1);
           }}
         />
+        {(startDate || endDate) && (
+          <button
+            type="button"
+            onClick={() => {
+              setStartDate('');
+              setEndDate('');
+              setPage(1);
+            }}
+            className="h-10 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs font-semibold text-[#756883] hover:bg-slate-50 hover:text-[#24133F]"
+          >
+            Clear dates
+          </button>
+        )}
 
         {/* Action Dropdown Filter */}
         <Dropdown
           value={actionFilter}
           onChange={(val) => {
-            setActionFilter(val);
+            setActionFilter(val as AttendanceFilterType);
             setPage(1);
           }}
           icon={<Check className="h-4 w-4" />}
           options={[
             { value: 'all', label: 'All Actions' },
-            ...uniqueActions.map(([key, label]) => ({ value: key, label })),
+            { value: 'time_in', label: 'Time In Recorded' },
+            { value: 'time_out', label: 'Time Out Recorded' },
           ]}
         />
 
@@ -131,7 +228,6 @@ export function AuditLogPage() {
           value={userFilter}
           onChange={(val) => {
             setUserFilter(val);
-            setPage(1);
           }}
           icon={<Users className="h-4 w-4" />}
           options={[
@@ -141,8 +237,20 @@ export function AuditLogPage() {
         />
       </div>
 
-      {/* Audit Log Table Matching Figma Mockup */}
+      {/* Audit Log Table */}
       <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5">
+        {error && (
+          <div role="alert" className="mb-2 flex items-center justify-between gap-2 rounded-xl bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700">
+            <span className="flex items-center gap-1.5">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {error}
+            </span>
+            <button type="button" onClick={() => void loadData()} className="underline">
+              Retry
+            </button>
+          </div>
+        )}
+
         <table className="w-full min-w-[760px] text-left text-xs">
           <thead>
             <tr className="bg-[#F4F6FA] text-[10px] uppercase text-[#637596]">
@@ -164,14 +272,31 @@ export function AuditLogPage() {
             </tr>
           </thead>
           <tbody>
-            {visible.length === 0 ? (
+            {loading ? (
               <tr>
                 <td colSpan={5} className="py-12 text-center text-xs text-[#756883]">
-                  No audit log entries match the selected filters or date range.
+                  Loading audit log records…
+                </td>
+              </tr>
+            ) : error && filtered.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-12 text-center text-xs text-rose-600">
+                  Unable to load audit log records.{' '}
+                  <button type="button" onClick={() => void loadData()} className="font-bold underline">
+                    Retry
+                  </button>
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-12 text-center text-xs text-[#756883]">
+                  {search || startDate || endDate || actionFilter !== 'all' || userFilter !== 'all'
+                    ? 'No audit log entries match the selected filters or date range.'
+                    : 'No recent activity.'}
                 </td>
               </tr>
             ) : (
-              visible.map((entry) => (
+              filtered.map((entry) => (
                 <tr
                   key={entry.id}
                   className="border-b border-[#EEF0F4] last:border-b-0 hover:bg-[#FAF8FC] transition-colors"
@@ -186,8 +311,8 @@ export function AuditLogPage() {
                     <div className="flex items-center gap-2.5">
                       <span
                         className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold ${
-                          entry.user.avatarBg || 'bg-[#DFE8F8]'
-                        } ${entry.user.avatarColor || 'text-[#294B85]'}`}
+                          entry.user.avatarBg
+                        } ${entry.user.avatarColor}`}
                         aria-hidden="true"
                       >
                         {entry.user.initials}
@@ -230,13 +355,13 @@ export function AuditLogPage() {
         {/* Pagination Footer */}
         <div className="flex items-center justify-between border-t border-[#EEF0F4] px-3.5 pt-3 text-xs text-[#756883]">
           <span>
-            {total.toLocaleString()} log entries · Page {page} of {pageCount}
+            {totalCount.toLocaleString()} log entries · Page {page} of {pageCount}
           </span>
           <div className="flex gap-2">
             <Button
               variant="secondary"
               size="sm"
-              disabled={page <= 1}
+              disabled={page <= 1 || loading}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
               Previous
@@ -244,7 +369,7 @@ export function AuditLogPage() {
             <Button
               variant="secondary"
               size="sm"
-              disabled={page >= pageCount}
+              disabled={page >= pageCount || loading}
               onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
             >
               Next

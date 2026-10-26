@@ -10,6 +10,7 @@ export interface UseSessionsViewModelReturn {
   selectedEventId: string;
   setSelectedEventId: (id: string) => void;
   isLoading: boolean;
+  error: string | null;
   isModalOpen: boolean;
   setIsModalOpen: (open: boolean) => void;
   isSubmitting: boolean;
@@ -38,6 +39,7 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>(initialEventId || '');
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
@@ -53,6 +55,7 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const evList = await sessionService.getEvents();
       setEvents(evList);
@@ -61,15 +64,15 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
         return;
       }
       setSessions(selectedEventId ? await sessionService.getSessions(selectedEventId) : []);
-    } catch {
-      setSessions([]);
+    } catch (err: any) {
+      setError(err?.response?.data?.error?.message || 'Could not load attendance sessions. Try again.');
     } finally {
       setIsLoading(false);
     }
   }, [selectedEventId]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const startEdit = (session: SessionRecord) => {
@@ -87,7 +90,8 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
   const startCreate = () => {
     setEditingSessionId(null);
     setName('');
-    setDate('');
+    const selectedEvent = events.find((event) => event.id === selectedEventId);
+    setDate(selectedEvent?.start_date || '');
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -108,7 +112,7 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
     setIsSubmitting(true);
     try {
       const payload: CreateSessionPayload = {
-        name,
+        name: name.trim(),
         date,
         time_in_start: `${timeInStart}:00`,
         time_in_end: `${timeInEnd}:00`,
@@ -117,10 +121,10 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
       };
       if (editingSessionId) {
         await sessionService.updateSession(editingSessionId, payload);
-        toast.success(`Session "${name}" updated successfully`);
+        toast.success(`Session "${name.trim()}" updated successfully`);
       } else {
         await sessionService.createSession(selectedEventId, payload);
-        toast.success(`Session "${name}" created successfully`);
+        toast.success(`Session "${name.trim()}" created successfully`);
       }
       setIsModalOpen(false);
       setEditingSessionId(null);
@@ -128,7 +132,9 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
       setDate('');
       await loadData();
     } catch (err: any) {
-      toast.error(err?.message || (editingSessionId ? 'Failed to update session' : 'Failed to create session'));
+      const apiMsg = err?.response?.data?.error?.message || err?.message || (editingSessionId ? 'Failed to update session' : 'Failed to create session');
+      setFormError(apiMsg);
+      toast.error(apiMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -140,6 +146,7 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
     selectedEventId,
     setSelectedEventId,
     isLoading,
+    error,
     isModalOpen,
     setIsModalOpen,
     isSubmitting,

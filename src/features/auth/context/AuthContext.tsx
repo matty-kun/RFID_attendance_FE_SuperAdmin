@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { SuperAdminUser } from '../models';
 import { authService } from '../services';
-import { DEV_PREVIEW_TOKEN, DEV_PREVIEW_USER } from '../devPreview';
+import { DEV_PREVIEW_TOKEN } from '../devPreview';
 
 interface AuthContextType {
   user: SuperAdminUser | null;
@@ -10,7 +10,6 @@ interface AuthContextType {
   login: (identifier: string, password: string) => Promise<SuperAdminUser>;
   refreshUser: () => Promise<SuperAdminUser>;
   logout: () => void;
-  enterPreview: () => void;
   isAuthenticated: boolean;
   isSuperAdmin: boolean;
 }
@@ -26,9 +25,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initAuth = async () => {
       const storedToken = localStorage.getItem('super_admin_token');
       if (storedToken) {
-        if (import.meta.env.DEV && storedToken === DEV_PREVIEW_TOKEN) {
-          setToken(DEV_PREVIEW_TOKEN);
-          setUser(DEV_PREVIEW_USER);
+        if (storedToken === DEV_PREVIEW_TOKEN) {
+          localStorage.removeItem('super_admin_token');
+          localStorage.removeItem('super_admin_user');
           setIsLoading(false);
           return;
         }
@@ -72,13 +71,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
-  const enterPreview = () => {
-    if (!import.meta.env.DEV) return;
-    localStorage.setItem('super_admin_token', DEV_PREVIEW_TOKEN);
-    setToken(DEV_PREVIEW_TOKEN);
-    setUser(DEV_PREVIEW_USER);
-  };
-
   return (
     <AuthContext.Provider
       value={{
@@ -88,7 +80,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         refreshUser,
         logout,
-        enterPreview,
         isAuthenticated: !!token && !!user,
         isSuperAdmin: user?.role === 'super_admin',
       }}
