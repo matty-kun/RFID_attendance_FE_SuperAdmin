@@ -314,9 +314,10 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
                       value={officer.location || locationOptions[0]?.value || ''}
                       onChange={(newLoc) => handleChangeAssignedLocation(officer.id, newLoc)}
                       options={locationOptions}
-                      buttonClassName="h-7 px-2.5 text-[11px] font-semibold text-[#24133F] rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
-                      menuClassName="min-w-[190px] z-50"
+                      buttonClassName="h-7 max-w-[190px] px-2.5 text-[11px] font-semibold text-[#24133F] rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
+                      menuClassName="min-w-[200px] z-50"
                       align="right"
+                      searchable
                     />
                   ) : (
                     <span className="text-[11px] text-[#756883]">{officer.location || 'No location'}</span>
@@ -413,9 +414,10 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
                               value={selectedConfig.location}
                               onChange={(newLoc) => handleChangeLocation(admin.id, newLoc)}
                               options={locationOptions}
-                              buttonClassName="h-7 px-2.5 text-[11px] font-semibold text-[#24133F] rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
-                              menuClassName="min-w-[190px] z-50"
+                              buttonClassName="h-7 max-w-[190px] px-2.5 text-[11px] font-semibold text-[#24133F] rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
+                              menuClassName="min-w-[200px] z-50"
                               align="right"
+                              searchable
                             />
                           )}
                         </div>
