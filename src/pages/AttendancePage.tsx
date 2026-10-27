@@ -190,7 +190,10 @@ export function AttendancePage() {
             if (raw) cachedOfficers = JSON.parse(raw);
           } catch {}
 
-          const officers: AssignedOfficer[] = cachedOfficers;
+          const officers: AssignedOfficer[] = cachedOfficers.map((o) => ({
+            ...o,
+            dutyType: o.dutyType || 'both',
+          }));
 
           return {
             id: s.id,
@@ -312,14 +315,28 @@ export function AttendancePage() {
     const targetSessionId = assigningSession.session.id;
     const targetSessionName = assigningSession.session.name;
 
-    const locationIds = Array.from(
-      new Set(updatedOfficers.map((o) => o.locationId).filter((id): id is string => Boolean(id)))
+    const timeInLocationIds = Array.from(
+      new Set(
+        updatedOfficers
+          .filter((o) => o.dutyType !== 'out')
+          .map((o) => o.locationId)
+          .filter((id): id is string => Boolean(id))
+      )
+    );
+
+    const timeOutLocationIds = Array.from(
+      new Set(
+        updatedOfficers
+          .filter((o) => o.dutyType !== 'in')
+          .map((o) => o.locationId)
+          .filter((id): id is string => Boolean(id))
+      )
     );
 
     try {
       await adminService.saveSessionLocations(targetSessionId, {
-        time_in_location_ids: locationIds,
-        time_out_location_ids: locationIds,
+        time_in_location_ids: timeInLocationIds,
+        time_out_location_ids: timeOutLocationIds,
       });
 
       try {
@@ -345,7 +362,7 @@ export function AttendancePage() {
       );
       triggerHighlight(targetSessionId);
       showFeedback(
-        `Saved ${locationIds.length} checkpoint${locationIds.length === 1 ? '' : 's'} for ${targetSessionName}`,
+        `Saved checkpoints & duty roles for ${targetSessionName}`,
         'success'
       );
     } catch (err: any) {
@@ -355,31 +372,57 @@ export function AttendancePage() {
   };
 
   // Session edit time modal state
-  const [editingTimeSession, setEditingTimeSession] = useState<{ dayId: string; session: SessionItem } | null>(null);
+  const [editingTimeSession, setEditingTimeSession] = useState<{
+    dayId: string;
+    session: SessionItem;
+    targetWindow: 'IN' | 'OUT';
+  } | null>(null);
   const [startTimeInput, setStartTimeInput] = useState('07:00');
   const [endTimeInput, setEndTimeInput] = useState('09:00');
 
-  const handleOpenEditTime = (dayId: string, session: SessionItem) => {
-    setEditingTimeSession({ dayId, session });
-    setStartTimeInput(session.timeInStart.slice(0, 5));
-    setEndTimeInput(session.timeInEnd.slice(0, 5));
+  const handleOpenEditTime = (dayId: string, session: SessionItem, targetWindow: 'IN' | 'OUT') => {
+    setEditingTimeSession({ dayId, session, targetWindow });
+    if (targetWindow === 'IN') {
+      setStartTimeInput(session.timeInStart.slice(0, 5));
+      setEndTimeInput(session.timeInEnd.slice(0, 5));
+    } else {
+      setStartTimeInput(session.timeOutStart.slice(0, 5));
+      setEndTimeInput(session.timeOutEnd.slice(0, 5));
+    }
   };
 
   const handleSaveEditTime = async (start: string, end: string, _formatted: string) => {
     if (!editingTimeSession) return;
-    const targetSession = editingTimeSession.session;
-    const newInStart = `${start}:00`;
-    const newInEnd = `${end}:00`;
+    const { session: targetSession, targetWindow } = editingTimeSession;
 
-    // Ensure time_out_start >= newInEnd so backend validation passes
+    let newInStart = targetSession.timeInStart;
+    let newInEnd = targetSession.timeInEnd;
     let newOutStart = targetSession.timeOutStart;
     let newOutEnd = targetSession.timeOutEnd;
-    if (newOutStart < newInEnd) {
-      newOutStart = newInEnd;
-      if (newOutEnd <= newOutStart) {
-        const [h] = newOutStart.split(':').map(Number);
-        const outEndHr = Math.min(23, (h || 12) + 1);
-        newOutEnd = `${String(outEndHr).padStart(2, '0')}:30:00`;
+
+    if (targetWindow === 'IN') {
+      newInStart = `${start}:00`;
+      newInEnd = `${end}:00`;
+      // Ensure time_out_start >= newInEnd
+      if (newOutStart < newInEnd) {
+        newOutStart = newInEnd;
+        if (newOutEnd <= newOutStart) {
+          const [h] = newOutStart.split(':').map(Number);
+          const outEndHr = Math.min(23, (h || 12) + 1);
+          newOutEnd = `${String(outEndHr).padStart(2, '0')}:30:00`;
+        }
+      }
+    } else {
+      newOutStart = `${start}:00`;
+      newOutEnd = `${end}:00`;
+      // Ensure time_in_end <= newOutStart
+      if (newInEnd > newOutStart) {
+        newInEnd = newOutStart;
+        if (newInEnd <= newInStart) {
+          const [h] = newInEnd.split(':').map(Number);
+          const inStartHr = Math.max(0, (h || 1) - 1);
+          newInStart = `${String(inStartHr).padStart(2, '0')}:00:00`;
+        }
       }
     }
 
@@ -392,7 +435,7 @@ export function AttendancePage() {
       });
       await loadSchedule(selectedEventId);
       triggerHighlight(targetSession.id);
-      showFeedback(`Updated time window for "${targetSession.name}"`, 'success');
+      showFeedback(`Updated ${targetWindow} window for "${targetSession.name}"`, 'success');
     } catch (err: any) {
       const apiMsg = err?.response?.data?.error?.message || err?.message || 'Could not update session time window.';
       showFeedback(apiMsg, 'warning');
@@ -902,16 +945,29 @@ export function AttendancePage() {
                                     </span>
                                   )}
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEditTime(day.dayId, session)}
-                                  className="group inline-flex items-center gap-1.5 mt-0.5 rounded-md px-1.5 py-0.5 -ml-1.5 text-[11px] text-[#756883] hover:text-[#7026B7] hover:bg-[#FAF7FD] transition-colors cursor-pointer"
-                                  title="Click to edit session times"
-                                >
-                                  <Clock className="h-3 w-3 text-[#756883] group-hover:text-[#7026B7]" />
-                                  <span className="font-medium">{session.timeWindow}</span>
-                                  <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-100 transition-opacity text-[#7026B7]" />
-                                </button>
+                                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditTime(day.dayId, session, 'IN')}
+                                    className="group inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50/70 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100/80 transition-all cursor-pointer shadow-2xs"
+                                    title="Click to edit Time-IN window (Arrivals)"
+                                  >
+                                    <Clock className="h-3 w-3 text-emerald-600" />
+                                    <span>IN: {formatTo12(session.timeInStart)} – {formatTo12(session.timeInEnd)}</span>
+                                    <Pencil className="h-2.5 w-2.5 opacity-40 group-hover:opacity-100 transition-opacity text-emerald-700" />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditTime(day.dayId, session, 'OUT')}
+                                    className="group inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50/70 px-2.5 py-1 text-[11px] font-semibold text-indigo-800 hover:border-indigo-400 hover:bg-indigo-100/80 transition-all cursor-pointer shadow-2xs"
+                                    title="Click to edit Time-OUT window (Departures)"
+                                  >
+                                    <Clock className="h-3 w-3 text-indigo-600" />
+                                    <span>OUT: {formatTo12(session.timeOutStart)} – {formatTo12(session.timeOutEnd)}</span>
+                                    <Pencil className="h-2.5 w-2.5 opacity-40 group-hover:opacity-100 transition-opacity text-indigo-700" />
+                                  </button>
+                                </div>
                               </div>
 
                               <div className="flex items-center gap-2.5">
@@ -974,6 +1030,21 @@ export function AttendancePage() {
                                         <span>{officer.location}</span>
                                       </p>
                                     </div>
+                                    <span
+                                      className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${
+                                        officer.dutyType === 'in'
+                                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                          : officer.dutyType === 'out'
+                                          ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                          : 'bg-purple-50 text-[#7026B7] border border-purple-200'
+                                      }`}
+                                    >
+                                      {officer.dutyType === 'in'
+                                        ? 'Time IN'
+                                        : officer.dutyType === 'out'
+                                        ? 'Time OUT'
+                                        : 'IN & OUT'}
+                                    </span>
                                   </div>
                                 ))}
 
@@ -1474,7 +1545,7 @@ export function AttendancePage() {
         isOpen={Boolean(editingTimeSession)}
         onClose={() => setEditingTimeSession(null)}
         sessionTitle={editingTimeSession ? `${editingTimeSession.session.name}` : ''}
-        windowType="IN"
+        windowType={editingTimeSession?.targetWindow || 'IN'}
         dateStr={eventData?.days.find((d) => d.dayId === editingTimeSession?.dayId)?.dateStr}
         initialStart={startTimeInput}
         initialEnd={endTimeInput}

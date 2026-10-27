@@ -46,17 +46,29 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
   }, [sessionType, sessionTitle]);
 
   const defaultBounds = useMemo(() => {
-    if (detectedSessionType === 'Morning') {
-      return { defaultStart: '07:00', defaultEnd: '08:30', min: '06:00', max: '12:00' };
-    }
-    if (detectedSessionType === 'Afternoon') {
-      return { defaultStart: '13:00', defaultEnd: '14:30', min: '12:00', max: '18:00' };
-    }
-    if (detectedSessionType === 'Evening') {
-      return { defaultStart: '18:00', defaultEnd: '19:30', min: '18:00', max: '23:30' };
+    if (windowType === 'IN') {
+      if (detectedSessionType === 'Morning') {
+        return { defaultStart: '07:00', defaultEnd: '08:30', min: '05:00', max: '14:00' };
+      }
+      if (detectedSessionType === 'Afternoon') {
+        return { defaultStart: '12:30', defaultEnd: '14:00', min: '11:00', max: '18:00' };
+      }
+      if (detectedSessionType === 'Evening') {
+        return { defaultStart: '17:30', defaultEnd: '19:00', min: '16:00', max: '23:30' };
+      }
+    } else if (windowType === 'OUT') {
+      if (detectedSessionType === 'Morning') {
+        return { defaultStart: '11:00', defaultEnd: '12:30', min: '08:00', max: '17:00' };
+      }
+      if (detectedSessionType === 'Afternoon') {
+        return { defaultStart: '16:00', defaultEnd: '17:30', min: '13:00', max: '22:00' };
+      }
+      if (detectedSessionType === 'Evening') {
+        return { defaultStart: '20:00', defaultEnd: '21:30', min: '18:00', max: '23:30' };
+      }
     }
     return { defaultStart: '07:00', defaultEnd: '08:30', min: '00:00', max: '23:30' };
-  }, [detectedSessionType]);
+  }, [detectedSessionType, windowType]);
 
   const clampTimeToBound = (t: string, fallback: string) => {
     if (!t) return fallback;
@@ -110,18 +122,6 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
       setValidationError('Start time must be strictly before end time.');
       return;
     }
-    if (detectedSessionType === 'Morning' && end > '12:00') {
-      setValidationError('Morning session times cannot exceed 12:00 PM.');
-      return;
-    }
-    if (detectedSessionType === 'Afternoon' && (start < '12:00' || end > '18:00')) {
-      setValidationError('Afternoon session times must be between 12:00 PM and 6:00 PM.');
-      return;
-    }
-    if (detectedSessionType === 'Evening' && start < '18:00') {
-      setValidationError('Evening session times must start from 6:00 PM onwards.');
-      return;
-    }
 
     const formatted = `${formatTo12(start)} - ${formatTo12(end)}`;
     onSave(start, end, formatted);
@@ -132,8 +132,20 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
-      title="Edit Time Window"
-      description="Configure attendance scanning window"
+      title={
+        windowType === 'IN'
+          ? 'Edit Time-IN Window'
+          : windowType === 'OUT'
+          ? 'Edit Time-OUT Window'
+          : 'Edit Time Window'
+      }
+      description={
+        windowType === 'IN'
+          ? 'Configure arrival scanning window (Time-IN)'
+          : windowType === 'OUT'
+          ? 'Configure departure scanning window (Time-OUT)'
+          : 'Configure attendance scanning window'
+      }
       icon={<Clock className="h-5 w-5" />}
       contextBox={
         <div className="rounded-2xl border border-[#E5E0EB] bg-[#F9F7FA] p-3.5 space-y-1.5">
@@ -141,12 +153,12 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
             <span className="text-xs font-bold text-[#24133F]">{sessionTitle}</span>
             {windowType === 'IN' && (
               <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-                Time-in Window (IN)
+                Time-IN Window (Arrivals)
               </span>
             )}
             {windowType === 'OUT' && (
-              <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-[#EF3340] border border-rose-200">
-                Time-out Window (OUT)
+              <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200">
+                Time-OUT Window (Departures)
               </span>
             )}
             {windowType === 'Session' && (
@@ -159,13 +171,6 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
             <div className="flex items-center gap-1.5 text-xs text-[#756883]">
               <Calendar className="h-3.5 w-3.5" />
               <span>{dateStr}</span>
-            </div>
-          )}
-          {detectedSessionType && (
-            <div className="text-[11px] font-semibold text-brand-700">
-              {detectedSessionType === 'Morning' && '• Morning Session time is restricted up to 12:00 PM max.'}
-              {detectedSessionType === 'Afternoon' && '• Afternoon Session time is restricted between 12:00 PM and 6:00 PM.'}
-              {detectedSessionType === 'Evening' && '• Evening Session time is restricted from 6:00 PM onwards.'}
             </div>
           )}
         </div>
