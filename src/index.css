@@ -2,12 +2,21 @@
 @config "../tailwind.config.js";
 
 @keyframes nav-settle {
-  from { opacity: .35; transform: translateY(6px) scale(.92); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: .35;
+    transform: translateY(6px) scale(.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .animate-nav-settle { animation: nav-settle 320ms cubic-bezier(.2,.8,.2,1) both; }
+  .animate-nav-settle {
+    animation: nav-settle 320ms cubic-bezier(.2, .8, .2, 1) both;
+  }
 }
 
 @font-face {
@@ -17,6 +26,7 @@
   font-weight: 400;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'Nunito Sans';
   src: url('/fonts/NunitoSans_500Medium.ttf') format('truetype');
@@ -24,6 +34,7 @@
   font-weight: 500;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'Nunito Sans';
   src: url('/fonts/NunitoSans_600SemiBold.ttf') format('truetype');
@@ -31,6 +42,7 @@
   font-weight: 600;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'Nunito Sans';
   src: url('/fonts/NunitoSans_700Bold.ttf') format('truetype');
@@ -38,6 +50,7 @@
   font-weight: 700;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'Nunito Sans';
   src: url('/fonts/NunitoSans_800ExtraBold.ttf') format('truetype');
@@ -58,13 +71,16 @@
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 9999px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
@@ -74,6 +90,7 @@
   transition: all 0.15s ease-in-out;
   box-shadow: 0 5px 0 0 #58158C;
 }
+
 .btn-tactile:active {
   transform: translateY(2px);
   box-shadow: 0 1px 0 0 #58158C;
