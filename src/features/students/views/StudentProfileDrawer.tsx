@@ -21,10 +21,12 @@ import {
   Radio,
   Loader2,
   Camera,
+  Zap,
 } from 'lucide-react';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
 import type { StudentRecord } from '../models';
+import { formatYearLevel } from '../../../utils/formatters';
 
 export interface StudentScanItem {
   id: string;
@@ -47,7 +49,7 @@ export interface StudentProfileDrawerProps {
   onClose: () => void;
   student: StudentRecord | null;
   onUnlinkCard: (studentId: string, reason?: 'lost' | 'returned') => void;
-  onQuickPair: (studentId: string, cardUid: string) => void;
+  onQuickPair: (studentId: string, cardUid: string) => Promise<{ success: boolean; message: string }> | any;
   onOpenRapidScan: () => void;
   onUpdateStudent?: (studentId: string, payload: { name: string; course: string; year_level: number }) => Promise<any>;
   isArchived?: boolean;
@@ -295,8 +297,16 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     const file = e.target.files?.[0];
     if (!file || !currentStudent) return;
 
+    const isImage = file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp)$/i.test(file.name);
+    if (!isImage) {
+      toast.error('Invalid file format. Please upload an image file (PNG, JPG, or WEBP).');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     if (file.size > 10 * 1024 * 1024) {
       toast.error('File size exceeds 10MB limit.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
@@ -304,8 +314,21 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     reader.onload = () => {
       const base64 = reader.result as string;
       if (!base64) return;
-      setRawImageForCrop(base64);
-      setIsCropModalOpen(true);
+
+      const testImg = new Image();
+      testImg.onload = () => {
+        setRawImageForCrop(base64);
+        setIsCropModalOpen(true);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      };
+      testImg.onerror = () => {
+        toast.error('The selected file is not a valid image.');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      };
+      testImg.src = base64;
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read the selected file.');
       if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsDataURL(file);
@@ -329,23 +352,61 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     }
   };
 
-  // Inline RFID Card Scanning & Pairing
+  // Inline RFID Card Scanning & Pairing with Auto-Enter
   const [isScanningCard, setIsScanningCard] = useState(false);
   const [inlineCardUid, setInlineCardUid] = useState('');
   const [isPairingCard, setIsPairingCard] = useState(false);
   const cardInputRef = useRef<HTMLInputElement>(null);
+  const autoSubmitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const submitCardUid = async (uidToSubmit: string) => {
+    const cleanUid = uidToSubmit.trim().toUpperCase();
+    if (!cleanUid || !currentStudent || isPairingCard) return;
+
+    if (autoSubmitTimeoutRef.current) {
+      clearTimeout(autoSubmitTimeoutRef.current);
+      autoSubmitTimeoutRef.current = null;
+    }
+
+    setIsPairingCard(true);
+    try {
+      const res = await onQuickPair(currentStudent.id, cleanUid);
+      if (res?.success) {
+        activeStudentRef.current = {
+          ...currentStudent,
+          rfid_uid: cleanUid,
+        };
+        setIsScanningCard(false);
+        setInlineCardUid('');
+      } else {
+        // Clear input so user can instantly tap next card without manual deletion
+        setInlineCardUid('');
+        setTimeout(() => cardInputRef.current?.focus(), 50);
+      }
+    } catch {
+      setInlineCardUid('');
+      setTimeout(() => cardInputRef.current?.focus(), 50);
+    } finally {
+      setIsPairingCard(false);
+    }
+  };
 
   const handleInlineCardSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanUid = inlineCardUid.trim();
-    if (!cleanUid || !currentStudent) return;
-    setIsPairingCard(true);
-    try {
-      await onQuickPair(currentStudent.id, cleanUid);
-      setIsScanningCard(false);
-      setInlineCardUid('');
-    } finally {
-      setIsPairingCard(false);
+    await submitCardUid(inlineCardUid);
+  };
+
+  const handleCardInputChange = (val: string) => {
+    setInlineCardUid(val);
+    if (autoSubmitTimeoutRef.current) {
+      clearTimeout(autoSubmitTimeoutRef.current);
+    }
+    const clean = val.trim();
+    // Auto-enter: automatically submit when reader finishes burst input (250ms debounce)
+    if (clean.length >= 4) {
+      autoSubmitTimeoutRef.current = setTimeout(() => {
+        void submitCardUid(clean);
+      }, 250);
     }
   };
 
@@ -395,7 +456,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       setSelectedEventId('all');
       setFilterType('all');
     }
-  }, [currentStudent]);
+  }, [currentStudent?.id]);
 
   // Handle Name Autosave
   const handleSaveName = async () => {
@@ -530,8 +591,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     setTimeout(() => setCopiedUid(false), 2000);
   };
 
-  const yearLabel = (year?: number | null) =>
-    year ? `${year}${year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} Year` : '—';
+  const yearLabel = formatYearLevel;
 
   if (!currentStudent) return null;
 
@@ -797,7 +857,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                         ref={cardInputRef}
                         type="text"
                         value={inlineCardUid}
-                        onChange={(e) => setInlineCardUid(e.target.value)}
+                        onChange={(e) => handleCardInputChange(e.target.value)}
                         placeholder="Tap RFID card on reader or enter UID..."
                         className="w-full rounded-xl border border-brand-300 bg-white px-3 py-1.5 text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-brand-500"
                         autoFocus
@@ -818,6 +878,9 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                         variant="secondary"
                         size="sm"
                         onClick={() => {
+                          if (autoSubmitTimeoutRef.current) {
+                            clearTimeout(autoSubmitTimeoutRef.current);
+                          }
                           setIsScanningCard(false);
                           setInlineCardUid('');
                         }}
@@ -826,17 +889,22 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                       </Button>
                     </div>
                   </div>
+
                   <div className="flex items-center justify-between text-[11px] text-slate-400 px-0.5">
-                    <span>Press Enter after tapping card</span>
+                    <span>Auto-pairs on card tap</span>
                     <button
                       type="button"
                       onClick={() => {
+                        if (autoSubmitTimeoutRef.current) {
+                          clearTimeout(autoSubmitTimeoutRef.current);
+                        }
                         onClose();
                         onOpenRapidScan();
                       }}
-                      className="text-brand-700 hover:text-brand-800 font-bold hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1.5 text-brand-700 hover:text-brand-800 font-bold hover:underline cursor-pointer"
                     >
-                      Open Rapid Scanner &rarr;
+                      <Zap className="h-3.5 w-3.5 fill-amber-400 text-amber-500 shrink-0" />
+                      <span>Open Rapid Scanner &rarr;</span>
                     </button>
                   </div>
                 </form>

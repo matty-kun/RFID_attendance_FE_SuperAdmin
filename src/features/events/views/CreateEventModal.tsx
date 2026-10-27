@@ -517,7 +517,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           if (e.target === e.currentTarget && !isPublishing) handleCloseModal();
         }}
         className={cn(
-          'fixed inset-0 z-[100] flex items-center justify-center bg-[#170D29]/40 p-4 backdrop-blur-md transition-opacity duration-180 ease-out',
+          'fixed inset-0 z-[500] flex items-center justify-center bg-[#170D29]/40 p-4 backdrop-blur-md transition-opacity duration-180 ease-out',
           isVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         )}
       >

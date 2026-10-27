@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, ChevronDown, UserPlus, Zap, UploadCloud } from 'lucide-react';
+import { Plus, ChevronDown, UserPlus, Zap, UploadCloud, Radio } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 
 export interface RegisterActionsDropdownProps {
   onAddStudent: () => void;
   onRapidScan: () => void;
   onBulkImport: () => void;
+  onInspectCard?: () => void;
   className?: string;
 }
 
@@ -13,6 +14,7 @@ export const RegisterActionsDropdown: React.FC<RegisterActionsDropdownProps> = (
   onAddStudent,
   onRapidScan,
   onBulkImport,
+  onInspectCard,
   className,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -153,6 +155,29 @@ export const RegisterActionsDropdown: React.FC<RegisterActionsDropdownProps> = (
                 <p className="text-[11px] text-[#756883] line-clamp-1">Upload roster file with auto-pairing</p>
               </div>
             </button>
+
+            {/* 4. Inspect RFID Card */}
+            {onInspectCard && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => handleSelect(onInspectCard)}
+                className="flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left hover:bg-[#FAF8FC] transition-colors"
+              >
+                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-[#7026B7]">
+                  <Radio className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-[#24133F]">Inspect RFID Card</p>
+                    <span className="text-[10px] font-bold text-[#7026B7] bg-purple-100/70 px-1.5 py-0.5 rounded-md">
+                      Instant Tap
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#756883] line-clamp-1">Tap card to reveal owner or availability</p>
+                </div>
+              </button>
+            )}
           </div>
         </div>
       )}

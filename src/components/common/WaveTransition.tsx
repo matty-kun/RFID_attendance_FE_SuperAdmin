@@ -121,30 +121,7 @@ export const WaveTransition: React.FC<WaveTransitionProps> = ({
           </svg>
         )}
 
-        <div className="flex-1 bg-gradient-to-r from-[#451475] via-[#351059] to-[#24133F] relative flex items-center justify-center shadow-2xl">
-          {/* Centered Hawi Sprinting Mascot & Copy */}
-          <div
-            className={`flex flex-col items-center justify-center text-center px-6 transition-all duration-300 ${
-              phase === 'enter' && animating ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-            }`}
-          >
-            <div className="relative mb-2">
-              <img
-                src={hawiSprintImg}
-                alt="Hawi Sprinting"
-                className={`h-32 w-auto sm:h-44 object-contain drop-shadow-[0_16px_32px_rgba(0,0,0,0.5)] ${
-                  isLtr ? '' : 'scale-x-[-1]'
-                }`}
-              />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">
-              {isLtr ? 'Welcome to Super Admin' : 'Signed Out'}
-            </h2>
-            <p className="mt-1.5 text-sm font-medium text-white/80 drop-shadow-sm">
-              {message || (isLtr ? 'Entering Dashboard…' : 'Returning to Login…')}
-            </p>
-          </div>
-        </div>
+        <div className="flex-1 bg-gradient-to-r from-[#451475] via-[#351059] to-[#24133F] relative shadow-2xl" />
 
         {isLtr && (
           <svg
@@ -155,6 +132,29 @@ export const WaveTransition: React.FC<WaveTransitionProps> = ({
             <path d="M0,0 C80,200 20,360 70,540 C120,720 30,860 0,1000 Z" fill="currentColor" />
           </svg>
         )}
+
+        {/* Viewport-Centered Hawi Sprinting Mascot & Copy */}
+        <div
+          className={`absolute left-[25vw] w-[100vw] inset-y-0 flex flex-col items-center justify-center text-center px-6 transition-all duration-300 z-10 ${
+            phase === 'enter' && animating ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+          }`}
+        >
+          <div className="relative mb-2">
+            <img
+              src={hawiSprintImg}
+              alt="Hawi Sprinting"
+              className={`h-32 w-auto sm:h-44 object-contain drop-shadow-[0_16px_32px_rgba(0,0,0,0.5)] ${
+                isLtr ? '' : 'scale-x-[-1]'
+              }`}
+            />
+          </div>
+          <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">
+            {isLtr ? 'Welcome to Super Admin' : 'Signed Out'}
+          </h2>
+          <p className="mt-1.5 text-sm font-medium text-white/80 drop-shadow-sm">
+            {message || (isLtr ? 'Entering Dashboard…' : 'Returning to Login…')}
+          </p>
+        </div>
       </div>
     </div>
   );

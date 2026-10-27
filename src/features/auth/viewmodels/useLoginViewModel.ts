@@ -8,6 +8,8 @@ export interface UseLoginViewModelReturn {
   setPassword: (value: string) => void;
   isLoading: boolean;
   error: string | null;
+  identifierError: boolean;
+  passwordError: boolean;
   clearError: () => void;
   handleSubmit: (e: React.FormEvent) => Promise<void>;
 }
@@ -18,23 +20,64 @@ export const useLoginViewModel = (): UseLoginViewModelReturn => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [identifierError, setIdentifierError] = useState(false);
+  const [passwordError, setPasswordError] = useState(false);
 
-  const clearError = () => setError(null);
+  const clearError = () => {
+    setError(null);
+    setIdentifierError(false);
+    setPasswordError(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    if (!identifier.trim() || !password) {
-      setError('Enter your Super Admin email and password.');
+    clearError();
+
+    const cleanIdentifier = identifier.trim();
+
+    if (!cleanIdentifier && !password) {
+      setError('Please enter your Admin ID and password.');
+      setIdentifierError(true);
+      setPasswordError(true);
       return;
     }
+
+    if (!cleanIdentifier) {
+      setError('Please enter your Admin ID.');
+      setIdentifierError(true);
+      return;
+    }
+
+    if (!password) {
+      setError('Please enter your password.');
+      setPasswordError(true);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      setPasswordError(true);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      await login(identifier.trim(), password);
+      await login(cleanIdentifier, password);
     } catch (err: any) {
-      const serverMessage = err?.response?.data?.error?.message || err?.message;
-      setError(serverMessage || 'Invalid credentials');
+      let serverMessage = err?.response?.data?.error?.message || err?.message || 'Invalid credentials.';
+      // Strip any raw field prefix like "password: " or "identifier: "
+      serverMessage = serverMessage.replace(/^[a-zA-Z0-9_.-]+:\s*/, '');
+      setError(serverMessage);
+
+      if (serverMessage.toLowerCase().includes('password')) {
+        setPasswordError(true);
+      } else if (serverMessage.toLowerCase().includes('id') || serverMessage.toLowerCase().includes('email') || serverMessage.toLowerCase().includes('student')) {
+        setIdentifierError(true);
+      } else {
+        setIdentifierError(true);
+        setPasswordError(true);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -47,6 +90,8 @@ export const useLoginViewModel = (): UseLoginViewModelReturn => {
     setPassword,
     isLoading,
     error,
+    identifierError,
+    passwordError,
     clearError,
     handleSubmit,
   };

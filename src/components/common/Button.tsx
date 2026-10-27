@@ -28,7 +28,7 @@ export const Button: React.FC<ButtonProps> = ({
     primary:
       'bg-[#7026B7] hover:bg-[#631FA4] text-white shadow-[0_5px_0_0_#451475] active:translate-y-[4px] active:shadow-[0_1px_0_0_#451475]',
     secondary:
-      'bg-white hover:bg-[#F7F6F9] text-[#24133F] border border-[#E5E0EB] shadow-[0_4px_0_0_#D5CCD8] active:translate-y-[3px] active:shadow-[0_1px_0_0_#D5CCD8]',
+      'bg-white hover:bg-[#F7F6F9] text-[#24133F] border border-[#E5E0EB] shadow-[0_5px_0_0_#D5CCD8] active:translate-y-[4px] active:shadow-[0_1px_0_0_#D5CCD8]',
     danger:
       'bg-[#EF3340] hover:bg-[#D92734] text-white shadow-[0_5px_0_0_#B91C2A] active:translate-y-[4px] active:shadow-[0_1px_0_0_#B91C2A]',
     success:

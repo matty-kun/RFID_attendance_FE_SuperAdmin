@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Bell, CalendarDays, ChartNoAxesColumn, ClipboardList, History, LayoutGrid, LogOut, MapPin, Search, UserCog, UsersRound } from 'lucide-react';
+import { Bell, CalendarDays, ChartNoAxesColumn, ClipboardList, History, LayoutGrid, LogOut, MapPin, Search, UserCog, UsersRound, Radio } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../features/auth';
 
@@ -22,6 +22,7 @@ const commands = [
   { name: 'Attendance Sessions', path: '/sessions', icon: CalendarDays, keywords: 'schedule event session time in time out create', action: '' },
   { name: 'Attendance Records', path: '/audit-log', icon: ClipboardList, keywords: 'scans student time in time out history', action: '' },
 
+  { name: 'Inspect RFID Card', path: '/students', icon: Radio, keywords: 'inspect tap lookup card rfid search who owner check unassigned', action: 'inspect-card' },
   { name: 'Notifications', path: '', icon: Bell, keywords: 'alerts updates bell', action: 'notifications' },
 ];
 
@@ -88,7 +89,12 @@ export function Header() {
 
   const runCommand = (command: (typeof commands)[number]) => {
     pagesDialog.current?.close();
-    if (command.action) window.dispatchEvent(new CustomEvent('presnt:open-utility', { detail: command.action }));
+    if (command.action === 'inspect-card') {
+      navigate('/students');
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('presnt:open-card-inspector'));
+      });
+    } else if (command.action) window.dispatchEvent(new CustomEvent('presnt:open-utility', { detail: command.action }));
     else if (command.path.includes('#')) {
       const [path, hash] = command.path.split('#');
       navigate(path);
