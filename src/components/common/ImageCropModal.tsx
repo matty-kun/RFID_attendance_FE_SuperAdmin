@@ -217,8 +217,8 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
           </div>
         </div>
 
-        {/* Controls: Zoom Slider + Reset */}
-        <div className="bg-[#FAF8FB] rounded-2xl p-4 border border-[#E5E0EB] space-y-3">
+        {/* Controls: Zoom Slider + Reset (Unboxed) */}
+        <div className="space-y-2 px-1">
           <div className="flex items-center justify-between text-xs font-bold text-[#756883]">
             <span>Zoom</span>
             <span>{Math.round(zoom * 100)}%</span>
@@ -230,7 +230,7 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
               onClick={() => setZoom((prev) => Math.max(1, parseFloat((prev - 0.15).toFixed(2))))}
               disabled={zoom <= 1 || isSaving}
               aria-label="Zoom out"
-              className="flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-[#E5E0EB] text-[#756883] hover:text-[#24133F] hover:bg-slate-50 transition-all active:scale-95 disabled:opacity-40 cursor-pointer"
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-[#756883] hover:text-[#24133F] transition-all active:scale-95 disabled:opacity-30 cursor-pointer"
             >
               <ZoomOut className="h-4 w-4" />
             </button>
@@ -251,7 +251,7 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
               onClick={() => setZoom((prev) => Math.min(3, parseFloat((prev + 0.15).toFixed(2))))}
               disabled={zoom >= 3 || isSaving}
               aria-label="Zoom in"
-              className="flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-[#E5E0EB] text-[#756883] hover:text-[#24133F] hover:bg-slate-50 transition-all active:scale-95 disabled:opacity-40 cursor-pointer"
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-[#756883] hover:text-[#24133F] transition-all active:scale-95 disabled:opacity-30 cursor-pointer"
             >
               <ZoomIn className="h-4 w-4" />
             </button>
@@ -261,7 +261,7 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
               onClick={handleReset}
               disabled={isSaving || (zoom === 1 && position.x === 0 && position.y === 0)}
               title="Reset Zoom & Centering"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#E5E0EB] text-xs font-bold text-[#756883] hover:text-[#7C27BD] hover:bg-purple-50 transition-all active:scale-95 disabled:opacity-40 cursor-pointer shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-purple-50 text-xs font-bold text-[#756883] hover:text-[#7C27BD] transition-all active:scale-95 disabled:opacity-30 cursor-pointer shrink-0"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               <span>Reset</span>
