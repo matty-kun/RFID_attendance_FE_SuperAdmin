@@ -1093,31 +1093,75 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         isOpen={isArchiveConfirmOpen}
         onClose={() => setIsArchiveConfirmOpen(false)}
         title="Archive Student"
-        description={`Are you sure you want to archive ${currentStudent.name} (${currentStudent.student_id})?`}
-        maxWidth="sm"
+        maxWidth="md"
       >
-        <div className="space-y-3 pt-1">
-          <p className="text-xs text-[#756883] leading-relaxed">
-            Archiving moves this student to the Archived roster. Any linked card will be unassigned.
-            All historical event attendance records remain permanently preserved.
+        <div className="space-y-4 pt-1">
+          <p className="text-sm text-[#24133F] leading-relaxed">
+            Are you sure you want to archive <span className="font-extrabold text-[#7026B7]">{currentStudent.name}</span> (<span className="font-extrabold text-[#24133F]">{currentStudent.student_id}</span>)?
           </p>
-          <div className="pt-2 flex items-center justify-end gap-2">
+
+          {/* Student Details Card */}
+          <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB] p-4 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-extrabold text-[#24133F] truncate">
+                {currentStudent.name}
+              </p>
+              <p className="text-xs text-[#756883] mt-0.5">
+                Student ID: <span className="font-extrabold text-[#24133F]">{currentStudent.student_id}</span>
+              </p>
+              <p className="text-xs text-[#756883] mt-0.5">
+                {currentStudent.course || 'No course assigned'} • Year {currentStudent.year_level || 1}
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/80">
+                <Archive className="h-3.5 w-3.5" />
+                To Archive
+              </span>
+            </div>
+          </div>
+
+          {/* Detailed Impact Breakdown */}
+          <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3.5 space-y-2 text-xs text-[#756883]">
+            <div className="flex items-start gap-2.5">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800 font-bold text-[11px]">!</span>
+              <span className="leading-relaxed">
+                Moves <span className="font-bold text-[#24133F]">{currentStudent.name}</span> to the <strong className="text-[#24133F]">Archived roster</strong> (hidden from active attendance sessions).
+              </span>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-700 font-bold text-[11px]">✕</span>
+              <span className="leading-relaxed">
+                Any linked RFID card {currentStudent.rfid_uid ? (<>(<span className="font-bold text-[#24133F]">{currentStudent.rfid_uid}</span>)</>) : ''} will be <strong className="text-[#24133F]">unassigned</strong> immediately.
+              </span>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-bold text-[11px]">✓</span>
+              <span className="leading-relaxed">
+                All historical event attendance records remain <strong className="text-[#24133F]">permanently preserved</strong>.
+              </span>
+            </div>
+          </div>
+
+          <div className="pt-2 flex items-center justify-end gap-3">
             <Button
+              type="button"
               variant="secondary"
-              size="sm"
+              size="md"
               onClick={() => setIsArchiveConfirmOpen(false)}
             >
               Cancel
             </Button>
             <Button
+              type="button"
               variant="danger"
-              size="sm"
+              size="md"
               onClick={() => {
                 setIsArchiveConfirmOpen(false);
                 onArchiveStudent?.(currentStudent.id);
                 onClose();
               }}
-              leftIcon={<Archive className="h-3.5 w-3.5" />}
+              leftIcon={<Archive className="h-4 w-4" />}
             >
               Archive Student
             </Button>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Trash2, X } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { Button } from './Button';
 
 export interface DeleteConfirmationModalProps {
   isOpen: boolean;
@@ -126,30 +127,29 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
         </div>
 
         <div className="mt-6 flex items-center justify-end gap-3">
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="md"
             onClick={onClose}
             disabled={isDeleting}
-            className="rounded-xl border border-[#E5E0EB] px-4 py-2.5 text-xs font-semibold text-[#756883] hover:bg-slate-50 transition-colors disabled:opacity-50"
           >
             {cancelLabel}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant={variant === 'brand' ? 'primary' : variant === 'warning' ? 'secondary' : 'danger'}
+            size="md"
             onClick={onConfirm}
             disabled={isDeleting}
+            isLoading={isDeleting}
+            leftIcon={confirmIcon}
             className={cn(
-              'rounded-xl px-5 py-2.5 text-xs font-bold text-white active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50 inline-flex items-center gap-2',
-              variant === 'brand'
-                ? 'bg-[#7128A0] hover:bg-[#5E1E85] shadow-[0_4px_0_0_#461367]'
-                : variant === 'warning'
-                ? 'bg-[#F59E0B] hover:bg-[#D97706] shadow-[0_4px_0_0_#B45309]'
-                : 'bg-[#EF4444] hover:bg-[#DC2626] shadow-[0_4px_0_0_#991B1B]'
+              variant === 'brand' && 'bg-[#7128A0] hover:bg-[#5E1E85] shadow-[0_5px_0_0_#461367] active:shadow-[0_1px_0_0_#461367]'
             )}
           >
-            {confirmIcon}
-            <span>{isDeleting ? 'Please wait...' : confirmLabel}</span>
-          </button>
+            {confirmLabel}
+          </Button>
         </div>
       </div>
     </div>,
