@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -22,8 +23,6 @@ import {
 import { useToast } from '../context';
 import { Button } from '../components/common/Button';
 import { Dropdown } from '../components/common/Dropdown';
-import { Drawer } from '../components/common/Drawer';
-import { Input } from '../components/common/Input';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { DeleteConfirmationModal } from '../components/common/DeleteConfirmationModal';
 import { CreateEventModal } from '../features/events/views/CreateEventModal';
@@ -80,6 +79,15 @@ function formatTo12(timeStr: string): string {
   const period = h >= 12 ? 'PM' : 'AM';
   const hr = h % 12 || 12;
   return `${hr}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+function formatDateDisplay(dateStr: string) {
+  if (!dateStr) return '';
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function formatDateRangeLabel(startDate: string, endDate: string): { label: string; daysCount: number } {
@@ -406,6 +414,14 @@ export function AttendancePage() {
   const [editEventStart, setEditEventStart] = useState('');
   const [editEventEnd, setEditEventEnd] = useState('');
   const [isSavingEvent, setIsSavingEvent] = useState(false);
+
+  const editDurationDays = useMemo(() => {
+    if (!editEventStart || !editEventEnd) return 1;
+    const s = new Date(editEventStart + 'T00:00:00');
+    const e = new Date(editEventEnd + 'T00:00:00');
+    const diff = Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    return diff > 0 ? diff : 1;
+  }, [editEventStart, editEventEnd]);
 
   const handleOpenEditEvent = () => {
     if (!eventData) return;
@@ -1250,83 +1266,172 @@ export function AttendancePage() {
         </div>
       )}
 
-      {/* Edit Event Details Drawer */}
-      <Drawer
-        isOpen={isEditEventOpen}
-        onClose={() => setIsEditEventOpen(false)}
-        title="Edit Event Details"
-        description="Update event name, description, and date range. Extending dates dynamically adds more days to the event."
-        icon={<Pencil className="h-5 w-5" />}
-        maxWidth="md"
-        footer={
-          <div className="flex items-center justify-end gap-2.5">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setIsEditEventOpen(false)}
-              disabled={isSavingEvent}
+      {/* Edit Event Details Modal (Matching CreateEventModal design) */}
+      {isEditEventOpen &&
+        createPortal(
+          <div
+            role="presentation"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget && !isSavingEvent) setIsEditEventOpen(false);
+            }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-[#170D29]/40 p-4 backdrop-blur-md transition-opacity duration-180 animate-fade-in"
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              className="flex max-h-[90vh] w-full max-w-xl flex-col justify-between overflow-hidden rounded-[24px] border border-[#E5E0EB] bg-white shadow-2xl transition-all"
             >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              form="edit-event-form"
-              variant="primary"
-              isLoading={isSavingEvent}
-            >
-              Save Changes
-            </Button>
-          </div>
-        }
-      >
-        <form id="edit-event-form" onSubmit={handleSaveEditEvent} className="space-y-4">
-          <Input
-            label="Event Name"
-            placeholder="e.g. IT Week 2026"
-            value={editEventName}
-            onChange={(e) => setEditEventName(e.target.value)}
-            required
-          />
+              {/* Header */}
+              <div className="border-b border-[#F1EEF4] px-6 py-5 bg-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F4EFFB] text-[#451475]">
+                      <Calendar className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-[#24133F]">Edit Event Details</h2>
+                      <p className="text-xs text-[#756883]">
+                        Update event information and schedule dates.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditEventOpen(false)}
+                    disabled={isSavingEvent}
+                    className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F] transition-colors cursor-pointer"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-[#24133F] mb-1.5">
-              Description (Optional)
-            </label>
-            <textarea
-              value={editEventDesc}
-              onChange={(e) => setEditEventDesc(e.target.value)}
-              placeholder="Brief description of the event..."
-              rows={3}
-              className="w-full rounded-xl border border-[#E5E0EB] bg-white px-3.5 py-2.5 text-xs text-[#24133F] placeholder-[#756883] outline-none transition-all focus:border-[#7026B7] focus:ring-2 focus:ring-[#7026B7]/15 resize-none"
-            />
-          </div>
+              {/* Body */}
+              <form id="edit-event-form" onSubmit={handleSaveEditEvent} className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+                {/* Event Name */}
+                <div>
+                  <label className="block text-xs font-bold text-[#24133F]">
+                    Event Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editEventName}
+                    onChange={(e) => setEditEventName(e.target.value)}
+                    placeholder="Enter event name (e.g. Foundation Day 2026)"
+                    className="mt-1.5 w-full rounded-2xl border border-[#E5E0EB] px-4 py-2.5 text-xs text-[#24133F] placeholder-[#756883] focus:border-[#451475] focus:outline-none transition-colors"
+                  />
+                </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Start Date"
-              type="date"
-              value={editEventStart}
-              onChange={(e) => setEditEventStart(e.target.value)}
-              required
-            />
-            <Input
-              label="End Date"
-              type="date"
-              value={editEventEnd}
-              min={editEventStart}
-              onChange={(e) => setEditEventEnd(e.target.value)}
-              required
-            />
-          </div>
+                {/* Event Description */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-[#24133F]">
+                      Event Description <span className="text-[10px] font-normal text-slate-400 ml-1">(Optional)</span>
+                    </label>
+                    <span className="text-[10px] text-[#756883]">{editEventDesc.length}/500</span>
+                  </div>
+                  <textarea
+                    rows={3}
+                    maxLength={500}
+                    value={editEventDesc}
+                    onChange={(e) => setEditEventDesc(e.target.value)}
+                    placeholder="Describe your event..."
+                    className="mt-1.5 w-full rounded-2xl border border-[#E5E0EB] p-4 text-xs leading-relaxed text-[#24133F] placeholder-[#756883] focus:border-[#451475] focus:outline-none transition-colors resize-none"
+                  />
+                </div>
 
-          <div className="rounded-xl bg-[#FAF7FD] border border-[#E9DDF8] p-3 text-[11px] text-[#7026B7] flex items-start gap-2">
-            <Clock className="h-4 w-4 shrink-0 mt-0.5" />
-            <span>
-              Tip: Extending the date range will automatically create new day tabs. Existing sessions and attendance logs will not be affected.
-            </span>
-          </div>
-        </form>
-      </Drawer>
+                {/* Event Dates */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="rounded-2xl border border-[#E5E0EB] bg-white px-4 py-3 shadow-xs">
+                    <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-1">
+                      Start Date <span className="text-rose-500 font-bold">*</span>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-[#451475] shrink-0" />
+                      <input
+                        type="date"
+                        required
+                        value={editEventStart}
+                        onChange={(e) => setEditEventStart(e.target.value)}
+                        className="w-full text-xs font-bold text-[#24133F] bg-transparent focus:outline-none cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-[#E5E0EB] bg-white px-4 py-3 shadow-xs">
+                    <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-1">
+                      End Date <span className="text-rose-500 font-bold">*</span>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-[#451475] shrink-0" />
+                      <input
+                        type="date"
+                        required
+                        min={editEventStart}
+                        value={editEventEnd}
+                        onChange={(e) => setEditEventEnd(e.target.value)}
+                        className="w-full text-xs font-bold text-[#24133F] bg-transparent focus:outline-none cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Calculated Duration Box */}
+                <div className="flex items-center gap-3.5 rounded-2xl bg-[#F6F4F8] p-3.5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-xs text-[#451475]">
+                    <Calendar className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-[#756883]">Event Duration</p>
+                    <p className="text-sm font-extrabold text-[#24133F]">
+                      {editDurationDays} {editDurationDays === 1 ? 'day' : 'days'}
+                    </p>
+                    <p className="text-[11px] text-[#756883]">
+                      From {formatDateDisplay(editEventStart)} to {formatDateDisplay(editEventEnd)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Tip Box */}
+                <div className="flex items-center gap-2 rounded-2xl bg-[#FAF7FD] border border-[#E9DDF8] p-3 text-xs text-[#7026B7]">
+                  <Clock className="h-4 w-4 shrink-0" />
+                  <span className="text-[11px]">
+                    Tip: Extending dates automatically creates new day tabs without affecting existing attendance logs.
+                  </span>
+                </div>
+              </form>
+
+              {/* Footer */}
+              <div className="flex items-center justify-end gap-2.5 border-t border-[#F1EEF4] px-6 py-4 bg-[#FAF8FB]">
+                <button
+                  type="button"
+                  onClick={() => setIsEditEventOpen(false)}
+                  disabled={isSavingEvent}
+                  className="rounded-xl border border-[#E5E0EB] bg-white px-4 py-2.5 text-xs font-bold text-[#756883] hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  form="edit-event-form"
+                  disabled={isSavingEvent || !editEventName.trim()}
+                  className="flex items-center gap-1.5 rounded-xl bg-[#7026B7] hover:bg-[#621FA3] px-5 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_0_#451475] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {isSavingEvent ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Saving Changes...</span>
+                    </>
+                  ) : (
+                    <span>Save Changes</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* Create Event Flow Modal */}
       <CreateEventModal
