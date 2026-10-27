@@ -68,6 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setToken(newToken);
       setUser(newUser);
+      setIsLoading(false);
       navigate(newUser.must_change_password ? '/change-password' : '/overview', { replace: true });
 
       // Start wave exit phase (sweeping out to the right)
