@@ -11,3 +11,4 @@ export * from './DeleteConfirmationModal';
 export * from './Checkbox';
 export * from './TimePicker';
 export * from './Drawer';
+export * from './ImageCropModal';

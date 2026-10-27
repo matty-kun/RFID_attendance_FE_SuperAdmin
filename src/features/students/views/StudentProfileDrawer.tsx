@@ -3,6 +3,7 @@ import { Drawer } from '../../../components/common/Drawer';
 import { Button } from '../../../components/common/Button';
 import { Dropdown } from '../../../components/common/Dropdown';
 import { Modal } from '../../../components/common/Modal';
+import { ImageCropModal } from '../../../components/common/ImageCropModal';
 import { toast } from '../../../context';
 import {
   Copy,
@@ -284,38 +285,48 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   const [isUnlinking, setIsUnlinking] = useState(false);
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
 
-  // Photo Upload State
+  // Photo Upload & Centering/Crop State
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [rawImageForCrop, setRawImageForCrop] = useState<string | null>(null);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !currentStudent) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size exceeds 5MB limit.');
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size exceeds 10MB limit.');
       return;
     }
 
     const reader = new FileReader();
-    reader.onload = async () => {
+    reader.onload = () => {
       const base64 = reader.result as string;
-      if (!base64 || !onUploadAvatar) return;
-      setIsUploadingPhoto(true);
-      try {
-        const newUrl = await onUploadAvatar(currentStudent.id, base64);
-        activeStudentRef.current = {
-          ...currentStudent,
-          avatar_url: newUrl,
-        };
-      } catch {
-        // error toast handled by viewmodel
-      } finally {
-        setIsUploadingPhoto(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      }
+      if (!base64) return;
+      setRawImageForCrop(base64);
+      setIsCropModalOpen(true);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleConfirmCrop = async (croppedBase64: string) => {
+    if (!onUploadAvatar || !currentStudent) return;
+    setIsUploadingPhoto(true);
+    try {
+      const newUrl = await onUploadAvatar(currentStudent.id, croppedBase64);
+      activeStudentRef.current = {
+        ...currentStudent,
+        avatar_url: newUrl,
+      };
+      setIsCropModalOpen(false);
+      setRawImageForCrop(null);
+    } catch {
+      // error toast handled by viewmodel
+    } finally {
+      setIsUploadingPhoto(false);
+    }
   };
 
   // Inline RFID Card Scanning & Pairing
@@ -1238,6 +1249,20 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
           </div>
         </div>
       </Modal>
+
+      {/* Profile Photo Centering & Crop Modal */}
+      <ImageCropModal
+        isOpen={isCropModalOpen}
+        onClose={() => {
+          if (!isUploadingPhoto) {
+            setIsCropModalOpen(false);
+            setRawImageForCrop(null);
+          }
+        }}
+        imageSrc={rawImageForCrop}
+        onConfirmCrop={handleConfirmCrop}
+        isSaving={isUploadingPhoto}
+      />
     </Drawer>
   );
 };
