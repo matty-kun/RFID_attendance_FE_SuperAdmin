@@ -665,47 +665,36 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               </Button>
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-3.5 transition-all">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-200/80 text-slate-500">
-                    <CreditCard className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-slate-800">No RFID Card Assigned</p>
-                      <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-md">
-                        Unpaired
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                      Link a card to track automated event attendance
-                    </p>
-                  </div>
+            <div className="space-y-3 py-1">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <CreditCard className="h-4 w-4 text-slate-400 shrink-0" />
+                  <span className="text-xs font-bold text-slate-700">No RFID Card Assigned</span>
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full">
+                    Unpaired
+                  </span>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  {!isScanningCard ? (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => {
-                        setIsScanningCard(true);
-                        setTimeout(() => cardInputRef.current?.focus(), 80);
-                      }}
-                      leftIcon={<Radio className="h-3.5 w-3.5" />}
-                    >
-                      Scan / Link Card
-                    </Button>
-                  ) : null}
-                </div>
+                {!isScanningCard && (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={() => {
+                      setIsScanningCard(true);
+                      setTimeout(() => cardInputRef.current?.focus(), 80);
+                    }}
+                    leftIcon={<Radio className="h-4 w-4" />}
+                  >
+                    Scan / Link Card
+                  </Button>
+                )}
               </div>
 
               {/* Inline RFID Card Scanner / Manual Input */}
               {isScanningCard && (
                 <form
                   onSubmit={handleInlineCardSubmit}
-                  className="mt-3 pt-3 border-t border-slate-200/80 flex flex-col gap-2 animate-in fade-in duration-150"
+                  className="flex flex-col gap-2 pt-1 animate-in fade-in duration-150"
                 >
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <div className="relative flex-1">
@@ -715,15 +704,15 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                         value={inlineCardUid}
                         onChange={(e) => setInlineCardUid(e.target.value)}
                         placeholder="Tap RFID card on reader or enter UID..."
-                        className="w-full rounded-xl border border-brand-300 bg-white px-3 py-1.5 text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        className="w-full rounded-xl border border-brand-300 bg-white px-3.5 py-2 text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-brand-500"
                         autoFocus
                       />
                     </div>
-                    <div className="flex items-center gap-1.5 justify-end">
+                    <div className="flex items-center gap-2 justify-end">
                       <Button
                         type="submit"
                         variant="primary"
-                        size="sm"
+                        size="md"
                         disabled={!inlineCardUid.trim() || isPairingCard}
                         isLoading={isPairingCard}
                       >
@@ -732,7 +721,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                       <Button
                         type="button"
                         variant="secondary"
-                        size="sm"
+                        size="md"
                         onClick={() => {
                           setIsScanningCard(false);
                           setInlineCardUid('');
