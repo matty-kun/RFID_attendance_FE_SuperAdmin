@@ -202,7 +202,6 @@ export function UtilityRail() {
         confirmLabel="Sign Out"
         cancelLabel="Cancel"
         illustration={hawiWavingImg}
-        badgeIcon={<LogOut className="h-3 w-3" />}
         confirmIcon={<LogOut className="h-3.5 w-3.5" />}
         variant="brand"
       />

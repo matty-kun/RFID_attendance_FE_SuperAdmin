@@ -15,7 +15,6 @@ export interface DeleteConfirmationModalProps {
   isDeleting?: boolean;
   icon?: React.ReactNode;
   illustration?: string;
-  badgeIcon?: React.ReactNode;
   confirmIcon?: React.ReactNode;
   variant?: 'danger' | 'brand' | 'warning';
 }
@@ -32,7 +31,6 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
   isDeleting = false,
   icon,
   illustration,
-  badgeIcon,
   confirmIcon,
   variant = 'danger',
 }) => {
@@ -88,20 +86,11 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
       >
         <div className="flex items-start justify-between">
           {illustration ? (
-            <div className="relative">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FAF5FF] to-[#F3E8FF] border border-[#E9D5FF] p-1.5 shadow-sm">
-                <img
-                  src={illustration}
-                  alt="Hawi mascot"
-                  className="h-full w-full object-contain drop-shadow select-none"
-                />
-              </div>
-              {badgeIcon && (
-                <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-lg bg-[#7128A0] text-white shadow border-2 border-white">
-                  {badgeIcon}
-                </div>
-              )}
-            </div>
+            <img
+              src={illustration}
+              alt="Mascot illustration"
+              className="h-24 w-auto object-contain drop-shadow-sm select-none -mt-1"
+            />
           ) : icon ? (
             icon
           ) : (
