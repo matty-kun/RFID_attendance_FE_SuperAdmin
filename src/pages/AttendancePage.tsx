@@ -32,9 +32,9 @@ import {
   AssignOfficersDrawer,
   type AssignedOfficer,
 } from '../features/events/views/AssignOfficersDrawer';
-import { adminService, type SessionLocations } from '../services/adminService';
+import { adminService } from '../services/adminService';
 import { getEventStatus, getSessionStatus } from '../utils/status';
-import type { EventRecord, SessionRecord, AdminRecord } from '../types';
+import type { EventRecord, SessionRecord } from '../types';
 import hawiQuestionImg from '../assets/illustrations/Hawi Question.png';
 import hawiFindingImg from '../assets/illustrations/Hawi Finding.png';
 
@@ -164,23 +164,6 @@ export function AttendancePage() {
   const buildEventSchedule = useCallback(async (ev: EventRecord) => {
     const sessions: SessionRecord[] = await adminService.getSessions(ev.id);
 
-    // Fetch allowed checkpoint locations and admin officer pool in parallel
-    const [sessionLocationsEntries, adminRes] = await Promise.all([
-      Promise.all(
-        sessions.map(async (ses): Promise<[string, SessionLocations]> => {
-          try {
-            const locs = await adminService.getSessionLocations(ses.id);
-            return [ses.id, locs];
-          } catch {
-            return [ses.id, { session_id: ses.id, time_in_locations: [], time_out_locations: [] }];
-          }
-        })
-      ),
-      adminService.getAdmins(1, '', 100).catch(() => ({ admins: [] as AdminRecord[], total: 0, page: 1, limit: 100 })),
-    ]);
-    const locationsMap = new Map<string, SessionLocations>(sessionLocationsEntries);
-    const allAdmins: AdminRecord[] = adminRes?.admins || [];
-
     const { label: dateRangeLabel, daysCount } = formatDateRangeLabel(ev.start_date, ev.end_date);
     const startObj = new Date(`${ev.start_date}T00:00:00`);
 
@@ -199,10 +182,6 @@ export function AttendancePage() {
           const rawStatus = getSessionStatus(s.date, s.time_in_start, s.time_out_end);
           const status: SessionItem['status'] =
             rawStatus === 'open' ? 'Active' : rawStatus === 'upcoming' ? 'Upcoming' : 'Completed';
-          const locs = locationsMap.get(s.id);
-          const uniqueLocations = new Map<string, string>();
-          for (const l of locs?.time_in_locations || []) uniqueLocations.set(l.id, l.name);
-          for (const l of locs?.time_out_locations || []) uniqueLocations.set(l.id, l.name);
 
           let cachedOfficers: AssignedOfficer[] = [];
           try {
@@ -210,28 +189,7 @@ export function AttendancePage() {
             if (raw) cachedOfficers = JSON.parse(raw);
           } catch {}
 
-          const fallbackOfficers: AssignedOfficer[] = Array.from(uniqueLocations.entries()).map(([locId, locName], locIdx) => {
-            const assignedAdmin = allAdmins[locIdx % allAdmins.length];
-            const officerName = assignedAdmin ? assignedAdmin.name : `Officer ${locIdx + 1}`;
-            const initials = officerName
-              .split(/\s+/)
-              .filter(Boolean)
-              .slice(0, 2)
-              .map((p) => p[0]?.toUpperCase() || '')
-              .join('') || 'OF';
-
-            return {
-              id: assignedAdmin ? assignedAdmin.id : `loc-${locId}`,
-              name: officerName,
-              initials,
-              role: assignedAdmin?.role === 'super_admin' ? 'Super Admin' : 'Admin',
-              location: locName,
-              locationId: locId,
-              status: 'Online',
-            };
-          });
-
-          const officers: AssignedOfficer[] = cachedOfficers.length > 0 ? cachedOfficers : fallbackOfficers;
+          const officers: AssignedOfficer[] = cachedOfficers;
 
           return {
             id: s.id,
@@ -790,30 +748,9 @@ export function AttendancePage() {
                 <span className="font-semibold text-brand-700">{eventData.name}</span>
               </div>
               <h1 className="text-2xl font-extrabold leading-tight text-[#24133F]">{eventData.name}</h1>
-              <p className="text-xs font-semibold text-[#756883] mt-1 flex items-center gap-2">
+              <p className="text-xs font-semibold text-[#756883] mt-1 flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5 text-[#756883]" />
                 <span>{eventData.dateRange}</span>
-                <span className="h-1 w-1 rounded-full bg-[#756883]/40" />
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                    eventData.status === 'Ongoing'
-                      ? 'bg-[#E4F7EB] text-[#11883E] border border-[#17B556]/30'
-                      : eventData.status === 'Upcoming'
-                      ? 'bg-purple-50 text-[#7026B7] border border-[#7026B7]/30'
-                      : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      eventData.status === 'Ongoing'
-                        ? 'bg-[#17B556]'
-                        : eventData.status === 'Upcoming'
-                        ? 'bg-[#7026B7]'
-                        : 'bg-slate-400'
-                    }`}
-                  />
-                  {eventData.status}
-                </span>
               </p>
             </div>
           </div>
@@ -1137,10 +1074,13 @@ export function AttendancePage() {
                               <div className="flex items-center gap-1.5 text-[11px] text-[#756883]">
                                 <Users className="h-3.5 w-3.5" />
                                 <span>
-                                  {session.officers.length}{' '}
-                                  {session.officers.length === 1
-                                    ? 'officer assigned at checkpoint'
-                                    : 'officers assigned at checkpoints'}
+                                  {session.officers.length > 0
+                                    ? `${session.officers.length} ${
+                                        session.officers.length === 1
+                                          ? 'officer assigned at checkpoint'
+                                          : 'officers assigned at checkpoints'
+                                      }`
+                                    : 'No officers assigned at checkpoints'}
                                 </span>
                               </div>
 
