@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Calendar, MapPin, Check, X } from 'lucide-react';
+import { Search, Calendar, Clock, MapPin, Check, X } from 'lucide-react';
 import { Drawer } from '../../../components/common/Drawer';
 import { Checkbox } from '../../../components/common/Checkbox';
 import { Dropdown, type DropdownOption } from '../../../components/common/Dropdown';
@@ -219,9 +219,33 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
               {sessionStatus}
             </span>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-[#756883]">
-            <Calendar className="h-3.5 w-3.5" />
-            <span>{sessionDate} · {sessionTime}</span>
+
+          {/* Separated Date & Time Windows */}
+          <div className="mt-3 space-y-2 border-t border-[#E5E0EB]/60 pt-2.5">
+            <div className="flex items-center gap-1.5 text-xs text-[#756883]">
+              <Calendar className="h-3.5 w-3.5 text-[#756883] shrink-0" />
+              <span className="font-semibold text-[#24133F]">{sessionDate}</span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              {sessionTime.includes('·') ? (
+                <>
+                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                    <Clock className="h-3 w-3 text-emerald-600" />
+                    <span>{sessionTime.split('·')[0]?.trim()}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200 px-2 py-0.5 text-[11px] font-semibold text-rose-800">
+                    <Clock className="h-3 w-3 text-rose-600" />
+                    <span>{sessionTime.split('·')[1]?.trim()}</span>
+                  </span>
+                </>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-md bg-[#FAF8FB] border border-[#E5E0EB] px-2 py-0.5 text-[11px] font-semibold text-[#24133F]">
+                  <Clock className="h-3 w-3 text-[#756883]" />
+                  <span>{sessionTime}</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
       }

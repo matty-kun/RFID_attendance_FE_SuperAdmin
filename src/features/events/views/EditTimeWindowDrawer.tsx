@@ -157,7 +157,7 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
               </span>
             )}
             {windowType === 'OUT' && (
-              <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200">
+              <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200">
                 Time-OUT Window (Departures)
               </span>
             )}

@@ -960,12 +960,12 @@ export function AttendancePage() {
                                   <button
                                     type="button"
                                     onClick={() => handleOpenEditTime(day.dayId, session, 'OUT')}
-                                    className="group inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50/70 px-2.5 py-1 text-[11px] font-semibold text-indigo-800 hover:border-indigo-400 hover:bg-indigo-100/80 transition-all cursor-pointer shadow-2xs"
+                                    className="group inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50/70 px-2.5 py-1 text-[11px] font-semibold text-rose-800 hover:border-rose-400 hover:bg-rose-100/80 transition-all cursor-pointer shadow-2xs"
                                     title="Click to edit Time-OUT window (Departures)"
                                   >
-                                    <Clock className="h-3 w-3 text-indigo-600" />
+                                    <Clock className="h-3 w-3 text-rose-600" />
                                     <span>OUT: {formatTo12(session.timeOutStart)} – {formatTo12(session.timeOutEnd)}</span>
-                                    <Pencil className="h-2.5 w-2.5 opacity-40 group-hover:opacity-100 transition-opacity text-indigo-700" />
+                                    <Pencil className="h-2.5 w-2.5 opacity-40 group-hover:opacity-100 transition-opacity text-rose-700" />
                                   </button>
                                 </div>
                               </div>
@@ -1035,7 +1035,7 @@ export function AttendancePage() {
                                         officer.dutyType === 'in'
                                           ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                           : officer.dutyType === 'out'
-                                          ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                          ? 'bg-rose-50 text-rose-700 border border-rose-200'
                                           : 'bg-purple-50 text-[#7026B7] border border-purple-200'
                                       }`}
                                     >
