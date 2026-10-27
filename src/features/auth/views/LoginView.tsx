@@ -34,8 +34,8 @@ export function LoginView() {
           <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl lg:text-[52px] font-black leading-[1.08] tracking-tight text-[#1B0B36]">
             Attendance in <span className="block text-[#8B2CCB]">Seconds.</span>
           </h1>
-          <p className="mt-4 text-sm sm:text-base font-semibold text-[#756883] leading-relaxed max-w-xs">
-            Your central hub for managing campus attendance.
+          <p className="mt-4 text-sm sm:text-base font-semibold text-[#756883] leading-relaxed max-w-sm">
+            Fast, effortless attendance tracking with just a tap.
           </p>
         </div>
 
