@@ -60,7 +60,7 @@ export interface UseStudentsViewModelReturn {
   handleCardScannedForStudent: (studentId: string, uid: string) => Promise<{ success: boolean; message: string }>;
   handleAutoPairSequential: () => Promise<{ pairedCount: number }>;
   handleBulkImport: (newStudents: BulkImportStudentRow[], autoPair: boolean) => Promise<void>;
-  handleQuickPair: (studentId: string, cardUid: string) => void;
+  handleQuickPair: (studentId: string, cardUid: string) => Promise<{ success: boolean; message: string }>;
   handleUnlinkCard: (studentId: string, reason?: 'lost' | 'returned') => Promise<void>;
   handleUpdateStudent: (studentId: string, payload: UpdateStudentPayload) => Promise<StudentRecord>;
   uploadStudentAvatar: (studentId: string, imageBase64: string) => Promise<string>;
@@ -229,20 +229,25 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
   const handleCardScannedForStudent = async (studentId: string, uid: string) => {
     const clean = uid.trim().toUpperCase();
 
-    const alreadyAssigned = students.some(
-      (s) => s.rfid_uid?.toUpperCase() === clean && s.id !== studentId
+    // Check if card is already assigned to another student
+    const alreadyAssignedStudent = students.find(
+      (s) => s.rfid_uid?.trim().toUpperCase() === clean && s.id !== studentId
     );
-    if (alreadyAssigned) {
-      return { success: false, message: `Card ${clean} is already assigned to another student!` };
+    if (alreadyAssignedStudent) {
+      const msg = `Card ${clean} is already assigned to ${alreadyAssignedStudent.name} (${alreadyAssignedStudent.student_id})!`;
+      toast.error(msg);
+      return { success: false, message: msg };
     }
 
     try {
       await studentService.updateStudent(studentId, { rfid_uid: clean });
       setUnassignedPool((prev) => prev.filter((c) => c.uid.toUpperCase() !== clean));
       await loadStudents();
+      toast.success(`Card ${clean} successfully linked to student!`);
       return { success: true, message: `Card ${clean} successfully linked to student!` };
     } catch (err: any) {
       const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to link card to student.';
+      toast.error(apiMsg);
       return { success: false, message: apiMsg };
     }
   };
@@ -332,8 +337,8 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
   };
 
   // 6. Quick Inline Link & Unlink Card
-  const handleQuickPair = (studentId: string, cardUid: string) => {
-    void handleCardScannedForStudent(studentId, cardUid);
+  const handleQuickPair = async (studentId: string, cardUid: string): Promise<{ success: boolean; message: string }> => {
+    return await handleCardScannedForStudent(studentId, cardUid);
   };
 
   const handleUnlinkCard = async (studentId: string, reason: 'lost' | 'returned' = 'returned') => {
