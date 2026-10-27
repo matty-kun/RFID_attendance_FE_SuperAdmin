@@ -116,7 +116,6 @@ export function AttendancePage() {
   const [sessionToDelete, setSessionToDelete] = useState<SessionItem | null>(null);
   const [isDeletingSession, setIsDeletingSession] = useState(false);
   const [collapsedDayIds, setCollapsedDayIds] = useState<Set<string>>(new Set());
-  const [togglingSessionId, setTogglingSessionId] = useState<string | null>(null);
 
   const toggleDayCollapse = (dayId: string) => {
     setCollapsedDayIds((prev) => {
@@ -499,28 +498,6 @@ export function AttendancePage() {
     }
   };
 
-  const handleToggleSessionCancel = async (session: SessionItem) => {
-    if (!eventData) return;
-    setTogglingSessionId(session.id);
-    const isCurrentlyCancelled = session.name.startsWith('[CANCELLED]');
-    const newName = isCurrentlyCancelled
-      ? session.name.replace(/^\[CANCELLED\]\s*/, '')
-      : `[CANCELLED] ${session.name}`;
-
-    try {
-      await adminService.updateSession(session.id, { name: newName });
-      showFeedback(
-        isCurrentlyCancelled ? 'Session turned on / reactivated.' : 'Session turned off / cancelled.',
-        'success'
-      );
-      await loadSchedule(eventData.id);
-    } catch (err: any) {
-      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to update session status.';
-      showFeedback(apiMsg, 'warning');
-    } finally {
-      setTogglingSessionId(null);
-    }
-  };
 
 
 
@@ -962,54 +939,18 @@ export function AttendancePage() {
 
                               <div className="flex items-center gap-2.5">
                                 {/* Status badge */}
-                                {!isCancelled ? (
-                                  <span
-                                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                                      session.status === 'Active'
-                                        ? 'bg-[#17B556] text-white'
-                                        : session.status === 'Upcoming'
-                                        ? 'bg-[#F59E0B] text-white'
-                                        : 'bg-[#E4F7EB] text-[#11883E] border border-[#17B556]/30'
-                                    }`}
-                                  >
-                                    {session.status}
-                                  </span>
-                                ) : (
-                                  <span className="rounded-full bg-slate-200 text-slate-600 px-2.5 py-0.5 text-[10px] font-bold">
-                                    Off
-                                  </span>
-                                )}
-
-                                {/* Turn On / Turn Off (Cancel) Toggle */}
-                                <div
-                                  className="flex items-center gap-1.5 pl-1.5 border-l border-slate-200"
-                                  title={
-                                    isCancelled
-                                      ? 'Session is turned off / cancelled. Click to turn ON.'
-                                      : 'Session is active. Click to turn OFF / cancel.'
-                                  }
+<span
+                                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                                    session.status === 'Active'
+                                      ? 'bg-[#17B556] text-white'
+                                      : session.status === 'Upcoming'
+                                      ? 'bg-[#F59E0B] text-white'
+                                      : 'bg-[#E4F7EB] text-[#11883E] border border-[#17B556]/30'
+                                  }`}
                                 >
-                                  <button
-                                    type="button"
-                                    role="switch"
-                                    aria-checked={!isCancelled}
-                                    disabled={togglingSessionId === session.id}
-                                    onClick={() => void handleToggleSessionCancel(session)}
-                                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                      !isCancelled ? 'bg-[#7026B7]' : 'bg-slate-300'
-                                    } ${togglingSessionId === session.id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                  >
-                                    <span
-                                      aria-hidden="true"
-                                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                                        !isCancelled ? 'translate-x-4' : 'translate-x-0'
-                                      }`}
-                                    />
-                                  </button>
-                                  <span className="text-[11px] font-semibold text-[#756883] min-w-5">
-                                    {!isCancelled ? 'On' : 'Off'}
-                                  </span>
-                                </div>
+                                  {session.status}
+                                </span>
+
 
                                 {/* Direct Delete Session Button */}
                                 <button
