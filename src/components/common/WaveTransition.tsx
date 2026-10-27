@@ -140,10 +140,9 @@ export const WaveTransition: React.FC<WaveTransitionProps> = ({
             <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">
               {isLtr ? 'Welcome to Super Admin' : 'Signed Out'}
             </h2>
-            <div className="mt-2.5 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-xs font-bold text-white backdrop-blur-md border border-white/25 shadow-lg">
-              <span className="h-2 w-2 rounded-full bg-[#17B556] animate-ping" />
-              <span>{message || (isLtr ? 'Entering Dashboard…' : 'Returning to Login…')}</span>
-            </div>
+            <p className="mt-1.5 text-sm font-medium text-white/80 drop-shadow-sm">
+              {message || (isLtr ? 'Entering Dashboard…' : 'Returning to Login…')}
+            </p>
           </div>
         </div>
 
