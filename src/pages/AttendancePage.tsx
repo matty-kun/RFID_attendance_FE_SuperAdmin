@@ -117,8 +117,19 @@ export function AttendancePage() {
   const [isDeletingEvent, setIsDeletingEvent] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<SessionItem | null>(null);
   const [isDeletingSession, setIsDeletingSession] = useState(false);
-  const [isEventExpanded, setIsEventExpanded] = useState(true);
-  const [expandedDayId, setExpandedDayId] = useState<string>('d1');
+  const [collapsedDayIds, setCollapsedDayIds] = useState<Set<string>>(new Set());
+
+  const toggleDayCollapse = (dayId: string) => {
+    setCollapsedDayIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(dayId)) {
+        next.delete(dayId);
+      } else {
+        next.add(dayId);
+      }
+      return next;
+    });
+  };
 
   // Filters
   const [search, setSearch] = useState('');
@@ -590,7 +601,11 @@ export function AttendancePage() {
         }
       }
       await loadSchedule(eventData.id);
-      setExpandedDayId(targetDayId);
+      setCollapsedDayIds((prev) => {
+        const next = new Set(prev);
+        next.delete(targetDayId);
+        return next;
+      });
       showFeedback(
         `Copied ${day1.sessions.length} session(s) from Day 1 to ${targetDay.dayLabel.split('-')[0].trim()}`,
         'success'
@@ -852,20 +867,16 @@ export function AttendancePage() {
           <p className="text-xs text-[#756883] mt-1">Fetching events, sessions, and checkpoint mappings.</p>
         </div>
       ) : eventData ? (
-        <div className="rounded-[24px] border border-[#E5E0EB] bg-white p-6">
-          {/* Main Event Header */}
-          <div
-            className={`flex items-center justify-between transition-all ${
-              isEventExpanded ? 'pb-4 border-b border-[#F1EEF4]' : ''
-            }`}
-          >
+        <div className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 space-y-5">
+          {/* Main Event Header - Always open & visible summary */}
+          <div className="flex items-center justify-between pb-4 border-b border-[#F1EEF4]">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#F6F4F8] text-[#451475]">
                 <Calendar className="h-5 w-5" />
               </div>
               <div>
                 <h2 className="text-base font-bold text-[#24133F]">{eventData.name}</h2>
-                <p className="text-xs text-[#756883]">{eventData.dateRange}</p>
+                <p className="text-xs text-[#756883]">{eventData.dateRange} · {eventData.durationDays} {eventData.durationDays === 1 ? 'day' : 'days'}</p>
               </div>
             </div>
 
@@ -934,35 +945,22 @@ export function AttendancePage() {
                   </>
                 )}
               </div>
-
-              <button
-                type="button"
-                onClick={() => setIsEventExpanded(!isEventExpanded)}
-                aria-label="Toggle event days"
-                className="rounded-lg p-1 text-[#756883] hover:bg-slate-100"
-              >
-                {isEventExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-              </button>
             </div>
           </div>
 
-          {/* Event Days Content */}
-          <div
-            className={`overflow-hidden transition-all duration-300 ease-in-out ${
-              isEventExpanded ? 'max-h-[3500px] opacity-100 mt-5 space-y-4' : 'max-h-0 opacity-0 pointer-events-none'
-            }`}
-          >
+          {/* Event Days Content - Always open & visible immediately */}
+          <div className="space-y-4">
             {filteredDays.map((day) => {
-              const isDayOpen = isSearching || expandedDayId === day.dayId;
+              const isDayOpen = isSearching || !collapsedDayIds.has(day.dayId);
 
               return (
                 <div
                   key={day.dayId}
-                  className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden transition-all"
+                  className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden transition-all shadow-2xs"
                 >
                   {/* Day Header Row */}
                   <div
-                    onClick={() => setExpandedDayId(isDayOpen ? '' : day.dayId)}
+                    onClick={() => toggleDayCollapse(day.dayId)}
                     className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50/60 transition-colors"
                   >
                     <div className="flex items-center gap-3">
@@ -971,41 +969,34 @@ export function AttendancePage() {
                       </div>
                       <div>
                         <h3 className="text-xs font-bold text-[#24133F]">{day.dayLabel}</h3>
-                        {!isDayOpen && (
-                          <p className="text-[10px] text-[#756883]">
-                            {day.visibleSessions.length}{' '}
-                            {day.visibleSessions.length === 1 ? 'Session' : 'Sessions'} configured
-                          </p>
-                        )}
+                        <p className="text-[10px] text-[#756883]">
+                          {day.visibleSessions.length}{' '}
+                          {day.visibleSessions.length === 1 ? 'session' : 'sessions'} configured
+                        </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {day.dayId !== 'd1' && day.sessions.length === 0 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleCopyFromDay1(day.dayId);
+                          }}
+                          className="flex items-center gap-1 rounded-xl border border-dashed border-[#451475]/40 bg-[#FAF7FD] px-2.5 py-1 text-[11px] font-bold text-[#451475] hover:bg-[#F3EDFB] transition-colors"
+                        >
+                          <Copy className="h-3 w-3" />
+                          <span>Copy from Day 1</span>
+                        </button>
+                      )}
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-[#756883]">
+                        {day.status === 'Not Started' ? 'No Sessions' : 'Configured'}
+                      </span>
                       {isDayOpen ? (
-                        <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-[#756883]">
-                          {day.visibleSessions.length}{' '}
-                          {day.visibleSessions.length === 1 ? 'session' : 'sessions'}
-                        </span>
+                        <ChevronUp className="h-4 w-4 text-[#756883]" />
                       ) : (
-                        <div className="flex items-center gap-2">
-                          {day.dayId !== 'd1' && day.sessions.length === 0 && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                void handleCopyFromDay1(day.dayId);
-                              }}
-                              className="hidden sm:flex items-center gap-1 rounded-xl border border-dashed border-[#451475]/40 bg-[#FAF7FD] px-2.5 py-1 text-[11px] font-bold text-[#451475] hover:bg-[#F3EDFB] transition-colors"
-                            >
-                              <Copy className="h-3 w-3" />
-                              Copy from Day 1
-                            </button>
-                          )}
-                          <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-[#756883]">
-                            {day.status === 'Not Started' ? 'No Sessions' : 'Configured'}
-                          </span>
-                          <ChevronRight className="h-4 w-4 text-[#756883]" />
-                        </div>
+                        <ChevronDown className="h-4 w-4 text-[#756883]" />
                       )}
                     </div>
                   </div>
