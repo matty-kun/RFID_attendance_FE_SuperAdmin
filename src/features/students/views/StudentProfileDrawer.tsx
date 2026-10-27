@@ -641,45 +641,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                 </p>
               </div>
             </div>
-          ) : currentStudent.rfid_uid && isUnlinking ? (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-3.5 space-y-2 animate-in fade-in duration-150">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-rose-900">
-                  Unlink Card {currentStudent.rfid_uid}?
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsUnlinking(false)}
-                  className="text-[11px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
-              <p className="text-[11px] text-rose-700/90 leading-tight">
-                This detaches the card from this student. Historical attendance records will remain saved.
-              </p>
-              <div className="flex items-center justify-end gap-2 pt-1">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setIsUnlinking(false)}
-                >
-                  Keep Card
-                </Button>
-                <Button
-                  type="button"
-                  variant="danger"
-                  size="sm"
-                  onClick={() => {
-                    setIsUnlinking(false);
-                    onUnlinkCard(currentStudent.id);
-                  }}
-                >
-                  Confirm Unlink
-                </Button>
-              </div>
-            </div>
           ) : currentStudent.rfid_uid ? (
             <div className="flex items-center gap-2">
               <Button
@@ -1164,6 +1125,87 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               leftIcon={<Archive className="h-4 w-4" />}
             >
               Archive Student
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Unlink RFID Card Confirmation Modal */}
+      <Modal
+        isOpen={isUnlinking}
+        onClose={() => setIsUnlinking(false)}
+        title="Unlink RFID Card"
+        maxWidth="md"
+      >
+        <div className="space-y-4 pt-1">
+          <p className="text-sm text-[#24133F] leading-relaxed">
+            Are you sure you want to unlink the RFID card from <span className="font-extrabold text-[#7026B7]">{currentStudent.name}</span> (<span className="font-extrabold text-[#24133F]">{currentStudent.student_id}</span>)?
+          </p>
+
+          {/* Card Info Box */}
+          <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB] p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-200">
+                <CreditCard className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-[#756883]">
+                  Card UID (Physical Tag)
+                </p>
+                <p className="text-sm font-mono font-extrabold text-[#24133F] tracking-wide">
+                  {currentStudent.rfid_uid}
+                </p>
+              </div>
+            </div>
+
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200/80 shrink-0">
+              <Unlink className="h-3.5 w-3.5" />
+              To Unlink
+            </span>
+          </div>
+
+          {/* Detailed Impact Breakdown */}
+          <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3.5 space-y-2 text-xs text-[#756883]">
+            <div className="flex items-start gap-2.5">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-700 font-bold text-[11px]">✕</span>
+              <span className="leading-relaxed">
+                Detaches this card from <span className="font-bold text-[#24133F]">{currentStudent.name}</span> immediately. Tapping it will no longer record attendance for this student.
+              </span>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800 font-bold text-[11px]">↻</span>
+              <span className="leading-relaxed">
+                The card UID (<span className="font-mono font-bold text-[#24133F]">{currentStudent.rfid_uid}</span>) becomes available to pair with any other student.
+              </span>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-bold text-[11px]">✓</span>
+              <span className="leading-relaxed">
+                All existing attendance logs and event check-ins remain <strong className="text-[#24133F]">safely preserved</strong>.
+              </span>
+            </div>
+          </div>
+
+          <div className="pt-2 flex items-center justify-end gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              onClick={() => setIsUnlinking(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              size="md"
+              onClick={() => {
+                setIsUnlinking(false);
+                onUnlinkCard(currentStudent.id);
+              }}
+              leftIcon={<Unlink className="h-4 w-4" />}
+            >
+              Unlink Card
             </Button>
           </div>
         </div>
