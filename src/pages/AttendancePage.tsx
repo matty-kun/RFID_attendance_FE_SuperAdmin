@@ -24,7 +24,6 @@ import { useToast } from '../context';
 import { Button } from '../components/common/Button';
 import { Dropdown } from '../components/common/Dropdown';
 import { Drawer } from '../components/common/Drawer';
-import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { DeleteConfirmationModal } from '../components/common/DeleteConfirmationModal';
 import { CreateEventModal } from '../features/events/views/CreateEventModal';
 import { EditTimeWindowDrawer } from '../features/events/views/EditTimeWindowDrawer';
@@ -80,6 +79,15 @@ function formatTo12(timeStr: string): string {
   const period = h >= 12 ? 'PM' : 'AM';
   const hr = h % 12 || 12;
   return `${hr}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+export function getAcademicYear(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr.slice(0, 10) + 'T00:00:00');
+  if (isNaN(d.getTime())) return '';
+  const year = d.getFullYear();
+  const month = d.getMonth(); // 0 = Jan, 7 = Aug
+  return month >= 7 ? `A.Y. ${year}–${year + 1}` : `A.Y. ${year - 1}–${year}`;
 }
 
 function formatDateDisplay(dateStr: string) {
@@ -141,7 +149,7 @@ export function AttendancePage() {
   // Filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [dateRange, setDateRange] = useState<{ start?: string; end?: string }>({});
+  const [academicYearFilter, setAcademicYearFilter] = useState<string>('all');
 
   // Modals state
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
@@ -627,6 +635,25 @@ export function AttendancePage() {
     handleSelectEvent(createdEvent.id);
   };
 
+  const academicYearOptions = useMemo(() => {
+    const yearsSet = new Set<string>();
+    const currentAY = getAcademicYear(new Date().toISOString().slice(0, 10));
+    if (currentAY) yearsSet.add(currentAY);
+
+    events.forEach((ev) => {
+      const ayStart = getAcademicYear(ev.start_date);
+      if (ayStart) yearsSet.add(ayStart);
+      const ayEnd = getAcademicYear(ev.end_date);
+      if (ayEnd) yearsSet.add(ayEnd);
+    });
+
+    const sorted = Array.from(yearsSet).sort().reverse();
+    return [
+      { value: 'all', label: 'All Academic Years' },
+      ...sorted.map((ay) => ({ value: ay, label: ay })),
+    ];
+  }, [events]);
+
   const filteredEventsList = useMemo(() => {
     return events.filter((ev) => {
       if (search.trim()) {
@@ -641,29 +668,22 @@ export function AttendancePage() {
         if (evRawStatus !== statusFilter) return false;
       }
 
-      if (dateRange.start && ev.end_date < dateRange.start) return false;
-      if (dateRange.end && ev.start_date > dateRange.end) return false;
+      if (academicYearFilter !== 'all') {
+        const evAY = getAcademicYear(ev.start_date);
+        const evEndAY = getAcademicYear(ev.end_date);
+        if (evAY !== academicYearFilter && evEndAY !== academicYearFilter) return false;
+      }
 
       return true;
     });
-  }, [events, search, statusFilter, dateRange]);
+  }, [events, search, statusFilter, academicYearFilter]);
 
-  const hasDateFilter = Boolean(dateRange.start || dateRange.end);
-  const isSearching = Boolean(search.trim()) || statusFilter !== 'all' || hasDateFilter;
+  const isSearching = Boolean(search.trim()) || statusFilter !== 'all' || academicYearFilter !== 'all';
 
   const filteredDays = useMemo(() => {
     if (!eventData) return [];
     return eventData.days
       .map((day) => {
-        const matchesDate = (() => {
-          if (!dateRange.start && !dateRange.end) return true;
-          const dayYMD = day.ymd;
-          if (!dayYMD) return true;
-          if (dateRange.start && !dateRange.end) return dayYMD === dateRange.start;
-          if (dateRange.start && dateRange.end) return dayYMD >= dateRange.start && dayYMD <= dateRange.end;
-          return true;
-        })();
-
         const visibleSessions = day.sessions.filter((s) => {
           const matchesSearch =
             search.trim() === '' ||
@@ -685,11 +705,10 @@ export function AttendancePage() {
         return {
           ...day,
           visibleSessions,
-          matchesDate,
         };
       })
-      .filter((day) => day.matchesDate && (!isSearching || day.visibleSessions.length > 0));
-  }, [eventData, search, statusFilter, dateRange, isSearching]);
+      .filter((day) => !isSearching || day.visibleSessions.length > 0);
+  }, [eventData, search, statusFilter, isSearching]);
 
   return (
     <div className="mx-auto w-full max-w-[1180px] space-y-6 text-[#24133F]">
@@ -835,16 +854,14 @@ export function AttendancePage() {
             }
           />
 
-          <CalendarDatePicker
-            startDate={dateRange.start}
-            endDate={dateRange.end}
-            onChange={(range) => {
-              setDateRange({
-                start: range.startDate || undefined,
-                end: range.endDate || undefined,
-              });
-            }}
-          />
+          {!eventData && (
+            <Dropdown
+              value={academicYearFilter}
+              onChange={setAcademicYearFilter}
+              buttonClassName="h-10 rounded-xl font-semibold"
+              options={academicYearOptions}
+            />
+          )}
         </div>
       </div>
 
@@ -1149,7 +1166,7 @@ export function AttendancePage() {
                   onClick={() => {
                     setSearch('');
                     setStatusFilter('all');
-                    setDateRange({});
+                    setAcademicYearFilter('all');
                   }}
                   className="mt-4 px-4 py-1.5 rounded-xl text-xs font-bold text-[#7026B7] bg-[#FAF7FD] border border-[#E9DDF8] hover:bg-[#F3EDFB] transition-colors"
                 >
@@ -1176,7 +1193,7 @@ export function AttendancePage() {
               />
               <h3 className="text-base font-bold text-[#24133F]">No Events Found</h3>
               <p className="mt-1 max-w-sm text-xs text-[#756883]">
-                {search || statusFilter !== 'all' || dateRange.start || dateRange.end
+                {search || statusFilter !== 'all' || academicYearFilter !== 'all'
                   ? 'No events match your current search or filter criteria. Try clearing search or filters.'
                   : 'There are currently no campus events registered. Create a new event to configure schedules and attendance sessions.'}
               </p>
