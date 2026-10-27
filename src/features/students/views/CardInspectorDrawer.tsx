@@ -8,7 +8,6 @@ import {
   Radio,
   Unlink,
   ExternalLink,
-  RotateCcw,
   Copy,
   Check,
   Search,
@@ -53,6 +52,7 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastInputTimeRef = useRef<number>(0);
 
   // Reset & focus on open
   useEffect(() => {
@@ -64,6 +64,30 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
       setPairingStudentId(null);
       setTimeout(() => inputRef.current?.focus(), 120);
     }
+  }, [isOpen]);
+
+  // Global window listener: redirect hardware scanner keystrokes to inputRef if drawer is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleWindowKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      // Do not redirect if user is actively typing in studentSearchFilter
+      if (target && target.tagName === 'INPUT' && target !== inputRef.current) {
+        return;
+      }
+      if (target && target.tagName === 'TEXTAREA') {
+        return;
+      }
+      if (document.activeElement !== inputRef.current && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.key.length === 1 || e.key === 'Enter') {
+          inputRef.current?.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleWindowKeyDown);
+    return () => window.removeEventListener('keydown', handleWindowKeyDown);
   }, [isOpen]);
 
   // Lookup Card UID
@@ -79,6 +103,12 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
     setActiveUid(clean);
     setIsSearching(true);
     setStudentSearchFilter('');
+
+    // Ensure the input has the inspected UID and select it so the next scan overwrites immediately
+    setScannedUid(clean);
+    setTimeout(() => {
+      inputRef.current?.select();
+    }, 50);
 
     // 1. Check in-memory list first (instant 0ms)
     const localMatch = students.find((s) => s.rfid_uid?.trim().toUpperCase() === clean);
@@ -101,13 +131,50 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
     }
   };
 
-  const handleInputChange = (val: string) => {
-    setScannedUid(val);
+  const handleInputChange = (rawVal: string) => {
+    const now = Date.now();
+    const timeDelta = now - lastInputTimeRef.current;
+    lastInputTimeRef.current = now;
+
+    let nextVal = rawVal;
+
+    // If a card was already inspected or active on screen,
+    // and a new scan begins after a pause (> 300ms):
+    if (activeUid && timeDelta > 300) {
+      // Instantly erase previous card state and student info
+      setActiveUid(null);
+      setMatchedStudent(null);
+      setStudentSearchFilter('');
+
+      // Extract new character(s) if text was appended to old UID
+      if (rawVal.startsWith(scannedUid) && rawVal.length > scannedUid.length) {
+        nextVal = rawVal.slice(scannedUid.length);
+      } else if (rawVal.endsWith(scannedUid) && rawVal.length > scannedUid.length) {
+        nextVal = rawVal.slice(0, rawVal.length - scannedUid.length);
+      } else if (rawVal.length > 10) {
+        nextVal = rawVal.slice(-10);
+      }
+    } else if (nextVal.length > 10) {
+      // If RFID burst appended to existing 10 digits without selection, take the latest 10
+      nextVal = nextVal.slice(-10);
+    }
+
+    setScannedUid(nextVal);
+
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
     }
-    const clean = val.trim();
-    // Auto-enter on burst scanner input (250ms debounce)
+
+    const clean = nextVal.trim();
+
+    // Standard RFID card UID length: auto-enter IMMEDIATELY with 0ms delay
+    if (clean.length === 10) {
+      void inspectCard(clean);
+      return;
+    }
+
+    // Auto-enter on burst scanner input (250ms debounce) for other UID lengths
     if (clean.length >= 4) {
       debounceTimerRef.current = setTimeout(() => {
         void inspectCard(clean);
@@ -307,42 +374,30 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
             </div>
 
             {/* Actions for Assigned Card */}
-            <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
               <Button
                 type="button"
-                variant="secondary"
+                variant="danger"
                 size="md"
-                onClick={handleReset}
-                leftIcon={<RotateCcw className="h-4 w-4" />}
+                onClick={handleUnlinkSubmit}
+                isLoading={isUnlinking}
+                leftIcon={<Unlink className="h-4 w-4" />}
               >
-                Scan Another
+                Unlink Card
               </Button>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="danger"
-                  size="md"
-                  onClick={handleUnlinkSubmit}
-                  isLoading={isUnlinking}
-                  leftIcon={<Unlink className="h-4 w-4" />}
-                >
-                  Unlink Card
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="md"
-                  onClick={() => {
-                    onClose();
-                    onViewStudent(matchedStudent);
-                  }}
-                  leftIcon={<ExternalLink className="h-4 w-4" />}
-                >
-                  View Profile
-                </Button>
-              </div>
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={() => {
+                  onClose();
+                  onViewStudent(matchedStudent);
+                }}
+                leftIcon={<ExternalLink className="h-4 w-4" />}
+              >
+                View Profile
+              </Button>
             </div>
           </div>
         )}
@@ -446,18 +501,6 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
                   All active students currently have assigned RFID cards!
                 </div>
               )}
-
-              <div className="pt-2 border-t border-slate-100">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="md"
-                  onClick={handleReset}
-                  leftIcon={<RotateCcw className="h-4 w-4" />}
-                >
-                  Scan Another Card
-                </Button>
-              </div>
             </div>
           </div>
         )}
