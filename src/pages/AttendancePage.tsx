@@ -8,7 +8,6 @@ import {
   ChevronUp,
   Clock,
   Copy,
-  MoreVertical,
   Plus,
   Search,
   Users,
@@ -113,11 +112,11 @@ export function AttendancePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [isEventMenuOpen, setIsEventMenuOpen] = useState(false);
   const [isDeletingEvent, setIsDeletingEvent] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<SessionItem | null>(null);
   const [isDeletingSession, setIsDeletingSession] = useState(false);
   const [collapsedDayIds, setCollapsedDayIds] = useState<Set<string>>(new Set());
+  const [togglingSessionId, setTogglingSessionId] = useState<string | null>(null);
 
   const toggleDayCollapse = (dayId: string) => {
     setCollapsedDayIds((prev) => {
@@ -369,25 +368,15 @@ export function AttendancePage() {
     }
   };
 
-  // Session action menus & edit modal state
-  const [openMenuSessionId, setOpenMenuSessionId] = useState<string | null>(null);
+  // Session edit time modal state
   const [editingTimeSession, setEditingTimeSession] = useState<{ dayId: string; session: SessionItem } | null>(null);
   const [startTimeInput, setStartTimeInput] = useState('07:00');
   const [endTimeInput, setEndTimeInput] = useState('09:00');
-
-  const handleToggleSessionComplete = (_dayId: string, session: SessionItem) => {
-    setOpenMenuSessionId(null);
-    showFeedback(
-      `Manual session status override for "${session.name}" is not supported: sessions open and close automatically based on their configured schedule.`,
-      'warning'
-    );
-  };
 
   const handleOpenEditTime = (dayId: string, session: SessionItem) => {
     setEditingTimeSession({ dayId, session });
     setStartTimeInput(session.timeInStart.slice(0, 5));
     setEndTimeInput(session.timeInEnd.slice(0, 5));
-    setOpenMenuSessionId(null);
   };
 
   const handleSaveEditTime = async (start: string, end: string, _formatted: string) => {
@@ -440,7 +429,6 @@ export function AttendancePage() {
     setEditEventDesc(eventData.description || '');
     setEditEventStart(eventData.startDate);
     setEditEventEnd(eventData.endDate);
-    setIsEventMenuOpen(false);
     setIsEditEventOpen(true);
   };
 
@@ -485,31 +473,71 @@ export function AttendancePage() {
   const [newSessionTimeOutEnd, setNewSessionTimeOutEnd] = useState('12:00');
   const [isSavingNewSession, setIsSavingNewSession] = useState(false);
 
-  const handleOpenAddSession = (day: DaySchedule) => {
+  const handleOpenAddSession = (
+    day: DaySchedule,
+    preset?: 'Morning' | 'Afternoon' | 'Evening' | 'Custom'
+  ) => {
     const hasMorning = day.sessions.some((s) => s.name.toLowerCase().includes('morning'));
     const hasAfternoon = day.sessions.some((s) => s.name.toLowerCase().includes('afternoon'));
 
-    if (!hasMorning) {
+    const choice = preset && preset !== 'Custom'
+      ? preset
+      : !hasMorning
+      ? 'Morning'
+      : !hasAfternoon
+      ? 'Afternoon'
+      : 'Evening';
+
+    if (choice === 'Morning') {
       setNewSessionName('Morning Session');
       setNewSessionTimeInStart('07:00');
       setNewSessionTimeInEnd('08:30');
       setNewSessionTimeOutStart('11:00');
       setNewSessionTimeOutEnd('12:00');
-    } else if (!hasAfternoon) {
+    } else if (choice === 'Afternoon') {
       setNewSessionName('Afternoon Session');
       setNewSessionTimeInStart('13:00');
       setNewSessionTimeInEnd('14:30');
       setNewSessionTimeOutStart('16:30');
       setNewSessionTimeOutEnd('17:30');
-    } else {
+    } else if (choice === 'Evening') {
       setNewSessionName('Evening Session');
       setNewSessionTimeInStart('18:00');
       setNewSessionTimeInEnd('19:30');
       setNewSessionTimeOutStart('20:30');
       setNewSessionTimeOutEnd('21:30');
+    } else {
+      setNewSessionName('');
+      setNewSessionTimeInStart('08:00');
+      setNewSessionTimeInEnd('09:00');
+      setNewSessionTimeOutStart('12:00');
+      setNewSessionTimeOutEnd('13:00');
     }
 
     setAddingSessionToDay(day);
+  };
+
+  const handleToggleSessionCancel = async (session: SessionItem) => {
+    if (!eventData) return;
+    setTogglingSessionId(session.id);
+    const isCurrentlyCancelled = session.name.startsWith('[CANCELLED]');
+    const newName = isCurrentlyCancelled
+      ? session.name.replace(/^\[CANCELLED\]\s*/, '')
+      : `[CANCELLED] ${session.name}`;
+
+    try {
+      await adminService.updateSession(session.id, { name: newName });
+      showFeedback(
+        isCurrentlyCancelled ? 'Session turned on / reactivated.' : 'Session turned off / cancelled.',
+        'success'
+      );
+      await loadSchedule(eventData.id);
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to update session status.';
+      showFeedback(apiMsg, 'warning');
+    } finally {
+      setTogglingSessionId(null);
+    }
   };
 
   const handleSaveNewSession = async (e: React.FormEvent) => {
@@ -735,6 +763,31 @@ export function AttendancePage() {
                 <span className="font-semibold text-brand-700">{eventData.name}</span>
               </div>
               <h1 className="text-2xl font-extrabold leading-tight text-[#24133F]">{eventData.name}</h1>
+              <p className="text-xs font-semibold text-[#756883] mt-1 flex items-center gap-2">
+                <Calendar className="h-3.5 w-3.5 text-[#756883]" />
+                <span>{eventData.dateRange} · {eventData.durationDays} {eventData.durationDays === 1 ? 'day' : 'days'}</span>
+                <span className="h-1 w-1 rounded-full bg-[#756883]/40" />
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    eventData.status === 'Ongoing'
+                      ? 'bg-[#E4F7EB] text-[#11883E] border border-[#17B556]/30'
+                      : eventData.status === 'Upcoming'
+                      ? 'bg-purple-50 text-[#7026B7] border border-[#7026B7]/30'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      eventData.status === 'Ongoing'
+                        ? 'bg-[#17B556]'
+                        : eventData.status === 'Upcoming'
+                        ? 'bg-[#7026B7]'
+                        : 'bg-slate-400'
+                    }`}
+                  />
+                  {eventData.status}
+                </span>
+              </p>
             </div>
           </div>
 
@@ -762,6 +815,14 @@ export function AttendancePage() {
                 Set as Active Campus Event
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setEventToDelete({ id: eventData.id, name: eventData.name })}
+              className="rounded-xl border border-[#E5E0EB] bg-white p-2 text-[#756883] hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition-all shadow-2xs cursor-pointer"
+              title="Delete Event"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
           </div>
         </div>
       ) : (
@@ -867,87 +928,7 @@ export function AttendancePage() {
           <p className="text-xs text-[#756883] mt-1">Fetching events, sessions, and checkpoint mappings.</p>
         </div>
       ) : eventData ? (
-        <div className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 space-y-5">
-          {/* Main Event Header - Always open & visible summary */}
-          <div className="flex items-center justify-between pb-4 border-b border-[#F1EEF4]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#F6F4F8] text-[#451475]">
-                <Calendar className="h-5 w-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-[#24133F]">{eventData.name}</h2>
-                <p className="text-xs text-[#756883]">{eventData.dateRange} · {eventData.durationDays} {eventData.durationDays === 1 ? 'day' : 'days'}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 sm:gap-3">
-              <span
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
-                  eventData.status === 'Ongoing'
-                    ? 'bg-[#E4F7EB] text-[#11883E] border border-[#17B556]/20'
-                    : eventData.status === 'Upcoming'
-                    ? 'bg-purple-50 text-[#7026B7]'
-                    : 'bg-slate-100 text-slate-600'
-                }`}
-              >
-                <span
-                  className={`h-2 w-2 rounded-full ${
-                    eventData.status === 'Ongoing'
-                      ? 'bg-[#17B556]'
-                      : eventData.status === 'Upcoming'
-                      ? 'bg-[#7026B7]'
-                      : 'bg-slate-400'
-                  }`}
-                />
-                {eventData.status}
-              </span>
-
-              {/* Event Actions Kebab Menu */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsEventMenuOpen(!isEventMenuOpen)}
-                  className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F] transition-colors"
-                  aria-label="Event options"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </button>
-
-                {isEventMenuOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-20"
-                      onClick={() => setIsEventMenuOpen(false)}
-                    />
-                    <div className="absolute right-0 top-full mt-1 z-30 w-48 rounded-xl border border-[#E5E0EB] bg-white p-1 shadow-lg animate-in fade-in zoom-in-95 duration-100">
-                      <button
-                        type="button"
-                        onClick={handleOpenEditEvent}
-                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-semibold text-[#24133F] hover:bg-slate-50 transition-colors"
-                      >
-                        <Pencil className="h-3.5 w-3.5 text-[#756883]" />
-                        <span>Edit Event &amp; Dates</span>
-                      </button>
-                      <div className="my-1 border-t border-[#F1EEF4]" />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsEventMenuOpen(false);
-                          setEventToDelete({ id: eventData.id, name: eventData.name });
-                        }}
-                        disabled={isDeletingEvent}
-                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-rose-500" />
-                        <span>Delete Event</span>
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
+        <div className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 space-y-4">
           {/* Event Days Content - Always open & visible immediately */}
           <div className="space-y-4">
             {filteredDays.map((day) => {
@@ -1005,196 +986,256 @@ export function AttendancePage() {
                   <div
                     className={`overflow-hidden transition-all duration-300 ease-in-out ${
                       isDayOpen
-                        ? 'max-h-[1600px] opacity-100 border-t border-[#F1EEF4] p-4 space-y-3 bg-[#FAF8FB]/40'
+                        ? 'max-h-[3000px] opacity-100 border-t border-[#F1EEF4] p-4 space-y-3 bg-[#FAF8FB]/40'
                         : 'max-h-0 opacity-0 p-0 pointer-events-none'
                     }`}
                   >
                     {day.visibleSessions.length === 0 ? (
                       <p className="py-4 text-center text-xs text-[#756883]">
-                        No sessions configured for this day.
+                        No sessions configured for this day yet.
                       </p>
                     ) : (
-                      day.visibleSessions.map((session) => (
-                        <div
-                          key={session.id}
-                          className={`rounded-2xl border bg-white p-4 transition-colors duration-200 ${
-                            highlightedSessionId === session.id
-                              ? 'border-[#451475] ring-2 ring-[#451475]/25'
-                              : 'border-[#E5E0EB]'
-                          }`}
-                        >
-                          {/* Session Header */}
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className="text-xs font-bold text-[#24133F]">{session.name}</h4>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditTime(day.dayId, session)}
-                                className="group inline-flex items-center gap-1.5 mt-0.5 rounded-md px-1.5 py-0.5 -ml-1.5 text-[11px] text-[#756883] hover:text-[#7026B7] hover:bg-[#FAF7FD] transition-colors cursor-pointer"
-                                title="Click to edit session times"
-                              >
-                                <Clock className="h-3 w-3 text-[#756883] group-hover:text-[#7026B7]" />
-                                <span className="font-medium">{session.timeWindow}</span>
-                                <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-100 transition-opacity text-[#7026B7]" />
-                              </button>
-                            </div>
+                      day.visibleSessions.map((session) => {
+                        const isCancelled = session.name.startsWith('[CANCELLED]');
+                        const displaySessionName = isCancelled
+                          ? session.name.replace(/^\[CANCELLED\]\s*/, '')
+                          : session.name;
 
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditTime(day.dayId, session)}
-                                className="inline-flex items-center gap-1 rounded-lg border border-[#E5E0EB] bg-white px-2 py-1 text-[11px] font-bold text-[#756883] hover:border-brand-700 hover:text-brand-700 hover:bg-[#FAF7FD] transition-all cursor-pointer shadow-2xs"
-                                title="Edit Time Window"
-                              >
-                                <Pencil className="h-3 w-3" />
-                                <span>Edit Time</span>
-                              </button>
-
-                              <span
-                                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                                  session.status === 'Active'
-                                    ? 'bg-[#17B556] text-white'
-                                    : session.status === 'Upcoming'
-                                    ? 'bg-[#F59E0B] text-white'
-                                    : 'bg-[#E4F7EB] text-[#11883E] border border-[#17B556]/30'
-                                }`}
-                              >
-                                {session.status}
-                              </span>
-
-                              {/* Session Action Menu */}
-                              <div className="relative">
+                        return (
+                          <div
+                            key={session.id}
+                            className={`rounded-2xl border bg-white p-4 transition-colors duration-200 ${
+                              isCancelled
+                                ? 'border-slate-200 bg-slate-50/60 opacity-85'
+                                : highlightedSessionId === session.id
+                                ? 'border-[#451475] ring-2 ring-[#451475]/25'
+                                : 'border-[#E5E0EB]'
+                            }`}
+                          >
+                            {/* Session Header */}
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h4
+                                    className={`text-xs font-bold ${
+                                      isCancelled ? 'text-slate-400 line-through' : 'text-[#24133F]'
+                                    }`}
+                                  >
+                                    {displaySessionName}
+                                  </h4>
+                                  {isCancelled && (
+                                    <span className="rounded-md bg-rose-50 border border-rose-200 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+                                      Cancelled
+                                    </span>
+                                  )}
+                                </div>
                                 <button
                                   type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setOpenMenuSessionId(openMenuSessionId === session.id ? null : session.id);
-                                  }}
-                                  className="rounded-lg p-1 text-[#756883] hover:text-[#24133F] hover:bg-slate-100 transition-colors"
-                                  title="Session actions"
+                                  onClick={() => handleOpenEditTime(day.dayId, session)}
+                                  className="group inline-flex items-center gap-1.5 mt-0.5 rounded-md px-1.5 py-0.5 -ml-1.5 text-[11px] text-[#756883] hover:text-[#7026B7] hover:bg-[#FAF7FD] transition-colors cursor-pointer"
+                                  title="Click to edit session times"
                                 >
-                                  <MoreVertical className="h-4 w-4" />
+                                  <Clock className="h-3 w-3 text-[#756883] group-hover:text-[#7026B7]" />
+                                  <span className="font-medium">{session.timeWindow}</span>
+                                  <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-100 transition-opacity text-[#7026B7]" />
                                 </button>
+                              </div>
 
-                                {openMenuSessionId === session.id && (
-                                  <>
-                                    <div
-                                      className="fixed inset-0 z-40"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setOpenMenuSessionId(null);
-                                      }}
-                                    />
-                                    <div className="absolute right-0 top-full mt-1.5 z-50 w-52 rounded-2xl border border-[#E5E0EB] bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-150 text-xs">
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleOpenEditTime(day.dayId, session);
-                                        }}
-                                        className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 font-semibold text-[#24133F] hover:bg-slate-50 transition-colors"
-                                      >
-                                        <Pencil className="h-3.5 w-3.5 text-[#756883]" />
-                                        Edit time window
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleToggleSessionComplete(day.dayId, session);
-                                        }}
-                                        title="Sessions open/close automatically based on schedule"
-                                        className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 font-semibold text-slate-400 cursor-not-allowed"
-                                      >
-                                        <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" />
-                                        Auto-scheduled status
-                                      </button>
-                                      <div className="my-1 border-t border-[#F1EEF4]" />
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setOpenMenuSessionId(null);
-                                          setSessionToDelete(session);
-                                        }}
-                                        className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5 text-rose-500" />
-                                        Delete session
-                                      </button>
-                                    </div>
-                                  </>
+                              <div className="flex items-center gap-2.5">
+                                {/* Status badge */}
+                                {!isCancelled ? (
+                                  <span
+                                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                                      session.status === 'Active'
+                                        ? 'bg-[#17B556] text-white'
+                                        : session.status === 'Upcoming'
+                                        ? 'bg-[#F59E0B] text-white'
+                                        : 'bg-[#E4F7EB] text-[#11883E] border border-[#17B556]/30'
+                                    }`}
+                                  >
+                                    {session.status}
+                                  </span>
+                                ) : (
+                                  <span className="rounded-full bg-slate-200 text-slate-600 px-2.5 py-0.5 text-[10px] font-bold">
+                                    Off
+                                  </span>
                                 )}
+
+                                {/* Turn On / Turn Off (Cancel) Toggle */}
+                                <div
+                                  className="flex items-center gap-1.5 pl-1.5 border-l border-slate-200"
+                                  title={
+                                    isCancelled
+                                      ? 'Session is turned off / cancelled. Click to turn ON.'
+                                      : 'Session is active. Click to turn OFF / cancel.'
+                                  }
+                                >
+                                  <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={!isCancelled}
+                                    disabled={togglingSessionId === session.id}
+                                    onClick={() => void handleToggleSessionCancel(session)}
+                                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                      !isCancelled ? 'bg-[#7026B7]' : 'bg-slate-300'
+                                    } ${togglingSessionId === session.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  >
+                                    <span
+                                      aria-hidden="true"
+                                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                        !isCancelled ? 'translate-x-4' : 'translate-x-0'
+                                      }`}
+                                    />
+                                  </button>
+                                  <span className="text-[11px] font-semibold text-[#756883] min-w-5">
+                                    {!isCancelled ? 'On' : 'Off'}
+                                  </span>
+                                </div>
+
+                                {/* Direct Delete Session Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => setSessionToDelete(session)}
+                                  title="Delete Session"
+                                  className="rounded-lg p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
                               </div>
                             </div>
-                          </div>
 
-                          {/* Assigned Checkpoints / Officers Row */}
-                          <div className="mt-3.5 border-t border-[#F1EEF4] pt-3">
-                            <div className="flex items-center gap-1.5 text-[11px] text-[#756883]">
-                              <Users className="h-3.5 w-3.5" />
-                              <span>
-                                {session.officers.length}{' '}
-                                {session.officers.length === 1 ? 'checkpoint / officer' : 'checkpoints / officers'} configured
-                              </span>
-                            </div>
+                            {/* Assigned Checkpoints / Officers Row */}
+                            <div className="mt-3.5 border-t border-[#F1EEF4] pt-3">
+                              <div className="flex items-center gap-1.5 text-[11px] text-[#756883]">
+                                <Users className="h-3.5 w-3.5" />
+                                <span>
+                                  {session.officers.length}{' '}
+                                  {session.officers.length === 1 ? 'checkpoint / officer' : 'checkpoints / officers'} configured
+                                </span>
+                              </div>
 
-                            <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                              {session.officers.slice(0, 3).map((officer) => (
-                                <div
-                                  key={officer.id}
-                                  className="flex items-center gap-2 rounded-full border border-[#E5E0EB] bg-white py-1 pl-1.5 pr-3"
-                                >
-                                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#E9D5FF] text-[10px] font-bold text-[#6D21A8]">
-                                    {officer.initials}
+                              <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                                {session.officers.slice(0, 3).map((officer) => (
+                                  <div
+                                    key={officer.id}
+                                    className="flex items-center gap-2 rounded-full border border-[#E5E0EB] bg-white py-1 pl-1.5 pr-3"
+                                  >
+                                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#E9D5FF] text-[10px] font-bold text-[#6D21A8]">
+                                      {officer.initials}
+                                    </div>
+                                    <div className="text-left">
+                                      <p className="text-[11px] font-bold leading-tight text-[#24133F]">
+                                        {officer.name}
+                                      </p>
+                                      <p className="flex items-center gap-0.5 text-[9px] text-[#756883]">
+                                        <MapPin className="h-2 w-2" />
+                                        {officer.location}
+                                      </p>
+                                    </div>
                                   </div>
-                                  <div className="text-left">
-                                    <p className="text-[11px] font-bold leading-tight text-[#24133F]">
-                                      {officer.name}
-                                    </p>
-                                    <p className="flex items-center gap-0.5 text-[9px] text-[#756883]">
-                                      <MapPin className="h-2 w-2" />
-                                      {officer.location}
-                                    </p>
-                                  </div>
-                                </div>
-                              ))}
+                                ))}
 
-                              {session.officers.length > 3 && (
+                                {session.officers.length > 3 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenAssign(day.dayId, session, day.dateStr)}
+                                    className="rounded-full bg-purple-100 px-2.5 py-1 text-[10px] font-bold text-[#451475] hover:bg-purple-200 transition-colors"
+                                  >
+                                    +{session.officers.length - 3} more
+                                  </button>
+                                )}
+
                                 <button
                                   type="button"
                                   onClick={() => handleOpenAssign(day.dayId, session, day.dateStr)}
-                                  className="rounded-full bg-purple-100 px-2.5 py-1 text-[10px] font-bold text-[#451475] hover:bg-purple-200 transition-colors"
+                                  className="flex items-center gap-1 rounded-full border border-dashed border-[#451475] bg-[#FAF7FD] px-3 py-1.5 text-xs font-bold text-[#451475] hover:bg-[#F3EDFB] transition-colors cursor-pointer"
                                 >
-                                  +{session.officers.length - 3} more
+                                  <Plus className="h-3.5 w-3.5" />
+                                  Assign checkpoints / officers
                                 </button>
-                              )}
-
-                              <button
-                                type="button"
-                                onClick={() => handleOpenAssign(day.dayId, session, day.dateStr)}
-                                className="flex items-center gap-1 rounded-full border border-dashed border-[#451475] bg-[#FAF7FD] px-3 py-1.5 text-xs font-bold text-[#451475] hover:bg-[#F3EDFB] transition-colors"
-                              >
-                                <Plus className="h-3.5 w-3.5" />
-                                Assign checkpoints / officers
-                              </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
 
-                    {/* Add Session to this Day */}
-                    <div className="pt-1">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenAddSession(day)}
-                        className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#E5E0EB] bg-white py-3 text-xs font-bold text-[#756883] hover:border-[#7026B7] hover:text-[#7026B7] hover:bg-[#FAF7FD] transition-all cursor-pointer shadow-2xs"
-                      >
-                        <Plus className="h-4 w-4" />
-                        <span>Add Session to {day.dayLabel.split(' - ')[0]}</span>
-                      </button>
-                    </div>
+                    {/* Missing Standard Sessions & Add Custom Session Slots */}
+                    {(() => {
+                      const hasMorning = day.sessions.some((s) => s.name.toLowerCase().includes('morning'));
+                      const hasAfternoon = day.sessions.some((s) => s.name.toLowerCase().includes('afternoon'));
+                      const hasEvening = day.sessions.some((s) => s.name.toLowerCase().includes('evening'));
+
+                      const missingSlots: Array<{
+                        type: 'Morning' | 'Afternoon' | 'Evening';
+                        label: string;
+                        timeHint: string;
+                      }> = [];
+                      if (!hasMorning) {
+                        missingSlots.push({
+                          type: 'Morning',
+                          label: 'Add Morning Session',
+                          timeHint: 'Typical: 7:00 AM - 8:30 AM · 11:00 AM - 12:00 PM',
+                        });
+                      }
+                      if (!hasAfternoon) {
+                        missingSlots.push({
+                          type: 'Afternoon',
+                          label: 'Add Afternoon Session',
+                          timeHint: 'Typical: 1:00 PM - 2:30 PM · 4:30 PM - 5:30 PM',
+                        });
+                      }
+                      if (!hasEvening) {
+                        missingSlots.push({
+                          type: 'Evening',
+                          label: 'Add Evening Session',
+                          timeHint: 'Typical: 6:00 PM - 7:30 PM · 8:30 PM - 9:30 PM',
+                        });
+                      }
+
+                      return (
+                        <div className="pt-2 space-y-2">
+                          {missingSlots.length > 0 && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                              {missingSlots.map((slot) => (
+                                <button
+                                  key={slot.type}
+                                  type="button"
+                                  onClick={() => handleOpenAddSession(day, slot.type)}
+                                  className="flex items-center justify-between rounded-xl border border-dashed border-[#D4C8E2] bg-white/80 p-3 hover:border-[#7026B7] hover:bg-[#FAF7FD] transition-all text-left group cursor-pointer shadow-2xs"
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FAF7FD] border border-[#E5E0EB] group-hover:border-[#7026B7]/40 text-[#7026B7]">
+                                      <Plus className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-bold text-[#24133F] group-hover:text-[#7026B7]">
+                                        {slot.label}
+                                      </p>
+                                      <p className="text-[10px] text-[#756883]">{slot.timeHint}</p>
+                                    </div>
+                                  </div>
+                                  <span className="rounded-lg bg-white border border-[#E5E0EB] px-2 py-0.5 text-[10px] font-bold text-[#7026B7] group-hover:bg-[#7026B7] group-hover:text-white transition-colors">
+                                    + Add
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="flex justify-end pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAddSession(day, 'Custom')}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7026B7] hover:underline cursor-pointer"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              <span>Add Custom Session to {day.dayLabel.split(' - ')[0]}</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );
