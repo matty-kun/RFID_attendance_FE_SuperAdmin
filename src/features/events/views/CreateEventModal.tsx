@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Plus,
   Trash2,
+  Copy,
 } from 'lucide-react';
 import { Checkbox } from '../../../components/common/Checkbox';
 import { toast } from '../../../context';
@@ -35,6 +36,51 @@ export interface SessionTimeSlot {
   outTime: string;
   outOfficers: AssignedOfficer[];
 }
+
+export interface DaySchedule {
+  morningEnabled: boolean;
+  afternoonEnabled: boolean;
+  eveningEnabled: boolean;
+  morningExpanded: boolean;
+  afternoonExpanded: boolean;
+  eveningExpanded: boolean;
+  morningSlot: SessionTimeSlot;
+  afternoonSlot: SessionTimeSlot;
+  eveningSlot: SessionTimeSlot;
+}
+
+const createDefaultDaySchedule = (): DaySchedule => ({
+  morningEnabled: true,
+  afternoonEnabled: true,
+  eveningEnabled: false,
+  morningExpanded: true,
+  afternoonExpanded: true,
+  eveningExpanded: true,
+  morningSlot: {
+    hasIn: true,
+    inTime: '7:00 AM - 8:30 AM',
+    inOfficers: [],
+    hasOut: true,
+    outTime: '11:00 AM - 12:00 PM',
+    outOfficers: [],
+  },
+  afternoonSlot: {
+    hasIn: true,
+    inTime: '1:00 PM - 2:30 PM',
+    inOfficers: [],
+    hasOut: true,
+    outTime: '4:30 PM - 5:30 PM',
+    outOfficers: [],
+  },
+  eveningSlot: {
+    hasIn: true,
+    inTime: '6:00 PM - 7:30 PM',
+    inOfficers: [],
+    hasOut: true,
+    outTime: '8:30 PM - 9:30 PM',
+    outOfficers: [],
+  },
+});
 
 export interface CreateEventModalProps {
   isOpen: boolean;
@@ -169,66 +215,62 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       }
     }
   }, [selectedDayTab]);
-  const [morningEnabled, setMorningEnabled] = useState(true);
-  const [afternoonEnabled, setAfternoonEnabled] = useState(true);
-  const [eveningEnabled, setEveningEnabled] = useState(false);
 
-  const [morningExpanded, setMorningExpanded] = useState(true);
-  const [afternoonExpanded, setAfternoonExpanded] = useState(true);
-  const [eveningExpanded, setEveningExpanded] = useState(true);
+  const [daysSchedule, setDaysSchedule] = useState<{ [dayNum: number]: DaySchedule }>({});
 
-  const [morningSlot, setMorningSlot] = useState<SessionTimeSlot>({
-    hasIn: true,
-    inTime: '7:00 AM - 8:30 AM',
-    inOfficers: [],
-    hasOut: true,
-    outTime: '11:00 AM - 12:00 PM',
-    outOfficers: [],
-  });
+  const getDaySchedule = (dayNum: number): DaySchedule => {
+    return daysSchedule[dayNum] || createDefaultDaySchedule();
+  };
 
-  const [afternoonSlot, setAfternoonSlot] = useState<SessionTimeSlot>({
-    hasIn: true,
-    inTime: '1:00 PM - 2:30 PM',
-    inOfficers: [],
-    hasOut: true,
-    outTime: '4:30 PM - 5:30 PM',
-    outOfficers: [],
-  });
+  const currentDaySchedule = getDaySchedule(selectedDayTab);
 
-  const [eveningSlot, setEveningSlot] = useState<SessionTimeSlot>({
-    hasIn: true,
-    inTime: '6:00 PM - 7:30 PM',
-    inOfficers: [],
-    hasOut: true,
-    outTime: '8:30 PM - 9:30 PM',
-    outOfficers: [],
-  });
+  const updateCurrentDaySchedule = (updater: (prev: DaySchedule) => DaySchedule) => {
+    setDaysSchedule((prev) => {
+      const current = prev[selectedDayTab] || createDefaultDaySchedule();
+      return {
+        ...prev,
+        [selectedDayTab]: updater(current),
+      };
+    });
+  };
+
+  const handleApplyToAllDays = () => {
+    const current = getDaySchedule(selectedDayTab);
+    const next: { [dayNum: number]: DaySchedule } = {};
+    for (const day of eventDaysList) {
+      next[day.num] = JSON.parse(JSON.stringify(current));
+    }
+    setDaysSchedule(next);
+    toast.success(`Schedule from Day ${selectedDayTab} applied to all ${eventDaysList.length} days!`);
+  };
 
   const handleToggleWindow = (
     sessionType: 'Morning' | 'Afternoon' | 'Evening',
     slot: 'IN' | 'OUT',
     enable: boolean
   ) => {
-    const updateSlot = (prev: SessionTimeSlot): SessionTimeSlot => {
-      if (!enable) {
-        const otherActive = slot === 'IN' ? prev.hasOut : prev.hasIn;
-        if (!otherActive) {
-          toast.error('A session must have at least one window. Uncheck the session checkbox to disable it.');
-          return prev;
-        }
-        toast.success(`${slot === 'IN' ? 'Check-in' : 'Check-out'} window removed.`);
-      } else {
-        toast.success(`${slot === 'IN' ? 'Check-in' : 'Check-out'} window added.`);
-      }
-      return {
-        ...prev,
-        [slot === 'IN' ? 'hasIn' : 'hasOut']: enable,
-      };
-    };
+    const slotKey: 'morningSlot' | 'afternoonSlot' | 'eveningSlot' =
+      sessionType === 'Morning' ? 'morningSlot' : sessionType === 'Afternoon' ? 'afternoonSlot' : 'eveningSlot';
 
-    if (sessionType === 'Morning') setMorningSlot(updateSlot);
-    if (sessionType === 'Afternoon') setAfternoonSlot(updateSlot);
-    if (sessionType === 'Evening') setEveningSlot(updateSlot);
+    const currentSlot = currentDaySchedule[slotKey];
+    if (!enable) {
+      const otherActive = slot === 'IN' ? currentSlot.hasOut : currentSlot.hasIn;
+      if (!otherActive) {
+        toast.error('A session must have at least one window. Uncheck the session checkbox to disable it.');
+        return;
+      }
+      toast.success(`${slot === 'IN' ? 'Check-in' : 'Check-out'} window removed.`);
+    } else {
+      toast.success(`${slot === 'IN' ? 'Check-in' : 'Check-out'} window added.`);
+    }
+
+    updateCurrentDaySchedule((prev) => ({
+      ...prev,
+      [slotKey]: {
+        ...prev[slotKey],
+        [slot === 'IN' ? 'hasIn' : 'hasOut']: enable,
+      },
+    }));
   };
 
   const getSessionBadge = (slot: SessionTimeSlot) => {
@@ -277,14 +319,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const handleSaveSlotTime = (_start: string, _end: string, formatted: string) => {
     const { sessionType, slot } = editingTimeSlot;
-    const updateSlot = (s: SessionTimeSlot): SessionTimeSlot => ({
-      ...s,
-      [slot === 'IN' ? 'inTime' : 'outTime']: formatted,
-    });
+    const slotKey: 'morningSlot' | 'afternoonSlot' | 'eveningSlot' =
+      sessionType === 'Morning' ? 'morningSlot' : sessionType === 'Afternoon' ? 'afternoonSlot' : 'eveningSlot';
 
-    if (sessionType === 'Morning') setMorningSlot(updateSlot);
-    if (sessionType === 'Afternoon') setAfternoonSlot(updateSlot);
-    if (sessionType === 'Evening') setEveningSlot(updateSlot);
+    updateCurrentDaySchedule((prev) => ({
+      ...prev,
+      [slotKey]: {
+        ...prev[slotKey],
+        [slot === 'IN' ? 'inTime' : 'outTime']: formatted,
+      },
+    }));
 
     setEditingTimeSlot((prev) => ({ ...prev, isOpen: false }));
   };
@@ -320,15 +364,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const handleSaveAssignedOfficers = (assigned: AssignedOfficer[]) => {
     const { sessionType, slot } = drawerConfig;
+    const slotKey: 'morningSlot' | 'afternoonSlot' | 'eveningSlot' =
+      sessionType === 'Morning' ? 'morningSlot' : sessionType === 'Afternoon' ? 'afternoonSlot' : 'eveningSlot';
 
-    const updateSlot = (s: SessionTimeSlot): SessionTimeSlot => ({
-      ...s,
-      [slot === 'IN' ? 'inOfficers' : 'outOfficers']: assigned,
-    });
-
-    if (sessionType === 'Morning') setMorningSlot(updateSlot);
-    if (sessionType === 'Afternoon') setAfternoonSlot(updateSlot);
-    if (sessionType === 'Evening') setEveningSlot(updateSlot);
+    updateCurrentDaySchedule((prev) => ({
+      ...prev,
+      [slotKey]: {
+        ...prev[slotKey],
+        [slot === 'IN' ? 'inOfficers' : 'outOfficers']: assigned,
+      },
+    }));
 
     setDrawerConfig((prev) => ({ ...prev, isOpen: false }));
   };
@@ -344,6 +389,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setEventDescription('');
     setStartDate(today);
     setEndDate(today);
+    setSelectedDayTab(1);
+    setDaysSchedule({});
   };
 
   const handleNext = () => {
@@ -390,18 +437,19 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         end_date: endDate,
       });
 
-      const activeConfigs: Array<{ name: string; slot: SessionTimeSlot; defaults: [string, string, string, string] }> = [];
-      if (morningEnabled) {
-        activeConfigs.push({ name: 'Morning Session', slot: morningSlot, defaults: ['07:00', '08:30', '11:00', '12:00'] });
-      }
-      if (afternoonEnabled) {
-        activeConfigs.push({ name: 'Afternoon Session', slot: afternoonSlot, defaults: ['13:00', '14:30', '16:30', '17:30'] });
-      }
-      if (eveningEnabled) {
-        activeConfigs.push({ name: 'Evening Session', slot: eveningSlot, defaults: ['18:00', '19:30', '20:30', '21:30'] });
-      }
-
       for (const dayObj of eventDaysList) {
+        const daySched = getDaySchedule(dayObj.num);
+        const activeConfigs: Array<{ name: string; slot: SessionTimeSlot; defaults: [string, string, string, string] }> = [];
+        if (daySched.morningEnabled) {
+          activeConfigs.push({ name: 'Morning Session', slot: daySched.morningSlot, defaults: ['07:00', '08:30', '11:00', '12:00'] });
+        }
+        if (daySched.afternoonEnabled) {
+          activeConfigs.push({ name: 'Afternoon Session', slot: daySched.afternoonSlot, defaults: ['13:00', '14:30', '16:30', '17:30'] });
+        }
+        if (daySched.eveningEnabled) {
+          activeConfigs.push({ name: 'Evening Session', slot: daySched.eveningSlot, defaults: ['18:00', '19:30', '20:30', '21:30'] });
+        }
+
         for (const cfg of activeConfigs) {
           const inWindow = parseSlotTimeToHHMMSS(cfg.slot.inTime, cfg.defaults[0], cfg.defaults[1]);
           const outWindow = parseSlotTimeToHHMMSS(cfg.slot.outTime, cfg.defaults[2], cfg.defaults[3]);
@@ -885,25 +933,50 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
               {/* Day Schedule Header */}
               <div className="pt-1">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
                   <div>
                     <h4 className="text-xs font-bold text-[#24133F]">
                       Day {selectedDayTab} - {eventDaysList.find((d) => d.num === selectedDayTab)?.fullDate || formatDateDisplay(startDate)}
                     </h4>
                     <p className="text-[11px] text-[#756883]">Configure sessions and attendance windows for this day.</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const allOn = morningEnabled && afternoonEnabled && eveningEnabled;
-                      setMorningEnabled(!allOn);
-                      setAfternoonEnabled(!allOn);
-                      setEveningEnabled(!allOn);
-                    }}
-                    className="text-xs font-bold text-[#451475] hover:underline"
-                  >
-                    {morningEnabled && afternoonEnabled && eveningEnabled ? 'Deselect all' : 'Select all'}
-                  </button>
+
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    {eventDaysList.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={handleApplyToAllDays}
+                        className="flex items-center gap-1.5 rounded-xl border border-brand-200 bg-brand-50 hover:bg-brand-100/80 px-2.5 py-1 text-xs font-bold text-brand-700 transition-colors shadow-2xs cursor-pointer"
+                        title="Copy this day's session configuration to all other days"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                        <span>Apply to all days</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allOn =
+                          currentDaySchedule.morningEnabled &&
+                          currentDaySchedule.afternoonEnabled &&
+                          currentDaySchedule.eveningEnabled;
+                        updateCurrentDaySchedule((s) => ({
+                          ...s,
+                          morningEnabled: !allOn,
+                          afternoonEnabled: !allOn,
+                          eveningEnabled: !allOn,
+                        }));
+                      }}
+                      className="text-xs font-bold text-[#451475] hover:underline cursor-pointer ml-1"
+                    >
+                      {currentDaySchedule.morningEnabled &&
+                      currentDaySchedule.afternoonEnabled &&
+                      currentDaySchedule.eveningEnabled
+                        ? 'Deselect all'
+                        : 'Select all'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -912,32 +985,38 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 {
                   type: 'Morning' as const,
                   label: 'Morning Session',
-                  badge: getSessionBadge(morningSlot),
-                  enabled: morningEnabled,
-                  setEnabled: setMorningEnabled,
-                  expanded: morningExpanded,
-                  setExpanded: setMorningExpanded,
-                  slot: morningSlot,
+                  badge: getSessionBadge(currentDaySchedule.morningSlot),
+                  enabled: currentDaySchedule.morningEnabled,
+                  setEnabled: (val: boolean) =>
+                    updateCurrentDaySchedule((s) => ({ ...s, morningEnabled: val })),
+                  expanded: currentDaySchedule.morningExpanded,
+                  setExpanded: (val: boolean) =>
+                    updateCurrentDaySchedule((s) => ({ ...s, morningExpanded: val })),
+                  slot: currentDaySchedule.morningSlot,
                 },
                 {
                   type: 'Afternoon' as const,
                   label: 'Afternoon Session',
-                  badge: getSessionBadge(afternoonSlot),
-                  enabled: afternoonEnabled,
-                  setEnabled: setAfternoonEnabled,
-                  expanded: afternoonExpanded,
-                  setExpanded: setAfternoonExpanded,
-                  slot: afternoonSlot,
+                  badge: getSessionBadge(currentDaySchedule.afternoonSlot),
+                  enabled: currentDaySchedule.afternoonEnabled,
+                  setEnabled: (val: boolean) =>
+                    updateCurrentDaySchedule((s) => ({ ...s, afternoonEnabled: val })),
+                  expanded: currentDaySchedule.afternoonExpanded,
+                  setExpanded: (val: boolean) =>
+                    updateCurrentDaySchedule((s) => ({ ...s, afternoonExpanded: val })),
+                  slot: currentDaySchedule.afternoonSlot,
                 },
                 {
                   type: 'Evening' as const,
                   label: 'Evening Session',
-                  badge: getSessionBadge(eveningSlot),
-                  enabled: eveningEnabled,
-                  setEnabled: setEveningEnabled,
-                  expanded: eveningExpanded,
-                  setExpanded: setEveningExpanded,
-                  slot: eveningSlot,
+                  badge: getSessionBadge(currentDaySchedule.eveningSlot),
+                  enabled: currentDaySchedule.eveningEnabled,
+                  setEnabled: (val: boolean) =>
+                    updateCurrentDaySchedule((s) => ({ ...s, eveningEnabled: val })),
+                  expanded: currentDaySchedule.eveningExpanded,
+                  setExpanded: (val: boolean) =>
+                    updateCurrentDaySchedule((s) => ({ ...s, eveningExpanded: val })),
+                  slot: currentDaySchedule.eveningSlot,
                 },
               ].map((session) => (
                 <div
@@ -977,16 +1056,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold transition-all ${
-                          session.enabled
-                            ? 'bg-[#EBF3FF] text-[#3B82F6]'
-                            : 'bg-slate-100 text-slate-400'
-                        }`}
-                      >
-                        {session.enabled ? 'Enabled' : 'Disabled'}
-                      </span>
+                    <div className="flex items-center gap-1">
                       {session.enabled && (
                         <button
                           type="button"
@@ -1267,76 +1337,85 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 </div>
 
                 <div className="mt-4 space-y-4">
-                  {eventDaysList.map((dayObj) => (
-                    <div key={dayObj.ymd} className="rounded-xl border border-[#F1EEF4] p-3">
-                      <p className="text-xs font-bold text-[#24133F]">{dayObj.label} - {dayObj.fullDate}</p>
-                      <div className="mt-2 space-y-2 text-xs">
-                        {morningEnabled && (
-                          <div className="flex items-center justify-between py-1">
-                            <div>
-                              <span className="font-semibold text-[#24133F]">Morning</span>
-                              <span className="ml-2 text-[11px] text-[#756883]">
-                                {morningSlot.hasIn && morningSlot.hasOut
-                                  ? `${morningSlot.inTime} · ${morningSlot.outTime}`
-                                  : morningSlot.hasIn
-                                  ? morningSlot.inTime
-                                  : morningSlot.outTime}
-                              </span>
-                            </div>
-                            <span className="rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[10px] font-bold text-[#3B82F6]">
-                              {morningSlot.hasIn && morningSlot.hasOut
-                                ? 'IN and OUT'
-                                : morningSlot.hasIn
-                                ? 'IN Only'
-                                : 'OUT Only'}
-                            </span>
-                          </div>
-                        )}
-                        {afternoonEnabled && (
-                          <div className="flex items-center justify-between py-1">
-                            <div>
-                              <span className="font-semibold text-[#24133F]">Afternoon</span>
-                              <span className="ml-2 text-[11px] text-[#756883]">
-                                {afternoonSlot.hasIn && afternoonSlot.hasOut
-                                  ? `${afternoonSlot.inTime} · ${afternoonSlot.outTime}`
-                                  : afternoonSlot.hasIn
-                                  ? afternoonSlot.inTime
-                                  : afternoonSlot.outTime}
-                              </span>
-                            </div>
-                            <span className="rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[10px] font-bold text-[#3B82F6]">
-                              {afternoonSlot.hasIn && afternoonSlot.hasOut
-                                ? 'IN and OUT'
-                                : afternoonSlot.hasIn
-                                ? 'IN Only'
-                                : 'OUT Only'}
-                            </span>
-                          </div>
-                        )}
-                        {eveningEnabled && (
-                          <div className="flex items-center justify-between py-1">
-                            <div>
-                              <span className="font-semibold text-[#24133F]">Evening</span>
-                              <span className="ml-2 text-[11px] text-[#756883]">
-                                {eveningSlot.hasIn && eveningSlot.hasOut
-                                  ? `${eveningSlot.inTime} · ${eveningSlot.outTime}`
-                                  : eveningSlot.hasIn
-                                  ? eveningSlot.inTime
-                                  : eveningSlot.outTime}
-                              </span>
-                            </div>
-                            <span className="rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[10px] font-bold text-[#3B82F6]">
-                              {eveningSlot.hasIn && eveningSlot.hasOut
-                                ? 'IN and OUT'
-                                : eveningSlot.hasIn
-                                ? 'IN Only'
-                                : 'OUT Only'}
-                            </span>
+                  {eventDaysList.map((dayObj) => {
+                    const daySched = getDaySchedule(dayObj.num);
+                    const hasAnySession = daySched.morningEnabled || daySched.afternoonEnabled || daySched.eveningEnabled;
+
+                    return (
+                      <div key={dayObj.ymd} className="rounded-xl border border-[#F1EEF4] p-3">
+                        <p className="text-xs font-bold text-[#24133F]">{dayObj.label} - {dayObj.fullDate}</p>
+                        {!hasAnySession ? (
+                          <p className="mt-1 text-[11px] text-[#756883] italic">No active sessions configured for this day.</p>
+                        ) : (
+                          <div className="mt-2 space-y-2 text-xs">
+                            {daySched.morningEnabled && (
+                              <div className="flex items-center justify-between py-1">
+                                <div>
+                                  <span className="font-semibold text-[#24133F]">Morning</span>
+                                  <span className="ml-2 text-[11px] text-[#756883]">
+                                    {daySched.morningSlot.hasIn && daySched.morningSlot.hasOut
+                                      ? `${daySched.morningSlot.inTime} · ${daySched.morningSlot.outTime}`
+                                      : daySched.morningSlot.hasIn
+                                      ? daySched.morningSlot.inTime
+                                      : daySched.morningSlot.outTime}
+                                  </span>
+                                </div>
+                                <span className="rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[10px] font-bold text-[#3B82F6]">
+                                  {daySched.morningSlot.hasIn && daySched.morningSlot.hasOut
+                                    ? 'IN and OUT'
+                                    : daySched.morningSlot.hasIn
+                                    ? 'IN Only'
+                                    : 'OUT Only'}
+                                </span>
+                              </div>
+                            )}
+                            {daySched.afternoonEnabled && (
+                              <div className="flex items-center justify-between py-1">
+                                <div>
+                                  <span className="font-semibold text-[#24133F]">Afternoon</span>
+                                  <span className="ml-2 text-[11px] text-[#756883]">
+                                    {daySched.afternoonSlot.hasIn && daySched.afternoonSlot.hasOut
+                                      ? `${daySched.afternoonSlot.inTime} · ${daySched.afternoonSlot.outTime}`
+                                      : daySched.afternoonSlot.hasIn
+                                      ? daySched.afternoonSlot.inTime
+                                      : daySched.afternoonSlot.outTime}
+                                  </span>
+                                </div>
+                                <span className="rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[10px] font-bold text-[#3B82F6]">
+                                  {daySched.afternoonSlot.hasIn && daySched.afternoonSlot.hasOut
+                                    ? 'IN and OUT'
+                                    : daySched.afternoonSlot.hasIn
+                                    ? 'IN Only'
+                                    : 'OUT Only'}
+                                </span>
+                              </div>
+                            )}
+                            {daySched.eveningEnabled && (
+                              <div className="flex items-center justify-between py-1">
+                                <div>
+                                  <span className="font-semibold text-[#24133F]">Evening</span>
+                                  <span className="ml-2 text-[11px] text-[#756883]">
+                                    {daySched.eveningSlot.hasIn && daySched.eveningSlot.hasOut
+                                      ? `${daySched.eveningSlot.inTime} · ${daySched.eveningSlot.outTime}`
+                                      : daySched.eveningSlot.hasIn
+                                      ? daySched.eveningSlot.inTime
+                                      : daySched.eveningSlot.outTime}
+                                  </span>
+                                </div>
+                                <span className="rounded-full bg-[#EBF3FF] px-2 py-0.5 text-[10px] font-bold text-[#3B82F6]">
+                                  {daySched.eveningSlot.hasIn && daySched.eveningSlot.hasOut
+                                    ? 'IN and OUT'
+                                    : daySched.eveningSlot.hasIn
+                                    ? 'IN Only'
+                                    : 'OUT Only'}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
