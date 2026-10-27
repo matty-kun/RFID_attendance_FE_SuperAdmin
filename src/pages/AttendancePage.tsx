@@ -859,7 +859,7 @@ export function AttendancePage() {
             <Loader2 className="w-4 h-4 animate-spin text-[#7026B7]" />
             <p className="text-sm font-bold text-[#24133F]">Loading attendance schedule…</p>
           </div>
-          <p className="text-xs text-[#756883] mt-1">Fetching events, sessions, and checkpoint mappings.</p>
+          <p className="text-xs text-[#756883] mt-1">Getting your events, sessions, and checkpoints ready…</p>
         </div>
       ) : eventData ? (
         /* Event Days Content */
