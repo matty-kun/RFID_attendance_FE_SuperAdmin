@@ -329,18 +329,22 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     }
   };
 
-  // Inline RFID Card Scanning & Pairing
+  // Inline RFID Card Scanning & Pairing with Auto-Enter
   const [isScanningCard, setIsScanningCard] = useState(false);
   const [inlineCardUid, setInlineCardUid] = useState('');
   const [isPairingCard, setIsPairingCard] = useState(false);
-  const [inlinePairError, setInlinePairError] = useState<string | null>(null);
   const cardInputRef = useRef<HTMLInputElement>(null);
+  const autoSubmitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleInlineCardSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanUid = inlineCardUid.trim().toUpperCase();
-    if (!cleanUid || !currentStudent) return;
-    setInlinePairError(null);
+  const submitCardUid = async (uidToSubmit: string) => {
+    const cleanUid = uidToSubmit.trim().toUpperCase();
+    if (!cleanUid || !currentStudent || isPairingCard) return;
+
+    if (autoSubmitTimeoutRef.current) {
+      clearTimeout(autoSubmitTimeoutRef.current);
+      autoSubmitTimeoutRef.current = null;
+    }
+
     setIsPairingCard(true);
     try {
       const res = await onQuickPair(currentStudent.id, cleanUid);
@@ -351,15 +355,35 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         };
         setIsScanningCard(false);
         setInlineCardUid('');
-        setInlinePairError(null);
-      } else if (res?.message) {
-        setInlinePairError(res.message);
+      } else {
+        // Clear input so user can instantly tap next card without manual deletion
+        setInlineCardUid('');
+        setTimeout(() => cardInputRef.current?.focus(), 50);
       }
-    } catch (err: any) {
-      const msg = err?.response?.data?.error?.message || err?.message || 'Failed to link card.';
-      setInlinePairError(msg);
+    } catch {
+      setInlineCardUid('');
+      setTimeout(() => cardInputRef.current?.focus(), 50);
     } finally {
       setIsPairingCard(false);
+    }
+  };
+
+  const handleInlineCardSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitCardUid(inlineCardUid);
+  };
+
+  const handleCardInputChange = (val: string) => {
+    setInlineCardUid(val);
+    if (autoSubmitTimeoutRef.current) {
+      clearTimeout(autoSubmitTimeoutRef.current);
+    }
+    const clean = val.trim();
+    // Auto-enter: automatically submit when reader finishes burst input (250ms debounce)
+    if (clean.length >= 4) {
+      autoSubmitTimeoutRef.current = setTimeout(() => {
+        void submitCardUid(clean);
+      }, 250);
     }
   };
 
@@ -405,7 +429,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       setIsYearMenuOpen(false);
       setIsScanningCard(false);
       setInlineCardUid('');
-      setInlinePairError(null);
       setIsUnlinking(false);
       setSelectedEventId('all');
       setFilterType('all');
@@ -812,16 +835,9 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                         ref={cardInputRef}
                         type="text"
                         value={inlineCardUid}
-                        onChange={(e) => {
-                          setInlineCardUid(e.target.value);
-                          setInlinePairError(null);
-                        }}
+                        onChange={(e) => handleCardInputChange(e.target.value)}
                         placeholder="Tap RFID card on reader or enter UID..."
-                        className={`w-full rounded-xl border bg-white px-3 py-1.5 text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:ring-2 ${
-                          inlinePairError
-                            ? 'border-rose-400 focus:ring-rose-400 bg-rose-50/30'
-                            : 'border-brand-300 focus:ring-brand-500'
-                        }`}
+                        className="w-full rounded-xl border border-brand-300 bg-white px-3 py-1.5 text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-brand-500"
                         autoFocus
                       />
                     </div>
@@ -840,9 +856,11 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                         variant="secondary"
                         size="sm"
                         onClick={() => {
+                          if (autoSubmitTimeoutRef.current) {
+                            clearTimeout(autoSubmitTimeoutRef.current);
+                          }
                           setIsScanningCard(false);
                           setInlineCardUid('');
-                          setInlinePairError(null);
                         }}
                       >
                         Cancel
@@ -850,18 +868,14 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                     </div>
                   </div>
 
-                  {inlinePairError && (
-                    <div className="flex items-start gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
-                      <span className="font-bold shrink-0">⚠ Duplicate Card:</span>
-                      <span className="font-medium leading-tight">{inlinePairError}</span>
-                    </div>
-                  )}
-
                   <div className="flex items-center justify-between text-[11px] text-slate-400 px-0.5">
-                    <span>Press Enter after tapping card</span>
+                    <span>Auto-pairs on card tap</span>
                     <button
                       type="button"
                       onClick={() => {
+                        if (autoSubmitTimeoutRef.current) {
+                          clearTimeout(autoSubmitTimeoutRef.current);
+                        }
                         onClose();
                         onOpenRapidScan();
                       }}
