@@ -103,11 +103,8 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
     setIsSearching(true);
     setStudentSearchFilter('');
 
-    // Ensure the input has the inspected UID and select it so the next scan overwrites immediately
+    // Keep input updated with inspected UID without selecting/highlighting text
     setScannedUid(clean);
-    setTimeout(() => {
-      inputRef.current?.select();
-    }, 50);
 
     // 1. Check in-memory list first (instant 0ms)
     const localMatch = students.find((s) => s.rfid_uid?.trim().toUpperCase() === clean);
