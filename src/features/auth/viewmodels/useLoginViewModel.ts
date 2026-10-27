@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export interface UseLoginViewModelReturn {
@@ -14,7 +13,6 @@ export interface UseLoginViewModelReturn {
 }
 
 export const useLoginViewModel = (): UseLoginViewModelReturn => {
-  const navigate = useNavigate();
   const { login } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -33,8 +31,7 @@ export const useLoginViewModel = (): UseLoginViewModelReturn => {
     setIsLoading(true);
 
     try {
-      const user = await login(identifier.trim(), password);
-      navigate(user.must_change_password ? '/change-password' : '/');
+      await login(identifier.trim(), password);
     } catch (err: any) {
       const serverMessage = err?.response?.data?.error?.message || err?.message;
       setError(serverMessage || 'Invalid credentials');
