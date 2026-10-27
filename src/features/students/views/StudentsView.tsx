@@ -7,7 +7,7 @@ import { RapidCardScanDrawer } from './RapidCardScanDrawer';
 import { BulkStudentImportModal } from './BulkStudentImportModal';
 import { RegisterActionsDropdown } from './RegisterActionsDropdown';
 import { StudentProfileDrawer } from './StudentProfileDrawer';
-import { CardInspectorModal } from './CardInspectorModal';
+import { CardInspectorDrawer } from './CardInspectorDrawer';
 import type { StudentRecord } from '../models';
 import {
   Search,
@@ -445,8 +445,8 @@ export const StudentsView: React.FC = () => {
         onImport={handleBulkImport}
       />
 
-      {/* Modal: Card Inspector & Rapid Tap Lookup */}
-      <CardInspectorModal
+      {/* Slide-in Drawer: Card Inspector & Rapid Tap Lookup */}
+      <CardInspectorDrawer
         isOpen={isCardInspectorOpen}
         onClose={() => setIsCardInspectorOpen(false)}
         students={students}

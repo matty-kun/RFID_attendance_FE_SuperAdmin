@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Modal } from '../../../components/common/Modal';
+import { Drawer } from '../../../components/common/Drawer';
 import { Button } from '../../../components/common/Button';
 import { toast } from '../../../context';
 import { studentService } from '../services/studentService';
@@ -19,10 +19,9 @@ import {
   Sparkles,
 } from 'lucide-react';
 import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
-import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 
-export interface CardInspectorModalProps {
+export interface CardInspectorDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   students: StudentRecord[];
@@ -32,7 +31,7 @@ export interface CardInspectorModalProps {
   onViewStudent: (student: StudentRecord) => void;
 }
 
-export const CardInspectorModal: React.FC<CardInspectorModalProps> = ({
+export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
   isOpen,
   onClose,
   students,
@@ -66,7 +65,7 @@ export const CardInspectorModal: React.FC<CardInspectorModalProps> = ({
       setMatchedStudent(null);
       setSelectedStudentToPair('');
       setStudentSearchFilter('');
-      setTimeout(() => inputRef.current?.focus(), 80);
+      setTimeout(() => inputRef.current?.focus(), 120);
     }
   }, [isOpen]);
 
@@ -85,7 +84,7 @@ export const CardInspectorModal: React.FC<CardInspectorModalProps> = ({
     setSelectedStudentToPair('');
     setStudentSearchFilter('');
 
-    // 1. Check in-memory list first (instant)
+    // 1. Check in-memory list first (instant 0ms)
     const localMatch = students.find((s) => s.rfid_uid?.trim().toUpperCase() === clean);
     if (localMatch) {
       setMatchedStudent(localMatch);
@@ -179,14 +178,15 @@ export const CardInspectorModal: React.FC<CardInspectorModalProps> = ({
   });
 
   return (
-    <Modal
+    <Drawer
       isOpen={isOpen}
       onClose={onClose}
       title="Inspect RFID Card"
-      description="Tap any card on your reader to reveal its owner or availability status."
-      maxWidth="md"
+      description="Tap any physical RFID card on your reader to reveal its owner or availability."
+      icon={<Radio className="h-5 w-5 text-[#7C27BD]" />}
+      maxWidth="lg"
     >
-      <div className="space-y-4 pt-1">
+      <div className="space-y-6 pt-1">
         {/* Top Tap & Scan Bar */}
         <form onSubmit={handleFormSubmit} className="relative">
           <div className="relative flex items-center">
@@ -199,16 +199,16 @@ export const CardInspectorModal: React.FC<CardInspectorModalProps> = ({
               value={scannedUid}
               onChange={(e) => handleInputChange(e.target.value)}
               placeholder="Tap card on reader or enter UID..."
-              className="w-full pl-10 pr-24 py-2.5 rounded-2xl border-2 border-brand-200 focus:border-[#7C27BD] bg-white text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:ring-4 focus:ring-purple-100 transition-all shadow-xs"
+              className="w-full pl-10 pr-24 py-3 rounded-2xl border-2 border-brand-200 focus:border-[#7C27BD] bg-white text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:ring-4 focus:ring-purple-100 transition-all shadow-xs"
               autoFocus
             />
-            <div className="absolute right-2 flex items-center gap-1">
+            <div className="absolute right-2 flex items-center gap-1.5">
               {activeUid && (
                 <button
                   type="button"
                   onClick={handleReset}
                   title="Scan Another Card"
-                  className="px-2 py-1 rounded-lg text-[11px] font-bold text-[#756883] hover:text-[#24133F] hover:bg-slate-100 transition-colors cursor-pointer"
+                  className="px-2 py-1 rounded-lg text-xs font-bold text-[#756883] hover:text-[#24133F] hover:bg-slate-100 transition-colors cursor-pointer"
                 >
                   Clear
                 </button>
@@ -223,24 +223,28 @@ export const CardInspectorModal: React.FC<CardInspectorModalProps> = ({
               </Button>
             </div>
           </div>
+          <div className="flex items-center justify-between text-[11px] text-[#756883] px-1 pt-1.5">
+            <span>Auto-inspects on card tap</span>
+            <span>Supports 13.56MHz &amp; 125kHz USB readers</span>
+          </div>
         </form>
 
         {/* Dynamic State View */}
         {/* STATE 0: Idle / Waiting for tap */}
         {!activeUid && !isSearching && (
-          <div className="flex flex-col items-center justify-center py-6 px-4 text-center space-y-3">
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-4">
             <div className="relative">
-              <div className="absolute -inset-4 rounded-full bg-purple-100/60 animate-ping opacity-30" />
+              <div className="absolute -inset-6 rounded-full bg-purple-100/50 animate-ping opacity-25" />
               <img
                 src={hawiTapCardImg}
                 alt="Hawi Tapping Card"
-                className="h-28 w-auto object-contain drop-shadow-md select-none relative z-10"
+                className="h-36 w-auto object-contain drop-shadow-md select-none relative z-10"
               />
             </div>
-            <div>
-              <p className="text-sm font-black text-[#24133F]">Ready to Inspect</p>
-              <p className="text-xs text-[#756883] mt-0.5 max-w-xs leading-relaxed">
-                Place physical RFID card on your USB desktop reader. It will instantly reveal who it belongs to.
+            <div className="space-y-1">
+              <p className="text-base font-black text-[#24133F]">Ready for Card Tap</p>
+              <p className="text-xs text-[#756883] max-w-sm leading-relaxed">
+                Place physical RFID card on your desktop reader. It will instantly reveal who it belongs to or let you assign it.
               </p>
             </div>
           </div>
@@ -248,24 +252,24 @@ export const CardInspectorModal: React.FC<CardInspectorModalProps> = ({
 
         {/* Loading State */}
         {isSearching && (
-          <div className="flex flex-col items-center justify-center py-8 text-center space-y-2">
-            <Loader2 className="h-7 w-7 animate-spin text-[#7C27BD]" />
+          <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
+            <Loader2 className="h-8 w-8 animate-spin text-[#7C27BD]" />
             <p className="text-xs font-bold text-[#756883]">Looking up card UID {activeUid}…</p>
           </div>
         )}
 
         {/* STATE 1: Card is Assigned to a Student */}
         {activeUid && !isSearching && matchedStudent && (
-          <div className="space-y-3 animate-in fade-in zoom-in-95 duration-150">
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-2 duration-200">
             {/* Status Header */}
             <div className="flex items-center justify-between">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-extrabold tracking-wide">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-extrabold tracking-wide">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 <span>Card is Active &amp; Paired</span>
               </div>
 
               {/* UID with copy button */}
-              <div className="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-[#24133F] bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+              <div className="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-[#24133F] bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200">
                 <span>{activeUid}</span>
                 <button
                   type="button"
@@ -273,37 +277,37 @@ export const CardInspectorModal: React.FC<CardInspectorModalProps> = ({
                   title="Copy UID"
                   className="text-slate-400 hover:text-slate-700 transition-colors"
                 >
-                  {copiedUid ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+                  {copiedUid ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
                 </button>
               </div>
             </div>
 
             {/* Student Details Card */}
             <div className="p-4 rounded-2xl bg-gradient-to-br from-[#FAF8FD] to-white border border-[#E5E0EB] space-y-3 shadow-xs">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3.5">
                 {matchedStudent.avatar_url ? (
                   <img
                     src={matchedStudent.avatar_url}
                     alt={matchedStudent.name}
-                    className="h-14 w-14 rounded-full object-cover border-2 border-white shadow-md select-none shrink-0"
+                    className="h-16 w-16 rounded-full object-cover border-2 border-white shadow-md select-none shrink-0"
                   />
                 ) : (
-                  <div className="h-14 w-14 rounded-full bg-purple-100 border-2 border-white shadow-md flex items-center justify-center shrink-0">
+                  <div className="h-16 w-16 rounded-full bg-purple-100 border-2 border-white shadow-md flex items-center justify-center shrink-0">
                     <img
                       src={hawiWavingImg}
                       alt="Student"
-                      className="h-12 w-auto object-contain select-none"
+                      className="h-14 w-auto object-contain select-none"
                     />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <h4 className="text-base font-black text-[#24133F] truncate">
+                  <h4 className="text-lg font-black text-[#24133F] truncate">
                     {matchedStudent.name}
                   </h4>
                   <p className="text-xs font-bold text-[#7C27BD]">
                     @{matchedStudent.student_id}
                   </p>
-                  <p className="text-[11px] text-[#756883] truncate mt-0.5">
+                  <p className="text-xs text-[#756883] truncate mt-0.5">
                     {matchedStudent.course || 'BS Information Technology'} • Year {matchedStudent.year_level || 1}
                   </p>
                 </div>
@@ -311,13 +315,13 @@ export const CardInspectorModal: React.FC<CardInspectorModalProps> = ({
             </div>
 
             {/* Actions for Assigned Card */}
-            <div className="flex items-center justify-between gap-2 pt-1">
+            <div className="flex items-center justify-between gap-3 pt-2">
               <Button
                 type="button"
                 variant="secondary"
-                size="sm"
+                size="md"
                 onClick={handleReset}
-                leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
+                leftIcon={<RotateCcw className="h-4 w-4" />}
               >
                 Scan Another
               </Button>
@@ -326,10 +330,10 @@ export const CardInspectorModal: React.FC<CardInspectorModalProps> = ({
                 <Button
                   type="button"
                   variant="danger"
-                  size="sm"
+                  size="md"
                   onClick={handleUnlinkSubmit}
                   isLoading={isUnlinking}
-                  leftIcon={<Unlink className="h-3.5 w-3.5" />}
+                  leftIcon={<Unlink className="h-4 w-4" />}
                 >
                   Unlink Card
                 </Button>
@@ -337,12 +341,12 @@ export const CardInspectorModal: React.FC<CardInspectorModalProps> = ({
                 <Button
                   type="button"
                   variant="primary"
-                  size="sm"
+                  size="md"
                   onClick={() => {
                     onClose();
                     onViewStudent(matchedStudent);
                   }}
-                  leftIcon={<ExternalLink className="h-3.5 w-3.5" />}
+                  leftIcon={<ExternalLink className="h-4 w-4" />}
                 >
                   View Profile
                 </Button>
@@ -353,16 +357,16 @@ export const CardInspectorModal: React.FC<CardInspectorModalProps> = ({
 
         {/* STATE 2: Card is Available / Unassigned */}
         {activeUid && !isSearching && !matchedStudent && (
-          <div className="space-y-4 animate-in fade-in zoom-in-95 duration-150">
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-2 duration-200">
             {/* Status Header */}
             <div className="flex items-center justify-between">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-extrabold tracking-wide">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-extrabold tracking-wide">
                 <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
                 <span>Card is Available / Unassigned</span>
               </div>
 
               {/* UID with copy button */}
-              <div className="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-[#24133F] bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+              <div className="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-[#24133F] bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200">
                 <span>{activeUid}</span>
                 <button
                   type="button"
@@ -370,55 +374,44 @@ export const CardInspectorModal: React.FC<CardInspectorModalProps> = ({
                   title="Copy UID"
                   className="text-slate-400 hover:text-slate-700 transition-colors"
                 >
-                  {copiedUid ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+                  {copiedUid ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
                 </button>
               </div>
             </div>
 
-            {/* Explanation box */}
-            <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/80 flex items-start gap-3">
-              <img
-                src={hawiQuestionImg}
-                alt="Hawi"
-                className="h-10 w-auto object-contain shrink-0 select-none mt-0.5"
-              />
-              <div className="text-xs text-amber-950 leading-relaxed">
-                <p className="font-bold">Blank card ready to pair!</p>
-                <p className="text-[11px] text-amber-800 mt-0.5">
-                  This physical card is not assigned to any student. You can distribute it and pair it with a student below.
-                </p>
-              </div>
-            </div>
+            <p className="text-xs text-[#756883] leading-relaxed">
+              This card UID is blank in the system. Tap another card or pair it with an unassigned student below.
+            </p>
 
             {/* Quick 1-Click Assignment */}
-            <div className="space-y-2 pt-1">
+            <div className="space-y-3 pt-1">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-bold text-[#24133F] flex items-center gap-1.5">
-                  <UserCheck className="h-3.5 w-3.5 text-[#7C27BD]" />
-                  <span>Assign to Student</span>
+                <p className="text-xs font-extrabold text-[#24133F] flex items-center gap-1.5">
+                  <UserCheck className="h-4 w-4 text-[#7C27BD]" />
+                  <span>Assign this card to student:</span>
                 </p>
-                <span className="text-[11px] font-bold text-slate-400">
-                  {cardlessStudents.length} awaiting card
+                <span className="text-[11px] font-bold text-[#756883]">
+                  {cardlessStudents.length} awaiting cards
                 </span>
               </div>
 
               {cardlessStudents.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <div className="relative">
-                    <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
                       value={studentSearchFilter}
                       onChange={(e) => setStudentSearchFilter(e.target.value)}
-                      placeholder="Filter student by name or ID..."
-                      className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      placeholder="Filter student by name or student ID..."
+                      className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
                     />
                   </div>
 
                   <select
                     value={selectedStudentToPair}
                     onChange={(e) => setSelectedStudentToPair(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
                   >
                     <option value="">— Select a student to link this card —</option>
                     {filteredCardless.map((student) => (
@@ -428,13 +421,13 @@ export const CardInspectorModal: React.FC<CardInspectorModalProps> = ({
                     ))}
                   </select>
 
-                  <div className="flex items-center justify-end gap-2 pt-1">
+                  <div className="flex items-center justify-between gap-3 pt-2">
                     <Button
                       type="button"
                       variant="secondary"
-                      size="sm"
+                      size="md"
                       onClick={handleReset}
-                      leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
+                      leftIcon={<RotateCcw className="h-4 w-4" />}
                     >
                       Scan Another
                     </Button>
@@ -442,18 +435,18 @@ export const CardInspectorModal: React.FC<CardInspectorModalProps> = ({
                     <Button
                       type="button"
                       variant="primary"
-                      size="sm"
+                      size="md"
                       onClick={() => void handlePairSubmit()}
                       disabled={!selectedStudentToPair || isPairing}
                       isLoading={isPairing}
-                      leftIcon={<Sparkles className="h-3.5 w-3.5" />}
+                      leftIcon={<Sparkles className="h-4 w-4" />}
                     >
                       Link Card to Student
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-3 text-xs text-slate-500">
+                <div className="text-center py-4 text-xs text-slate-500">
                   All active students currently have assigned RFID cards.
                 </div>
               )}
@@ -461,6 +454,6 @@ export const CardInspectorModal: React.FC<CardInspectorModalProps> = ({
           </div>
         )}
       </div>
-    </Modal>
+    </Drawer>
   );
 };
