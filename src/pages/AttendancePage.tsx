@@ -725,16 +725,7 @@ export function AttendancePage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <Button
-              variant="secondary"
-              size="sm"
-              leftIcon={<Pencil className="h-3.5 w-3.5" />}
-              onClick={handleOpenEditEvent}
-              className="font-bold text-xs"
-            >
-              Edit Event
-            </Button>
+          <div className="flex items-center gap-2">
             {eventData.id === serverActiveId ? (
               <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#E4F7EB] border border-[#17B556]/30 px-3 py-2 text-xs font-bold text-[#11883E]">
                 <CheckCircle2 className="h-4 w-4 text-[#17B556]" />
@@ -749,6 +740,16 @@ export function AttendancePage() {
                 Set as Active Campus Event
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={handleOpenEditEvent}
+              className="rounded-xl border border-[#E5E0EB] bg-white p-2 text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/30 hover:bg-[#FAF7FD] transition-all shadow-2xs cursor-pointer"
+              title="Edit Event"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+
             <button
               type="button"
               onClick={() => setEventToDelete({ id: eventData.id, name: eventData.name })}
