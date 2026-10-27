@@ -200,15 +200,23 @@ export function AttendancePage() {
           for (const l of locs?.time_in_locations || []) uniqueLocations.set(l.id, l.name);
           for (const l of locs?.time_out_locations || []) uniqueLocations.set(l.id, l.name);
 
-          const officers: AssignedOfficer[] = Array.from(uniqueLocations.entries()).map(([locId, locName]) => ({
+          let cachedOfficers: AssignedOfficer[] = [];
+          try {
+            const raw = localStorage.getItem(`presnt_officers_${s.id}`);
+            if (raw) cachedOfficers = JSON.parse(raw);
+          } catch {}
+
+          const fallbackOfficers: AssignedOfficer[] = Array.from(uniqueLocations.entries()).map(([locId, locName]) => ({
             id: `loc-${locId}`,
             name: locName,
             initials: locName.slice(0, 2).toUpperCase(),
             role: 'Checkpoint',
-            location: locName,
+            location: 'Checkpoint Station',
             locationId: locId,
             status: 'Online',
           }));
+
+          const officers: AssignedOfficer[] = cachedOfficers.length > 0 ? cachedOfficers : fallbackOfficers;
 
           return {
             id: s.id,
@@ -339,6 +347,10 @@ export function AttendancePage() {
         time_in_location_ids: locationIds,
         time_out_location_ids: locationIds,
       });
+
+      try {
+        localStorage.setItem(`presnt_officers_${targetSessionId}`, JSON.stringify(updatedOfficers));
+      } catch {}
 
       setEventData((prev) =>
         !prev
@@ -951,7 +963,7 @@ export function AttendancePage() {
                         <h3 className="text-xs font-bold text-[#24133F]">{day.dayLabel}</h3>
                         <p className="text-[10px] text-[#756883]">
                           {day.visibleSessions.length}{' '}
-                          {day.visibleSessions.length === 1 ? 'session' : 'sessions'} configured
+                          {day.visibleSessions.length === 1 ? 'session' : 'sessions'}
                         </p>
                       </div>
                     </div>
@@ -970,9 +982,11 @@ export function AttendancePage() {
                           <span>Copy from Day 1</span>
                         </button>
                       )}
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-[#756883]">
-                        {day.status === 'Not Started' ? 'No Sessions' : 'Configured'}
-                      </span>
+                      {day.sessions.length === 0 && (
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-[#756883]">
+                          No Sessions
+                        </span>
+                      )}
                       {isDayOpen ? (
                         <ChevronUp className="h-4 w-4 text-[#756883]" />
                       ) : (
@@ -1109,15 +1123,17 @@ export function AttendancePage() {
                                 <Users className="h-3.5 w-3.5" />
                                 <span>
                                   {session.officers.length}{' '}
-                                  {session.officers.length === 1 ? 'checkpoint / officer' : 'checkpoints / officers'} configured
+                                  {session.officers.length === 1
+                                    ? 'officer assigned at checkpoint'
+                                    : 'officers assigned at checkpoints'}
                                 </span>
                               </div>
 
                               <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                                {session.officers.slice(0, 3).map((officer) => (
+                                {session.officers.map((officer) => (
                                   <div
                                     key={officer.id}
-                                    className="flex items-center gap-2 rounded-full border border-[#E5E0EB] bg-white py-1 pl-1.5 pr-3"
+                                    className="flex items-center gap-2 rounded-full border border-[#E5E0EB] bg-white py-1 pl-1.5 pr-3 shadow-2xs"
                                   >
                                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#E9D5FF] text-[10px] font-bold text-[#6D21A8]">
                                       {officer.initials}
@@ -1126,23 +1142,20 @@ export function AttendancePage() {
                                       <p className="text-[11px] font-bold leading-tight text-[#24133F]">
                                         {officer.name}
                                       </p>
-                                      <p className="flex items-center gap-0.5 text-[9px] text-[#756883]">
-                                        <MapPin className="h-2 w-2" />
-                                        {officer.location}
-                                      </p>
+                                      {officer.location && officer.location !== officer.name ? (
+                                        <p className="flex items-center gap-0.5 text-[9px] text-[#756883]">
+                                          <MapPin className="h-2 w-2 text-[#756883]" />
+                                          <span>{officer.location}</span>
+                                        </p>
+                                      ) : (
+                                        <p className="flex items-center gap-0.5 text-[9px] text-[#756883]">
+                                          <MapPin className="h-2 w-2 text-[#756883]" />
+                                          <span>Checkpoint</span>
+                                        </p>
+                                      )}
                                     </div>
                                   </div>
                                 ))}
-
-                                {session.officers.length > 3 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenAssign(day.dayId, session, day.dateStr)}
-                                    className="rounded-full bg-purple-100 px-2.5 py-1 text-[10px] font-bold text-[#451475] hover:bg-purple-200 transition-colors"
-                                  >
-                                    +{session.officers.length - 3} more
-                                  </button>
-                                )}
 
                                 <button
                                   type="button"
@@ -1221,17 +1234,6 @@ export function AttendancePage() {
                               ))}
                             </div>
                           )}
-
-                          <div className="flex justify-end pt-1">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenAddSession(day, 'Custom')}
-                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7026B7] hover:underline cursor-pointer"
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                              <span>Add Custom Session to {day.dayLabel.split(' - ')[0]}</span>
-                            </button>
-                          </div>
                         </div>
                       );
                     })()}
