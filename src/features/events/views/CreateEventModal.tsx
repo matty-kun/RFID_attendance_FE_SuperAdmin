@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '../../../utils/cn';
 import {
@@ -159,6 +159,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   }, [startDate, endDate, today]);
 
   const [selectedDayTab, setSelectedDayTab] = useState<number>(1);
+  const dayPillContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (dayPillContainerRef.current) {
+      const activeBtn = dayPillContainerRef.current.querySelector<HTMLElement>(`[data-day="${selectedDayTab}"]`);
+      if (activeBtn) {
+        activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+      }
+    }
+  }, [selectedDayTab]);
   const [morningEnabled, setMorningEnabled] = useState(true);
   const [afternoonEnabled, setAfternoonEnabled] = useState(true);
   const [eveningEnabled, setEveningEnabled] = useState(false);
@@ -802,25 +812,69 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               </div>
 
               {/* Day Selector Bar */}
-              <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB] p-1.5 shadow-2xs">
-                <div className="grid grid-flow-col auto-cols-fr gap-1.5 overflow-x-auto">
+              <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB] p-2 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between gap-2 px-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#756883]">
+                      Day {selectedDayTab} of {eventDaysList.length}
+                    </span>
+                    <span className="text-xs font-bold text-[#24133F]">
+                      · {eventDaysList.find((d) => d.num === selectedDayTab)?.fullDate || ''}
+                    </span>
+                  </div>
+
+                  {/* Navigation Arrows for convenient switching across days */}
+                  {eventDaysList.length > 1 && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={selectedDayTab <= 1}
+                        onClick={() => setSelectedDayTab((prev) => Math.max(1, prev - 1))}
+                        className="rounded-lg border border-[#E5E0EB] bg-white p-1 text-[#756883] hover:text-[#24133F] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title="Previous Day"
+                        aria-label="Previous Day"
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={selectedDayTab >= eventDaysList.length}
+                        onClick={() => setSelectedDayTab((prev) => Math.min(eventDaysList.length, prev + 1))}
+                        className="rounded-lg border border-[#E5E0EB] bg-white p-1 text-[#756883] hover:text-[#24133F] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title="Next Day"
+                        aria-label="Next Day"
+                      >
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Horizontally scrollable day pills with guaranteed min width */}
+                <div
+                  ref={dayPillContainerRef}
+                  className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin"
+                >
                   {eventDaysList.map((d) => {
                     const isSelected = selectedDayTab === d.num;
                     return (
                       <button
                         key={d.num}
+                        data-day={d.num}
                         type="button"
                         onClick={() => setSelectedDayTab(d.num)}
-                        className={`flex items-center justify-center gap-2 rounded-xl py-2 px-3 text-xs transition-all whitespace-nowrap ${
+                        className={`flex items-center justify-center gap-2 rounded-xl py-2 px-3.5 text-xs shrink-0 whitespace-nowrap min-w-max transition-all cursor-pointer ${
                           isSelected
                             ? 'bg-[#451475] text-white font-bold shadow-xs'
-                            : 'bg-transparent text-[#756883] font-semibold hover:text-[#24133F] hover:bg-white/80'
+                            : 'bg-white border border-[#E5E0EB] text-[#756883] font-semibold hover:text-[#24133F] hover:border-[#451475]'
                         }`}
                       >
                         <span>{d.label}</span>
-                        <span className={`text-[10px] rounded-md px-1.5 py-0.2 font-medium ${
-                          isSelected ? 'bg-white/20 text-white' : 'bg-slate-200/60 text-[#756883]'
-                        }`}>
+                        <span
+                          className={`text-[10px] rounded-md px-1.5 py-0.5 font-medium ${
+                            isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-[#756883]'
+                          }`}
+                        >
                           {d.shortDate}
                         </span>
                       </button>
