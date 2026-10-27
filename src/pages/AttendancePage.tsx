@@ -449,57 +449,54 @@ export function AttendancePage() {
     }
   };
 
-  // Add Session to Day state & handlers
-  const [addingSessionToDay, setAddingSessionToDay] = useState<DaySchedule | null>(null);
-  const [newSessionName, setNewSessionName] = useState('Morning Session');
-  const [newSessionTimeInStart, setNewSessionTimeInStart] = useState('07:00');
-  const [newSessionTimeInEnd, setNewSessionTimeInEnd] = useState('08:30');
-  const [newSessionTimeOutStart, setNewSessionTimeOutStart] = useState('11:00');
-  const [newSessionTimeOutEnd, setNewSessionTimeOutEnd] = useState('12:00');
-  const [isSavingNewSession, setIsSavingNewSession] = useState(false);
+  // Quick-add session to Day state & handler
+  const [addingSlotKey, setAddingSlotKey] = useState<string | null>(null);
 
-  const handleOpenAddSession = (
+  const handleQuickAddSession = async (
     day: DaySchedule,
-    preset?: 'Morning' | 'Afternoon' | 'Evening' | 'Custom'
+    preset: 'Morning' | 'Afternoon' | 'Evening'
   ) => {
-    const hasMorning = day.sessions.some((s) => s.name.toLowerCase().includes('morning'));
-    const hasAfternoon = day.sessions.some((s) => s.name.toLowerCase().includes('afternoon'));
+    if (!eventData) return;
+    const slotKey = `${day.dayId}-${preset}`;
+    setAddingSlotKey(slotKey);
 
-    const choice = preset && preset !== 'Custom'
-      ? preset
-      : !hasMorning
-      ? 'Morning'
-      : !hasAfternoon
-      ? 'Afternoon'
-      : 'Evening';
+    const dayPrefix = day.dayLabel.split(' - ')[0];
+    const sessionName = `${dayPrefix} - ${preset} Session`;
 
-    if (choice === 'Morning') {
-      setNewSessionName('Morning Session');
-      setNewSessionTimeInStart('07:00');
-      setNewSessionTimeInEnd('08:30');
-      setNewSessionTimeOutStart('11:00');
-      setNewSessionTimeOutEnd('12:00');
-    } else if (choice === 'Afternoon') {
-      setNewSessionName('Afternoon Session');
-      setNewSessionTimeInStart('13:00');
-      setNewSessionTimeInEnd('14:30');
-      setNewSessionTimeOutStart('16:30');
-      setNewSessionTimeOutEnd('17:30');
-    } else if (choice === 'Evening') {
-      setNewSessionName('Evening Session');
-      setNewSessionTimeInStart('18:00');
-      setNewSessionTimeInEnd('19:30');
-      setNewSessionTimeOutStart('20:30');
-      setNewSessionTimeOutEnd('21:30');
-    } else {
-      setNewSessionName('');
-      setNewSessionTimeInStart('08:00');
-      setNewSessionTimeInEnd('09:00');
-      setNewSessionTimeOutStart('12:00');
-      setNewSessionTimeOutEnd('13:00');
+    let timeInStart = '07:00:00';
+    let timeInEnd = '08:30:00';
+    let timeOutStart = '11:00:00';
+    let timeOutEnd = '12:00:00';
+
+    if (preset === 'Afternoon') {
+      timeInStart = '13:00:00';
+      timeInEnd = '14:30:00';
+      timeOutStart = '16:30:00';
+      timeOutEnd = '17:30:00';
+    } else if (preset === 'Evening') {
+      timeInStart = '18:00:00';
+      timeInEnd = '19:30:00';
+      timeOutStart = '20:30:00';
+      timeOutEnd = '21:30:00';
     }
 
-    setAddingSessionToDay(day);
+    try {
+      await adminService.createSession(eventData.id, {
+        name: sessionName,
+        date: day.ymd,
+        time_in_start: timeInStart,
+        time_in_end: timeInEnd,
+        time_out_start: timeOutStart,
+        time_out_end: timeOutEnd,
+      });
+      showFeedback(`${preset} Session added to ${dayPrefix}!`, 'success');
+      await loadSchedule(eventData.id);
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to create session.';
+      showFeedback(apiMsg, 'warning');
+    } finally {
+      setAddingSlotKey(null);
+    }
   };
 
   const handleToggleSessionCancel = async (session: SessionItem) => {
@@ -525,50 +522,7 @@ export function AttendancePage() {
     }
   };
 
-  const handleSaveNewSession = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!eventData || !addingSessionToDay) return;
-    const trimmedName = newSessionName.trim();
-    if (!trimmedName) {
-      showFeedback('Session name is required.', 'warning');
-      return;
-    }
 
-    if (newSessionTimeInStart >= newSessionTimeInEnd) {
-      showFeedback('Time-In Start must be before Time-In End.', 'warning');
-      return;
-    }
-    if (newSessionTimeInEnd > newSessionTimeOutStart) {
-      showFeedback('Time-In End must be on or before Time-Out Start.', 'warning');
-      return;
-    }
-    if (newSessionTimeOutStart >= newSessionTimeOutEnd) {
-      showFeedback('Time-Out Start must be before Time-Out End.', 'warning');
-      return;
-    }
-
-    setIsSavingNewSession(true);
-    try {
-      const dayPrefix = addingSessionToDay.dayLabel.split(' - ')[0];
-      const formattedName = `${dayPrefix} - ${trimmedName}`;
-      await adminService.createSession(eventData.id, {
-        name: formattedName,
-        date: addingSessionToDay.ymd,
-        time_in_start: newSessionTimeInStart + ':00',
-        time_in_end: newSessionTimeInEnd + ':00',
-        time_out_start: newSessionTimeOutStart + ':00',
-        time_out_end: newSessionTimeOutEnd + ':00',
-      });
-      showFeedback(`Session added to ${dayPrefix}!`, 'success');
-      setAddingSessionToDay(null);
-      await loadSchedule(eventData.id);
-    } catch (err: any) {
-      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to create session.';
-      showFeedback(apiMsg, 'warning');
-    } finally {
-      setIsSavingNewSession(false);
-    }
-  };
 
   const handleDeleteSessionConfirm = async () => {
     if (!sessionToDelete) return;
@@ -1157,29 +1111,37 @@ export function AttendancePage() {
                         <div className="pt-2 space-y-2">
                           {missingSlots.length > 0 && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                              {missingSlots.map((slot) => (
-                                <button
-                                  key={slot.type}
-                                  type="button"
-                                  onClick={() => handleOpenAddSession(day, slot.type)}
-                                  className="flex items-center justify-between rounded-xl border border-dashed border-[#D4C8E2] bg-white/80 p-3 hover:border-[#7026B7] hover:bg-[#FAF7FD] transition-all text-left group cursor-pointer shadow-2xs"
-                                >
-                                  <div className="flex items-center gap-2.5">
-                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FAF7FD] border border-[#E5E0EB] group-hover:border-[#7026B7]/40 text-[#7026B7]">
-                                      <Plus className="h-4 w-4" />
+                              {missingSlots.map((slot) => {
+                                const isAdding = addingSlotKey === `${day.dayId}-${slot.type}`;
+                                return (
+                                  <button
+                                    key={slot.type}
+                                    type="button"
+                                    disabled={isAdding}
+                                    onClick={() => handleQuickAddSession(day, slot.type)}
+                                    className="flex items-center justify-between rounded-xl border border-dashed border-[#D4C8E2] bg-white/80 p-3 hover:border-[#7026B7] hover:bg-[#FAF7FD] transition-all text-left group cursor-pointer shadow-2xs disabled:opacity-60"
+                                  >
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FAF7FD] border border-[#E5E0EB] group-hover:border-[#7026B7]/40 text-[#7026B7]">
+                                        {isAdding ? (
+                                          <Loader2 className="h-4 w-4 animate-spin text-[#7026B7]" />
+                                        ) : (
+                                          <Plus className="h-4 w-4" />
+                                        )}
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-bold text-[#24133F] group-hover:text-[#7026B7]">
+                                          {slot.label}
+                                        </p>
+                                        <p className="text-[10px] text-[#756883]">{slot.timeHint}</p>
+                                      </div>
                                     </div>
-                                    <div>
-                                      <p className="text-xs font-bold text-[#24133F] group-hover:text-[#7026B7]">
-                                        {slot.label}
-                                      </p>
-                                      <p className="text-[10px] text-[#756883]">{slot.timeHint}</p>
-                                    </div>
-                                  </div>
-                                  <span className="rounded-lg bg-white border border-[#E5E0EB] px-2 py-0.5 text-[10px] font-bold text-[#7026B7] group-hover:bg-[#7026B7] group-hover:text-white transition-colors">
-                                    + Add
-                                  </span>
-                                </button>
-                              ))}
+                                    <span className="rounded-lg bg-white border border-[#E5E0EB] px-2 py-0.5 text-[10px] font-bold text-[#7026B7] group-hover:bg-[#7026B7] group-hover:text-white transition-colors">
+                                      {isAdding ? 'Adding...' : '+ Add'}
+                                    </span>
+                                  </button>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
@@ -1421,154 +1383,6 @@ export function AttendancePage() {
             <span>
               Tip: Extending the date range will automatically create new day tabs. Existing sessions and attendance logs will not be affected.
             </span>
-          </div>
-        </form>
-      </Drawer>
-
-      {/* Add Session to Day Drawer */}
-      <Drawer
-        isOpen={Boolean(addingSessionToDay)}
-        onClose={() => setAddingSessionToDay(null)}
-        title={`Add Session to ${addingSessionToDay?.dayLabel.split(' - ')[0] || 'Day'}`}
-        description={`Create a new attendance session for ${addingSessionToDay?.dateStr || ''}.`}
-        icon={<Plus className="h-5 w-5" />}
-        maxWidth="md"
-        footer={
-          <div className="flex items-center justify-end gap-2.5">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setAddingSessionToDay(null)}
-              disabled={isSavingNewSession}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              form="add-session-form"
-              variant="primary"
-              isLoading={isSavingNewSession}
-            >
-              Add Session
-            </Button>
-          </div>
-        }
-      >
-        <form id="add-session-form" onSubmit={handleSaveNewSession} className="space-y-4">
-          {/* Quick preset selector */}
-          <div>
-            <label className="block text-xs font-semibold text-[#24133F] mb-1.5">
-              Quick Presets
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setNewSessionName('Morning Session');
-                  setNewSessionTimeInStart('07:00');
-                  setNewSessionTimeInEnd('08:30');
-                  setNewSessionTimeOutStart('11:00');
-                  setNewSessionTimeOutEnd('12:00');
-                }}
-                className={`rounded-xl border py-2 px-2 text-center text-xs font-bold transition-all cursor-pointer ${
-                  newSessionName.toLowerCase().includes('morning')
-                    ? 'border-[#7026B7] bg-[#FAF7FD] text-[#7026B7]'
-                    : 'border-[#E5E0EB] bg-white text-[#756883] hover:border-slate-300'
-                }`}
-              >
-                Morning
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setNewSessionName('Afternoon Session');
-                  setNewSessionTimeInStart('13:00');
-                  setNewSessionTimeInEnd('14:30');
-                  setNewSessionTimeOutStart('16:30');
-                  setNewSessionTimeOutEnd('17:30');
-                }}
-                className={`rounded-xl border py-2 px-2 text-center text-xs font-bold transition-all cursor-pointer ${
-                  newSessionName.toLowerCase().includes('afternoon')
-                    ? 'border-[#7026B7] bg-[#FAF7FD] text-[#7026B7]'
-                    : 'border-[#E5E0EB] bg-white text-[#756883] hover:border-slate-300'
-                }`}
-              >
-                Afternoon
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setNewSessionName('Evening Session');
-                  setNewSessionTimeInStart('18:00');
-                  setNewSessionTimeInEnd('19:30');
-                  setNewSessionTimeOutStart('20:30');
-                  setNewSessionTimeOutEnd('21:30');
-                }}
-                className={`rounded-xl border py-2 px-2 text-center text-xs font-bold transition-all cursor-pointer ${
-                  newSessionName.toLowerCase().includes('evening')
-                    ? 'border-[#7026B7] bg-[#FAF7FD] text-[#7026B7]'
-                    : 'border-[#E5E0EB] bg-white text-[#756883] hover:border-slate-300'
-                }`}
-              >
-                Evening
-              </button>
-            </div>
-          </div>
-
-          <Input
-            label="Session Name"
-            placeholder="e.g. Morning Session, Afternoon Session, Keynote"
-            value={newSessionName}
-            onChange={(e) => setNewSessionName(e.target.value)}
-            required
-          />
-
-          {/* Time-In Window */}
-          <div className="rounded-xl border border-[#E5E0EB] bg-[#FAF7FD]/50 p-3.5 space-y-2.5">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#7026B7]">
-              <Clock className="h-3.5 w-3.5" />
-              <span>Time-In Window</span>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Time-In Opens"
-                type="time"
-                value={newSessionTimeInStart}
-                onChange={(e) => setNewSessionTimeInStart(e.target.value)}
-                required
-              />
-              <Input
-                label="Time-In Closes"
-                type="time"
-                value={newSessionTimeInEnd}
-                onChange={(e) => setNewSessionTimeInEnd(e.target.value)}
-                required
-              />
-            </div>
-          </div>
-
-          {/* Time-Out Window */}
-          <div className="rounded-xl border border-[#E5E0EB] bg-[#FAF7FD]/50 p-3.5 space-y-2.5">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#7026B7]">
-              <Clock className="h-3.5 w-3.5" />
-              <span>Time-Out Window</span>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Time-Out Opens"
-                type="time"
-                value={newSessionTimeOutStart}
-                onChange={(e) => setNewSessionTimeOutStart(e.target.value)}
-                required
-              />
-              <Input
-                label="Time-Out Closes"
-                type="time"
-                value={newSessionTimeOutEnd}
-                onChange={(e) => setNewSessionTimeOutEnd(e.target.value)}
-                required
-              />
-            </div>
           </div>
         </form>
       </Drawer>
