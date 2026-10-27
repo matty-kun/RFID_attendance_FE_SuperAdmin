@@ -1061,50 +1061,28 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             Are you sure you want to archive <span className="font-extrabold text-[#7026B7]">{currentStudent.name}</span> (<span className="font-extrabold text-[#24133F]">{currentStudent.student_id}</span>)?
           </p>
 
-          {/* Student Details Card */}
-          <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB] p-4 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-extrabold text-[#24133F] truncate">
-                {currentStudent.name}
-              </p>
-              <p className="text-xs text-[#756883] mt-0.5">
-                Student ID: <span className="font-extrabold text-[#24133F]">{currentStudent.student_id}</span>
-              </p>
-              <p className="text-xs text-[#756883] mt-0.5">
-                {currentStudent.course || 'No course assigned'} • Year {currentStudent.year_level || 1}
-              </p>
-            </div>
-            <div className="shrink-0 text-right">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/80">
-                <Archive className="h-3.5 w-3.5" />
-                To Archive
-              </span>
-            </div>
-          </div>
-
-          {/* Detailed Impact Breakdown */}
-          <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3.5 space-y-2 text-xs text-[#756883]">
+          <div className="space-y-2.5 text-xs text-[#756883] pt-1">
             <div className="flex items-start gap-2.5">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800 font-bold text-[11px]">!</span>
+              <span className="text-amber-500 font-bold leading-relaxed">•</span>
               <span className="leading-relaxed">
                 Moves <span className="font-bold text-[#24133F]">{currentStudent.name}</span> to the <strong className="text-[#24133F]">Archived roster</strong> (hidden from active attendance sessions).
               </span>
             </div>
             <div className="flex items-start gap-2.5">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-700 font-bold text-[11px]">✕</span>
+              <span className="text-rose-500 font-bold leading-relaxed">•</span>
               <span className="leading-relaxed">
-                Any linked RFID card {currentStudent.rfid_uid ? (<>(<span className="font-bold text-[#24133F]">{currentStudent.rfid_uid}</span>)</>) : ''} will be <strong className="text-[#24133F]">unassigned</strong> immediately.
+                Any linked RFID card {currentStudent.rfid_uid ? (<>(<span className="font-mono font-bold text-[#24133F]">{currentStudent.rfid_uid}</span>)</>) : ''} will be <strong className="text-[#24133F]">unassigned</strong> immediately.
               </span>
             </div>
             <div className="flex items-start gap-2.5">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-bold text-[11px]">✓</span>
+              <span className="text-emerald-600 font-bold leading-relaxed">•</span>
               <span className="leading-relaxed">
                 All historical event attendance records remain <strong className="text-[#24133F]">permanently preserved</strong>.
               </span>
             </div>
           </div>
 
-          <div className="pt-2 flex items-center justify-end gap-3">
+          <div className="pt-3 flex items-center justify-end gap-3">
             <Button
               type="button"
               variant="secondary"
@@ -1139,54 +1117,31 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       >
         <div className="space-y-4 pt-1">
           <p className="text-sm text-[#24133F] leading-relaxed">
-            Are you sure you want to unlink the RFID card from <span className="font-extrabold text-[#7026B7]">{currentStudent.name}</span> (<span className="font-extrabold text-[#24133F]">{currentStudent.student_id}</span>)?
+            Are you sure you want to unlink card <span className="font-mono font-extrabold text-[#EF4444] bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-200">{currentStudent.rfid_uid}</span> from <span className="font-extrabold text-[#7026B7]">{currentStudent.name}</span> (<span className="font-extrabold text-[#24133F]">{currentStudent.student_id}</span>)?
           </p>
 
-          {/* Card Info Box */}
-          <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB] p-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-200">
-                <CreditCard className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-[#756883]">
-                  Card UID (Physical Tag)
-                </p>
-                <p className="text-sm font-mono font-extrabold text-[#24133F] tracking-wide">
-                  {currentStudent.rfid_uid}
-                </p>
-              </div>
-            </div>
-
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200/80 shrink-0">
-              <Unlink className="h-3.5 w-3.5" />
-              To Unlink
-            </span>
-          </div>
-
-          {/* Detailed Impact Breakdown */}
-          <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3.5 space-y-2 text-xs text-[#756883]">
+          <div className="space-y-2.5 text-xs text-[#756883] pt-1">
             <div className="flex items-start gap-2.5">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-700 font-bold text-[11px]">✕</span>
+              <span className="text-rose-500 font-bold leading-relaxed">•</span>
               <span className="leading-relaxed">
                 Detaches this card from <span className="font-bold text-[#24133F]">{currentStudent.name}</span> immediately. Tapping it will no longer record attendance for this student.
               </span>
             </div>
             <div className="flex items-start gap-2.5">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800 font-bold text-[11px]">↻</span>
+              <span className="text-amber-500 font-bold leading-relaxed">•</span>
               <span className="leading-relaxed">
-                The card UID (<span className="font-mono font-bold text-[#24133F]">{currentStudent.rfid_uid}</span>) becomes available to pair with any other student.
+                The card UID becomes available to pair with any other student.
               </span>
             </div>
             <div className="flex items-start gap-2.5">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-bold text-[11px]">✓</span>
+              <span className="text-emerald-600 font-bold leading-relaxed">•</span>
               <span className="leading-relaxed">
                 All existing attendance logs and event check-ins remain <strong className="text-[#24133F]">safely preserved</strong>.
               </span>
             </div>
           </div>
 
-          <div className="pt-2 flex items-center justify-end gap-3">
+          <div className="pt-3 flex items-center justify-end gap-3">
             <Button
               type="button"
               variant="secondary"
