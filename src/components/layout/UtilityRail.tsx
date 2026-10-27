@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, CircleHelp, Command, LogOut, User, X, Sparkles } from 'lucide-react';
+import { Bell, LogOut, X } from 'lucide-react';
 import { useAuth } from '../../features/auth';
+import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 
-type Panel = 'account' | 'notifications' | 'help';
+type Panel = 'account' | 'notifications';
 
 export function UtilityRail() {
   const { user, logout } = useAuth();
   const [panel, setPanel] = useState<Panel>('account');
   const [isOpen, setIsOpen] = useState(false);
+  const [isSignOutConfirmOpen, setIsSignOutConfirmOpen] = useState(false);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLElement>(null);
 
@@ -51,7 +53,7 @@ export function UtilityRail() {
   useEffect(() => {
     const onOpenUtility = (event: Event) => {
       const targetPanel = (event as CustomEvent<string>).detail;
-      if (targetPanel === 'help' || targetPanel === 'notifications' || targetPanel === 'account') {
+      if (targetPanel === 'notifications' || targetPanel === 'account') {
         setPanel(targetPanel);
         setIsOpen(true);
       }
@@ -85,21 +87,6 @@ export function UtilityRail() {
           <Bell className="h-4 w-4" />
         </button>
 
-        {/* Help Button */}
-        <button
-          type="button"
-          onClick={() => toggle('help')}
-          aria-label="Help"
-          title="Help & Shortcuts"
-          className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all cursor-pointer shadow-sm ${
-            isOpen && panel === 'help'
-              ? 'border-brand-600 bg-brand-50 text-brand-700 ring-2 ring-brand-300'
-              : 'border-slate-200 bg-white text-[#756883] hover:text-brand-700 hover:border-brand-300'
-          }`}
-        >
-          <CircleHelp className="h-4 w-4" />
-        </button>
-
         {/* Account Avatar Button */}
         <button
           type="button"
@@ -126,139 +113,94 @@ export function UtilityRail() {
           ref={bubbleRef}
           role="region"
           aria-label="Quick actions bubble"
-          className="fixed bottom-26 left-6 md:left-10 z-50 w-[340px] rounded-3xl border border-[#E5E0EB] bg-white p-4 shadow-2xl animate-in fade-in zoom-in-95 slide-in-from-bottom-3 duration-200 text-[#24133F]"
+          className="fixed bottom-26 left-6 md:left-10 z-50 w-[320px] rounded-3xl border border-[#E5E0EB] bg-white p-4 shadow-2xl animate-in fade-in zoom-in-95 slide-in-from-bottom-3 duration-200 text-[#24133F]"
         >
-          {/* Top Switcher Tabs + Close */}
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-1 rounded-xl bg-slate-100/80 p-1">
-              <button
-                type="button"
-                onClick={() => setPanel('account')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                  panel === 'account'
-                    ? 'bg-white text-brand-700 shadow-xs'
-                    : 'text-[#756883] hover:text-[#24133F]'
-                }`}
-              >
-                <User className="h-3.5 w-3.5" />
-                <span>Account</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPanel('notifications')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                  panel === 'notifications'
-                    ? 'bg-white text-brand-700 shadow-xs'
-                    : 'text-[#756883] hover:text-[#24133F]'
-                }`}
-              >
-                <Bell className="h-3.5 w-3.5" />
-                <span>Alerts</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPanel('help')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                  panel === 'help'
-                    ? 'bg-white text-brand-700 shadow-xs'
-                    : 'text-[#756883] hover:text-[#24133F]'
-                }`}
-              >
-                <CircleHelp className="h-3.5 w-3.5" />
-                <span>Help</span>
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              aria-label="Close bubble"
-              className="rounded-lg p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Panel Content */}
-          <div className="pt-3">
-            {panel === 'account' && (
-              <div className="space-y-3.5">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 font-extrabold text-sm border border-brand-200/60">
+          {panel === 'account' ? (
+            <div className="space-y-4">
+              {/* Header with Avatar, Name, Email, and Close X */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 font-extrabold text-sm border border-brand-200/60">
                     {user?.avatar_url ? (
                       <img src={user.avatar_url} alt="" className="h-full w-full rounded-2xl object-cover" />
                     ) : (
                       initials
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-[#24133F] truncate">{user?.name || 'Administrator'}</p>
-                      <span className="text-[10px] font-extrabold text-brand-700 bg-brand-50 border border-brand-200/80 px-1.5 py-0.5 rounded-md">
-                        Super Admin
-                      </span>
-                    </div>
-                    <p className="text-xs text-[#756883] truncate mt-0.5">{user?.email}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-[#24133F] truncate">{user?.name || 'Administrator'}</p>
+                    <p className="text-xs text-[#756883] truncate">{user?.email}</p>
                   </div>
                 </div>
 
-                <div className="pt-1 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400 font-medium">Session Active</span>
-                  <button
-                    type="button"
-                    onClick={logout}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 transition-colors cursor-pointer"
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                    <span>Sign out</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  aria-label="Close bubble"
+                  className="rounded-lg p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-            )}
 
-            {panel === 'notifications' && (
-              <div className="py-6 px-2 text-center">
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-50 text-slate-400 border border-slate-200 mb-2.5">
-                  <Bell className="h-5 w-5" />
+              {/* Sign Out Button */}
+              <button
+                type="button"
+                onClick={() => setIsSignOutConfirmOpen(true)}
+                className="inline-flex w-full items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 transition-colors cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Sign out</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Bell className="h-4 w-4 text-brand-700" />
+                  <span className="text-xs font-bold text-[#24133F]">Notifications</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  aria-label="Close bubble"
+                  className="rounded-lg p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="py-4 px-2 text-center">
+                <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-slate-50 text-slate-400 border border-slate-200 mb-2">
+                  <Bell className="h-4 w-4" />
                 </div>
                 <p className="text-xs font-bold text-[#24133F]">No new notifications</p>
-                <p className="text-[11px] text-[#756883] mt-0.5 max-w-[240px] mx-auto">
+                <p className="text-[11px] text-[#756883] mt-0.5 max-w-[220px] mx-auto">
                   System logs and attendance alerts will appear here in real time.
                 </p>
               </div>
-            )}
-
-            {panel === 'help' && (
-              <div className="space-y-2 text-xs">
-                <div className="rounded-2xl bg-brand-50/60 border border-brand-100/80 p-3">
-                  <p className="flex items-center gap-1.5 font-bold text-[#24133F]">
-                    <Command className="h-3.5 w-3.5 text-brand-700" />
-                    <span>Quick Command Search</span>
-                  </p>
-                  <p className="text-[11px] text-[#756883] mt-1">
-                    Press <kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono font-bold text-[#24133F]">Ctrl</kbd> + <kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono font-bold text-[#24133F]">K</kbd> anywhere to search pages, sessions, or students.
-                  </p>
-                </div>
-
-                <div className="rounded-2xl bg-slate-50 border border-slate-200/80 p-3">
-                  <p className="flex items-center gap-1.5 font-bold text-[#24133F]">
-                    <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                    <span>RFID USB Scanners</span>
-                  </p>
-                  <p className="text-[11px] text-[#756883] mt-1">
-                    Readers act as USB keyboards. Open Rapid Scanner or tap directly on any student row to bind.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Chat Bubble Arrow Pointer pointing toward the bottom-left buttons */}
           <div className="absolute -bottom-2 left-7 h-4 w-4 rotate-45 border-b border-r border-[#E5E0EB] bg-white pointer-events-none" />
         </div>
       )}
+
+      {/* Sign Out Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={isSignOutConfirmOpen}
+        onClose={() => setIsSignOutConfirmOpen(false)}
+        onConfirm={() => {
+          setIsSignOutConfirmOpen(false);
+          setIsOpen(false);
+          logout();
+        }}
+        title="Sign Out Confirmation"
+        description="Are you sure you want to sign out of your account? You will need to log back in to access the system."
+        confirmLabel="Sign Out"
+        cancelLabel="Cancel"
+      />
     </>
   );
 }
