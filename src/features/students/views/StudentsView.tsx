@@ -13,6 +13,10 @@ import {
   Radio,
   ArchiveRestore,
   Loader2,
+  GraduationCap,
+  Users,
+  UserCheck,
+  Archive,
 } from 'lucide-react';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
 import hawiFindingImg from '../../../assets/illustrations/Hawi Finding.png';
@@ -160,12 +164,11 @@ export const StudentsView: React.FC = () => {
 
       {/* Main Section */}
       <div className="space-y-3">
-        {/* Toolbar: Search & Filters ON THE LEFT, Active/Archived Filter ON THE FAR RIGHT */}
+        {/* Toolbar: Search & Filters (Matching icons and styling) */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          {/* LEFT: Search bar & Course & RFID Filters */}
           <div className="flex flex-wrap items-center gap-2 flex-1">
             <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-slate-500 sm:max-w-[280px]">
-              <Search className="h-4 w-4" />
+              <Search className="h-4 w-4 shrink-0 text-slate-400" />
               <span className="sr-only">Search</span>
               <input
                 type="search"
@@ -182,23 +185,33 @@ export const StudentsView: React.FC = () => {
             <Dropdown
               value={courseFilter}
               onChange={(val) => setCourseFilter(val)}
+              icon={<GraduationCap className="h-4 w-4" />}
               options={[
-                { value: 'all', label: 'All Courses' },
-                ...courses.map((c) => ({ value: c, label: c })),
+                { value: 'all', label: 'All Courses', icon: <GraduationCap className="h-3.5 w-3.5 text-slate-400" /> },
+                ...courses.map((c) => ({
+                  value: c,
+                  label: c,
+                  icon: <GraduationCap className="h-3.5 w-3.5 text-brand-700" />,
+                })),
               ]}
             />
-          </div>
 
-          {/* FAR RIGHT: Active Students vs Archived Filter Dropdown */}
-          <div className="shrink-0 self-start sm:self-auto">
             <Dropdown
               value={studentTab}
               onChange={(val: any) => setStudentTab(val)}
+              icon={studentTab === 'active' ? <Users className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
               options={[
-                { value: 'active', label: `Active Students (${activeStudents.length})` },
-                { value: 'archived', label: `Archived (${archivedStudents.length})` },
+                {
+                  value: 'active',
+                  label: `Active Students (${activeStudents.length})`,
+                  icon: <UserCheck className="h-3.5 w-3.5 text-brand-700" />,
+                },
+                {
+                  value: 'archived',
+                  label: `Archived (${archivedStudents.length})`,
+                  icon: <Archive className="h-3.5 w-3.5 text-slate-500" />,
+                },
               ]}
-              buttonClassName="h-10 min-w-[190px] font-bold text-brand-700 bg-brand-50 border-brand-200"
             />
           </div>
         </div>
