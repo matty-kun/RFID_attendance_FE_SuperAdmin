@@ -765,7 +765,7 @@ export function AttendancePage() {
               <h1 className="text-2xl font-extrabold leading-tight text-[#24133F]">{eventData.name}</h1>
               <p className="text-xs font-semibold text-[#756883] mt-1 flex items-center gap-2">
                 <Calendar className="h-3.5 w-3.5 text-[#756883]" />
-                <span>{eventData.dateRange} · {eventData.durationDays} {eventData.durationDays === 1 ? 'day' : 'days'}</span>
+                <span>{eventData.dateRange}</span>
                 <span className="h-1 w-1 rounded-full bg-[#756883]/40" />
                 <span
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
@@ -928,10 +928,9 @@ export function AttendancePage() {
           <p className="text-xs text-[#756883] mt-1">Fetching events, sessions, and checkpoint mappings.</p>
         </div>
       ) : eventData ? (
-        <div className="rounded-[24px] border border-[#E5E0EB] bg-white p-6 space-y-4">
-          {/* Event Days Content - Always open & visible immediately */}
-          <div className="space-y-4">
-            {filteredDays.map((day) => {
+        /* Event Days Content */
+        <div className="space-y-4">
+          {filteredDays.map((day) => {
               const isDayOpen = isSearching || !collapsedDayIds.has(day.dayId);
 
               return (
@@ -1266,8 +1265,7 @@ export function AttendancePage() {
               </div>
             )}
           </div>
-        </div>
-      ) : (
+        ) : (
         /* Events Directory List View */
         <div className="space-y-4">
           <div className="flex items-center justify-between">
