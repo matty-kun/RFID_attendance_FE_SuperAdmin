@@ -17,6 +17,8 @@ export const adminService = {
     ),
   createEvent: (payload: Partial<EventRecord>) =>
     request.post<EventRecord>('/events', payload),
+  updateEvent: (eventId: string, payload: Partial<EventRecord>) =>
+    request.patch<EventRecord>(`/events/${encodeURIComponent(eventId)}`, payload),
   deleteEvent: (eventId: string) =>
     request.delete<{ message: string }>(`/events/${encodeURIComponent(eventId)}`),
   getSessions: (eventId: string) =>

@@ -23,6 +23,8 @@ import {
 import { useToast } from '../context';
 import { Button } from '../components/common/Button';
 import { Dropdown } from '../components/common/Dropdown';
+import { Modal } from '../components/common/Modal';
+import { Input } from '../components/common/Input';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { DeleteConfirmationModal } from '../components/common/DeleteConfirmationModal';
 import { CreateEventModal } from '../features/events/views/CreateEventModal';
@@ -413,6 +415,137 @@ export function AttendancePage() {
     }
   };
 
+  // Edit Event Modal state & handlers
+  const [isEditEventOpen, setIsEditEventOpen] = useState(false);
+  const [editEventName, setEditEventName] = useState('');
+  const [editEventDesc, setEditEventDesc] = useState('');
+  const [editEventStart, setEditEventStart] = useState('');
+  const [editEventEnd, setEditEventEnd] = useState('');
+  const [isSavingEvent, setIsSavingEvent] = useState(false);
+
+  const handleOpenEditEvent = () => {
+    if (!eventData) return;
+    setEditEventName(eventData.name);
+    setEditEventDesc(eventData.description || '');
+    setEditEventStart(eventData.startDate);
+    setEditEventEnd(eventData.endDate);
+    setIsEventMenuOpen(false);
+    setIsEditEventOpen(true);
+  };
+
+  const handleSaveEditEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!eventData) return;
+    const trimmedName = editEventName.trim();
+    if (!trimmedName) {
+      showFeedback('Event name is required.', 'warning');
+      return;
+    }
+    if (!editEventStart || !editEventEnd || editEventStart > editEventEnd) {
+      showFeedback('Valid Start Date and End Date are required.', 'warning');
+      return;
+    }
+
+    setIsSavingEvent(true);
+    try {
+      await adminService.updateEvent(eventData.id, {
+        name: trimmedName,
+        description: editEventDesc.trim() || null,
+        start_date: editEventStart,
+        end_date: editEventEnd,
+      });
+      showFeedback('Event details updated successfully!', 'success');
+      setIsEditEventOpen(false);
+      await loadSchedule(eventData.id);
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to update event.';
+      showFeedback(apiMsg, 'warning');
+    } finally {
+      setIsSavingEvent(false);
+    }
+  };
+
+  // Add Session to Day state & handlers
+  const [addingSessionToDay, setAddingSessionToDay] = useState<DaySchedule | null>(null);
+  const [newSessionName, setNewSessionName] = useState('Morning Session');
+  const [newSessionTimeInStart, setNewSessionTimeInStart] = useState('07:00');
+  const [newSessionTimeInEnd, setNewSessionTimeInEnd] = useState('08:30');
+  const [newSessionTimeOutStart, setNewSessionTimeOutStart] = useState('11:00');
+  const [newSessionTimeOutEnd, setNewSessionTimeOutEnd] = useState('12:00');
+  const [isSavingNewSession, setIsSavingNewSession] = useState(false);
+
+  const handleOpenAddSession = (day: DaySchedule) => {
+    const hasMorning = day.sessions.some((s) => s.name.toLowerCase().includes('morning'));
+    const hasAfternoon = day.sessions.some((s) => s.name.toLowerCase().includes('afternoon'));
+
+    if (!hasMorning) {
+      setNewSessionName('Morning Session');
+      setNewSessionTimeInStart('07:00');
+      setNewSessionTimeInEnd('08:30');
+      setNewSessionTimeOutStart('11:00');
+      setNewSessionTimeOutEnd('12:00');
+    } else if (!hasAfternoon) {
+      setNewSessionName('Afternoon Session');
+      setNewSessionTimeInStart('13:00');
+      setNewSessionTimeInEnd('14:30');
+      setNewSessionTimeOutStart('16:30');
+      setNewSessionTimeOutEnd('17:30');
+    } else {
+      setNewSessionName('Evening Session');
+      setNewSessionTimeInStart('18:00');
+      setNewSessionTimeInEnd('19:30');
+      setNewSessionTimeOutStart('20:30');
+      setNewSessionTimeOutEnd('21:30');
+    }
+
+    setAddingSessionToDay(day);
+  };
+
+  const handleSaveNewSession = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!eventData || !addingSessionToDay) return;
+    const trimmedName = newSessionName.trim();
+    if (!trimmedName) {
+      showFeedback('Session name is required.', 'warning');
+      return;
+    }
+
+    if (newSessionTimeInStart >= newSessionTimeInEnd) {
+      showFeedback('Time-In Start must be before Time-In End.', 'warning');
+      return;
+    }
+    if (newSessionTimeInEnd > newSessionTimeOutStart) {
+      showFeedback('Time-In End must be on or before Time-Out Start.', 'warning');
+      return;
+    }
+    if (newSessionTimeOutStart >= newSessionTimeOutEnd) {
+      showFeedback('Time-Out Start must be before Time-Out End.', 'warning');
+      return;
+    }
+
+    setIsSavingNewSession(true);
+    try {
+      const dayPrefix = addingSessionToDay.dayLabel.split(' - ')[0];
+      const formattedName = `${dayPrefix} - ${trimmedName}`;
+      await adminService.createSession(eventData.id, {
+        name: formattedName,
+        date: addingSessionToDay.ymd,
+        time_in_start: newSessionTimeInStart + ':00',
+        time_in_end: newSessionTimeInEnd + ':00',
+        time_out_start: newSessionTimeOutStart + ':00',
+        time_out_end: newSessionTimeOutEnd + ':00',
+      });
+      showFeedback(`Session added to ${dayPrefix}!`, 'success');
+      setAddingSessionToDay(null);
+      await loadSchedule(eventData.id);
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to create session.';
+      showFeedback(apiMsg, 'warning');
+    } finally {
+      setIsSavingNewSession(false);
+    }
+  };
+
   const handleDeleteSessionConfirm = async () => {
     if (!sessionToDelete) return;
     setIsDeletingSession(true);
@@ -591,6 +724,15 @@ export function AttendancePage() {
           </div>
 
           <div className="flex items-center gap-2.5">
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<Pencil className="h-3.5 w-3.5" />}
+              onClick={handleOpenEditEvent}
+              className="font-bold text-xs"
+            >
+              Edit Event
+            </Button>
             {eventData.id === serverActiveId ? (
               <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#E4F7EB] border border-[#17B556]/30 px-3 py-2 text-xs font-bold text-[#11883E]">
                 <CheckCircle2 className="h-4 w-4 text-[#17B556]" />
@@ -766,7 +908,16 @@ export function AttendancePage() {
                       className="fixed inset-0 z-20"
                       onClick={() => setIsEventMenuOpen(false)}
                     />
-                    <div className="absolute right-0 top-full mt-1 z-30 w-44 rounded-xl border border-[#E5E0EB] bg-white p-1 shadow-lg animate-in fade-in zoom-in-95 duration-100">
+                    <div className="absolute right-0 top-full mt-1 z-30 w-48 rounded-xl border border-[#E5E0EB] bg-white p-1 shadow-lg animate-in fade-in zoom-in-95 duration-100">
+                      <button
+                        type="button"
+                        onClick={handleOpenEditEvent}
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-semibold text-[#24133F] hover:bg-slate-50 transition-colors"
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-[#756883]" />
+                        <span>Edit Event &amp; Dates</span>
+                      </button>
+                      <div className="my-1 border-t border-[#F1EEF4]" />
                       <button
                         type="button"
                         onClick={() => {
@@ -885,13 +1036,29 @@ export function AttendancePage() {
                           <div className="flex items-center justify-between">
                             <div>
                               <h4 className="text-xs font-bold text-[#24133F]">{session.name}</h4>
-                              <p className="text-[11px] text-[#756883] flex items-center gap-1.5 mt-0.5">
-                                <Clock className="h-3 w-3" />
-                                {session.timeWindow}
-                              </p>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditTime(day.dayId, session)}
+                                className="group inline-flex items-center gap-1.5 mt-0.5 rounded-md px-1.5 py-0.5 -ml-1.5 text-[11px] text-[#756883] hover:text-[#7026B7] hover:bg-[#FAF7FD] transition-colors cursor-pointer"
+                                title="Click to edit session times"
+                              >
+                                <Clock className="h-3 w-3 text-[#756883] group-hover:text-[#7026B7]" />
+                                <span className="font-medium">{session.timeWindow}</span>
+                                <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-100 transition-opacity text-[#7026B7]" />
+                              </button>
                             </div>
 
                             <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditTime(day.dayId, session)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-[#E5E0EB] bg-white px-2 py-1 text-[11px] font-bold text-[#756883] hover:border-brand-700 hover:text-brand-700 hover:bg-[#FAF7FD] transition-all cursor-pointer shadow-2xs"
+                                title="Edit Time Window"
+                              >
+                                <Pencil className="h-3 w-3" />
+                                <span>Edit Time</span>
+                              </button>
+
                               <span
                                 className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
                                   session.status === 'Active'
@@ -1025,6 +1192,18 @@ export function AttendancePage() {
                         </div>
                       ))
                     )}
+
+                    {/* Add Session to this Day */}
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAddSession(day)}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#E5E0EB] bg-white py-3 text-xs font-bold text-[#756883] hover:border-[#7026B7] hover:text-[#7026B7] hover:bg-[#FAF7FD] transition-all cursor-pointer shadow-2xs"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>Add Session to {day.dayLabel.split(' - ')[0]}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -1187,6 +1366,226 @@ export function AttendancePage() {
           )}
         </div>
       )}
+
+      {/* Edit Event Details & Dates Modal */}
+      <Modal
+        isOpen={isEditEventOpen}
+        onClose={() => setIsEditEventOpen(false)}
+        title="Edit Event Details"
+        description="Update event name, description, and date range. Extending dates dynamically adds more days to the event."
+        maxWidth="md"
+      >
+        <form onSubmit={handleSaveEditEvent} className="space-y-4">
+          <Input
+            label="Event Name"
+            placeholder="e.g. IT Week 2026"
+            value={editEventName}
+            onChange={(e) => setEditEventName(e.target.value)}
+            required
+          />
+
+          <div>
+            <label className="block text-xs font-semibold text-[#24133F] mb-1.5">
+              Description (Optional)
+            </label>
+            <textarea
+              value={editEventDesc}
+              onChange={(e) => setEditEventDesc(e.target.value)}
+              placeholder="Brief description of the event..."
+              rows={3}
+              className="w-full rounded-xl border border-[#E5E0EB] bg-white px-3.5 py-2.5 text-xs text-[#24133F] placeholder-[#756883] outline-none transition-all focus:border-[#7026B7] focus:ring-2 focus:ring-[#7026B7]/15 resize-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Start Date"
+              type="date"
+              value={editEventStart}
+              onChange={(e) => setEditEventStart(e.target.value)}
+              required
+            />
+            <Input
+              label="End Date"
+              type="date"
+              value={editEventEnd}
+              min={editEventStart}
+              onChange={(e) => setEditEventEnd(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="rounded-xl bg-[#FAF7FD] border border-[#E9DDF8] p-3 text-[11px] text-[#7026B7] flex items-start gap-2">
+            <Clock className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>
+              Tip: Extending the date range will automatically create new day tabs. Existing sessions and attendance logs will not be affected.
+            </span>
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E5E0EB]">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsEditEventOpen(false)}
+              disabled={isSavingEvent}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              isLoading={isSavingEvent}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Add Session to Day Modal */}
+      <Modal
+        isOpen={Boolean(addingSessionToDay)}
+        onClose={() => setAddingSessionToDay(null)}
+        title={`Add Session to ${addingSessionToDay?.dayLabel.split(' - ')[0] || 'Day'}`}
+        description={`Create a new attendance session for ${addingSessionToDay?.dateStr || ''}.`}
+        maxWidth="md"
+      >
+        <form onSubmit={handleSaveNewSession} className="space-y-4">
+          {/* Quick preset selector */}
+          <div>
+            <label className="block text-xs font-semibold text-[#24133F] mb-1.5">
+              Quick Presets
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setNewSessionName('Morning Session');
+                  setNewSessionTimeInStart('07:00');
+                  setNewSessionTimeInEnd('08:30');
+                  setNewSessionTimeOutStart('11:00');
+                  setNewSessionTimeOutEnd('12:00');
+                }}
+                className={`rounded-xl border py-2 px-2 text-center text-xs font-bold transition-all cursor-pointer ${
+                  newSessionName.toLowerCase().includes('morning')
+                    ? 'border-[#7026B7] bg-[#FAF7FD] text-[#7026B7]'
+                    : 'border-[#E5E0EB] bg-white text-[#756883] hover:border-slate-300'
+                }`}
+              >
+                Morning
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewSessionName('Afternoon Session');
+                  setNewSessionTimeInStart('13:00');
+                  setNewSessionTimeInEnd('14:30');
+                  setNewSessionTimeOutStart('16:30');
+                  setNewSessionTimeOutEnd('17:30');
+                }}
+                className={`rounded-xl border py-2 px-2 text-center text-xs font-bold transition-all cursor-pointer ${
+                  newSessionName.toLowerCase().includes('afternoon')
+                    ? 'border-[#7026B7] bg-[#FAF7FD] text-[#7026B7]'
+                    : 'border-[#E5E0EB] bg-white text-[#756883] hover:border-slate-300'
+                }`}
+              >
+                Afternoon
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewSessionName('Evening Session');
+                  setNewSessionTimeInStart('18:00');
+                  setNewSessionTimeInEnd('19:30');
+                  setNewSessionTimeOutStart('20:30');
+                  setNewSessionTimeOutEnd('21:30');
+                }}
+                className={`rounded-xl border py-2 px-2 text-center text-xs font-bold transition-all cursor-pointer ${
+                  newSessionName.toLowerCase().includes('evening')
+                    ? 'border-[#7026B7] bg-[#FAF7FD] text-[#7026B7]'
+                    : 'border-[#E5E0EB] bg-white text-[#756883] hover:border-slate-300'
+                }`}
+              >
+                Evening
+              </button>
+            </div>
+          </div>
+
+          <Input
+            label="Session Name"
+            placeholder="e.g. Morning Session, Afternoon Session, Keynote"
+            value={newSessionName}
+            onChange={(e) => setNewSessionName(e.target.value)}
+            required
+          />
+
+          {/* Time-In Window */}
+          <div className="rounded-xl border border-[#E5E0EB] bg-[#FAF7FD]/50 p-3.5 space-y-2.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#7026B7]">
+              <Clock className="h-3.5 w-3.5" />
+              <span>Time-In Window</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Time-In Opens"
+                type="time"
+                value={newSessionTimeInStart}
+                onChange={(e) => setNewSessionTimeInStart(e.target.value)}
+                required
+              />
+              <Input
+                label="Time-In Closes"
+                type="time"
+                value={newSessionTimeInEnd}
+                onChange={(e) => setNewSessionTimeInEnd(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Time-Out Window */}
+          <div className="rounded-xl border border-[#E5E0EB] bg-[#FAF7FD]/50 p-3.5 space-y-2.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#7026B7]">
+              <Clock className="h-3.5 w-3.5" />
+              <span>Time-Out Window</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Time-Out Opens"
+                type="time"
+                value={newSessionTimeOutStart}
+                onChange={(e) => setNewSessionTimeOutStart(e.target.value)}
+                required
+              />
+              <Input
+                label="Time-Out Closes"
+                type="time"
+                value={newSessionTimeOutEnd}
+                onChange={(e) => setNewSessionTimeOutEnd(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E5E0EB]">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setAddingSessionToDay(null)}
+              disabled={isSavingNewSession}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              isLoading={isSavingNewSession}
+            >
+              Add Session
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Create Event Flow Modal */}
       <CreateEventModal
