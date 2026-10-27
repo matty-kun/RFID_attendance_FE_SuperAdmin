@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Clock, Calendar, Check, AlertCircle } from 'lucide-react';
+import { Calendar, Check, AlertCircle } from 'lucide-react';
 import { Drawer } from '../../../components/common/Drawer';
 import { TimePicker } from '../../../components/common/TimePicker';
 
@@ -139,34 +139,9 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
           ? 'Edit Time-OUT Window'
           : 'Edit Time Window'
       }
-      description={
-        windowType === 'IN'
-          ? 'Configure arrival scanning window (Time-IN)'
-          : windowType === 'OUT'
-          ? 'Configure departure scanning window (Time-OUT)'
-          : 'Configure attendance scanning window'
-      }
-      icon={<Clock className="h-5 w-5" />}
       contextBox={
-        <div className="rounded-2xl border border-[#E5E0EB] bg-[#F9F7FA] p-3.5 space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#24133F]">{sessionTitle}</span>
-            {windowType === 'IN' && (
-              <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-                Time-IN Window (Arrivals)
-              </span>
-            )}
-            {windowType === 'OUT' && (
-              <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200">
-                Time-OUT Window (Departures)
-              </span>
-            )}
-            {windowType === 'Session' && (
-              <span className="rounded-full bg-purple-50 px-2.5 py-0.5 text-[10px] font-bold text-[#7026B7] border border-purple-200">
-                Full Window
-              </span>
-            )}
-          </div>
+        <div className="rounded-2xl border border-[#E5E0EB] bg-[#F9F7FA] p-3.5 space-y-1">
+          <p className="text-xs font-bold text-[#24133F]">{sessionTitle}</p>
           {dateStr && (
             <div className="flex items-center gap-1.5 text-xs text-[#756883]">
               <Calendar className="h-3.5 w-3.5" />
