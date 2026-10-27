@@ -479,20 +479,20 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   type="button"
                   onClick={() => setIsArchiveConfirmOpen(true)}
                   title="Archive Student"
-                  className="flex h-9 items-center gap-1.5 px-3 rounded-xl bg-white/80 hover:bg-white text-[#756883] hover:text-rose-600 shadow-xs active:scale-95 transition-all text-xs font-bold cursor-pointer"
+                  aria-label="Archive Student"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-[#756883] hover:text-rose-600 shadow-xs active:scale-95 transition-all cursor-pointer"
                 >
                   <Archive className="h-4 w-4" />
-                  <span>Archive</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={() => onRestoreStudent?.(currentStudent.id)}
                   title="Restore Student to Active Roster"
-                  className="flex h-9 items-center gap-1.5 px-3 rounded-xl bg-white/80 hover:bg-white text-emerald-700 shadow-xs active:scale-95 transition-all text-xs font-bold cursor-pointer"
+                  aria-label="Restore Student to Active Roster"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-emerald-700 shadow-xs active:scale-95 transition-all cursor-pointer"
                 >
                   <ArchiveRestore className="h-4 w-4" />
-                  <span>Restore</span>
                 </button>
               )}
 
