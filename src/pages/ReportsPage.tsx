@@ -559,7 +559,7 @@ export function ReportsPage() {
         </section>
 
         {/* Card 2: Session Breakdown */}
-        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6">
+        <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white p-6">
           <div>
             <h2 className="text-lg font-bold text-[#24133F]">Session Breakdown</h2>
             <p className="text-xs text-[#756883] mt-0.5">Recorded scans per session</p>

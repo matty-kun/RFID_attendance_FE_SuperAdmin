@@ -60,4 +60,6 @@ export const request = {
     api.patch(url, data) as unknown as Promise<T>,
   put: <T>(url: string, data?: unknown): Promise<T> =>
     api.put(url, data) as unknown as Promise<T>,
+  delete: <T>(url: string, config?: AxiosRequestConfig): Promise<T> =>
+    api.delete(url, config) as unknown as Promise<T>,
 };

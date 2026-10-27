@@ -7,7 +7,7 @@ import { useAuth } from '../../features/auth';
 const navigation = [
   { name: 'Overview', path: '/overview', icon: LayoutGrid },
   { name: 'Audit Log', path: '/audit-log', icon: History },
-  { name: 'Attendance', path: '/attendance', icon: CalendarDays },
+  { name: 'Events & Attendance', path: '/attendance', icon: CalendarDays },
   { name: 'Students', path: '/students', icon: UsersRound },
   { name: 'Reports', path: '/reports', icon: ChartNoAxesColumn },
   { name: 'Admins', path: '/admins', icon: UserCog },
@@ -24,6 +24,50 @@ const commands = [
   { name: 'Help', path: '', icon: CircleHelp, keywords: 'support guide keyboard shortcuts', action: 'help' },
   { name: 'Notifications', path: '', icon: Bell, keywords: 'alerts updates bell', action: 'notifications' },
 ];
+
+const labelWidths: Record<string, number> = {
+  'Overview': 66,
+  'Audit Log': 68,
+  'Events & Attendance': 140,
+  'Students': 64,
+  'Reports': 60,
+  'Admins': 56,
+};
+
+function NavTab({ name, path, icon: Icon }: { name: string; path: string; icon: React.ComponentType<{ className?: string }> }) {
+  const maxWidth = labelWidths[name] ?? 64;
+
+  return (
+    <NavLink
+      to={path}
+      title={name}
+      aria-label={name}
+      className={({ isActive }) => cn(
+        'group relative flex h-8 shrink-0 items-center justify-center rounded-xl px-3 text-[12px] font-bold select-none cursor-pointer focus-visible:outline-2 focus-visible:outline-brand-700 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
+        isActive
+          ? 'bg-white text-[#7026B7] shadow-sm border border-slate-200/80'
+          : 'bg-transparent hover:bg-white/60 text-[#756883] hover:text-[#7026B7] border border-transparent active:scale-95'
+      )}
+    >
+      {({ isActive }) => (
+        <>
+          <Icon className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-300 ease-out', isActive ? 'scale-105 text-[#7026B7]' : 'scale-100 text-[#756883] group-hover:scale-110 group-hover:text-[#7026B7]')} />
+          <span
+            style={{
+              maxWidth: isActive ? `${maxWidth}px` : '0px',
+            }}
+            className={cn(
+              'inline-block overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none',
+              isActive ? 'opacity-100 ml-1.5' : 'opacity-0 ml-0'
+            )}
+          >
+            {name}
+          </span>
+        </>
+      )}
+    </NavLink>
+  );
+}
 
 export function Header() {
   const pagesDialog = useRef<HTMLDialogElement>(null);
@@ -68,19 +112,9 @@ export function Header() {
     <NavLink to="/overview" className="z-10 text-[30px] font-extrabold leading-none tracking-tight text-[#24133F] md:text-[34px]">Presnt</NavLink>
 
     <nav aria-label="Main navigation" className="order-3 flex max-w-full gap-1.5 overflow-x-auto rounded-xl bg-[#F2F1F5] p-1.5 md:absolute md:left-[calc(50%+32px)] md:order-2 md:-translate-x-1/2">
-      {navigation.map(({ name, path, icon: Icon }) => <NavLink
-        key={path}
-        to={path}
-        title={name}
-        aria-label={name}
-        className={({ isActive }) => cn(
-          'flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-semibold transition-all duration-300 ease-out focus-visible:outline-2 focus-visible:outline-brand-700 motion-safe:hover:-translate-y-0.5',
-          isActive ? 'border-slate-200 bg-white text-[#24133F] shadow-sm motion-safe:animate-nav-settle' : 'border-transparent bg-white text-[#756883] hover:text-brand-700'
-        )}
-      >{({ isActive }) => <>
-        <Icon className="h-3.5 w-3.5" />
-        {isActive && <span>{name}</span>}
-      </>}</NavLink>)}
+      {navigation.map((item) => (
+        <NavTab key={item.path} name={item.name} path={item.path} icon={item.icon} />
+      ))}
     </nav>
 
     <div className="z-10 flex items-center gap-2">

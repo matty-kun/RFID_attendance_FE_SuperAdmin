@@ -6,16 +6,20 @@ import { AddStudentDrawer } from './AddStudentDrawer';
 import { RapidCardScanDrawer } from './RapidCardScanDrawer';
 import { BulkStudentImportModal } from './BulkStudentImportModal';
 import { RegisterActionsDropdown } from './RegisterActionsDropdown';
-import { CardPoolDrawer } from './CardPoolDrawer';
+import { StudentProfileDrawer } from './StudentProfileDrawer';
+import type { StudentRecord } from '../models';
 import {
   Search,
-  Zap,
-  Link as LinkIcon,
-  Unlink,
   Radio,
-  RefreshCw,
+  ArchiveRestore,
+  Loader2,
+  GraduationCap,
+  Users,
+  UserCheck,
+  Archive,
 } from 'lucide-react';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
+import hawiFindingImg from '../../../assets/illustrations/Hawi Finding.png';
 
 export const StudentsView: React.FC = () => {
   const {
@@ -29,8 +33,6 @@ export const StudentsView: React.FC = () => {
     setPage,
     total,
     error,
-    inventoryCards,
-    unassignedCards,
     cardlessStudents,
     isAddDrawerOpen,
     setIsAddDrawerOpen,
@@ -38,38 +40,55 @@ export const StudentsView: React.FC = () => {
     setIsRapidScanOpen,
     isBulkImportOpen,
     setIsBulkImportOpen,
+    archivedStudentIds,
+    handleArchiveStudent,
+    handleRestoreStudent,
     handleRegisterStudent,
-    handleCardScannedForInventory,
     handleCardScannedForStudent,
-    handleAutoPairSequential,
     handleBulkImport,
     handleQuickPair,
     handleUnlinkCard,
+    handleUpdateStudent,
     loadStudents,
   } = useStudentsViewModel();
 
-  const [isCardPoolOpen, setIsCardPoolOpen] = useState(false);
+  const [studentTab, setStudentTab] = useState<'active' | 'archived'>('active');
+  const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<StudentRecord | null>(null);
+  const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
   const [courseFilter, setCourseFilter] = useState('all');
-  const [rfidFilter, setRfidFilter] = useState('all');
 
-  // Stats calculation from real backend records
-  const verifiedCount = useMemo(() => students.filter((s) => Boolean(s.rfid_uid)).length, [students]);
-  const unverifiedCount = useMemo(() => students.filter((s) => !s.rfid_uid).length, [students]);
-  const pairableCount = useMemo(
-    () => Math.min(unassignedCards.length, cardlessStudents.length),
-    [unassignedCards.length, cardlessStudents.length]
+  // Split students into active and archived cohorts
+  const activeStudents = useMemo(
+    () => filteredStudents.filter((s) => !archivedStudentIds.includes(s.id)),
+    [filteredStudents, archivedStudentIds]
   );
+
+  const archivedStudents = useMemo(
+    () => filteredStudents.filter((s) => archivedStudentIds.includes(s.id)),
+    [filteredStudents, archivedStudentIds]
+  );
+
+  // Active students stats
+  const verifiedCount = useMemo(() => activeStudents.filter((s) => Boolean(s.rfid_uid)).length, [activeStudents]);
+  const unverifiedCount = useMemo(() => activeStudents.filter((s) => !s.rfid_uid).length, [activeStudents]);
 
   const courses = useMemo(
     () => [...new Set(students.map((s) => s.course).filter((c): c is string => Boolean(c)))].sort(),
     [students]
   );
 
-  const visibleStudents = filteredStudents.filter(
-    (student) =>
-      (courseFilter === 'all' || student.course === courseFilter) &&
-      (rfidFilter === 'all' || (rfidFilter === 'verified' ? Boolean(student.rfid_uid) : !student.rfid_uid))
+  const currentCohort = studentTab === 'active' ? activeStudents : archivedStudents;
+
+  // Filtered rows for current cohort
+  const visibleStudents = currentCohort.filter(
+    (student) => courseFilter === 'all' || student.course === courseFilter
   );
+
+  // Keep active profile student synced with latest student data
+  const activeProfileStudent = useMemo(() => {
+    if (!selectedStudentForProfile) return null;
+    return students.find((s) => s.id === selectedStudentForProfile.id) || selectedStudentForProfile;
+  }, [selectedStudentForProfile, students]);
 
   const yearLabel = (year?: number | null) =>
     year ? `${year}${year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} Year` : '—';
@@ -83,64 +102,52 @@ export const StudentsView: React.FC = () => {
       .join('');
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] space-y-5 text-[#24133F]">
+    <div className="mx-auto w-full max-w-[1180px] space-y-5 text-slate-900">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-extrabold leading-tight text-[#24133F]">Students &amp; RFID Cards</h1>
-          <p className="text-xs text-[#756883] mt-0.5">
-            Super Admin Registration Suite · continuous desktop scanner, bulk auto-pair, and inventory roster.
+          <h1 className="text-[22px] font-extrabold leading-tight text-slate-900">Students</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Super Admin Registration Suite · continuous desktop scanner, bulk import, and student roster.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => void loadStudents()}
-            isLoading={isLoading}
-            leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
-          >
-            Refresh
-          </Button>
           <RegisterActionsDropdown
             onAddStudent={() => setIsAddDrawerOpen(true)}
             onRapidScan={() => setIsRapidScanOpen(true)}
             onBulkImport={() => setIsBulkImportOpen(true)}
-            onAutoPair={handleAutoPairSequential}
-            onOpenCardPool={() => setIsCardPoolOpen(true)}
-            pairableCount={pairableCount}
           />
         </div>
       </div>
 
       {/* KPI Headline Metrics */}
-      <div className="rounded-2xl border border-[#E5E0EB] bg-white grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-[#E5E0EB]">
+      <div className="rounded-2xl border border-slate-200 bg-white grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
         <div className="p-4 sm:p-5">
-          <p className="text-xs font-medium text-[#756883]">Total students</p>
-          <p className="text-2xl font-bold tracking-tight text-[#24133F] mt-1 tabular-nums">
-            {isLoading && students.length === 0 ? '—' : total.toLocaleString()}
+          <p className="text-xs font-medium text-slate-500">Active students</p>
+          <p className="text-2xl font-bold tracking-tight text-slate-900 mt-1 tabular-nums">
+            {isLoading && students.length === 0 ? '—' : activeStudents.length.toLocaleString()}
           </p>
-          <p className="text-[11px] text-[#A59AAB] mt-0.5">Enrolled student roster</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Enrolled active roster</p>
         </div>
 
         <div className="p-4 sm:p-5">
-          <p className="text-xs font-medium text-[#756883]">Verified RFID cards (current page)</p>
+          <p className="text-xs font-medium text-slate-500">Verified RFID cards</p>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold tracking-tight text-[#16883F] tabular-nums">
+            <span className="text-2xl font-bold tracking-tight text-emerald-600 tabular-nums">
               {isLoading && students.length === 0 ? '—' : verifiedCount.toLocaleString()}
             </span>
             <span className="text-[11px] font-semibold text-emerald-700">
-              {students.length > 0 ? `${Math.round((verifiedCount / students.length) * 100)}%` : '0%'}
+              {activeStudents.length > 0 ? `${Math.round((verifiedCount / activeStudents.length) * 100)}%` : '0%'}
             </span>
           </div>
-          <p className="text-[11px] text-[#A59AAB] mt-0.5">Active cards in circulation</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Active cards in circulation</p>
         </div>
 
         <div className="p-4 sm:p-5">
-          <p className="text-xs font-medium text-[#756883]">No card assigned (current page)</p>
+          <p className="text-xs font-medium text-slate-500">No card assigned</p>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold tracking-tight text-[#24133F] tabular-nums">
+            <span className="text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
               {isLoading && students.length === 0 ? '—' : unverifiedCount.toLocaleString()}
             </span>
             {unverifiedCount > 0 && (
@@ -149,80 +156,68 @@ export const StudentsView: React.FC = () => {
               </span>
             )}
           </div>
-          <p className="text-[11px] text-[#A59AAB] mt-0.5">
-            {unverifiedCount === 0 ? 'All listed students equipped' : 'Awaiting card pairing'}
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            {unverifiedCount === 0 ? 'All active students equipped' : 'Awaiting card pairing'}
           </p>
         </div>
-
-        {/* Interactive KPI Card: Card Pool Stock */}
-        <button
-          type="button"
-          onClick={() => setIsCardPoolOpen(true)}
-          className="p-4 sm:p-5 text-left transition-colors hover:bg-[#FAF8FC] group rounded-b-2xl lg:rounded-b-none lg:rounded-r-2xl cursor-pointer"
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-[#756883] group-hover:text-[#7026B7] transition-colors">
-              Card pool stock
-            </p>
-            <span className="text-[11px] font-semibold text-[#7026B7] opacity-80 group-hover:opacity-100 transition-opacity">
-              View pool &rarr;
-            </span>
-          </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold tracking-tight text-[#7026B7] tabular-nums">
-              {unassignedCards.length.toLocaleString()}
-            </span>
-            <span className="text-[11px] font-semibold text-[#7026B7]">
-              {unassignedCards.length > 0 ? 'In stock' : 'Empty'}
-            </span>
-          </div>
-          <p className="text-[11px] text-[#A59AAB] mt-0.5">
-            {unassignedCards.length > 0 ? `${unassignedCards.length} ready for new students` : 'Scan blank cards to add to pool'}
-          </p>
-        </button>
       </div>
 
-      {/* Main Student Section */}
+      {/* Main Section */}
       <div className="space-y-3">
-        {/* Controls Bar */}
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[310px]">
-            <Search className="h-4 w-4" />
-            <span className="sr-only">Search students</span>
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(event) => {
-                setPage(1);
-                setSearchQuery(event.target.value);
-              }}
-              placeholder="Search by name, ID or RFID…"
-              className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
+        {/* Toolbar: Search & Filters (Matching icons and styling) */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 flex-1">
+            <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-slate-500 sm:max-w-[280px]">
+              <Search className="h-4 w-4 shrink-0 text-slate-400" />
+              <span className="sr-only">Search</span>
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => {
+                  setPage(1);
+                  setSearchQuery(event.target.value);
+                }}
+                placeholder="Search by name, ID or RFID…"
+                className="w-full bg-transparent text-xs text-slate-900 outline-none placeholder:text-slate-400"
+              />
+            </label>
+
+            <Dropdown
+              value={courseFilter}
+              onChange={(val) => setCourseFilter(val)}
+              icon={<GraduationCap className="h-4 w-4" />}
+              options={[
+                { value: 'all', label: 'All Courses', icon: <GraduationCap className="h-3.5 w-3.5 text-slate-400" /> },
+                ...courses.map((c) => ({
+                  value: c,
+                  label: c,
+                  icon: <GraduationCap className="h-3.5 w-3.5 text-brand-700" />,
+                })),
+              ]}
             />
-          </label>
 
-          <Dropdown
-            value={courseFilter}
-            onChange={(val) => setCourseFilter(val)}
-            options={[
-              { value: 'all', label: 'All Courses' },
-              ...courses.map((c) => ({ value: c, label: c })),
-            ]}
-          />
-
-          <Dropdown
-            value={rfidFilter}
-            onChange={(val) => setRfidFilter(val)}
-            options={[
-              { value: 'all', label: 'All RFID status' },
-              { value: 'verified', label: 'Assigned / Verified' },
-              { value: 'no-card', label: 'Unassigned (No card)' },
-            ]}
-          />
+            <Dropdown
+              value={studentTab}
+              onChange={(val: any) => setStudentTab(val)}
+              icon={studentTab === 'active' ? <Users className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+              options={[
+                {
+                  value: 'active',
+                  label: `Active Students (${activeStudents.length})`,
+                  icon: <UserCheck className="h-3.5 w-3.5 text-brand-700" />,
+                },
+                {
+                  value: 'archived',
+                  label: `Archived (${archivedStudents.length})`,
+                  icon: <Archive className="h-3.5 w-3.5 text-slate-500" />,
+                },
+              ]}
+            />
+          </div>
         </div>
 
         {/* Students Table */}
-        <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2.5">
           {error && (
             <div role="alert" className="mb-2 flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
               <span>{error}</span>
@@ -233,132 +228,132 @@ export const StudentsView: React.FC = () => {
           )}
           <table className="w-full min-w-[760px] text-left text-xs">
             <thead>
-              <tr className="border-b border-[#E9EDF4] text-xs font-medium text-[#756883]">
+              <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500">
                 <th className="px-3 py-3">Student</th>
                 <th className="px-3 py-3">Course</th>
                 <th className="px-3 py-3">Year level</th>
                 <th className="px-3 py-3">RFID card</th>
-                <th className="px-3 py-3">Status</th>
                 <th className="px-3 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {visibleStudents.map((student) => (
-                <tr key={student.id} className="border-b border-[#E9EDF4] last:border-b-0 hover:bg-[#FAF8FC]">
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#DFE8F8] text-[10px] font-extrabold text-[#294B85]">
-                        {initials(student.name)}
-                      </span>
-                      <div>
-                        <p className="font-bold text-[#24133F] leading-snug">{student.name}</p>
-                        <p className="text-[10px] font-mono text-[#756883]">{student.student_id}</p>
+              {visibleStudents.map((student) => {
+                const isStudentArchived = archivedStudentIds.includes(student.id);
+                return (
+                  <tr
+                    key={student.id}
+                    onClick={() => {
+                      setSelectedStudentForProfile(student);
+                      setIsProfileDrawerOpen(true);
+                    }}
+                    className="border-b border-slate-200 last:border-b-0 hover:bg-slate-50 cursor-pointer transition-colors group"
+                  >
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[10px] font-extrabold text-brand-700 group-hover:scale-105 transition-transform border border-brand-200/50">
+                          {initials(student.name)}
+                        </span>
+                        <div>
+                          <p className="font-bold text-slate-900 leading-snug group-hover:text-brand-700 transition-colors">
+                            {student.name}
+                          </p>
+                          <p className="text-[10px] font-mono text-slate-500">{student.student_id}</p>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 font-semibold text-[#24133F]">{student.course || '—'}</td>
-                  <td className="px-3 py-3 text-[#756883]">{yearLabel(student.year_level)}</td>
-                  <td className="px-3 py-3">
-                    {student.rfid_uid ? (
-                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-900 font-mono text-[11px] font-semibold">
-                        <Radio className="w-3 h-3 text-[#7026B7]" />
-                        {student.rfid_uid}
-                      </div>
-                    ) : (
-                      <span className="text-[#A59AAB] text-[11px] italic">No card linked</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1 font-semibold ${
-                        student.rfid_uid
-                          ? 'bg-[#E4F7EB] text-[#16883F]'
-                          : 'bg-[#FFF2DE] text-[#E58A00]'
-                      }`}
-                    >
-                      <i
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          student.rfid_uid ? 'bg-[#17B556]' : 'bg-[#F59E0B]'
-                        }`}
-                      />
-                      {student.rfid_uid ? 'Verified' : 'No card'}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    {student.rfid_uid ? (
-                      <button
-                        type="button"
-                        onClick={() => handleUnlinkCard(student.id)}
-                        title="Unlinking existing student RFID cards is not supported by the backend API"
-                        aria-label={`Unlink RFID card from ${student.name} unavailable`}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg opacity-60 cursor-not-allowed"
-                      >
-                        <Unlink className="w-3 h-3" />
-                        Linked
-                      </button>
-                    ) : (
-                      <div className="flex items-center justify-end gap-1.5">
-                        {unassignedCards.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => handleQuickPair(student.id, unassignedCards[0].uid)}
-                            title="Updating existing student RFID cards is not supported by the backend API"
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg opacity-60 cursor-not-allowed"
-                          >
-                            <LinkIcon className="w-3 h-3" />
-                            Pair Pool #{unassignedCards[0].cardNumber}
-                          </button>
-                        )}
+                    </td>
+                    <td className="px-3 py-3 font-semibold text-slate-900">{student.course || '—'}</td>
+                    <td className="px-3 py-3 text-slate-500">{yearLabel(student.year_level)}</td>
+
+                    {/* RFID Card column */}
+                    <td className="px-3 py-3">
+                      {student.rfid_uid ? (
+                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-brand-50 border border-brand-200 text-brand-900 font-mono text-[11px] font-semibold">
+                          <Radio className="w-3 h-3 text-brand-700" />
+                          {student.rfid_uid}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 text-[11px] italic">
+                          {isStudentArchived ? 'Unlinked (Archived)' : 'No card linked'}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Actions column */}
+                    <td className="px-3 py-3 text-right">
+                      {isStudentArchived ? (
                         <button
                           type="button"
-                          onClick={() => setIsRapidScanOpen(true)}
-                          title="Scan blank cards into pool"
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7026B7] bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-1 rounded-lg transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleRestoreStudent(student.id);
+                          }}
+                          title="Restore student to active roster"
+                          className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1 rounded-xl transition-all cursor-pointer shadow-2xs"
                         >
-                          <Zap className="w-3 h-3" />
-                          Scan Pool
+                          <ArchiveRestore className="w-3.5 h-3.5" />
+                          Restore
                         </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                      ) : (
+                        <div className="flex items-center justify-end">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedStudentForProfile(student);
+                              setIsProfileDrawerOpen(true);
+                            }}
+                            title={student.rfid_uid ? 'View student profile & attendance history' : 'Link RFID card to student'}
+                            className={`inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1 rounded-xl transition-all cursor-pointer shadow-2xs ${
+                              student.rfid_uid
+                                ? 'text-slate-700 bg-white hover:bg-brand-50 hover:text-brand-700 hover:border-brand-200 border border-slate-200'
+                                : 'text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200'
+                            }`}
+                          >
+                            {student.rfid_uid ? 'View Profile →' : 'Link Card →'}
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
 
           {!visibleStudents.length && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <img
-                src={hawiQuestionImg}
-                alt="No students found"
+                src={isLoading ? hawiFindingImg : hawiQuestionImg}
+                alt={isLoading ? 'Loading students...' : 'No students found'}
                 className="w-24 h-24 object-contain mb-3"
               />
-              <p className="text-sm font-bold text-[#24133F]">
-                {isLoading ? 'Loading students…' : error ? 'Unable to load students.' : 'No students found.'}
-              </p>
-              <p className="text-xs text-[#756883] max-w-xs mt-1">
+              <div className="flex items-center justify-center gap-2">
+                {isLoading && <Loader2 className="h-4 w-4 animate-spin text-brand-600" />}
+                <p className="text-sm font-bold text-slate-900">
+                  {isLoading
+                    ? 'Loading students…'
+                    : error
+                    ? 'Unable to load students.'
+                    : studentTab === 'archived'
+                    ? 'No archived students.'
+                    : 'No active students found.'}
+                </p>
+              </div>
+              <p className="text-xs text-slate-500 max-w-xs mt-1">
                 {error
                   ? 'Check your backend connection and try again.'
-                  : searchQuery || courseFilter !== 'all' || rfidFilter !== 'all'
-                  ? 'Try clearing or relaxing your filters.'
+                  : studentTab === 'archived'
+                  ? 'Students you archive will appear here safely preserved.'
+                  : searchQuery || courseFilter !== 'all'
+                  ? 'Try clearing or relaxing your search filters.'
                   : 'Get started by adding a student or importing a bulk CSV roster.'}
               </p>
-              {!isLoading && !error && !searchQuery && courseFilter === 'all' && (
-                <div className="flex items-center gap-2 mt-4">
-                  <Button variant="primary" size="sm" onClick={() => setIsAddDrawerOpen(true)}>
-                    + Add Student
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={() => setIsBulkImportOpen(true)}>
-                    Bulk Import CSV
-                  </Button>
-                </div>
-              )}
             </div>
           )}
 
-          <div className="flex items-center justify-between gap-3 border-t border-[#E9EDF4] px-3 py-3 text-xs text-[#756883]">
+          <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-3 py-3 text-xs text-slate-500">
             <span>
-              {total.toLocaleString()} students · Page {page} of {Math.max(1, Math.ceil(total / 25))}
+              {currentCohort.length.toLocaleString()} {studentTab} students · Page {page} of {Math.max(1, Math.ceil(total / 25))}
             </span>
             <div className="flex gap-2">
               <Button
@@ -382,19 +377,24 @@ export const StudentsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Slide-in Drawer: Card Inventory Pool */}
-      <CardPoolDrawer
-        isOpen={isCardPoolOpen}
-        onClose={() => setIsCardPoolOpen(false)}
-        inventoryCards={inventoryCards}
+      {/* Slide-in Drawer: Student Profile & Scan History */}
+      <StudentProfileDrawer
+        isOpen={isProfileDrawerOpen}
+        onClose={() => setIsProfileDrawerOpen(false)}
+        student={activeProfileStudent}
+        onUnlinkCard={handleUnlinkCard}
+        onQuickPair={handleQuickPair}
+        onUpdateStudent={handleUpdateStudent}
         onOpenRapidScan={() => setIsRapidScanOpen(true)}
+        isArchived={activeProfileStudent ? archivedStudentIds.includes(activeProfileStudent.id) : false}
+        onArchiveStudent={handleArchiveStudent}
+        onRestoreStudent={handleRestoreStudent}
       />
 
       {/* Slide-in Drawer: Add Single Student */}
       <AddStudentDrawer
         isOpen={isAddDrawerOpen}
         onClose={() => setIsAddDrawerOpen(false)}
-        availableCards={unassignedCards}
         onSubmit={handleRegisterStudent}
         isSubmitting={isSubmitting}
       />
@@ -404,16 +404,13 @@ export const StudentsView: React.FC = () => {
         isOpen={isRapidScanOpen}
         onClose={() => setIsRapidScanOpen(false)}
         cardlessStudents={cardlessStudents}
-        onCardScannedForInventory={handleCardScannedForInventory}
         onCardScannedForStudent={handleCardScannedForStudent}
-        existingInventoryCount={inventoryCards.length}
       />
 
-      {/* Modal: Bulk Student Import with Sequential Auto-Pairing */}
+      {/* Modal: Bulk Student Import */}
       <BulkStudentImportModal
         isOpen={isBulkImportOpen}
         onClose={() => setIsBulkImportOpen(false)}
-        availableCards={unassignedCards}
         onImport={handleBulkImport}
       />
     </div>

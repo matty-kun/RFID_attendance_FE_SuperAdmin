@@ -5,12 +5,11 @@ import { Input } from '../../../components/common/Input';
 import { soundManager } from '../../../utils/audioFeedback';
 import { toast } from '../../../context';
 import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
-import type { RegisterStudentPayload, InventoryCard } from '../models';
+import type { RegisterStudentPayload } from '../models';
 
 export interface AddStudentDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  availableCards: InventoryCard[];
   onSubmit: (payload: RegisterStudentPayload) => Promise<void>;
   isSubmitting?: boolean;
 }
@@ -18,7 +17,6 @@ export interface AddStudentDrawerProps {
 export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
   isOpen,
   onClose,
-  availableCards,
   onSubmit,
   isSubmitting = false,
 }) => {
@@ -28,9 +26,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
   const [temporaryPassword, setTemporaryPassword] = useState('');
   const [course, setCourse] = useState('BS Information Technology');
   const [yearLevel, setYearLevel] = useState(1);
-  const [cardMode, setCardMode] = useState<'scan' | 'inventory'>('scan');
   const [scannedUid, setScannedUid] = useState('');
-  const [selectedInventoryUid, setSelectedInventoryUid] = useState('');
 
   const scannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,15 +51,6 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
     []
   );
 
-  const inventoryOptions = useMemo(
-    () =>
-      availableCards.map((card) => ({
-        value: card.uid,
-        label: `Card #${card.cardNumber} · ${card.uid}`,
-      })),
-    [availableCards]
-  );
-
   useEffect(() => {
     if (isOpen) {
       setStudentId('');
@@ -73,12 +60,10 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       setCourse('BS Information Technology');
       setYearLevel(1);
       setScannedUid('');
-      setSelectedInventoryUid(availableCards[0]?.uid || '');
-      setCardMode('scan');
       const timer = setTimeout(() => scannerInputRef.current?.focus(), 150);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, availableCards]);
+  }, [isOpen]);
 
   const handleScannerKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -107,20 +92,10 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
     if (e) e.preventDefault();
     if (!validateCommonFields()) return;
 
-    let finalUid: string | undefined = undefined;
-    if (cardMode === 'scan') {
-      if (!scannedUid.trim()) {
-        toast.error('Tap card on scanner or click "Issue card later".');
-        scannerInputRef.current?.focus();
-        return;
-      }
-      finalUid = scannedUid.trim();
-    } else if (cardMode === 'inventory') {
-      if (!selectedInventoryUid) {
-        toast.error('Select a card from pool or click "Issue card later".');
-        return;
-      }
-      finalUid = selectedInventoryUid;
+    if (!scannedUid.trim()) {
+      toast.error('Tap card on scanner or click "Issue card later".');
+      scannerInputRef.current?.focus();
+      return;
     }
 
     await onSubmit({
@@ -130,7 +105,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       temporary_password: temporaryPassword,
       course,
       year_level: yearLevel,
-      rfid_uid: finalUid,
+      rfid_uid: scannedUid.trim(),
     });
   };
 
@@ -148,7 +123,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
     });
   };
 
-  const hasCardSelected = (cardMode === 'scan' && Boolean(scannedUid.trim())) || (cardMode === 'inventory' && Boolean(selectedInventoryUid));
+  const hasCardSelected = Boolean(scannedUid.trim());
 
   return (
     <Drawer
@@ -193,97 +168,35 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
               className="h-12 w-12 shrink-0 object-contain drop-shadow-xs select-none"
             />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#24133F]">
-                  Physical RFID card
-                </span>
-                <span className="text-[11px] font-semibold text-[#7026B7]">
-                  {availableCards.length} ready in pool
-                </span>
-              </div>
+              <span className="text-xs font-bold text-[#24133F]">
+                Physical RFID card (optional)
+              </span>
               <p className="text-[11px] text-[#756883] mt-0.5">
-                Tap scanner now or assign from available inventory
+                Tap card on scanner or enter UID to link upon registration
               </p>
             </div>
           </div>
 
-          {/* Mode Switcher */}
-          <div className="flex rounded-xl bg-[#F6F4F8] p-1 border border-[#E5E0EB]">
-            <button
-              type="button"
-              onClick={() => {
-                setCardMode('scan');
-                setTimeout(() => scannerInputRef.current?.focus(), 50);
-              }}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
-                cardMode === 'scan'
-                  ? 'bg-white text-[#7026B7] font-bold shadow-xs'
-                  : 'text-[#756883] hover:text-[#24133F]'
-              }`}
-            >
-              Tap reader
-            </button>
-            <button
-              type="button"
-              onClick={() => setCardMode('inventory')}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
-                cardMode === 'inventory'
-                  ? 'bg-white text-[#7026B7] font-bold shadow-xs'
-                  : 'text-[#756883] hover:text-[#24133F]'
-              }`}
-            >
-              From pool ({availableCards.length})
-            </button>
-          </div>
-
-          {/* Mode 1: USB Reader Capture */}
-          {cardMode === 'scan' && (
-            <div className="space-y-1.5">
-              <input
-                ref={scannerInputRef}
-                type="text"
-                placeholder="Tap card on USB desktop scanner..."
-                value={scannedUid}
-                onChange={(e) => setScannedUid(e.target.value)}
-                onKeyDown={handleScannerKeyDown}
-                className="w-full rounded-xl border border-[#D5CEDD] bg-[#FAF8FC] px-3.5 py-2.5 text-xs font-mono font-bold text-[#24133F] placeholder:text-[#A59AAB] focus:border-[#7026B7] focus:bg-white focus:outline-none"
-              />
-              <p className="text-[11px] text-[#756883]">
-                {scannedUid ? (
-                  <span className="text-emerald-700 font-semibold">
-                    ✓ Card detected: {scannedUid}
-                  </span>
-                ) : (
-                  'Scanner captures card keystroke automatically on swipe.'
-                )}
-              </p>
-            </div>
-          )}
-
-          {/* Mode 2: Select from Pool */}
-          {cardMode === 'inventory' && (
-            <div className="space-y-1.5">
-              {availableCards.length > 0 ? (
-                <>
-                  <Dropdown
-                    value={selectedInventoryUid}
-                    onChange={(val) => setSelectedInventoryUid(val)}
-                    options={inventoryOptions}
-                    placeholder="Select card from pool"
-                    className="w-full"
-                    buttonClassName="w-full h-10 px-3 text-xs font-mono font-bold text-[#24133F]"
-                  />
-                  <p className="text-[11px] text-[#756883]">
-                    Selected card will be linked upon registration.
-                  </p>
-                </>
+          <div className="space-y-1.5">
+            <input
+              ref={scannerInputRef}
+              type="text"
+              placeholder="Tap card on USB desktop scanner or type UID..."
+              value={scannedUid}
+              onChange={(e) => setScannedUid(e.target.value)}
+              onKeyDown={handleScannerKeyDown}
+              className="w-full rounded-xl border border-[#D5CEDD] bg-[#FAF8FC] px-3.5 py-2.5 text-xs font-mono font-bold text-[#24133F] placeholder:text-[#A59AAB] focus:border-[#7026B7] focus:bg-white focus:outline-none"
+            />
+            <p className="text-[11px] text-[#756883]">
+              {scannedUid ? (
+                <span className="text-emerald-700 font-semibold">
+                  ✓ Card detected: {scannedUid}
+                </span>
               ) : (
-                <p className="text-xs text-amber-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
-                  No cards in pool. Switch to "Tap reader" to swipe a new card.
-                </p>
+                'Scanner captures card keystroke automatically on swipe.'
               )}
-            </div>
-          )}
+            </p>
+          </div>
         </div>
 
         {/* BOTTOM SECTION: Student Details */}

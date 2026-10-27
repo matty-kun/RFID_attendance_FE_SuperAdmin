@@ -1,14 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, ChevronDown, UserPlus, Zap, UploadCloud, Link as LinkIcon, Radio } from 'lucide-react';
+import { Plus, ChevronDown, UserPlus, Zap, UploadCloud } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 
 export interface RegisterActionsDropdownProps {
   onAddStudent: () => void;
   onRapidScan: () => void;
   onBulkImport: () => void;
-  onAutoPair: () => void;
-  onOpenCardPool?: () => void;
-  pairableCount: number;
   className?: string;
 }
 
@@ -16,9 +13,6 @@ export const RegisterActionsDropdown: React.FC<RegisterActionsDropdownProps> = (
   onAddStudent,
   onRapidScan,
   onBulkImport,
-  onAutoPair,
-  onOpenCardPool,
-  pairableCount,
   className,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -135,7 +129,7 @@ export const RegisterActionsDropdown: React.FC<RegisterActionsDropdownProps> = (
                     USB Reader
                   </span>
                 </div>
-                <p className="text-[11px] text-[#756883] line-clamp-1">Zero-click continuous swipe to pool or queue</p>
+                <p className="text-[11px] text-[#756883] line-clamp-1">Sequential tap-to-pair for students without a card</p>
               </div>
             </button>
 
@@ -159,64 +153,6 @@ export const RegisterActionsDropdown: React.FC<RegisterActionsDropdownProps> = (
                 <p className="text-[11px] text-[#756883] line-clamp-1">Upload roster file with auto-pairing</p>
               </div>
             </button>
-
-            {/* 4. Auto-Pair Available Cards */}
-            <button
-              type="button"
-              role="menuitem"
-              disabled={pairableCount === 0}
-              onClick={() => handleSelect(onAutoPair)}
-              className={cn(
-                'flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left transition-colors',
-                pairableCount > 0
-                  ? 'hover:bg-emerald-50 text-[#24133F]'
-                  : 'opacity-50 cursor-not-allowed text-[#A59AAB]'
-              )}
-            >
-              <div
-                className={cn(
-                  'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
-                  pairableCount > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'
-                )}
-              >
-                <LinkIcon className="h-4 w-4" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold">Auto-Pair Available Cards</p>
-                  {pairableCount > 0 ? (
-                    <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-md">
-                      {pairableCount} ready
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-medium text-slate-400">None ready</span>
-                  )}
-                </div>
-                <p className="text-[11px] text-[#756883] line-clamp-1">
-                  {pairableCount > 0
-                    ? `Sequential 1-to-1 match with unassigned pool`
-                    : `No unassigned cards or cardless students`}
-                </p>
-              </div>
-            </button>
-
-            {/* 5. View Card Inventory Pool */}
-            {onOpenCardPool && (
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => handleSelect(onOpenCardPool)}
-                className="flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left hover:bg-[#FAF8FC] transition-colors"
-              >
-                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-[#7026B7]">
-                  <Radio className="h-4 w-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-[#24133F]">Card Inventory Pool</p>
-                  <p className="text-[11px] text-[#756883] line-clamp-1">View &amp; manage physical RFID card stock</p>
-                </div>
-              </button>
-            )}
           </div>
         </div>
       )}

@@ -155,7 +155,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         createPortal(
           <div
             className={`fixed bottom-6 left-6 z-[200] flex items-center gap-2.5 rounded-full px-5 py-3 shadow-2xl text-white animate-in slide-in-from-bottom-4 duration-200 ${
-              activeToast.type === 'delete' || activeToast.type === 'error'
+              activeToast.type === 'error'
                 ? 'bg-[#EF3340]'
                 : activeToast.type === 'warning'
                 ? 'bg-[#F59E0B]'
@@ -164,7 +164,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 : 'bg-[#17B556]'
             }`}
           >
-            {activeToast.type === 'delete' || activeToast.type === 'error' ? (
+            {activeToast.type === 'error' ? (
               <X className="h-4 w-4 shrink-0 text-white stroke-[2.5]" />
             ) : activeToast.type === 'warning' ? (
               <AlertTriangle className="h-4 w-4 shrink-0 text-white stroke-[2.5]" />

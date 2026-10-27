@@ -28,11 +28,18 @@ export interface RegisterStudentPayload {
   rfid_uid?: string;
 }
 
+export interface UpdateStudentPayload {
+  name?: string;
+  course?: string | null;
+  year_level?: number | null;
+  rfid_uid?: string | null;
+}
+
 export interface InventoryCard {
   id: string;
   cardNumber: number;
   uid: string;
-  status: 'unassigned' | 'assigned';
+  status: 'unassigned' | 'assigned' | 'lost';
   assignedToStudentId?: string | null;
   assignedToStudentName?: string | null;
   registeredAt: string;

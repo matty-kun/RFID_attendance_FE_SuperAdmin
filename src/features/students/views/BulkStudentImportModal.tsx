@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { Modal } from '../../../components/common/Modal';
 import { Input } from '../../../components/common/Input';
 import { toast } from '../../../context';
-import type { BulkImportStudentRow, InventoryCard } from '../models';
+import type { BulkImportStudentRow } from '../models';
 
 export interface BulkStudentImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  availableCards: InventoryCard[];
   onImport: (students: BulkImportStudentRow[], autoPair: boolean) => Promise<void>;
 }
 
@@ -21,13 +20,11 @@ const SAMPLE_CSV = `student_id,name,email,course,year_level
 export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
   isOpen,
   onClose,
-  availableCards,
   onImport,
 }) => {
   const [parsedRows, setParsedRows] = useState<BulkImportStudentRow[]>([]);
   const [fileName, setFileName] = useState('');
   const [defaultTemporaryPassword, setDefaultTemporaryPassword] = useState('');
-  const [autoPairWithInventory, setAutoPairWithInventory] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const parseCsvText = (text: string) => {
@@ -83,22 +80,21 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
     if (parsedRows.length === 0) return;
 
     let csvContent = 'data:text/csv;charset=utf-8,';
-    csvContent += 'Card Number,Student ID,Full Name,Course,Year Level,Card UID,Signature\n';
+    csvContent += 'Student ID,Full Name,Email,Course,Year Level,Card UID\n';
 
-    parsedRows.forEach((row, idx) => {
-      const cardNum = autoPairWithInventory && availableCards[idx] ? availableCards[idx].cardNumber : 'N/A';
-      const uid = row.rfid_uid || (autoPairWithInventory && availableCards[idx] ? availableCards[idx].uid : 'Unassigned');
-      csvContent += `"${cardNum}","${row.student_id}","${row.name}","${row.course}","${row.year_level}","${uid}",""\n`;
+    parsedRows.forEach((row) => {
+      const uid = row.rfid_uid || 'Unassigned';
+      csvContent += `"${row.student_id}","${row.name}","${row.email}","${row.course}","${row.year_level}","${uid}"\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `RFID_Distribution_Roster_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `Student_Import_Roster_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success('Distribution checklist downloaded.');
+    toast.success('Roster downloaded.');
   };
 
   const handleConfirmImport = async () => {
@@ -120,7 +116,7 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
             ? row.temporary_password
             : defaultTemporaryPassword,
       }));
-      await onImport(rowsWithPasswords, autoPairWithInventory);
+      await onImport(rowsWithPasswords, false);
       onClose();
     } catch {
       // Errors are handled and reported in onImport
@@ -180,28 +176,6 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
           </div>
         )}
 
-        {/* Auto-Pairing Option with Inventory Pool */}
-        {parsedRows.length > 0 && (
-          <div className="rounded-xl border border-[#E5E0EB] bg-white p-3.5 space-y-1">
-            <label className="flex items-start gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoPairWithInventory}
-                onChange={(e) => setAutoPairWithInventory(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded accent-[#7026B7]"
-              />
-              <div className="text-xs">
-                <span className="font-semibold text-[#24133F]">
-                  Auto-pair with available RFID cards ({availableCards.length} in inventory pool)
-                </span>
-                <p className="text-[#756883] mt-0.5">
-                  Pairs students sequentially: Row 1 to Card #{availableCards[0]?.cardNumber || 1}, Row 2 to Card #{availableCards[1]?.cardNumber || 2}, etc.
-                </p>
-              </div>
-            </label>
-          </div>
-        )}
-
         {/* Parsed Preview Table */}
         {parsedRows.length > 0 && (
           <div className="space-y-2">
@@ -222,26 +196,23 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
               <table className="w-full text-left text-xs">
                 <thead className="border-b border-[#F1EEF4] bg-[#FAF8FC] text-xs font-medium text-[#756883]">
                   <tr>
-                    <th className="px-3 py-2">Assigned card</th>
+                    <th className="px-3 py-2">RFID card</th>
                     <th className="px-3 py-2">Student ID</th>
                     <th className="px-3 py-2">Name</th>
                     <th className="px-3 py-2">Program</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F1EEF4]">
-                  {parsedRows.map((row, idx) => {
-                    const card = autoPairWithInventory ? availableCards[idx] : null;
-                    return (
-                      <tr key={idx} className="hover:bg-[#FAF8FC]">
-                        <td className="px-3 py-2 font-mono font-semibold text-[#7026B7]">
-                          {card ? `Card #${card.cardNumber} (${card.uid.slice(0, 10)}...)` : 'No card'}
-                        </td>
-                        <td className="px-3 py-2 font-mono text-[#24133F]">{row.student_id}</td>
-                        <td className="px-3 py-2 font-medium text-[#24133F]">{row.name}</td>
-                        <td className="px-3 py-2 text-[#756883]">{row.course}</td>
-                      </tr>
-                    );
-                  })}
+                  {parsedRows.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-[#FAF8FC]">
+                      <td className="px-3 py-2 font-mono font-semibold text-[#7026B7]">
+                        {row.rfid_uid ? row.rfid_uid : 'No card'}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-[#24133F]">{row.student_id}</td>
+                      <td className="px-3 py-2 font-medium text-[#24133F]">{row.name}</td>
+                      <td className="px-3 py-2 text-[#756883]">{row.course}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

@@ -176,12 +176,12 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-[#24133F]">{sessionName}</span>
             <span
-              className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white ${
+              className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
                 sessionStatus === 'Active'
-                  ? 'bg-[#10B981]'
+                  ? 'bg-[#17B556] text-white'
                   : sessionStatus === 'Upcoming'
-                  ? 'bg-[#F59E0B]'
-                  : 'bg-slate-400'
+                  ? 'bg-[#F59E0B] text-white'
+                  : 'bg-[#E4F7EB] text-[#11883E] border border-[#17B556]/30'
               }`}
             >
               {sessionStatus}
