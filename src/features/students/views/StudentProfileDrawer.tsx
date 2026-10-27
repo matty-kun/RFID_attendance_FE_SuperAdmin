@@ -21,6 +21,7 @@ import {
   Radio,
   Loader2,
   Camera,
+  Zap,
 } from 'lucide-react';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
@@ -879,9 +880,10 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                         onClose();
                         onOpenRapidScan();
                       }}
-                      className="text-brand-700 hover:text-brand-800 font-bold hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1.5 text-brand-700 hover:text-brand-800 font-bold hover:underline cursor-pointer"
                     >
-                      Open Rapid Scanner &rarr;
+                      <Zap className="h-3.5 w-3.5 fill-amber-400 text-amber-500 shrink-0" />
+                      <span>Open Rapid Scanner &rarr;</span>
                     </button>
                   </div>
                 </form>
