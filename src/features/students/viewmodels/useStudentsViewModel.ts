@@ -1,7 +1,26 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { StudentRecord, RegisterStudentPayload, InventoryCard, BulkImportStudentRow } from '../models';
+import type {
+  StudentRecord,
+  RegisterStudentPayload,
+  InventoryCard,
+  BulkImportStudentRow,
+  UpdateStudentPayload,
+} from '../models';
 import { studentService } from '../services';
 import { toast } from '../../../context';
+
+const ARCHIVED_STORAGE_KEY = 'presnt_archived_students';
+const LOST_CARDS_STORAGE_KEY = 'presnt_lost_cards';
+
+export interface LostCardRecord {
+  id: string;
+  cardNumber: number;
+  uid: string;
+  previousStudentName?: string;
+  previousStudentId?: string;
+  revokedAt: string;
+  reason: 'lost';
+}
 
 export interface UseStudentsViewModelReturn {
   students: StudentRecord[];
@@ -19,6 +38,7 @@ export interface UseStudentsViewModelReturn {
   inventoryCards: InventoryCard[];
   unassignedCards: InventoryCard[];
   cardlessStudents: StudentRecord[];
+  lostCards: LostCardRecord[];
 
   // Modals & Drawers
   isAddDrawerOpen: boolean;
@@ -28,14 +48,21 @@ export interface UseStudentsViewModelReturn {
   isBulkImportOpen: boolean;
   setIsBulkImportOpen: (v: boolean) => void;
 
+  // Archiving
+  archivedStudentIds: string[];
+  handleArchiveStudent: (studentId: string) => Promise<void>;
+  handleRestoreStudent: (studentId: string) => Promise<void>;
+  handleRestoreLostCard: (uid: string) => void;
+
   // Actions
   handleRegisterStudent: (payload: RegisterStudentPayload) => Promise<void>;
   handleCardScannedForInventory: (uid: string) => { success: boolean; message: string; cardNumber?: number };
-  handleCardScannedForStudent: (studentId: string, uid: string) => { success: boolean; message: string };
-  handleAutoPairSequential: () => { pairedCount: number };
+  handleCardScannedForStudent: (studentId: string, uid: string) => Promise<{ success: boolean; message: string }>;
+  handleAutoPairSequential: () => Promise<{ pairedCount: number }>;
   handleBulkImport: (newStudents: BulkImportStudentRow[], autoPair: boolean) => Promise<void>;
   handleQuickPair: (studentId: string, cardUid: string) => void;
-  handleUnlinkCard: (studentId: string) => void;
+  handleUnlinkCard: (studentId: string, reason?: 'lost' | 'returned') => Promise<void>;
+  handleUpdateStudent: (studentId: string, payload: UpdateStudentPayload) => Promise<StudentRecord>;
   loadStudents: () => Promise<void>;
 }
 
@@ -45,6 +72,26 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Archived Students IDs (Persisted to localStorage)
+  const [archivedStudentIds, setArchivedStudentIds] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(ARCHIVED_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Lost / Revoked RFID Cards (Persisted to localStorage)
+  const [lostCards, setLostCards] = useState<LostCardRecord[]>(() => {
+    try {
+      const stored = localStorage.getItem(LOST_CARDS_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Drawer / Modal triggers
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
@@ -78,7 +125,7 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
 
   const filteredStudents = useMemo(() => students, [students]);
 
-  // Combine assigned cards from real backend students with unassigned cards scanned into the pool
+  // Combine assigned cards from real backend students + unassigned cards + lost cards
   const inventoryCards = useMemo<InventoryCard[]>(() => {
     const assignedFromStudents: InventoryCard[] = students
       .filter((s): s is StudentRecord & { rfid_uid: string } => Boolean(s.rfid_uid))
@@ -93,21 +140,35 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
       }));
 
     const assignedUids = new Set(assignedFromStudents.map((c) => c.uid.toUpperCase()));
+    const lostUids = new Set(lostCards.map((c) => c.uid.toUpperCase()));
+
     const remainingUnassigned = unassignedPool
-      .filter((c) => !assignedUids.has(c.uid.toUpperCase()))
+      .filter((c) => !assignedUids.has(c.uid.toUpperCase()) && !lostUids.has(c.uid.toUpperCase()))
       .map((c, idx) => ({
         ...c,
         cardNumber: assignedFromStudents.length + idx + 1,
       }));
 
-    return [...remainingUnassigned, ...assignedFromStudents];
-  }, [students, unassignedPool]);
+    const formattedLostCards: InventoryCard[] = lostCards.map((l, idx) => ({
+      id: l.id,
+      cardNumber: assignedFromStudents.length + remainingUnassigned.length + idx + 1,
+      uid: l.uid,
+      status: 'lost' as const,
+      assignedToStudentId: l.previousStudentId,
+      assignedToStudentName: l.previousStudentName,
+      registeredAt: l.revokedAt,
+    }));
 
+    return [...remainingUnassigned, ...assignedFromStudents, ...formattedLostCards];
+  }, [students, unassignedPool, lostCards]);
+
+  // Unassigned cards available for pairing
   const unassignedCards = useMemo(
     () => inventoryCards.filter((c) => c.status === 'unassigned'),
     [inventoryCards]
   );
 
+  // Students who do not have an RFID card paired yet
   const cardlessStudents = useMemo(
     () => students.filter((s) => !s.rfid_uid),
     [students]
@@ -131,6 +192,7 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     } catch (err: any) {
       const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to register student. Please try again.';
       toast.error(apiMsg);
+      throw err;
     } finally {
       setIsSubmitting(false);
     }
@@ -145,18 +207,10 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
       return { success: false, message: `Card ${clean} is already registered in inventory!` };
     }
 
-    const existingStudent = students.find((s) => s.rfid_uid?.toUpperCase() === clean);
-    if (existingStudent) {
-      return {
-        success: false,
-        message: `Card ${clean} is already assigned to ${existingStudent.name}!`,
-      };
-    }
-
-    const nextCardNum = inventoryCards.length + 1;
+    const nextNumber = inventoryCards.length + 1;
     const newCard: InventoryCard = {
-      id: `inv-${Date.now()}`,
-      cardNumber: nextCardNum,
+      id: `card-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      cardNumber: nextNumber,
       uid: clean,
       status: 'unassigned',
       registeredAt: new Date().toISOString(),
@@ -165,25 +219,62 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     setUnassignedPool((prev) => [newCard, ...prev]);
     return {
       success: true,
-      message: `Card #${nextCardNum} (${clean}) saved to inventory pool for new student registration!`,
-      cardNumber: nextCardNum,
+      message: `Card #${nextNumber} (${clean}) enrolled into card pool stock!`,
+      cardNumber: nextNumber,
     };
   };
 
-  // 3. Rapid Scan to Existing Student Queue
-  const handleCardScannedForStudent = (_studentId: string, uid: string) => {
+  // 3. Scan & Pair to Single Student
+  const handleCardScannedForStudent = async (studentId: string, uid: string) => {
     const clean = uid.trim().toUpperCase();
-    // Save card into the unassigned pool and notify that existing student updates require PATCH /students/:id
-    handleCardScannedForInventory(clean);
-    const msg = `Card ${clean} added to pool. Assigning cards to already-registered students requires a backend student update endpoint (assign during student creation instead).`;
-    toast.error(msg);
-    return { success: false, message: msg };
+
+    const alreadyAssigned = students.some(
+      (s) => s.rfid_uid?.toUpperCase() === clean && s.id !== studentId
+    );
+    if (alreadyAssigned) {
+      return { success: false, message: `Card ${clean} is already assigned to another student!` };
+    }
+
+    try {
+      await studentService.updateStudent(studentId, { rfid_uid: clean });
+      setUnassignedPool((prev) => prev.filter((c) => c.uid.toUpperCase() !== clean));
+      await loadStudents();
+      return { success: true, message: `Card ${clean} successfully linked to student!` };
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to link card to student.';
+      return { success: false, message: apiMsg };
+    }
   };
 
-  // 4. One-Click Sequential Auto-Pairing
-  const handleAutoPairSequential = () => {
-    toast.error('Auto-pairing cards to already-registered students is not supported by the current backend API. Pair cards during New Student Registration or Bulk CSV Import.');
-    return { pairedCount: 0 };
+  // 4. Auto-Pair Available Stock to Students with Sequential Numbering
+  const handleAutoPairSequential = async () => {
+    const available = [...unassignedCards];
+    const unlinked = [...cardlessStudents];
+    const pairCount = Math.min(available.length, unlinked.length);
+
+    if (pairCount === 0) {
+      toast.info('No unassigned cards or cardless students available to pair.');
+      return { pairedCount: 0 };
+    }
+
+    let successCount = 0;
+    for (let i = 0; i < pairCount; i++) {
+      try {
+        await studentService.updateStudent(unlinked[i].id, { rfid_uid: available[i].uid });
+        successCount++;
+      } catch {
+        // continue
+      }
+    }
+
+    if (successCount > 0) {
+      const pairedUids = new Set(available.slice(0, successCount).map((c) => c.uid.toUpperCase()));
+      setUnassignedPool((prev) => prev.filter((c) => !pairedUids.has(c.uid.toUpperCase())));
+      toast.success(`Auto-paired ${successCount} student${successCount === 1 ? '' : 's'} with RFID cards!`);
+      await loadStudents();
+    }
+
+    return { pairedCount: successCount };
   };
 
   // 5. Bulk Import Students from CSV via real POST /api/v1/students
@@ -241,11 +332,113 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
 
   // 6. Quick Inline Link & Unlink Card
   const handleQuickPair = (studentId: string, cardUid: string) => {
-    handleCardScannedForStudent(studentId, cardUid);
+    void handleCardScannedForStudent(studentId, cardUid);
   };
 
-  const handleUnlinkCard = (_studentId: string) => {
-    toast.error('Unlinking an RFID card from an existing student is not supported by the current backend API.');
+  const handleUnlinkCard = async (studentId: string, reason: 'lost' | 'returned' = 'returned') => {
+    try {
+      const targetStudent = students.find((s) => s.id === studentId);
+      const oldUid = targetStudent?.rfid_uid;
+
+      await studentService.updateStudent(studentId, { rfid_uid: null });
+
+      if (oldUid) {
+        if (reason === 'returned') {
+          handleCardScannedForInventory(oldUid);
+          toast.success(`Card ${oldUid} unlinked.`);
+        } else {
+          // Report lost: Add to lost cards archive
+          const nextCardNumber = inventoryCards.length + 1;
+          const newLostCard: LostCardRecord = {
+            id: `lost-${Date.now()}`,
+            cardNumber: nextCardNumber,
+            uid: oldUid,
+            previousStudentName: targetStudent?.name,
+            previousStudentId: targetStudent?.student_id,
+            revokedAt: new Date().toISOString(),
+            reason: 'lost',
+          };
+          const updatedLost = [newLostCard, ...lostCards.filter((c) => c.uid !== oldUid)];
+          setLostCards(updatedLost);
+          localStorage.setItem(LOST_CARDS_STORAGE_KEY, JSON.stringify(updatedLost));
+          setUnassignedPool((prev) => prev.filter((c) => c.uid.toUpperCase() !== oldUid.toUpperCase()));
+          toast.success(`Card ${oldUid} reported lost and moved to Archived Cards.`);
+        }
+      } else {
+        toast.success('Card unlinked successfully.');
+      }
+
+      await loadStudents();
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.message || 'Failed to unlink card.';
+      toast.error(msg);
+    }
+  };
+
+  const handleRestoreLostCard = (uid: string) => {
+    const cleaned = uid.trim().toUpperCase();
+    const updatedLost = lostCards.filter((c) => c.uid.toUpperCase() !== cleaned);
+    setLostCards(updatedLost);
+    localStorage.setItem(LOST_CARDS_STORAGE_KEY, JSON.stringify(updatedLost));
+
+    // Return to unassigned pool
+    handleCardScannedForInventory(cleaned);
+    toast.success(`Card ${cleaned} restored to available stock pool.`);
+  };
+
+  const handleArchiveStudent = async (studentId: string) => {
+    const student = students.find((s) => s.id === studentId);
+    if (!student) return;
+
+    try {
+      // If student has an active card, automatically unlink it and return to inventory pool
+      if (student.rfid_uid) {
+        const oldUid = student.rfid_uid;
+        await studentService.updateStudent(studentId, { rfid_uid: null });
+        handleCardScannedForInventory(oldUid);
+      }
+
+      const updatedArchived = Array.from(new Set([...archivedStudentIds, studentId]));
+      setArchivedStudentIds(updatedArchived);
+      localStorage.setItem(ARCHIVED_STORAGE_KEY, JSON.stringify(updatedArchived));
+
+      toast.success(`Student "${student.name}" archived. Attendance history preserved.`);
+      await loadStudents();
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.message || 'Failed to archive student.';
+      toast.error(msg);
+    }
+  };
+
+  const handleRestoreStudent = async (studentId: string) => {
+    const student = students.find((s) => s.id === studentId);
+    try {
+      const updatedArchived = archivedStudentIds.filter((id) => id !== studentId);
+      setArchivedStudentIds(updatedArchived);
+      localStorage.setItem(ARCHIVED_STORAGE_KEY, JSON.stringify(updatedArchived));
+
+      toast.success(student ? `Student "${student.name}" restored to active roster.` : 'Student restored.');
+      await loadStudents();
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.message || 'Failed to restore student.';
+      toast.error(msg);
+    }
+  };
+
+  const handleUpdateStudent = async (studentId: string, payload: UpdateStudentPayload) => {
+    setIsSubmitting(true);
+    try {
+      const updated = await studentService.updateStudent(studentId, payload);
+      toast.success(`Student "${updated.name}" updated successfully!`);
+      await loadStudents();
+      return updated;
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.message || 'Failed to update student.';
+      toast.error(msg);
+      throw err;
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return {
@@ -264,6 +457,7 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     inventoryCards,
     unassignedCards,
     cardlessStudents,
+    lostCards,
 
     // Drawers & Modals
     isAddDrawerOpen,
@@ -273,6 +467,12 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     isBulkImportOpen,
     setIsBulkImportOpen,
 
+    // Archiving
+    archivedStudentIds,
+    handleArchiveStudent,
+    handleRestoreStudent,
+    handleRestoreLostCard,
+
     // Handlers
     handleRegisterStudent,
     handleCardScannedForInventory,
@@ -281,6 +481,7 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     handleBulkImport,
     handleQuickPair,
     handleUnlinkCard,
+    handleUpdateStudent,
     loadStudents,
   };
 };

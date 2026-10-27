@@ -36,19 +36,8 @@ export const useLoginViewModel = (): UseLoginViewModelReturn => {
       const user = await login(identifier.trim(), password);
       navigate(user.must_change_password ? '/change-password' : '/');
     } catch (err: any) {
-      const status = err?.response?.status;
-      const code = err?.response?.data?.error?.code;
       const serverMessage = err?.response?.data?.error?.message || err?.message;
-
-      if (
-        status === 401 ||
-        code === 'invalid_credentials' ||
-        /student id/i.test(serverMessage || '')
-      ) {
-        setError('Invalid credentials');
-      } else {
-        setError(serverMessage || 'Invalid credentials');
-      }
+      setError(serverMessage || 'Invalid credentials');
     } finally {
       setIsLoading(false);
     }

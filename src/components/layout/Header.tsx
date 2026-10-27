@@ -7,7 +7,7 @@ import { useAuth } from '../../features/auth';
 const navigation = [
   { name: 'Overview', path: '/overview', icon: LayoutGrid },
   { name: 'Audit Log', path: '/audit-log', icon: History },
-  { name: 'Attendance', path: '/attendance', icon: CalendarDays },
+  { name: 'Events & Attendance', path: '/attendance', icon: CalendarDays },
   { name: 'Students', path: '/students', icon: UsersRound },
   { name: 'Reports', path: '/reports', icon: ChartNoAxesColumn },
   { name: 'Admins', path: '/admins', icon: UserCog },
@@ -28,7 +28,7 @@ const commands = [
 const labelWidths: Record<string, number> = {
   'Overview': 66,
   'Audit Log': 68,
-  'Attendance': 86,
+  'Events & Attendance': 140,
   'Students': 64,
   'Reports': 60,
   'Admins': 56,

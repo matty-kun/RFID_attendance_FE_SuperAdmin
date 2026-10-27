@@ -1,20 +1,28 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Drawer } from '../../../components/common/Drawer';
 import { Button } from '../../../components/common/Button';
+import { Dropdown } from '../../../components/common/Dropdown';
+import { Modal } from '../../../components/common/Modal';
 import { toast } from '../../../context';
 import {
   Copy,
   Check,
+  ChevronDown,
   Unlink,
-  Zap,
-  Link as LinkIcon,
   X,
   Clock,
+  Calendar,
   MapPin,
+  Pencil,
+  Archive,
+  ArchiveRestore,
+  CreditCard,
+  Radio,
+  Loader2,
 } from 'lucide-react';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
-import type { StudentRecord, InventoryCard } from '../models';
+import type { StudentRecord } from '../models';
 
 export interface StudentScanItem {
   id: string;
@@ -36,11 +44,30 @@ export interface StudentProfileDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   student: StudentRecord | null;
-  availableCards: InventoryCard[];
-  onUnlinkCard: (studentId: string) => void;
+  onUnlinkCard: (studentId: string, reason?: 'lost' | 'returned') => void;
   onQuickPair: (studentId: string, cardUid: string) => void;
   onOpenRapidScan: () => void;
+  onUpdateStudent?: (studentId: string, payload: { name: string; course: string; year_level: number }) => Promise<any>;
+  isArchived?: boolean;
+  onArchiveStudent?: (studentId: string) => void;
+  onRestoreStudent?: (studentId: string) => void;
 }
+
+const COURSE_OPTIONS = [
+  'BS Information Technology',
+  'BS Computer Science',
+  'BS Information Systems',
+  'BS Computer Engineering',
+  'BS Business Administration',
+];
+
+const YEAR_OPTIONS = [
+  { value: 1, label: '1st Year' },
+  { value: 2, label: '2nd Year' },
+  { value: 3, label: '3rd Year' },
+  { value: 4, label: '4th Year' },
+  { value: 5, label: '5th Year' },
+];
 
 // Generate deterministic event scan history based on student record
 const generateStudentScans = (student: StudentRecord | null): StudentScanItem[] => {
@@ -173,6 +200,66 @@ const generateStudentScans = (student: StudentRecord | null): StudentScanItem[] 
       kioskName: 'Kiosk 2',
       rfidUid: uid,
     },
+    {
+      id: 'scan-9',
+      eventId: 'ev-2',
+      eventName: 'CITE Tech Assembly 2026',
+      dayLabel: 'Day 1',
+      dateStr: 'October 10, 2026',
+      sessionName: 'Morning Time-In',
+      type: 'time_in',
+      status: 'on_time',
+      timestamp: isMaria ? '08:05 AM' : isCarlo ? '08:15 AM' : '08:20 AM',
+      timeWindow: '8:00 AM – 9:30 AM',
+      locationName: 'AVR 1 Entrance',
+      kioskName: 'Kiosk 3',
+      rfidUid: uid,
+    },
+    {
+      id: 'scan-10',
+      eventId: 'ev-2',
+      eventName: 'CITE Tech Assembly 2026',
+      dayLabel: 'Day 1',
+      dateStr: 'October 10, 2026',
+      sessionName: 'Afternoon Time-Out',
+      type: 'time_out',
+      status: 'on_time',
+      timestamp: isMaria ? '04:45 PM' : isCarlo ? '05:00 PM' : '04:50 PM',
+      timeWindow: '4:00 PM – 5:30 PM',
+      locationName: 'AVR 1 Exit',
+      kioskName: 'Kiosk 3',
+      rfidUid: uid,
+    },
+    {
+      id: 'scan-11',
+      eventId: 'ev-3',
+      eventName: 'Department Sports Fest 2026',
+      dayLabel: 'Day 1',
+      dateStr: 'October 18, 2026',
+      sessionName: 'Morning Time-In',
+      type: 'time_in',
+      status: isCarlo ? 'late' : 'on_time',
+      timestamp: isCarlo ? '08:42 AM' : isMaria ? '07:30 AM' : '07:55 AM',
+      timeWindow: '7:00 AM – 8:30 AM',
+      locationName: 'Grandstand Gate',
+      kioskName: 'Kiosk 5',
+      rfidUid: uid,
+    },
+    {
+      id: 'scan-12',
+      eventId: 'ev-3',
+      eventName: 'Department Sports Fest 2026',
+      dayLabel: 'Day 1',
+      dateStr: 'October 18, 2026',
+      sessionName: 'Afternoon Time-Out',
+      type: 'time_out',
+      status: 'on_time',
+      timestamp: isMaria ? '05:10 PM' : isCarlo ? '05:25 PM' : '05:15 PM',
+      timeWindow: '4:30 PM – 6:00 PM',
+      locationName: 'Grandstand Gate',
+      kioskName: 'Kiosk 5',
+      rfidUid: uid,
+    },
   ];
 };
 
@@ -180,13 +267,39 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   isOpen,
   onClose,
   student,
-  availableCards,
   onUnlinkCard,
   onQuickPair,
   onOpenRapidScan,
+  onUpdateStudent,
+  isArchived = false,
+  onArchiveStudent,
+  onRestoreStudent,
 }) => {
+  const [selectedEventId, setSelectedEventId] = useState<string>('all');
   const [filterType, setFilterType] = useState<'all' | 'time_in' | 'time_out'>('all');
   const [copiedUid, setCopiedUid] = useState(false);
+  const [isUnlinking, setIsUnlinking] = useState(false);
+  const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
+
+  // Inline RFID Card Scanning & Pairing
+  const [isScanningCard, setIsScanningCard] = useState(false);
+  const [inlineCardUid, setInlineCardUid] = useState('');
+  const [isPairingCard, setIsPairingCard] = useState(false);
+  const cardInputRef = useRef<HTMLInputElement>(null);
+
+  const handleInlineCardSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanUid = inlineCardUid.trim();
+    if (!cleanUid || !currentStudent) return;
+    setIsPairingCard(true);
+    try {
+      await onQuickPair(currentStudent.id, cleanUid);
+      setIsScanningCard(false);
+      setInlineCardUid('');
+    } finally {
+      setIsPairingCard(false);
+    }
+  };
 
   // Cache student reference so the drawer can animate out smoothly when closing
   const activeStudentRef = useRef<StudentRecord | null>(student);
@@ -195,12 +308,153 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   }
   const currentStudent = student || activeStudentRef.current;
 
+  // Seamless Inline Name Editing
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameVal, setNameVal] = useState('');
+  const [isSavingName, setIsSavingName] = useState(false);
+
+  // Floating Dropdowns for Course & Year
+  const [isCourseMenuOpen, setIsCourseMenuOpen] = useState(false);
+  const [isYearMenuOpen, setIsYearMenuOpen] = useState(false);
+
+  const courseDropdownRef = useRef<HTMLDivElement>(null);
+  const yearDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close floating menus on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (courseDropdownRef.current && !courseDropdownRef.current.contains(e.target as Node)) {
+        setIsCourseMenuOpen(false);
+      }
+      if (yearDropdownRef.current && !yearDropdownRef.current.contains(e.target as Node)) {
+        setIsYearMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Sync state when student changes
+  useEffect(() => {
+    if (currentStudent) {
+      setNameVal(currentStudent.name);
+      setIsEditingName(false);
+      setIsCourseMenuOpen(false);
+      setIsYearMenuOpen(false);
+      setIsScanningCard(false);
+      setInlineCardUid('');
+      setIsUnlinking(false);
+      setSelectedEventId('all');
+      setFilterType('all');
+    }
+  }, [currentStudent]);
+
+  // Handle Name Autosave
+  const handleSaveName = async () => {
+    if (!currentStudent) return;
+    const trimmed = nameVal.trim();
+    if (!trimmed || trimmed === currentStudent.name) {
+      setNameVal(currentStudent.name);
+      setIsEditingName(false);
+      return;
+    }
+
+    setIsSavingName(true);
+    try {
+      if (onUpdateStudent) {
+        await onUpdateStudent(currentStudent.id, {
+          name: trimmed,
+          course: currentStudent.course || 'BS Information Technology',
+          year_level: currentStudent.year_level || 1,
+        });
+      }
+      activeStudentRef.current = {
+        ...currentStudent,
+        name: trimmed,
+      };
+      setIsEditingName(false);
+    } catch {
+      setNameVal(currentStudent.name);
+      setIsEditingName(false);
+    } finally {
+      setIsSavingName(false);
+    }
+  };
+
+  // Handle Course Update
+  const handleSelectCourse = async (courseName: string) => {
+    setIsCourseMenuOpen(false);
+    if (!currentStudent || courseName === currentStudent.course) return;
+
+    try {
+      if (onUpdateStudent) {
+        await onUpdateStudent(currentStudent.id, {
+          name: currentStudent.name,
+          course: courseName,
+          year_level: currentStudent.year_level || 1,
+        });
+      }
+      activeStudentRef.current = {
+        ...currentStudent,
+        course: courseName,
+      };
+    } catch {
+      // toast shown by viewmodel
+    }
+  };
+
+  // Handle Year Level Update
+  const handleSelectYear = async (yearNum: number) => {
+    setIsYearMenuOpen(false);
+    if (!currentStudent || yearNum === currentStudent.year_level) return;
+
+    try {
+      if (onUpdateStudent) {
+        await onUpdateStudent(currentStudent.id, {
+          name: currentStudent.name,
+          course: currentStudent.course || 'BS Information Technology',
+          year_level: yearNum,
+        });
+      }
+      activeStudentRef.current = {
+        ...currentStudent,
+        year_level: yearNum,
+      };
+    } catch {
+      // toast shown by viewmodel
+    }
+  };
+
   const scans = useMemo(() => generateStudentScans(currentStudent), [currentStudent]);
 
+  // Dynamic list of unique events from scans
+  const eventOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    scans.forEach((s) => {
+      if (!map.has(s.eventId)) {
+        map.set(s.eventId, s.eventName);
+      }
+    });
+    return [
+      { value: 'all', label: `All Events (${map.size})` },
+      ...Array.from(map.entries()).map(([id, name]) => ({
+        value: id,
+        label: name,
+      })),
+    ];
+  }, [scans]);
+
+  // Filter by selected event
+  const eventFilteredScans = useMemo(() => {
+    if (selectedEventId === 'all') return scans;
+    return scans.filter((s) => s.eventId === selectedEventId);
+  }, [scans, selectedEventId]);
+
+  // Filter by scan type (all / time_in / time_out)
   const filteredScans = useMemo(() => {
-    if (filterType === 'all') return scans;
-    return scans.filter((s) => s.type === filterType);
-  }, [scans, filterType]);
+    if (filterType === 'all') return eventFilteredScans;
+    return eventFilteredScans.filter((s) => s.type === filterType);
+  }, [eventFilteredScans, filterType]);
 
   // Group scans by event day
   const groupedScans = useMemo(() => {
@@ -236,7 +490,12 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   return (
     <Drawer
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => {
+        setIsEditingName(false);
+        setIsCourseMenuOpen(false);
+        setIsYearMenuOpen(false);
+        onClose();
+      }}
       maxWidth="2xl"
       hideHeader
       noPadding
@@ -245,18 +504,101 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         {/* Duolingo-style Top Hero Banner with Smooth Fog Transition */}
         <div className="relative bg-[#78C9FC] px-6 pt-5 pb-0 flex flex-col justify-between min-h-[230px] overflow-hidden">
           {/* Top Bar inside banner */}
-          <div className="flex items-center justify-between z-20">
-            <h2 className="text-2xl font-black text-[#15344F] tracking-tight">
-              {currentStudent.name}
-            </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close drawer"
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-[#15344F] shadow-xs active:scale-95 transition-all cursor-pointer"
-            >
-              <X className="h-5 w-5 stroke-[2.5]" />
-            </button>
+          <div className="flex items-center justify-between z-20 gap-3">
+            {/* Seamless In-Place Name Editor */}
+            {!isEditingName ? (
+              <div
+                role="button"
+                tabIndex={isArchived ? -1 : 0}
+                onClick={() => {
+                  if (!isArchived) {
+                    setNameVal(currentStudent.name);
+                    setIsEditingName(true);
+                  }
+                }}
+                className={`group flex items-center gap-2 rounded-xl py-0.5 px-1 -ml-1 transition-all ${
+                  isArchived ? 'cursor-default' : 'hover:bg-white/30 cursor-pointer'
+                }`}
+                title={isArchived ? undefined : 'Click to rename student'}
+              >
+                <h2 className="text-2xl font-black text-[#15344F] tracking-tight truncate max-w-[340px]">
+                  {currentStudent.name}
+                </h2>
+                {!isArchived && (
+                  <Pencil className="h-4 w-4 text-[#15344F]/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                )}
+                {isArchived && (
+                  <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
+                    Archived
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 flex-1 max-w-[340px]">
+                <input
+                  type="text"
+                  value={nameVal}
+                  onChange={(e) => setNameVal(e.target.value)}
+                  onBlur={() => void handleSaveName()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void handleSaveName();
+                    if (e.key === 'Escape') {
+                      setNameVal(currentStudent.name);
+                      setIsEditingName(false);
+                    }
+                  }}
+                  disabled={isSavingName}
+                  autoFocus
+                  placeholder="Student Full Name"
+                  className="text-2xl font-black text-[#15344F] tracking-tight bg-transparent border-b-2 border-[#15344F] outline-none px-0 py-0 w-full"
+                />
+                {isSavingName && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#15344F] shrink-0">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#15344F]" />
+                    Saving…
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Top Right Actions: Archive + Close */}
+            <div className="flex items-center gap-2 shrink-0">
+              {!isArchived ? (
+                <button
+                  type="button"
+                  onClick={() => setIsArchiveConfirmOpen(true)}
+                  title="Archive Student"
+                  aria-label="Archive Student"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-[#756883] hover:text-rose-600 shadow-xs active:scale-95 transition-all cursor-pointer"
+                >
+                  <Archive className="h-4 w-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onRestoreStudent?.(currentStudent.id)}
+                  title="Restore Student to Active Roster"
+                  aria-label="Restore Student to Active Roster"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-emerald-700 shadow-xs active:scale-95 transition-all cursor-pointer"
+                >
+                  <ArchiveRestore className="h-4 w-4" />
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditingName(false);
+                  setIsCourseMenuOpen(false);
+                  setIsYearMenuOpen(false);
+                  onClose();
+                }}
+                aria-label="Close drawer"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-[#15344F] shadow-xs active:scale-95 transition-all cursor-pointer"
+              >
+                <X className="h-5 w-5 stroke-[2.5]" />
+              </button>
+            </div>
           </div>
 
           {/* Character standing in center of banner */}
@@ -268,7 +610,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             />
           </div>
 
-          {/* Smooth Fog Transition Layer: Seamless white mist dissolving banner into content below */}
+          {/* Smooth Fog Transition Layer */}
           <div
             aria-hidden="true"
             className="pointer-events-none absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-white via-white/70 to-transparent z-10"
@@ -278,21 +620,75 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         {/* Content Area Below Banner */}
         <div className="flex-1 p-5 pt-3 pb-8 space-y-4 relative z-20 bg-white">
           {/* Subheading Handle */}
-          <div>
-            <p className="text-xs font-extrabold text-[#756883] uppercase tracking-wider">
-              @{currentStudent.student_id} · ENROLLED {currentStudent.created_at ? new Date(currentStudent.created_at).getFullYear() : '2023'}
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-extrabold text-[#756883] tracking-wider">
+              @{currentStudent.student_id}
             </p>
+            {isArchived && (
+              <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
+                Archived Record
+              </span>
+            )}
           </div>
 
-          {/* 3D Tactile Card Action Button (Signature components) */}
-          {currentStudent.rfid_uid ? (
+          {/* Archived Banner / Quick Restore Bar */}
+          {isArchived ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3.5 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-extrabold text-amber-900">Student is Archived</p>
+                <p className="text-[11px] text-amber-700/90 mt-0.5">
+                  Historical attendance logs remain intact. Click Restore in the top bar to re-pair cards or add to active events.
+                </p>
+              </div>
+            </div>
+          ) : currentStudent.rfid_uid && isUnlinking ? (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-3.5 space-y-2 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-rose-900">
+                  Unlink Card {currentStudent.rfid_uid}?
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsUnlinking(false)}
+                  className="text-[11px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+              <p className="text-[11px] text-rose-700/90 leading-tight">
+                This detaches the card from this student. Historical attendance records will remain saved.
+              </p>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsUnlinking(false)}
+                >
+                  Keep Card
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  onClick={() => {
+                    setIsUnlinking(false);
+                    onUnlinkCard(currentStudent.id);
+                  }}
+                >
+                  Confirm Unlink
+                </Button>
+              </div>
+            </div>
+          ) : currentStudent.rfid_uid ? (
             <div className="flex items-center gap-2">
               <Button
                 variant="secondary"
                 size="md"
                 onClick={handleCopyUid}
                 className="flex-1 font-mono text-xs justify-center"
-                leftIcon={copiedUid ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4 text-[#756883]" />}
+                leftIcon={copiedUid ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4 text-slate-400" />}
+                title="Click to copy Card UID"
               >
                 Card UID: {currentStudent.rfid_uid}
               </Button>
@@ -300,7 +696,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               <Button
                 variant="danger"
                 size="md"
-                onClick={() => onUnlinkCard(currentStudent.id)}
+                onClick={() => setIsUnlinking(true)}
                 leftIcon={<Unlink className="h-4 w-4" />}
                 title="Unlink RFID Card"
               >
@@ -308,57 +704,251 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              {availableCards.length > 0 && (
-                <Button
-                  variant="success"
-                  size="md"
-                  onClick={() => onQuickPair(currentStudent.id, availableCards[0].uid)}
-                  className="flex-1 justify-center"
-                  leftIcon={<LinkIcon className="h-4 w-4" />}
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-3.5 transition-all">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-200/80 text-slate-500">
+                    <CreditCard className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-slate-800">No RFID Card Assigned</p>
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-md">
+                        Unpaired
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                      Link a card to track automated event attendance
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {!isScanningCard ? (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        setIsScanningCard(true);
+                        setTimeout(() => cardInputRef.current?.focus(), 80);
+                      }}
+                      leftIcon={<Radio className="h-3.5 w-3.5" />}
+                    >
+                      Scan / Link Card
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Inline RFID Card Scanner / Manual Input */}
+              {isScanningCard && (
+                <form
+                  onSubmit={handleInlineCardSubmit}
+                  className="mt-3 pt-3 border-t border-slate-200/80 flex flex-col gap-2 animate-in fade-in duration-150"
                 >
-                  Pair Card #{availableCards[0].cardNumber}
-                </Button>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        ref={cardInputRef}
+                        type="text"
+                        value={inlineCardUid}
+                        onChange={(e) => setInlineCardUid(e.target.value)}
+                        placeholder="Tap RFID card on reader or enter UID..."
+                        className="w-full rounded-xl border border-brand-300 bg-white px-3 py-1.5 text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        size="sm"
+                        disabled={!inlineCardUid.trim() || isPairingCard}
+                        isLoading={isPairingCard}
+                      >
+                        Link Card
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setIsScanningCard(false);
+                          setInlineCardUid('');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 px-0.5">
+                    <span>Press Enter after tapping card</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onOpenRapidScan();
+                      }}
+                      className="text-brand-700 hover:text-brand-800 font-bold hover:underline cursor-pointer"
+                    >
+                      Open Rapid Scanner &rarr;
+                    </button>
+                  </div>
+                </form>
               )}
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => {
-                  onClose();
-                  onOpenRapidScan();
-                }}
-                leftIcon={<Zap className="h-4 w-4 fill-current" />}
-              >
-                Scan card
-              </Button>
             </div>
           )}
 
-          {/* OVERVIEW SECTION (Academic Details) */}
+          {/* OVERVIEW SECTION: Single-layer Clean Cards with Floating Dropdown */}
           <div className="pt-1">
             <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase">
               Overview
             </p>
+
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-              <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
-                <p className="text-[10px] font-bold text-[#756883] uppercase">Program / Course</p>
-                <p className="font-bold text-[#24133F] mt-0.5">{currentStudent.course || '—'}</p>
+              {/* Program / Course Card */}
+              <div ref={courseDropdownRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isArchived) {
+                      setIsCourseMenuOpen(!isCourseMenuOpen);
+                      setIsYearMenuOpen(false);
+                    }
+                  }}
+                  className={`w-full text-left rounded-2xl border bg-white p-3 shadow-2xs transition-all group flex items-start justify-between ${
+                    isArchived
+                      ? 'border-slate-200 cursor-default'
+                      : isCourseMenuOpen
+                      ? 'border-brand-700 ring-2 ring-brand-100 cursor-pointer'
+                      : 'border-slate-200 hover:border-brand-700 hover:shadow-xs cursor-pointer'
+                  }`}
+                  title={isArchived ? undefined : 'Click to change course'}
+                >
+                  <div className="min-w-0 pr-1">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">Program / Course</p>
+                    <p className="font-bold text-slate-900 mt-0.5 truncate">{currentStudent.course || '—'}</p>
+                  </div>
+                  {!isArchived && (
+                    <ChevronDown
+                      className={`h-4 w-4 text-slate-400 transition-transform shrink-0 mt-0.5 group-hover:text-brand-700 ${
+                        isCourseMenuOpen ? 'rotate-180 text-brand-700' : ''
+                      }`}
+                    />
+                  )}
+                </button>
+
+                {/* Floating Course Menu (No layout shifts) */}
+                {isCourseMenuOpen && (
+                  <div className="absolute top-full left-0 mt-1.5 w-64 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase px-2.5 py-1">
+                      Select Course
+                    </p>
+                    {COURSE_OPTIONS.map((c) => {
+                      const isSelected = c === currentStudent.course;
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => void handleSelectCourse(c)}
+                          className={`w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-brand-50 text-brand-700 font-bold'
+                              : 'text-slate-900 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className="truncate">{c}</span>
+                          {isSelected && <Check className="h-3.5 w-3.5 text-brand-700 shrink-0 ml-1" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
-                <p className="text-[10px] font-bold text-[#756883] uppercase">Year Level</p>
-                <p className="font-bold text-[#24133F] mt-0.5">{yearLabel(currentStudent.year_level)}</p>
+
+              {/* Year Level Card */}
+              <div ref={yearDropdownRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isArchived) {
+                      setIsYearMenuOpen(!isYearMenuOpen);
+                      setIsCourseMenuOpen(false);
+                    }
+                  }}
+                  className={`w-full text-left rounded-2xl border bg-white p-3 shadow-2xs transition-all group flex items-start justify-between ${
+                    isArchived
+                      ? 'border-slate-200 cursor-default'
+                      : isYearMenuOpen
+                      ? 'border-brand-700 ring-2 ring-brand-100 cursor-pointer'
+                      : 'border-slate-200 hover:border-brand-700 hover:shadow-xs cursor-pointer'
+                  }`}
+                  title={isArchived ? undefined : 'Click to change year level'}
+                >
+                  <div className="min-w-0 pr-1">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">Year Level</p>
+                    <p className="font-bold text-slate-900 mt-0.5">{yearLabel(currentStudent.year_level)}</p>
+                  </div>
+                  {!isArchived && (
+                    <ChevronDown
+                      className={`h-4 w-4 text-slate-400 transition-transform shrink-0 mt-0.5 group-hover:text-brand-700 ${
+                        isYearMenuOpen ? 'rotate-180 text-brand-700' : ''
+                      }`}
+                    />
+                  )}
+                </button>
+
+                {/* Floating Year Menu (No layout shifts) */}
+                {isYearMenuOpen && (
+                  <div className="absolute top-full right-0 mt-1.5 w-48 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase px-2.5 py-1">
+                      Select Year Level
+                    </p>
+                    {YEAR_OPTIONS.map((y) => {
+                      const isSelected = y.value === currentStudent.year_level;
+                      return (
+                        <button
+                          key={y.value}
+                          type="button"
+                          onClick={() => void handleSelectYear(y.value)}
+                          className={`w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-brand-50 text-brand-700 font-bold'
+                              : 'text-slate-900 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span>{y.label}</span>
+                          {isSelected && <Check className="h-3.5 w-3.5 text-brand-700 shrink-0 ml-1" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* SCAN HISTORY SECTION WITH FOG BELOW */}
+          {/* SCAN HISTORY SECTION */}
           <div className="pt-2 space-y-2.5 relative">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase">
-                Scan History
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase shrink-0">
+                  Scan History
+                </p>
+                {scans.length > 0 && (
+                  <Dropdown
+                    value={selectedEventId}
+                    onChange={setSelectedEventId}
+                    options={eventOptions}
+                    icon={<Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />}
+                    className="w-48 sm:w-52"
+                    buttonClassName="h-7 py-0.5 px-2.5 text-xs rounded-xl bg-white border border-[#E5E0EB] hover:border-brand-500 font-bold text-slate-700 shadow-2xs"
+                    menuClassName="w-60 z-50 rounded-xl shadow-xl border border-slate-200 py-1"
+                  />
+                )}
+              </div>
 
-              {/* Segmented Filter Pills (Replaces awkward dropdown menu on the side) */}
+              {/* Segmented Filter Pills */}
               {scans.length > 0 && (
                 <div className="inline-flex rounded-xl bg-[#FAF8FC] border border-[#E5E0EB] p-1 text-xs self-start sm:self-auto">
                   <button
@@ -366,19 +956,19 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                     onClick={() => setFilterType('all')}
                     className={`px-3 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                       filterType === 'all'
-                        ? 'bg-white text-[#7026B7] shadow-xs'
-                        : 'text-[#756883] hover:text-[#24133F]'
+                        ? 'bg-white text-brand-700 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900'
                     }`}
                   >
-                    All ({scans.length})
+                    All ({eventFilteredScans.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setFilterType('time_in')}
                     className={`px-3 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                       filterType === 'time_in'
-                        ? 'bg-white text-[#7026B7] shadow-xs'
-                        : 'text-[#756883] hover:text-[#24133F]'
+                        ? 'bg-white text-brand-700 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     Time-In
@@ -388,8 +978,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                     onClick={() => setFilterType('time_out')}
                     className={`px-3 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                       filterType === 'time_out'
-                        ? 'bg-white text-[#7026B7] shadow-xs'
-                        : 'text-[#756883] hover:text-[#24133F]'
+                        ? 'bg-white text-brand-700 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     Time-Out
@@ -398,18 +988,18 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               )}
             </div>
 
-            {/* Timeline: Natural flow scrolling with drawer all the way down */}
+            {/* Timeline */}
             <div>
               {groupedScans.length > 0 ? (
                 <div className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden shadow-xs divide-y divide-[#E5E0EB]">
                   {groupedScans.map((group) => (
                     <div key={`${group.event}-${group.date}`}>
-                      {/* Subtle Date Header */}
+                      {/* Date Header */}
                       <div className="flex items-center justify-between bg-[#FAF8FC] px-4 py-2 text-xs border-b border-[#F0E8FC]">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-[#24133F]">{group.event}</span>
-                          <span className="text-[#A59AAB]">·</span>
-                          <span className="font-medium text-[#7026B7]">{group.label}</span>
+                          <span className="font-bold text-slate-900">{group.event}</span>
+                          <span className="text-slate-400">·</span>
+                          <span className="font-medium text-brand-700">{group.label}</span>
                         </div>
                         <span className="text-[11px] text-[#756883]">{group.date}</span>
                       </div>
@@ -421,7 +1011,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                             key={scan.id}
                             className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-[#FAF8FC]/50 transition-colors"
                           >
-                            {/* Left: Session name & details */}
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="text-xs font-semibold text-[#24133F]">
@@ -447,7 +1036,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                               </div>
                             </div>
 
-                            {/* Right: Exact timestamp & verification */}
                             <div className="text-right shrink-0">
                               {scan.timestamp ? (
                                 <p className="font-mono text-xs font-bold text-[#24133F] tabular-nums">
@@ -474,16 +1062,68 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   />
                   <p className="text-xs font-bold text-[#24133F]">No scan logs found</p>
                   <p className="text-[11px] text-[#756883] max-w-xs mt-0.5">
-                    {currentStudent.rfid_uid
+                    {selectedEventId !== 'all' || filterType !== 'all'
+                      ? 'No attendance records match the selected event or filter.'
+                      : currentStudent.rfid_uid
                       ? 'This student has not checked into any event sessions yet.'
                       : 'Link an RFID card first to track automatic event attendance.'}
                   </p>
+                  {(selectedEventId !== 'all' || filterType !== 'all') && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedEventId('all');
+                        setFilterType('all');
+                      }}
+                      className="mt-3 text-xs"
+                    >
+                      Reset Filters
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Archive Student Confirmation Modal */}
+      <Modal
+        isOpen={isArchiveConfirmOpen}
+        onClose={() => setIsArchiveConfirmOpen(false)}
+        title="Archive Student"
+        description={`Are you sure you want to archive ${currentStudent.name} (${currentStudent.student_id})?`}
+        maxWidth="sm"
+      >
+        <div className="space-y-3 pt-1">
+          <p className="text-xs text-[#756883] leading-relaxed">
+            Archiving moves this student to the Archived roster. Any linked card will be unassigned.
+            All historical event attendance records remain permanently preserved.
+          </p>
+          <div className="pt-2 flex items-center justify-end gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsArchiveConfirmOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => {
+                setIsArchiveConfirmOpen(false);
+                onArchiveStudent?.(currentStudent.id);
+                onClose();
+              }}
+              leftIcon={<Archive className="h-3.5 w-3.5" />}
+            >
+              Archive Student
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </Drawer>
   );
 };

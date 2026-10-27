@@ -1,15 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { EventRecord, CreateEventPayload } from '../models';
 import { eventService } from '../services';
+import { adminService } from '../../../services/adminService';
 import { toast } from '../../../context';
 
 export interface UseEventsViewModelReturn {
   events: EventRecord[];
   isLoading: boolean;
   error: string | null;
+  activeEventId: string | null;
+  setActiveEventId: (id: string) => void;
   isModalOpen: boolean;
   setIsModalOpen: (open: boolean) => void;
   isSubmitting: boolean;
+  isDeleting: boolean;
   formError: string | null;
   name: string;
   setName: (val: string) => void;
@@ -21,14 +25,19 @@ export interface UseEventsViewModelReturn {
   setEndDate: (val: string) => void;
   loadEvents: () => Promise<void>;
   handleCreate: (e: React.FormEvent) => Promise<void>;
+  handleDeleteEvent: (id: string, name: string) => Promise<boolean>;
 }
 
 export const useEventsViewModel = (): UseEventsViewModelReturn => {
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeEventId, setActiveEventIdState] = useState<string | null>(() =>
+    localStorage.getItem('presnt_active_event_id')
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   // Form state
@@ -37,12 +46,41 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  const setActiveEventId = (id: string) => {
+    setActiveEventIdState(id);
+    localStorage.setItem('presnt_active_event_id', id);
+    adminService
+      .setActiveEvent(id)
+      .then(() => {
+        toast.success('Active event synced across campus');
+      })
+      .catch((err: any) => {
+        toast.error(err?.response?.data?.error?.message || 'Failed to sync active event to server');
+      });
+  };
+
   const loadEvents = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await eventService.getEvents();
+      const [data, activeRes] = await Promise.all([
+        eventService.getEvents(),
+        adminService.getActiveEvent().catch(() => ({ active_event_id: null, event: null })),
+      ]);
       setEvents(data);
+
+      const serverActiveId = activeRes?.active_event_id;
+      const savedActive = serverActiveId || localStorage.getItem('presnt_active_event_id');
+      if (savedActive && data.some((e) => e.id === savedActive)) {
+        setActiveEventIdState(savedActive);
+        localStorage.setItem('presnt_active_event_id', savedActive);
+      } else if (data.length > 0) {
+        setActiveEventIdState(data[0].id);
+        localStorage.setItem('presnt_active_event_id', data[0].id);
+        void adminService.setActiveEvent(data[0].id).catch(() => {});
+      } else {
+        setActiveEventIdState(null);
+      }
     } catch (err: any) {
       setError(err?.response?.data?.error?.message || 'Could not load campus events. Try again.');
     } finally {
@@ -73,13 +111,14 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
         start_date: startDate,
         end_date: endDate,
       };
-      await eventService.createEvent(payload);
+      const created = await eventService.createEvent(payload);
       toast.success(`Event "${name.trim()}" created successfully`);
       setIsModalOpen(false);
       setName('');
       setDescription('');
       setStartDate('');
       setEndDate('');
+      setActiveEventId(created.id);
       await loadEvents();
     } catch (err: any) {
       const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to create event';
@@ -90,13 +129,35 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
     }
   };
 
+  const handleDeleteEvent = async (id: string, eventName: string): Promise<boolean> => {
+    setIsDeleting(true);
+    try {
+      await eventService.deleteEvent(id);
+      toast.success(`Event "${eventName}" deleted successfully.`);
+      if (activeEventId === id) {
+        localStorage.removeItem('presnt_active_event_id');
+      }
+      await loadEvents();
+      return true;
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to delete event.';
+      toast.error(apiMsg);
+      return false;
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return {
     events,
     isLoading,
     error,
+    activeEventId,
+    setActiveEventId,
     isModalOpen,
     setIsModalOpen,
     isSubmitting,
+    isDeleting,
     formError,
     name,
     setName,
@@ -108,5 +169,6 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
     setEndDate,
     loadEvents,
     handleCreate,
+    handleDeleteEvent,
   };
 };

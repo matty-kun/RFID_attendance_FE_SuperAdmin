@@ -9,8 +9,18 @@ import type {
 
 export const adminService = {
   getEvents: () => request.get<EventRecord[]>('/events'),
+  getActiveEvent: () =>
+    request.get<{ active_event_id: string | null; event: EventRecord | null }>('/events/active'),
+  setActiveEvent: (eventId: string) =>
+    request.put<{ message: string; active_event_id: string; event: EventRecord }>(
+      `/events/${encodeURIComponent(eventId)}/active`
+    ),
   createEvent: (payload: Partial<EventRecord>) =>
     request.post<EventRecord>('/events', payload),
+  updateEvent: (eventId: string, payload: Partial<EventRecord>) =>
+    request.patch<EventRecord>(`/events/${encodeURIComponent(eventId)}`, payload),
+  deleteEvent: (eventId: string) =>
+    request.delete<{ message: string }>(`/events/${encodeURIComponent(eventId)}`),
   getSessions: (eventId: string) =>
     request.get<SessionRecord[]>(
       `/events/${encodeURIComponent(eventId)}/sessions`
@@ -22,6 +32,8 @@ export const adminService = {
     ),
   updateSession: (sessionId: string, payload: Partial<SessionRecord>) =>
     request.patch<SessionRecord>(`/sessions/${encodeURIComponent(sessionId)}`, payload),
+  deleteSession: (sessionId: string) =>
+    request.delete<{ message: string }>(`/sessions/${encodeURIComponent(sessionId)}`),
   getSessionLocations: (sessionId: string) =>
     request.get<SessionLocations>(`/sessions/${encodeURIComponent(sessionId)}/locations`),
   saveSessionLocations: (sessionId: string, payload: { time_in_location_ids: string[]; time_out_location_ids: string[] }) =>

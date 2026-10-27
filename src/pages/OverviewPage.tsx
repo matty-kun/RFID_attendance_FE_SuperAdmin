@@ -95,7 +95,7 @@ export function OverviewPage() {
                 <span className={`text-[10px] font-bold ${accent}`}>{eyebrow}</span>
               </div>
               {loading && !metrics ? (
-                <div className="mt-3 h-8 w-20 animate-pulse rounded-lg bg-slate-100" />
+                <div className="mt-3 h-8 w-20 rounded-lg bg-slate-100" />
               ) : (
                 <p className="mt-3 text-[27px] font-extrabold leading-none text-slate-900">
                   {metrics?.[key]?.toLocaleString() ?? '—'}
@@ -133,7 +133,7 @@ export function OverviewPage() {
           {loading && !metrics ? (
             <div className="my-6 flex h-52 items-end justify-around gap-4 px-2">
               {[60, 80, 50, 70].map((height, index) => (
-                <div key={index} className="w-12 animate-pulse rounded-[14px] bg-slate-100" style={{ height: `${height}%` }} />
+                <div key={index} className="w-12 rounded-[14px] bg-slate-100" style={{ height: `${height}%` }} />
               ))}
             </div>
           ) : error && !metrics ? (
@@ -222,7 +222,7 @@ export function OverviewPage() {
           {loading && !metrics ? (
             <div className="mt-4 space-y-4">
               {[0, 1, 2, 3].map((index) => (
-                <div key={index} className="h-8 animate-pulse rounded-lg bg-slate-100" />
+                <div key={index} className="h-8 rounded-lg bg-slate-100" />
               ))}
             </div>
           ) : error && !metrics ? (
