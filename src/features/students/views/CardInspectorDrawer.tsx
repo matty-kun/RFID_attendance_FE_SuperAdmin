@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Drawer } from '../../../components/common/Drawer';
+import { Drawer, getOpenDrawerCount } from '../../../components/common/Drawer';
 import { Button } from '../../../components/common/Button';
 import { studentService } from '../services/studentService';
 import type { StudentRecord } from '../models';
@@ -61,8 +61,11 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
     if (!isOpen) return;
 
     const handleWindowKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
+      // Do not redirect if another drawer is stacked on top
+      if (getOpenDrawerCount() > 1) return;
+
       // Do not redirect if user is actively typing in studentSearchFilter
+      const target = e.target as HTMLElement | null;
       if (target && target.tagName === 'INPUT' && target !== inputRef.current) {
         return;
       }
@@ -323,7 +326,6 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
                   variant="primary"
                   size="sm"
                   onClick={() => {
-                    onClose();
                     onViewStudent(matchedStudent);
                   }}
                   leftIcon={<ExternalLink className="h-3.5 w-3.5" />}

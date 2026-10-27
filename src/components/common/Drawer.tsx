@@ -1,7 +1,26 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '../../utils/cn';
+
+// Global stack tracker for nested / stacked drawers (LIFO order)
+let openDrawerStack: string[] = [];
+const stackListeners = new Set<() => void>();
+
+function pushDrawerToStack(id: string) {
+  openDrawerStack = openDrawerStack.filter((item) => item !== id);
+  openDrawerStack.push(id);
+  stackListeners.forEach((fn) => fn());
+}
+
+function removeDrawerFromStack(id: string) {
+  openDrawerStack = openDrawerStack.filter((item) => item !== id);
+  stackListeners.forEach((fn) => fn());
+}
+
+export function getOpenDrawerCount(): number {
+  return openDrawerStack.length;
+}
 
 export interface DrawerProps {
   isOpen: boolean;
@@ -41,8 +60,32 @@ export const Drawer: React.FC<DrawerProps> = ({
   hideHeader = false,
   noPadding = false,
 }) => {
+  const drawerId = useId();
   const [isMounted, setIsMounted] = useState(isOpen);
   const [isVisible, setIsVisible] = useState(false);
+  const [stackDepth, setStackDepth] = useState(0);
+
+  // Stack Registration & Depth Tracker
+  useEffect(() => {
+    if (isOpen) {
+      pushDrawerToStack(drawerId);
+    } else {
+      removeDrawerFromStack(drawerId);
+    }
+
+    const updateStack = () => {
+      const idx = openDrawerStack.indexOf(drawerId);
+      setStackDepth(idx >= 0 ? idx : 0);
+    };
+
+    stackListeners.add(updateStack);
+    updateStack();
+
+    return () => {
+      removeDrawerFromStack(drawerId);
+      stackListeners.delete(updateStack);
+    };
+  }, [isOpen, drawerId]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -61,24 +104,35 @@ export const Drawer: React.FC<DrawerProps> = ({
     }
   }, [isOpen]);
 
+  // LIFO Escape key handler: only the topmost active drawer closes
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) onClose();
+      if (e.key === 'Escape' && isOpen) {
+        const isTopmost = openDrawerStack[openDrawerStack.length - 1] === drawerId;
+        if (isTopmost) {
+          e.stopPropagation();
+          onClose();
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, drawerId]);
 
   if (!isMounted) return null;
+
+  const dynamicZIndex = 100 + stackDepth * 10;
 
   return createPortal(
     <div
       role="presentation"
+      style={{ zIndex: dynamicZIndex }}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
       className={cn(
-        'fixed inset-0 z-[100] flex justify-end bg-[#170D29]/40 backdrop-blur-md transition-opacity duration-300 ease-out',
+        'fixed inset-0 flex justify-end transition-opacity duration-300 ease-out',
+        stackDepth > 0 ? 'bg-[#170D29]/30 backdrop-blur-xs' : 'bg-[#170D29]/40 backdrop-blur-md',
         isVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
       )}
     >
@@ -123,7 +177,7 @@ export const Drawer: React.FC<DrawerProps> = ({
         )}
 
         {/* Drawer Content */}
-        <div className={cn("flex-1 overflow-y-auto min-h-0 flex flex-col", noPadding ? "p-0" : "p-6")}>
+        <div className={cn('flex-1 overflow-y-auto min-h-0 flex flex-col', noPadding ? 'p-0' : 'p-6')}>
           {children}
         </div>
 
