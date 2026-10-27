@@ -34,7 +34,7 @@ import {
 } from '../features/events/views/AssignOfficersDrawer';
 import { adminService, type SessionLocations } from '../services/adminService';
 import { getEventStatus, getSessionStatus } from '../utils/status';
-import type { EventRecord, SessionRecord } from '../types';
+import type { EventRecord, SessionRecord, AdminRecord } from '../types';
 import hawiQuestionImg from '../assets/illustrations/Hawi Question.png';
 import hawiFindingImg from '../assets/illustrations/Hawi Finding.png';
 
@@ -164,18 +164,22 @@ export function AttendancePage() {
   const buildEventSchedule = useCallback(async (ev: EventRecord) => {
     const sessions: SessionRecord[] = await adminService.getSessions(ev.id);
 
-    // Fetch allowed checkpoint locations for each session in parallel
-    const sessionLocationsEntries: Array<[string, SessionLocations]> = await Promise.all(
-      sessions.map(async (ses): Promise<[string, SessionLocations]> => {
-        try {
-          const locs = await adminService.getSessionLocations(ses.id);
-          return [ses.id, locs];
-        } catch {
-          return [ses.id, { session_id: ses.id, time_in_locations: [], time_out_locations: [] }];
-        }
-      })
-    );
+    // Fetch allowed checkpoint locations and admin officer pool in parallel
+    const [sessionLocationsEntries, adminRes] = await Promise.all([
+      Promise.all(
+        sessions.map(async (ses): Promise<[string, SessionLocations]> => {
+          try {
+            const locs = await adminService.getSessionLocations(ses.id);
+            return [ses.id, locs];
+          } catch {
+            return [ses.id, { session_id: ses.id, time_in_locations: [], time_out_locations: [] }];
+          }
+        })
+      ),
+      adminService.getAdmins(1, '', 100).catch(() => ({ admins: [] as AdminRecord[], total: 0, page: 1, limit: 100 })),
+    ]);
     const locationsMap = new Map<string, SessionLocations>(sessionLocationsEntries);
+    const allAdmins: AdminRecord[] = adminRes?.admins || [];
 
     const { label: dateRangeLabel, daysCount } = formatDateRangeLabel(ev.start_date, ev.end_date);
     const startObj = new Date(`${ev.start_date}T00:00:00`);
@@ -206,15 +210,26 @@ export function AttendancePage() {
             if (raw) cachedOfficers = JSON.parse(raw);
           } catch {}
 
-          const fallbackOfficers: AssignedOfficer[] = Array.from(uniqueLocations.entries()).map(([locId, locName]) => ({
-            id: `loc-${locId}`,
-            name: locName,
-            initials: locName.slice(0, 2).toUpperCase(),
-            role: 'Checkpoint',
-            location: 'Checkpoint Station',
-            locationId: locId,
-            status: 'Online',
-          }));
+          const fallbackOfficers: AssignedOfficer[] = Array.from(uniqueLocations.entries()).map(([locId, locName], locIdx) => {
+            const assignedAdmin = allAdmins[locIdx % allAdmins.length];
+            const officerName = assignedAdmin ? assignedAdmin.name : `Officer ${locIdx + 1}`;
+            const initials = officerName
+              .split(/\s+/)
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((p) => p[0]?.toUpperCase() || '')
+              .join('') || 'OF';
+
+            return {
+              id: assignedAdmin ? assignedAdmin.id : `loc-${locId}`,
+              name: officerName,
+              initials,
+              role: assignedAdmin?.role === 'super_admin' ? 'Super Admin' : 'Admin',
+              location: locName,
+              locationId: locId,
+              status: 'Online',
+            };
+          });
 
           const officers: AssignedOfficer[] = cachedOfficers.length > 0 ? cachedOfficers : fallbackOfficers;
 
@@ -1142,17 +1157,10 @@ export function AttendancePage() {
                                       <p className="text-[11px] font-bold leading-tight text-[#24133F]">
                                         {officer.name}
                                       </p>
-                                      {officer.location && officer.location !== officer.name ? (
-                                        <p className="flex items-center gap-0.5 text-[9px] text-[#756883]">
-                                          <MapPin className="h-2 w-2 text-[#756883]" />
-                                          <span>{officer.location}</span>
-                                        </p>
-                                      ) : (
-                                        <p className="flex items-center gap-0.5 text-[9px] text-[#756883]">
-                                          <MapPin className="h-2 w-2 text-[#756883]" />
-                                          <span>Checkpoint</span>
-                                        </p>
-                                      )}
+                                      <p className="flex items-center gap-0.5 text-[9px] text-[#756883]">
+                                        <MapPin className="h-2 w-2 text-[#756883]" />
+                                        <span>{officer.location}</span>
+                                      </p>
                                     </div>
                                   </div>
                                 ))}
