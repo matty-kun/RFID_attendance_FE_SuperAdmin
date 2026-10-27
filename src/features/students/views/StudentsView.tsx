@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useStudentsViewModel } from '../viewmodels';
 import { Button } from '../../../components/common/Button';
 import { Dropdown } from '../../../components/common/Dropdown';
@@ -7,6 +7,7 @@ import { RapidCardScanDrawer } from './RapidCardScanDrawer';
 import { BulkStudentImportModal } from './BulkStudentImportModal';
 import { RegisterActionsDropdown } from './RegisterActionsDropdown';
 import { StudentProfileDrawer } from './StudentProfileDrawer';
+import { CardInspectorModal } from './CardInspectorModal';
 import type { StudentRecord } from '../models';
 import {
   Search,
@@ -56,6 +57,13 @@ export const StudentsView: React.FC = () => {
   const [studentTab, setStudentTab] = useState<'active' | 'archived'>('active');
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<StudentRecord | null>(null);
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
+  const [isCardInspectorOpen, setIsCardInspectorOpen] = useState(false);
+
+  useEffect(() => {
+    const onOpenInspector = () => setIsCardInspectorOpen(true);
+    window.addEventListener('presnt:open-card-inspector', onOpenInspector);
+    return () => window.removeEventListener('presnt:open-card-inspector', onOpenInspector);
+  }, []);
   const [courseFilter, setCourseFilter] = useState('all');
 
   // Split students into active and archived cohorts
@@ -114,10 +122,19 @@ export const StudentsView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => setIsCardInspectorOpen(true)}
+            leftIcon={<Radio className="h-4 w-4 text-[#7026B7]" />}
+          >
+            Inspect Card
+          </Button>
           <RegisterActionsDropdown
             onAddStudent={() => setIsAddDrawerOpen(true)}
             onRapidScan={() => setIsRapidScanOpen(true)}
             onBulkImport={() => setIsBulkImportOpen(true)}
+            onInspectCard={() => setIsCardInspectorOpen(true)}
           />
         </div>
       </div>
@@ -426,6 +443,20 @@ export const StudentsView: React.FC = () => {
         isOpen={isBulkImportOpen}
         onClose={() => setIsBulkImportOpen(false)}
         onImport={handleBulkImport}
+      />
+
+      {/* Modal: Card Inspector & Rapid Tap Lookup */}
+      <CardInspectorModal
+        isOpen={isCardInspectorOpen}
+        onClose={() => setIsCardInspectorOpen(false)}
+        students={students}
+        cardlessStudents={cardlessStudents}
+        onQuickPair={handleQuickPair}
+        onUnlinkCard={handleUnlinkCard}
+        onViewStudent={(student) => {
+          setSelectedStudentForProfile(student);
+          setIsProfileDrawerOpen(true);
+        }}
       />
     </div>
   );
