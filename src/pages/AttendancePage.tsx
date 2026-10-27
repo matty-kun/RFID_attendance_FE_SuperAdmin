@@ -4,6 +4,7 @@ import {
   AlertCircle,
   Calendar,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   ChevronUp,
   Clock,
@@ -423,12 +424,34 @@ export function AttendancePage() {
     return diff > 0 ? diff : 1;
   }, [editEventStart, editEventEnd]);
 
+  const [editCalMonth, setEditCalMonth] = useState(() => new Date().getMonth());
+  const [editCalYear, setEditCalYear] = useState(() => new Date().getFullYear());
+
+  const handleEditDateClick = (dayStr: string) => {
+    if (!editEventStart || (editEventStart && editEventEnd && editEventStart !== editEventEnd)) {
+      setEditEventStart(dayStr);
+      setEditEventEnd(dayStr);
+    } else if (editEventStart && (!editEventEnd || editEventStart === editEventEnd)) {
+      if (dayStr < editEventStart) {
+        setEditEventEnd(editEventStart);
+        setEditEventStart(dayStr);
+      } else {
+        setEditEventEnd(dayStr);
+      }
+    }
+  };
+
   const handleOpenEditEvent = () => {
     if (!eventData) return;
     setEditEventName(eventData.name);
     setEditEventDesc(eventData.description || '');
     setEditEventStart(eventData.startDate);
     setEditEventEnd(eventData.endDate);
+    if (eventData.startDate) {
+      const d = new Date(eventData.startDate + 'T00:00:00');
+      setEditCalMonth(d.getMonth());
+      setEditCalYear(d.getFullYear());
+    }
     setIsEditEventOpen(true);
   };
 
@@ -1336,39 +1359,149 @@ export function AttendancePage() {
             />
           </div>
 
-          {/* Event Dates */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div className="rounded-2xl border border-[#E5E0EB] bg-white px-4 py-3 shadow-xs">
-              <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-1">
-                Start Date <span className="text-rose-500 font-bold">*</span>
-              </span>
+          {/* Event Dates Display Cards */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-[#E5E0EB] bg-white px-3.5 py-2.5 shadow-2xs">
+              <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">Start Date</span>
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-[#451475] shrink-0" />
-                <input
-                  type="date"
-                  required
-                  value={editEventStart}
-                  onChange={(e) => setEditEventStart(e.target.value)}
-                  className="w-full text-xs font-bold text-[#24133F] bg-transparent focus:outline-none cursor-pointer"
-                />
+                <span className="text-xs font-bold text-[#24133F]">
+                  {formatDateDisplay(editEventStart) || 'Select on calendar'}
+                </span>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[#E5E0EB] bg-white px-4 py-3 shadow-xs">
-              <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-1">
-                End Date <span className="text-rose-500 font-bold">*</span>
-              </span>
+            <div className="rounded-2xl border border-[#E5E0EB] bg-white px-3.5 py-2.5 shadow-2xs">
+              <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">End Date</span>
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-[#451475] shrink-0" />
-                <input
-                  type="date"
-                  required
-                  min={editEventStart}
-                  value={editEventEnd}
-                  onChange={(e) => setEditEventEnd(e.target.value)}
-                  className="w-full text-xs font-bold text-[#24133F] bg-transparent focus:outline-none cursor-pointer"
-                />
+                <span className="text-xs font-bold text-[#24133F]">
+                  {formatDateDisplay(editEventEnd) || 'Select on calendar'}
+                </span>
               </div>
+            </div>
+          </div>
+
+          {/* Interactive Calendar Month View */}
+          <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB]/60 p-3.5">
+            <div className="flex items-center justify-between pb-2.5 border-b border-[#F1EEF4]">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-[#451475]" />
+                <span className="text-xs font-bold text-[#24133F]">
+                  {new Date(editCalYear, editCalMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (editCalMonth === 0) {
+                      setEditCalMonth(11);
+                      setEditCalYear((y) => y - 1);
+                    } else {
+                      setEditCalMonth((m) => m - 1);
+                    }
+                  }}
+                  className="rounded-lg p-1 text-[#756883] hover:bg-white hover:text-[#24133F] transition-colors cursor-pointer"
+                  aria-label="Previous month"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (editCalMonth === 11) {
+                      setEditCalMonth(0);
+                      setEditCalYear((y) => y + 1);
+                    } else {
+                      setEditCalMonth((m) => m + 1);
+                    }
+                  }}
+                  className="rounded-lg p-1 text-[#756883] hover:bg-white hover:text-[#24133F] transition-colors cursor-pointer"
+                  aria-label="Next month"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Day headers */}
+            <div className="mt-2.5 grid grid-cols-7 text-center text-[10px] font-bold text-[#756883]">
+              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+                <div key={d} className="py-1">
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            {/* Day cells with range highlighting */}
+            <div className="grid grid-cols-7 text-center text-xs">
+              {(() => {
+                const daysInMonth = new Date(editCalYear, editCalMonth + 1, 0).getDate();
+                const firstDay = new Date(editCalYear, editCalMonth, 1).getDay();
+                const cells = [];
+
+                for (let i = 0; i < firstDay; i++) {
+                  cells.push(<div key={`blank-${i}`} className="h-8" />);
+                }
+
+                for (let day = 1; day <= daysInMonth; day++) {
+                  const dayStr = `${editCalYear}-${String(editCalMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                  const isStart = dayStr === editEventStart;
+                  const isEnd = dayStr === editEventEnd;
+                  const inRange = editEventStart && editEventEnd && dayStr > editEventStart && dayStr < editEventEnd;
+                  const hasRange = editEventStart && editEventEnd && editEventStart !== editEventEnd;
+
+                  const dayOfWeek = (firstDay + day - 1) % 7;
+                  const isRowStart = dayOfWeek === 0;
+                  const isRowEnd = dayOfWeek === 6;
+
+                  cells.push(
+                    <div key={day} className="relative flex h-8 items-center justify-center py-0.5">
+                      {hasRange && (
+                        <>
+                          {isStart && (
+                            <div className={`absolute right-0 top-0.5 bottom-0.5 left-1/2 bg-[#E9D5FF]/60 ${
+                              isRowEnd ? 'rounded-r-full' : ''
+                            }`} />
+                          )}
+                          {inRange && (
+                            <div className={`absolute inset-x-0 top-0.5 bottom-0.5 bg-[#E9D5FF]/60 ${
+                              isRowStart && isRowEnd
+                                ? 'rounded-full'
+                                : isRowStart
+                                ? 'rounded-l-full'
+                                : isRowEnd
+                                ? 'rounded-r-full'
+                                : ''
+                            }`} />
+                          )}
+                          {isEnd && (
+                            <div className={`absolute left-0 top-0.5 bottom-0.5 right-1/2 bg-[#E9D5FF]/60 ${
+                              isRowStart ? 'rounded-l-full' : ''
+                            }`} />
+                          )}
+                        </>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleEditDateClick(dayStr)}
+                        className={`relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+                          isStart || isEnd
+                            ? 'bg-[#451475] font-bold text-white shadow-xs'
+                            : inRange
+                            ? 'text-[#451475] hover:bg-[#D8B4FE]/40'
+                            : 'text-[#24133F] hover:bg-white'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    </div>
+                  );
+                }
+                return cells;
+              })()}
             </div>
           </div>
 
