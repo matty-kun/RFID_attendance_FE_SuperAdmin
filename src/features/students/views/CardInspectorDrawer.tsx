@@ -3,6 +3,7 @@ import { Drawer, getOpenDrawerCount } from '../../../components/common/Drawer';
 import { Button } from '../../../components/common/Button';
 import { studentService } from '../services/studentService';
 import type { StudentRecord } from '../models';
+import { formatYearLevel } from '../../../utils/formatters';
 import {
   Radio,
   ExternalLink,
@@ -309,7 +310,7 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
-                    {matchedStudent.course || 'BS Information Technology'} • Year {matchedStudent.year_level || 1}
+                    {matchedStudent.course || 'BS Information Technology'} • {formatYearLevel(matchedStudent.year_level || 1)}
                   </p>
                   {matchedStudent.email && (
                     <p className="text-xs text-slate-400 truncate mt-0.5">
@@ -386,7 +387,7 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
                               {student.name}
                             </p>
                             <p className="text-[11px] font-medium text-slate-500">
-                              @{student.student_id} • {student.course || 'BSIT'} • Year {student.year_level || 1}
+                              @{student.student_id} • {student.course || 'BSIT'} • {formatYearLevel(student.year_level || 1)}
                             </p>
                           </div>
 

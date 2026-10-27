@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useStudentsViewModel } from '../viewmodels';
 import { Button } from '../../../components/common/Button';
+import { formatYearLevel } from '../../../utils/formatters';
 import { Dropdown } from '../../../components/common/Dropdown';
 import { AddStudentDrawer } from './AddStudentDrawer';
 import { RapidCardScanDrawer } from './RapidCardScanDrawer';
@@ -99,8 +100,7 @@ export const StudentsView: React.FC = () => {
     return students.find((s) => s.id === selectedStudentForProfile.id) || selectedStudentForProfile;
   }, [selectedStudentForProfile, students]);
 
-  const yearLabel = (year?: number | null) =>
-    year ? `${year}${year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} Year` : '—';
+  const yearLabel = formatYearLevel;
 
   const initials = (fullName: string) =>
     fullName

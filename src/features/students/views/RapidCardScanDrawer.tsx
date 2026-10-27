@@ -6,6 +6,7 @@ import { toast } from '../../../context';
 import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
 import hawiCelebrateImg from '../../../assets/illustrations/Hawi Celebrate.png';
 import type { StudentRecord } from '../models';
+import { formatYearLevel } from '../../../utils/formatters';
 
 export interface RapidCardScanDrawerProps {
   isOpen: boolean;
@@ -132,7 +133,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
                     {' · '}
                     {currentStudent.course}
                     {' · '}
-                    Year {currentStudent.year_level}
+                    {formatYearLevel(currentStudent.year_level)}
                   </p>
                   <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F4EFFB] text-[11px] font-bold text-[#7026B7]">
                     <span>Tap card on USB reader to bind</span>

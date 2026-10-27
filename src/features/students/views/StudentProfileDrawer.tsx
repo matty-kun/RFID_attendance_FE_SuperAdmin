@@ -26,6 +26,7 @@ import {
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
 import type { StudentRecord } from '../models';
+import { formatYearLevel } from '../../../utils/formatters';
 
 export interface StudentScanItem {
   id: string;
@@ -569,8 +570,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     setTimeout(() => setCopiedUid(false), 2000);
   };
 
-  const yearLabel = (year?: number | null) =>
-    year ? `${year}${year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} Year` : '—';
+  const yearLabel = formatYearLevel;
 
   if (!currentStudent) return null;
 
