@@ -52,7 +52,6 @@ export const StudentsView: React.FC = () => {
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<StudentRecord | null>(null);
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
   const [courseFilter, setCourseFilter] = useState('all');
-  const [rfidFilter, setRfidFilter] = useState('all');
 
   // Split students into active and archived cohorts
   const activeStudents = useMemo(
@@ -78,9 +77,7 @@ export const StudentsView: React.FC = () => {
 
   // Filtered rows for current cohort
   const visibleStudents = currentCohort.filter(
-    (student) =>
-      (courseFilter === 'all' || student.course === courseFilter) &&
-      (rfidFilter === 'all' || (rfidFilter === 'verified' ? Boolean(student.rfid_uid) : !student.rfid_uid))
+    (student) => courseFilter === 'all' || student.course === courseFilter
   );
 
   // Keep active profile student synced with latest student data
@@ -105,7 +102,7 @@ export const StudentsView: React.FC = () => {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-extrabold leading-tight text-slate-900">Students &amp; RFID Cards</h1>
+          <h1 className="text-[22px] font-extrabold leading-tight text-slate-900">Students</h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Super Admin Registration Suite · continuous desktop scanner, bulk import, and student roster.
           </p>
@@ -188,16 +185,6 @@ export const StudentsView: React.FC = () => {
               options={[
                 { value: 'all', label: 'All Courses' },
                 ...courses.map((c) => ({ value: c, label: c })),
-              ]}
-            />
-
-            <Dropdown
-              value={rfidFilter}
-              onChange={(val) => setRfidFilter(val)}
-              options={[
-                { value: 'all', label: 'All RFID status' },
-                { value: 'verified', label: 'Assigned / Verified' },
-                { value: 'no-card', label: 'Unassigned (No card)' },
               ]}
             />
           </div>
@@ -344,7 +331,7 @@ export const StudentsView: React.FC = () => {
                   ? 'Check your backend connection and try again.'
                   : studentTab === 'archived'
                   ? 'Students you archive will appear here safely preserved.'
-                  : searchQuery || courseFilter !== 'all' || rfidFilter !== 'all'
+                  : searchQuery || courseFilter !== 'all'
                   ? 'Try clearing or relaxing your search filters.'
                   : 'Get started by adding a student or importing a bulk CSV roster.'}
               </p>
