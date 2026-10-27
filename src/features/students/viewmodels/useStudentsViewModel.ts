@@ -63,6 +63,7 @@ export interface UseStudentsViewModelReturn {
   handleQuickPair: (studentId: string, cardUid: string) => void;
   handleUnlinkCard: (studentId: string, reason?: 'lost' | 'returned') => Promise<void>;
   handleUpdateStudent: (studentId: string, payload: UpdateStudentPayload) => Promise<StudentRecord>;
+  uploadStudentAvatar: (studentId: string, imageBase64: string) => Promise<string>;
   loadStudents: () => Promise<void>;
 }
 
@@ -441,6 +442,24 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     }
   };
 
+  const handleUploadAvatar = async (studentId: string, imageBase64: string) => {
+    setIsSubmitting(true);
+    try {
+      const res = await studentService.uploadAvatar(studentId, imageBase64);
+      toast.success('Profile picture updated successfully!');
+      setStudents((prev) =>
+        prev.map((s) => (s.id === studentId ? { ...s, avatar_url: res.avatar_url } : s))
+      );
+      return res.avatar_url;
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.message || 'Failed to upload profile picture.';
+      toast.error(msg);
+      throw err;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return {
     students,
     filteredStudents,
@@ -482,6 +501,7 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     handleQuickPair,
     handleUnlinkCard,
     handleUpdateStudent,
+    uploadStudentAvatar: handleUploadAvatar,
     loadStudents,
   };
 };

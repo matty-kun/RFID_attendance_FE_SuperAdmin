@@ -3,6 +3,7 @@ import { Drawer } from '../../../components/common/Drawer';
 import { Button } from '../../../components/common/Button';
 import { Dropdown } from '../../../components/common/Dropdown';
 import { Modal } from '../../../components/common/Modal';
+import { ImageCropModal } from '../../../components/common/ImageCropModal';
 import { toast } from '../../../context';
 import {
   Copy,
@@ -19,6 +20,7 @@ import {
   CreditCard,
   Radio,
   Loader2,
+  Camera,
 } from 'lucide-react';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
@@ -51,6 +53,7 @@ export interface StudentProfileDrawerProps {
   isArchived?: boolean;
   onArchiveStudent?: (studentId: string) => void;
   onRestoreStudent?: (studentId: string) => void;
+  onUploadAvatar?: (studentId: string, imageBase64: string) => Promise<string>;
 }
 
 const COURSE_OPTIONS = [
@@ -274,12 +277,57 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   isArchived = false,
   onArchiveStudent,
   onRestoreStudent,
+  onUploadAvatar,
 }) => {
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
   const [filterType, setFilterType] = useState<'all' | 'time_in' | 'time_out'>('all');
   const [copiedUid, setCopiedUid] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
+
+  // Photo Upload & Centering/Crop State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [rawImageForCrop, setRawImageForCrop] = useState<string | null>(null);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentStudent) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size exceeds 10MB limit.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      if (!base64) return;
+      setRawImageForCrop(base64);
+      setIsCropModalOpen(true);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleConfirmCrop = async (croppedBase64: string) => {
+    if (!onUploadAvatar || !currentStudent) return;
+    setIsUploadingPhoto(true);
+    try {
+      const newUrl = await onUploadAvatar(currentStudent.id, croppedBase64);
+      activeStudentRef.current = {
+        ...currentStudent,
+        avatar_url: newUrl,
+      };
+      setIsCropModalOpen(false);
+      setRawImageForCrop(null);
+    } catch {
+      // error toast handled by viewmodel
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   // Inline RFID Card Scanning & Pairing
   const [isScanningCard, setIsScanningCard] = useState(false);
@@ -501,8 +549,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       noPadding
     >
       <div className="flex flex-col min-h-full bg-white select-none">
-        {/* Duolingo-style Top Hero Banner with Smooth Fog Transition */}
-        <div className="relative bg-[#78C9FC] px-6 pt-5 pb-0 flex flex-col justify-between min-h-[230px] overflow-hidden">
+        {/* Luminous Brand Violet Hero Header with Extended Downward Dissolve */}
+        <div className="relative bg-gradient-to-b from-[#9333EA] via-[#A855F7] via-[#C084FC]/80 via-[#F3E8FF] to-white px-6 pt-5 pb-10 flex flex-col justify-between">
           {/* Top Bar inside banner */}
           <div className="flex items-center justify-between z-20 gap-3">
             {/* Seamless In-Place Name Editor */}
@@ -517,18 +565,18 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   }
                 }}
                 className={`group flex items-center gap-2 rounded-xl py-0.5 px-1 -ml-1 transition-all ${
-                  isArchived ? 'cursor-default' : 'hover:bg-white/30 cursor-pointer'
+                  isArchived ? 'cursor-default' : 'hover:bg-white/20 cursor-pointer'
                 }`}
                 title={isArchived ? undefined : 'Click to rename student'}
               >
-                <h2 className="text-2xl font-black text-[#15344F] tracking-tight truncate max-w-[340px]">
+                <h2 className="text-2xl font-black text-white tracking-tight truncate max-w-[340px] drop-shadow-sm">
                   {currentStudent.name}
                 </h2>
                 {!isArchived && (
-                  <Pencil className="h-4 w-4 text-[#15344F]/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  <Pencil className="h-4 w-4 text-white/70 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                 )}
                 {isArchived && (
-                  <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
+                  <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-400/90 text-amber-950 border border-amber-300 shadow-xs">
                     Archived
                   </span>
                 )}
@@ -550,11 +598,11 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   disabled={isSavingName}
                   autoFocus
                   placeholder="Student Full Name"
-                  className="text-2xl font-black text-[#15344F] tracking-tight bg-transparent border-b-2 border-[#15344F] outline-none px-0 py-0 w-full"
+                  className="text-2xl font-black text-white tracking-tight bg-transparent border-b-2 border-white outline-none px-0 py-0 w-full placeholder:text-white/60"
                 />
                 {isSavingName && (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#15344F] shrink-0">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#15344F]" />
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white shrink-0">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
                     Saving…
                   </span>
                 )}
@@ -569,7 +617,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   onClick={() => setIsArchiveConfirmOpen(true)}
                   title="Archive Student"
                   aria-label="Archive Student"
-                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-[#756883] hover:text-rose-600 shadow-xs active:scale-95 transition-all cursor-pointer"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 text-white hover:text-rose-200 border border-white/25 backdrop-blur-md shadow-xs active:scale-95 transition-all cursor-pointer"
                 >
                   <Archive className="h-4 w-4" />
                 </button>
@@ -579,7 +627,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   onClick={() => onRestoreStudent?.(currentStudent.id)}
                   title="Restore Student to Active Roster"
                   aria-label="Restore Student to Active Roster"
-                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-emerald-700 shadow-xs active:scale-95 transition-all cursor-pointer"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 text-emerald-200 border border-white/25 backdrop-blur-md shadow-xs active:scale-95 transition-all cursor-pointer"
                 >
                   <ArchiveRestore className="h-4 w-4" />
                 </button>
@@ -594,31 +642,72 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   onClose();
                 }}
                 aria-label="Close drawer"
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-[#15344F] shadow-xs active:scale-95 transition-all cursor-pointer"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 text-white border border-white/25 backdrop-blur-md shadow-xs active:scale-95 transition-all cursor-pointer"
               >
-                <X className="h-5 w-5 stroke-[2.5]" />
+                <X className="h-5 w-5 stroke-[2.5] text-white" />
               </button>
             </div>
           </div>
 
-          {/* Character standing in center of banner */}
-          <div className="flex justify-center items-end mt-2 z-0 relative">
-            <img
-              src={hawiWavingImg}
-              alt="Student Character"
-              className="h-36 w-auto object-contain drop-shadow-md pointer-events-none"
+          {/* Character or Student Photo in center of banner */}
+          <div className="flex flex-col items-center justify-center mt-3 mb-2 z-20 relative">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/png,image/jpeg,image/webp,image/jpg"
+              onChange={handlePhotoSelect}
+              className="hidden"
             />
-          </div>
 
-          {/* Smooth Fog Transition Layer */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-white via-white/70 to-transparent z-10"
-          />
+            {currentStudent.avatar_url ? (
+              <div className="relative group/avatar">
+                <img
+                  src={currentStudent.avatar_url}
+                  alt={currentStudent.name}
+                  className="h-32 w-32 rounded-full object-cover border-4 border-white shadow-[0_12px_28px_rgba(147,51,234,0.3)] select-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingPhoto || isArchived}
+                  title="Change profile picture"
+                  className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#7C27BD] hover:bg-purple-50 shadow-md border border-purple-200/80 transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  {isUploadingPhoto ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-[#7C27BD]" />
+                  ) : (
+                    <Camera className="h-4 w-4 text-[#7C27BD]" />
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="relative flex flex-col items-center">
+                <img
+                  src={hawiWavingImg}
+                  alt="Student Character"
+                  className="h-32 w-auto object-contain drop-shadow-md pointer-events-none select-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingPhoto || isArchived}
+                  title="Upload profile picture"
+                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white hover:bg-purple-50 text-xs font-bold text-[#7C27BD] shadow-md border border-purple-200/80 transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  {isUploadingPhoto ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7C27BD]" />
+                  ) : (
+                    <Camera className="h-3.5 w-3.5 text-[#7C27BD]" />
+                  )}
+                  <span>{isUploadingPhoto ? 'Uploading…' : 'Upload Photo'}</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Content Area Below Banner */}
-        <div className="flex-1 p-5 pt-3 pb-8 space-y-4 relative z-20 bg-white">
+        <div className="flex-1 p-5 pt-1 pb-8 space-y-4 relative z-20 bg-white">
           {/* Subheading Handle */}
           <div className="flex items-center justify-between">
             <p className="text-xs font-extrabold text-[#756883] tracking-wider">
@@ -639,45 +728,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                 <p className="text-[11px] text-amber-700/90 mt-0.5">
                   Historical attendance logs remain intact. Click Restore in the top bar to re-pair cards or add to active events.
                 </p>
-              </div>
-            </div>
-          ) : currentStudent.rfid_uid && isUnlinking ? (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-3.5 space-y-2 animate-in fade-in duration-150">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-rose-900">
-                  Unlink Card {currentStudent.rfid_uid}?
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsUnlinking(false)}
-                  className="text-[11px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
-              <p className="text-[11px] text-rose-700/90 leading-tight">
-                This detaches the card from this student. Historical attendance records will remain saved.
-              </p>
-              <div className="flex items-center justify-end gap-2 pt-1">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setIsUnlinking(false)}
-                >
-                  Keep Card
-                </Button>
-                <Button
-                  type="button"
-                  variant="danger"
-                  size="sm"
-                  onClick={() => {
-                    setIsUnlinking(false);
-                    onUnlinkCard(currentStudent.id);
-                  }}
-                >
-                  Confirm Unlink
-                </Button>
               </div>
             </div>
           ) : currentStudent.rfid_uid ? (
@@ -711,12 +761,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                     <CreditCard className="h-5 w-5" />
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-slate-800">No RFID Card Assigned</p>
-                      <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-md">
-                        Unpaired
-                      </span>
-                    </div>
+                    <p className="text-xs font-bold text-slate-800">No RFID Card Assigned</p>
                     <p className="text-[11px] text-slate-500 truncate mt-0.5">
                       Link a card to track automated event attendance
                     </p>
@@ -1093,37 +1138,131 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         isOpen={isArchiveConfirmOpen}
         onClose={() => setIsArchiveConfirmOpen(false)}
         title="Archive Student"
-        description={`Are you sure you want to archive ${currentStudent.name} (${currentStudent.student_id})?`}
-        maxWidth="sm"
+        maxWidth="md"
       >
-        <div className="space-y-3 pt-1">
-          <p className="text-xs text-[#756883] leading-relaxed">
-            Archiving moves this student to the Archived roster. Any linked card will be unassigned.
-            All historical event attendance records remain permanently preserved.
+        <div className="space-y-4 pt-1">
+          <p className="text-sm text-[#24133F] leading-relaxed">
+            Are you sure you want to archive <span className="font-extrabold text-[#7026B7]">{currentStudent.name}</span> (<span className="font-extrabold text-[#24133F]">{currentStudent.student_id}</span>)?
           </p>
-          <div className="pt-2 flex items-center justify-end gap-2">
+
+          <div className="space-y-2.5 text-xs text-[#756883] pt-1">
+            <div className="flex items-start gap-2.5">
+              <span className="text-amber-500 font-bold leading-relaxed">•</span>
+              <span className="leading-relaxed">
+                Moves <span className="font-bold text-[#24133F]">{currentStudent.name}</span> to the <strong className="text-[#24133F]">Archived roster</strong> (hidden from active attendance sessions).
+              </span>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="text-rose-500 font-bold leading-relaxed">•</span>
+              <span className="leading-relaxed">
+                Any linked RFID card {currentStudent.rfid_uid ? (<>(<span className="font-mono font-bold text-[#24133F]">{currentStudent.rfid_uid}</span>)</>) : ''} will be <strong className="text-[#24133F]">unassigned</strong> immediately.
+              </span>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="text-emerald-600 font-bold leading-relaxed">•</span>
+              <span className="leading-relaxed">
+                All historical event attendance records remain <strong className="text-[#24133F]">permanently preserved</strong>.
+              </span>
+            </div>
+          </div>
+
+          <div className="pt-3 flex items-center justify-end gap-3">
             <Button
+              type="button"
               variant="secondary"
-              size="sm"
+              size="md"
               onClick={() => setIsArchiveConfirmOpen(false)}
             >
               Cancel
             </Button>
             <Button
+              type="button"
               variant="danger"
-              size="sm"
+              size="md"
               onClick={() => {
                 setIsArchiveConfirmOpen(false);
                 onArchiveStudent?.(currentStudent.id);
                 onClose();
               }}
-              leftIcon={<Archive className="h-3.5 w-3.5" />}
+              leftIcon={<Archive className="h-4 w-4" />}
             >
               Archive Student
             </Button>
           </div>
         </div>
       </Modal>
+
+      {/* Unlink RFID Card Confirmation Modal */}
+      <Modal
+        isOpen={isUnlinking}
+        onClose={() => setIsUnlinking(false)}
+        title="Unlink RFID Card"
+        maxWidth="md"
+      >
+        <div className="space-y-4 pt-1">
+          <p className="text-sm text-[#24133F] leading-relaxed">
+            Are you sure you want to unlink card <span className="font-mono font-extrabold text-[#EF4444] bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-200">{currentStudent.rfid_uid}</span> from <span className="font-extrabold text-[#7026B7]">{currentStudent.name}</span> (<span className="font-extrabold text-[#24133F]">{currentStudent.student_id}</span>)?
+          </p>
+
+          <div className="space-y-2.5 text-xs text-[#756883] pt-1">
+            <div className="flex items-start gap-2.5">
+              <span className="text-rose-500 font-bold leading-relaxed">•</span>
+              <span className="leading-relaxed">
+                Detaches this card from <span className="font-bold text-[#24133F]">{currentStudent.name}</span> immediately. Tapping it will no longer record attendance for this student.
+              </span>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="text-amber-500 font-bold leading-relaxed">•</span>
+              <span className="leading-relaxed">
+                The card UID becomes available to pair with any other student.
+              </span>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="text-emerald-600 font-bold leading-relaxed">•</span>
+              <span className="leading-relaxed">
+                All existing attendance logs and event check-ins remain <strong className="text-[#24133F]">safely preserved</strong>.
+              </span>
+            </div>
+          </div>
+
+          <div className="pt-3 flex items-center justify-end gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              onClick={() => setIsUnlinking(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              size="md"
+              onClick={() => {
+                setIsUnlinking(false);
+                onUnlinkCard(currentStudent.id);
+              }}
+              leftIcon={<Unlink className="h-4 w-4" />}
+            >
+              Unlink Card
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Profile Photo Centering & Crop Modal */}
+      <ImageCropModal
+        isOpen={isCropModalOpen}
+        onClose={() => {
+          if (!isUploadingPhoto) {
+            setIsCropModalOpen(false);
+            setRawImageForCrop(null);
+          }
+        }}
+        imageSrc={rawImageForCrop}
+        onConfirmCrop={handleConfirmCrop}
+        isSaving={isUploadingPhoto}
+      />
     </Drawer>
   );
 };

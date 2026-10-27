@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Trash2, X } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { Button } from './Button';
 
 export interface DeleteConfirmationModalProps {
   isOpen: boolean;
@@ -13,6 +14,10 @@ export interface DeleteConfirmationModalProps {
   confirmLabel?: string;
   cancelLabel?: string;
   isDeleting?: boolean;
+  icon?: React.ReactNode;
+  illustration?: string;
+  confirmIcon?: React.ReactNode;
+  variant?: 'danger' | 'brand' | 'warning';
 }
 
 export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
@@ -25,6 +30,10 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
   confirmLabel = 'Delete',
   cancelLabel = 'Cancel',
   isDeleting = false,
+  icon,
+  illustration,
+  confirmIcon,
+  variant = 'danger',
 }) => {
   const [isMounted, setIsMounted] = useState(isOpen);
   const [isVisible, setIsVisible] = useState(false);
@@ -70,16 +79,26 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="delete-modal-title"
+        aria-labelledby="confirmation-modal-title"
         className={cn(
           'w-full max-w-md rounded-[24px] bg-white p-6 shadow-2xl border border-[#E5E0EB] transition-all duration-180 cubic-bezier(0.16,1,0.3,1)',
           isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'
         )}
       >
         <div className="flex items-start justify-between">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-[#EF4444] border border-[#FEE2E2]">
-            <Trash2 className="h-6 w-6" />
-          </div>
+          {illustration ? (
+            <img
+              src={illustration}
+              alt="Mascot illustration"
+              className="h-24 w-auto object-contain drop-shadow-sm select-none -mt-1"
+            />
+          ) : icon ? (
+            icon
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-[#EF4444] border border-[#FEE2E2]">
+              <Trash2 className="h-6 w-6" />
+            </div>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -91,7 +110,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
         </div>
 
         <div className="mt-4">
-          <h3 id="delete-modal-title" className="text-lg font-bold text-[#24133F]">
+          <h3 id="confirmation-modal-title" className="text-lg font-bold text-[#24133F]">
             {title}
           </h3>
           <p className="mt-2 text-xs leading-relaxed text-[#756883]">
@@ -102,28 +121,35 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
                 Are you sure you want to delete <span className="font-bold text-[#24133F]">{itemName}</span>? This action cannot be undone.
               </>
             ) : (
-              'Are you sure you want to proceed with this deletion? This action cannot be undone.'
+              'Are you sure you want to proceed? This action cannot be undone.'
             )}
           </p>
         </div>
 
         <div className="mt-6 flex items-center justify-end gap-3">
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="md"
             onClick={onClose}
             disabled={isDeleting}
-            className="rounded-xl border border-[#E5E0EB] px-4 py-2.5 text-xs font-semibold text-[#756883] hover:bg-slate-50 transition-colors disabled:opacity-50"
           >
             {cancelLabel}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant={variant === 'brand' ? 'primary' : variant === 'warning' ? 'secondary' : 'danger'}
+            size="md"
             onClick={onConfirm}
             disabled={isDeleting}
-            className="rounded-xl bg-[#EF4444] px-5 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_0_#991B1B] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50"
+            isLoading={isDeleting}
+            leftIcon={confirmIcon}
+            className={cn(
+              variant === 'brand' && 'bg-[#7128A0] hover:bg-[#5E1E85] shadow-[0_5px_0_0_#461367] active:shadow-[0_1px_0_0_#461367]'
+            )}
           >
-            {isDeleting ? 'Deleting...' : confirmLabel}
-          </button>
+            {confirmLabel}
+          </Button>
         </div>
       </div>
     </div>,

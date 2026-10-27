@@ -34,6 +34,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   align = 'left',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = options.find((opt) => opt.value === value);
@@ -52,7 +53,18 @@ export const Dropdown: React.FC<DropdownProps> = ({
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleKeyDown);
+
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        if (spaceBelow < 220 && rect.top > spaceBelow) {
+          setOpenUpward(true);
+        } else {
+          setOpenUpward(false);
+        }
+      }
     }
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
@@ -94,7 +106,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
         <div
           role="listbox"
           className={cn(
-            'absolute top-[calc(100%+6px)] z-50 min-w-[170px] max-w-[260px] max-h-60 overflow-y-auto rounded-2xl border border-[#E5E0EB] bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-150',
+            'absolute z-50 min-w-[170px] max-w-[260px] max-h-48 overflow-y-auto rounded-2xl border border-[#E5E0EB] bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-150',
+            openUpward ? 'bottom-[calc(100%+6px)]' : 'top-[calc(100%+6px)]',
             align === 'right' ? 'right-0' : 'left-0',
             menuClassName
           )}
@@ -109,7 +122,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
                 aria-selected={isSelected}
                 onClick={() => handleSelect(option.value)}
                 className={cn(
-                  'flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold transition-colors',
+                  'flex w-full items-center justify-between gap-2.5 rounded-xl px-2.5 py-1.5 text-left text-xs font-semibold transition-colors',
                   isSelected
                     ? 'bg-[#F0E8FC] text-brand-700 font-bold'
                     : 'text-[#24133F] hover:bg-[#FAF8FC] hover:text-brand-700'

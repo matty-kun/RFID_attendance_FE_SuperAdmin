@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { SuperAdminUser } from '../models';
 import { authService } from '../services';
 import { DEV_PREVIEW_TOKEN } from '../devPreview';
+import { WaveTransition, type WaveTransitionProps } from '../../../components/common/WaveTransition';
 
 interface AuthContextType {
   user: SuperAdminUser | null;
@@ -17,9 +19,11 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const navigate = useNavigate();
   const [user, setUser] = useState<SuperAdminUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [transitionState, setTransitionState] = useState<WaveTransitionProps | null>(null);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -51,8 +55,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const { token: newToken, user: newUser } = await authService.login(identifier, password);
+
+      // Start wave transition: Left to Right
+      setTransitionState({
+        direction: 'ltr',
+        phase: 'enter',
+        message: 'Entering Super Admin Dashboard…',
+      });
+
+      // Wait for waves to sweep across and cover screen + brief celebration hold
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+
       setToken(newToken);
       setUser(newUser);
+      setIsLoading(false);
+      navigate(newUser.must_change_password ? '/change-password' : '/overview', { replace: true });
+
+      // Start wave exit phase (sweeping out to the right)
+      setTransitionState({
+        direction: 'ltr',
+        phase: 'exit',
+        message: 'Entering Super Admin Dashboard…',
+      });
+
+      // Wait for waves to finish sweeping off screen
+      await new Promise((resolve) => setTimeout(resolve, 950));
+      setTransitionState(null);
+
       return newUser;
     } finally {
       setIsLoading(false);
@@ -65,10 +94,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return profile;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Start wave transition: Right to Left
+    setTransitionState({
+      direction: 'rtl',
+      phase: 'enter',
+      message: 'Signing out…',
+    });
+
+    // Wait for waves to sweep across and cover screen + brief hold
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+
     authService.logout();
     setToken(null);
     setUser(null);
+    navigate('/login', { replace: true });
+
+    // Start wave exit phase (sweeping out to the left)
+    setTransitionState({
+      direction: 'rtl',
+      phase: 'exit',
+      message: 'Signing out…',
+    });
+
+    // Wait for waves to finish sweeping off screen
+    await new Promise((resolve) => setTimeout(resolve, 950));
+    setTransitionState(null);
   };
 
   return (
@@ -85,6 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }}
     >
       {children}
+      {transitionState && <WaveTransition {...transitionState} />}
     </AuthContext.Provider>
   );
 };

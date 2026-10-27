@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { AlertCircle, Eye, EyeOff, KeyRound, User } from 'lucide-react';
+import { Checkbox } from '../../../components/common/Checkbox';
 import { useLoginViewModel } from '../viewmodels';
 import hawiPeekingImg from '../../../assets/illustrations/Hawi Peeking.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
@@ -141,15 +142,11 @@ export function LoginView() {
 
             {/* Remember me & Forgot Password */}
             <div className="flex items-center justify-between text-xs pt-0.5">
-              <label className="flex items-center gap-2 text-[#756883] font-medium cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded-md border-[#D8B4ED] text-[#7026B7] focus:ring-[#7026B7] cursor-pointer"
-                />
-                <span>Remember me</span>
-              </label>
+              <Checkbox
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                label="Remember me"
+              />
               <button
                 type="button"
                 onClick={() => helpDialog.current?.showModal()}

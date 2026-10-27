@@ -1,10 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Calendar, MapPin, Check, X } from 'lucide-react';
+import { Search, Calendar, Clock, MapPin, Check, X } from 'lucide-react';
 import { Drawer } from '../../../components/common/Drawer';
 import { Checkbox } from '../../../components/common/Checkbox';
 import { Dropdown, type DropdownOption } from '../../../components/common/Dropdown';
 import { adminService } from '../../../services/adminService';
 import type { AdminRecord, LocationRecord } from '../../../types';
+
+export type DutyType = 'both' | 'in' | 'out';
 
 export interface AssignedOfficer {
   id: string;
@@ -13,8 +15,15 @@ export interface AssignedOfficer {
   role: string;
   location: string;
   locationId?: string;
+  dutyType?: DutyType;
   status: 'Online' | 'Offline';
 }
+
+const dutyTypeOptions: DropdownOption[] = [
+  { value: 'both', label: 'IN & OUT' },
+  { value: 'in', label: 'Time IN' },
+  { value: 'out', label: 'Time OUT' },
+];
 
 export interface AssignOfficersDrawerProps {
   isOpen: boolean;
@@ -50,14 +59,16 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
 }) => {
   const [assigned, setAssigned] = useState<AssignedOfficer[]>(initialAssigned);
   const [search, setSearch] = useState('');
-  const [selectedToAdd, setSelectedToAdd] = useState<{ [adminId: string]: string }>({});
+  const [selectedToAdd, setSelectedToAdd] = useState<{
+    [adminId: string]: { location: string; dutyType: DutyType };
+  }>({});
   const [admins, setAdmins] = useState<AdminRecord[]>([]);
   const [locations, setLocations] = useState<LocationRecord[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setAssigned(initialAssigned);
+      setAssigned(initialAssigned.map((a) => ({ ...a, dutyType: a.dutyType || 'both' })));
       setSelectedToAdd({});
       setSearch('');
       setLoading(true);
@@ -79,6 +90,7 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
       name: adm.name,
       initials: getInitials(adm.name),
       role: adm.role === 'super_admin' ? 'Super Admin' : 'Admin',
+      dutyType: 'both' as const,
       status: 'Online' as const,
     }));
   }, [admins]);
@@ -121,14 +133,20 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
     );
   };
 
+  const handleChangeAssignedDutyType = (officerId: string, dutyType: DutyType) => {
+    setAssigned((prev) =>
+      prev.map((o) => (o.id === officerId ? { ...o, dutyType } : o))
+    );
+  };
+
   const handleToggleSelect = (adminId: string) => {
     const defaultLoc = locations[0]?.name || '';
     setSelectedToAdd((prev) => {
       const next = { ...prev };
-      if (next[adminId] !== undefined) {
+      if (next[adminId]) {
         delete next[adminId];
       } else {
-        next[adminId] = defaultLoc;
+        next[adminId] = { location: defaultLoc, dutyType: 'both' };
       }
       return next;
     });
@@ -137,19 +155,33 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
   const handleChangeLocation = (adminId: string, location: string) => {
     setSelectedToAdd((prev) => ({
       ...prev,
-      [adminId]: location,
+      [adminId]: {
+        location,
+        dutyType: prev[adminId]?.dutyType || 'both',
+      },
+    }));
+  };
+
+  const handleChangeDutyType = (adminId: string, dutyType: DutyType) => {
+    setSelectedToAdd((prev) => ({
+      ...prev,
+      [adminId]: {
+        location: prev[adminId]?.location || locations[0]?.name || '',
+        dutyType,
+      },
     }));
   };
 
   const handleSaveAll = () => {
     const newAssigned: AssignedOfficer[] = [];
-    for (const [adminId, loc] of Object.entries(selectedToAdd)) {
+    for (const [adminId, config] of Object.entries(selectedToAdd)) {
       const found = adminPool.find((a) => a.id === adminId);
       if (found) {
         newAssigned.push({
           ...found,
-          location: loc,
-          locationId: locationIdByName.get(loc),
+          location: config.location,
+          locationId: locationIdByName.get(config.location),
+          dutyType: config.dutyType,
         });
       }
     }
@@ -187,9 +219,33 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
               {sessionStatus}
             </span>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-[#756883]">
-            <Calendar className="h-3.5 w-3.5" />
-            <span>{sessionDate} · {sessionTime}</span>
+
+          {/* Separated Date & Time Windows */}
+          <div className="mt-3 space-y-2 border-t border-[#E5E0EB]/60 pt-2.5">
+            <div className="flex items-center gap-1.5 text-xs text-[#756883]">
+              <Calendar className="h-3.5 w-3.5 text-[#756883] shrink-0" />
+              <span className="font-semibold text-[#24133F]">{sessionDate}</span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              {sessionTime.includes('·') ? (
+                <>
+                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                    <Clock className="h-3 w-3 text-emerald-600" />
+                    <span>{sessionTime.split('·')[0]?.trim()}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200 px-2 py-0.5 text-[11px] font-semibold text-rose-800">
+                    <Clock className="h-3 w-3 text-rose-600" />
+                    <span>{sessionTime.split('·')[1]?.trim()}</span>
+                  </span>
+                </>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-md bg-[#FAF8FB] border border-[#E5E0EB] px-2 py-0.5 text-[11px] font-semibold text-[#24133F]">
+                  <Clock className="h-3 w-3 text-[#756883]" />
+                  <span>{sessionTime}</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
       }
@@ -245,13 +301,21 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <Dropdown
+                    value={officer.dutyType || 'both'}
+                    onChange={(newDuty) => handleChangeAssignedDutyType(officer.id, newDuty as DutyType)}
+                    options={dutyTypeOptions}
+                    buttonClassName="h-7 px-2.5 text-[11px] font-bold rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
+                    menuClassName="min-w-[130px] z-50"
+                    align="right"
+                  />
                   {locationOptions.length > 0 ? (
                     <Dropdown
                       value={officer.location || locationOptions[0]?.value || ''}
                       onChange={(newLoc) => handleChangeAssignedLocation(officer.id, newLoc)}
                       options={locationOptions}
-                      buttonClassName="h-7 px-2.5 text-[11px] font-semibold text-[#24133F] rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
-                      menuClassName="min-w-[190px] z-50"
+                      buttonClassName="h-7 max-w-[190px] px-2.5 text-[11px] font-semibold text-[#24133F] rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
+                      menuClassName="min-w-[200px] z-50"
                       align="right"
                     />
                   ) : (
@@ -260,7 +324,7 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
                   <button
                     type="button"
                     onClick={() => handleRemoveAssigned(officer.id)}
-                    className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-red-600 transition-colors"
+                    className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-red-600 transition-colors cursor-pointer"
                     title="Remove assignment"
                   >
                     <X className="h-4 w-4" />
@@ -301,47 +365,55 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
             ) : (
               filteredAdmins.map((admin) => {
                 const isChecked = selectedToAdd[admin.id] !== undefined;
-                const selectedLocation = selectedToAdd[admin.id] || locations[0]?.name || '';
+                const selectedConfig = selectedToAdd[admin.id] || {
+                  location: locations[0]?.name || '',
+                  dutyType: 'both' as DutyType,
+                };
 
                 return (
-                  <div key={admin.id} className="py-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          checked={isChecked}
-                          onChange={() => handleToggleSelect(admin.id)}
-                        />
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-[#756883]">
-                          {admin.initials}
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-[#24133F]">{admin.name}</p>
-                          <p className="text-[11px] text-[#756883]">{admin.role}</p>
-                        </div>
+                  <div key={admin.id} className="flex items-center justify-between py-2.5">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={isChecked}
+                        onChange={() => handleToggleSelect(admin.id)}
+                      />
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-[#756883]">
+                        {admin.initials}
                       </div>
-
-                      <span className="rounded-full bg-[#E4F7EB] px-2 py-0.5 text-[10px] font-bold text-[#16883F]">
-                        {admin.status}
-                      </span>
+                      <div>
+                        <p className="text-xs font-bold text-[#24133F]">{admin.name}</p>
+                        <p className="text-[11px] text-[#756883]">{admin.role}</p>
+                      </div>
                     </div>
 
-                    {/* Location picker if checked */}
-                    {isChecked && locationOptions.length > 0 && (
-                      <div className="mt-2.5 flex items-center justify-between border-t border-[#F1EEF4] pt-2">
-                        <span className="text-[11px] font-medium text-[#756883] flex items-center gap-1.5">
-                          <MapPin className="h-3 w-3 text-[#756883]" />
-                          Assign checkpoint:
+                    <div className="flex items-center gap-2">
+                      {isChecked ? (
+                        <>
+                          <Dropdown
+                            value={selectedConfig.dutyType}
+                            onChange={(newDuty) => handleChangeDutyType(admin.id, newDuty as DutyType)}
+                            options={dutyTypeOptions}
+                            buttonClassName="h-7 px-2.5 text-[11px] font-bold rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
+                            menuClassName="min-w-[130px] z-50"
+                            align="right"
+                          />
+                          {locationOptions.length > 0 && (
+                            <Dropdown
+                              value={selectedConfig.location}
+                              onChange={(newLoc) => handleChangeLocation(admin.id, newLoc)}
+                              options={locationOptions}
+                              buttonClassName="h-7 max-w-[180px] px-2.5 text-[11px] font-semibold text-[#24133F] rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
+                              menuClassName="min-w-[200px] z-50"
+                              align="right"
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <span className="rounded-full bg-[#E4F7EB] px-2 py-0.5 text-[10px] font-bold text-[#16883F]">
+                          {admin.status}
                         </span>
-                        <Dropdown
-                          value={selectedLocation}
-                          onChange={(newLoc) => handleChangeLocation(admin.id, newLoc)}
-                          options={locationOptions}
-                          buttonClassName="h-7 px-2.5 text-[11px] font-semibold text-[#24133F] rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
-                          menuClassName="min-w-[190px] z-50"
-                          align="right"
-                        />
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 );
               })

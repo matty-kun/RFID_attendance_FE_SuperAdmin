@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Bell, CalendarDays, ChartNoAxesColumn, CircleHelp, ClipboardList, History, LayoutGrid, LogOut, MapPin, Search, UserCog, UsersRound } from 'lucide-react';
+import { Bell, CalendarDays, ChartNoAxesColumn, ClipboardList, History, LayoutGrid, LogOut, MapPin, Search, UserCog, UsersRound } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../features/auth';
 
@@ -21,7 +21,7 @@ const commands = [
   { name: 'Checkpoint Activity', path: '/overview#locations-chart', icon: MapPin, keywords: 'locations activity today scans checkpoint chart', action: '' },
   { name: 'Attendance Sessions', path: '/sessions', icon: CalendarDays, keywords: 'schedule event session time in time out create', action: '' },
   { name: 'Attendance Records', path: '/audit-log', icon: ClipboardList, keywords: 'scans student time in time out history', action: '' },
-  { name: 'Help', path: '', icon: CircleHelp, keywords: 'support guide keyboard shortcuts', action: 'help' },
+
   { name: 'Notifications', path: '', icon: Bell, keywords: 'alerts updates bell', action: 'notifications' },
 ];
 

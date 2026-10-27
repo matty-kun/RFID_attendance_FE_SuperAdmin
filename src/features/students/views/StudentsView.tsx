@@ -49,6 +49,7 @@ export const StudentsView: React.FC = () => {
     handleQuickPair,
     handleUnlinkCard,
     handleUpdateStudent,
+    uploadStudentAvatar,
     loadStudents,
   } = useStudentsViewModel();
 
@@ -128,11 +129,11 @@ export const StudentsView: React.FC = () => {
           <p className="text-2xl font-bold tracking-tight text-slate-900 mt-1 tabular-nums">
             {isLoading && students.length === 0 ? '—' : activeStudents.length.toLocaleString()}
           </p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Enrolled active roster</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Total students currently enrolled</p>
         </div>
 
         <div className="p-4 sm:p-5">
-          <p className="text-xs font-medium text-slate-500">Verified RFID cards</p>
+          <p className="text-xs font-medium text-slate-500">Students with cards</p>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-bold tracking-tight text-emerald-600 tabular-nums">
               {isLoading && students.length === 0 ? '—' : verifiedCount.toLocaleString()}
@@ -141,23 +142,27 @@ export const StudentsView: React.FC = () => {
               {activeStudents.length > 0 ? `${Math.round((verifiedCount / activeStudents.length) * 100)}%` : '0%'}
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">Active cards in circulation</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Ready to tap in for attendance</p>
         </div>
 
         <div className="p-4 sm:p-5">
-          <p className="text-xs font-medium text-slate-500">No card assigned</p>
+          <p className="text-xs font-medium text-slate-500">Students without cards</p>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
               {isLoading && students.length === 0 ? '—' : unverifiedCount.toLocaleString()}
             </span>
-            {unverifiedCount > 0 && (
+            {unverifiedCount > 0 ? (
               <span className="text-[11px] font-semibold text-amber-700">
-                Pending assignment
+                Needs card
+              </span>
+            ) : (
+              <span className="text-[11px] font-semibold text-emerald-700">
+                All set
               </span>
             )}
           </div>
           <p className="text-[11px] text-slate-400 mt-0.5">
-            {unverifiedCount === 0 ? 'All active students equipped' : 'Awaiting card pairing'}
+            {unverifiedCount === 0 ? 'Every student has a card' : 'Needs an RFID card to tap in'}
           </p>
         </div>
       </div>
@@ -250,9 +255,17 @@ export const StudentsView: React.FC = () => {
                   >
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[10px] font-extrabold text-brand-700 group-hover:scale-105 transition-transform border border-brand-200/50">
-                          {initials(student.name)}
-                        </span>
+                        {student.avatar_url ? (
+                          <img
+                            src={student.avatar_url}
+                            alt={student.name}
+                            className="h-8 w-8 shrink-0 rounded-full object-cover group-hover:scale-105 transition-transform border border-brand-200/50 shadow-xs"
+                          />
+                        ) : (
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[10px] font-extrabold text-brand-700 group-hover:scale-105 transition-transform border border-brand-200/50">
+                            {initials(student.name)}
+                          </span>
+                        )}
                         <div>
                           <p className="font-bold text-slate-900 leading-snug group-hover:text-brand-700 transition-colors">
                             {student.name}
@@ -389,6 +402,7 @@ export const StudentsView: React.FC = () => {
         isArchived={activeProfileStudent ? archivedStudentIds.includes(activeProfileStudent.id) : false}
         onArchiveStudent={handleArchiveStudent}
         onRestoreStudent={handleRestoreStudent}
+        onUploadAvatar={uploadStudentAvatar}
       />
 
       {/* Slide-in Drawer: Add Single Student */}
