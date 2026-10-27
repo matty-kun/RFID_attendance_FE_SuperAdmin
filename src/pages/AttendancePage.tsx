@@ -3,10 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   Calendar,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   Clock,
   Copy,
   Plus,
@@ -132,19 +130,6 @@ export function AttendancePage() {
   const [isDeletingEvent, setIsDeletingEvent] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<SessionItem | null>(null);
   const [isDeletingSession, setIsDeletingSession] = useState(false);
-  const [collapsedDayIds, setCollapsedDayIds] = useState<Set<string>>(new Set());
-
-  const toggleDayCollapse = (dayId: string) => {
-    setCollapsedDayIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(dayId)) {
-        next.delete(dayId);
-      } else {
-        next.add(dayId);
-      }
-      return next;
-    });
-  };
 
   // Filters
   const [search, setSearch] = useState('');
@@ -592,11 +577,6 @@ export function AttendancePage() {
         }
       }
       await loadSchedule(eventData.id);
-      setCollapsedDayIds((prev) => {
-        const next = new Set(prev);
-        next.delete(targetDayId);
-        return next;
-      });
       showFeedback(
         `Copied ${day1.sessions.length} session(s) from Day 1 to ${targetDay.dayLabel.split('-')[0].trim()}`,
         'success'
@@ -677,38 +657,6 @@ export function AttendancePage() {
       return true;
     });
   }, [events, search, statusFilter, academicYearFilter]);
-
-  const isSearching = Boolean(search.trim()) || statusFilter !== 'all' || academicYearFilter !== 'all';
-
-  const filteredDays = useMemo(() => {
-    if (!eventData) return [];
-    return eventData.days
-      .map((day) => {
-        const visibleSessions = day.sessions.filter((s) => {
-          const matchesSearch =
-            search.trim() === '' ||
-            day.dayLabel.toLowerCase().includes(search.toLowerCase()) ||
-            s.name.toLowerCase().includes(search.toLowerCase()) ||
-            s.officers.some(
-              (o) =>
-                o.name.toLowerCase().includes(search.toLowerCase()) ||
-                o.location.toLowerCase().includes(search.toLowerCase())
-            );
-
-          const matchesStatus =
-            statusFilter === 'all' ||
-            s.status.toLowerCase() === statusFilter.toLowerCase();
-
-          return matchesSearch && matchesStatus;
-        });
-
-        return {
-          ...day,
-          visibleSessions,
-        };
-      })
-      .filter((day) => !isSearching || day.visibleSessions.length > 0);
-  }, [eventData, search, statusFilter, isSearching]);
 
   return (
     <div className="mx-auto w-full max-w-[1180px] space-y-6 text-[#24133F]">
@@ -809,61 +757,52 @@ export function AttendancePage() {
         </div>
       )}
 
-      {/* Toolbar: Filters */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#756883]" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={eventData ? "Search sessions or checkpoints" : "Search events by name or description..."}
-              className="h-10 w-60 rounded-xl border border-[#E5E0EB] bg-white pl-9 pr-4 text-xs text-[#24133F] placeholder-[#756883] transition-colors focus:border-brand-700 focus:outline-none md:w-72"
+      {/* Toolbar: Filters (Events Directory) */}
+      {!eventData && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#756883]" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search events by name or description..."
+                className="h-10 w-60 rounded-xl border border-[#E5E0EB] bg-white pl-9 pr-4 text-xs text-[#24133F] placeholder-[#756883] transition-colors focus:border-brand-700 focus:outline-none md:w-72"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-[#756883] hover:text-[#24133F]"
+                  title="Clear search"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+
+            <Dropdown
+              value={statusFilter}
+              onChange={setStatusFilter}
+              buttonClassName="h-10 rounded-xl"
+              options={[
+                { value: 'all', label: 'All Status' },
+                { value: 'ongoing', label: 'Ongoing' },
+                { value: 'upcoming', label: 'Upcoming' },
+                { value: 'completed', label: 'Completed' },
+              ]}
             />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-[#756883] hover:text-[#24133F]"
-                title="Clear search"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            )}
-          </div>
 
-          <Dropdown
-            value={statusFilter}
-            onChange={setStatusFilter}
-            buttonClassName="h-10 rounded-xl"
-            options={
-              eventData
-                ? [
-                    { value: 'all', label: 'All Status' },
-                    { value: 'active', label: 'Active' },
-                    { value: 'upcoming', label: 'Upcoming' },
-                    { value: 'completed', label: 'Completed' },
-                  ]
-                : [
-                    { value: 'all', label: 'All Status' },
-                    { value: 'ongoing', label: 'Ongoing' },
-                    { value: 'upcoming', label: 'Upcoming' },
-                    { value: 'completed', label: 'Completed' },
-                  ]
-            }
-          />
-
-          {!eventData && (
             <Dropdown
               value={academicYearFilter}
               onChange={setAcademicYearFilter}
               buttonClassName="h-10 rounded-xl font-semibold"
               options={academicYearOptions}
             />
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Event Accordion Container */}
       {loading && !eventData ? (
@@ -882,73 +821,54 @@ export function AttendancePage() {
       ) : eventData ? (
         /* Event Days Content */
         <div className="space-y-4">
-          {filteredDays.map((day) => {
-              const isDayOpen = isSearching || !collapsedDayIds.has(day.dayId);
-
-              return (
-                <div
-                  key={day.dayId}
-                  className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden transition-all shadow-2xs"
-                >
-                  {/* Day Header Row */}
-                  <div
-                    onClick={() => toggleDayCollapse(day.dayId)}
-                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50/60 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-[#756883]">
-                        <Calendar className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-xs font-bold text-[#24133F]">{day.dayLabel}</h3>
-                        <p className="text-[10px] text-[#756883]">
-                          {day.visibleSessions.length}{' '}
-                          {day.visibleSessions.length === 1 ? 'session' : 'sessions'}
-                        </p>
-                      </div>
+          {eventData.days.map((day) => {
+            return (
+              <div
+                key={day.dayId}
+                className="rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden transition-all shadow-2xs"
+              >
+                {/* Day Header Row */}
+                <div className="flex items-center justify-between p-4 bg-[#FCFBFD]">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-[#7026B7]">
+                      <Calendar className="h-4 w-4" />
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      {day.dayId !== 'd1' && day.sessions.length === 0 && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void handleCopyFromDay1(day.dayId);
-                          }}
-                          className="flex items-center gap-1 rounded-xl border border-dashed border-[#451475]/40 bg-[#FAF7FD] px-2.5 py-1 text-[11px] font-bold text-[#451475] hover:bg-[#F3EDFB] transition-colors"
-                        >
-                          <Copy className="h-3 w-3" />
-                          <span>Copy from Day 1</span>
-                        </button>
-                      )}
-                      {day.sessions.length === 0 && (
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-[#756883]">
-                          No Sessions
-                        </span>
-                      )}
-                      {isDayOpen ? (
-                        <ChevronUp className="h-4 w-4 text-[#756883]" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-[#756883]" />
-                      )}
+                    <div>
+                      <h3 className="text-xs font-bold text-[#24133F]">{day.dayLabel}</h3>
+                      <p className="text-[10px] text-[#756883]">
+                        {day.sessions.length}{' '}
+                        {day.sessions.length === 1 ? 'session' : 'sessions'}
+                      </p>
                     </div>
                   </div>
 
-                  {/* Day Sessions List */}
-                  <div
-                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                      isDayOpen
-                        ? 'max-h-[3000px] opacity-100 border-t border-[#F1EEF4] p-4 space-y-3 bg-[#FAF8FB]/40'
-                        : 'max-h-0 opacity-0 p-0 pointer-events-none'
-                    }`}
-                  >
-                    {day.visibleSessions.length === 0 ? (
-                      <p className="py-4 text-center text-xs text-[#756883]">
-                        No sessions configured for this day yet.
-                      </p>
-                    ) : (
-                      day.visibleSessions.map((session) => {
+                  <div className="flex items-center gap-2">
+                    {day.dayId !== 'd1' && day.sessions.length === 0 && (
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyFromDay1(day.dayId)}
+                        className="flex items-center gap-1 rounded-xl border border-dashed border-[#451475]/40 bg-[#FAF7FD] px-2.5 py-1 text-[11px] font-bold text-[#451475] hover:bg-[#F3EDFB] transition-colors"
+                      >
+                        <Copy className="h-3 w-3" />
+                        <span>Copy from Day 1</span>
+                      </button>
+                    )}
+                    {day.sessions.length === 0 && (
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-[#756883]">
+                        No Sessions
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Day Sessions List */}
+                <div className="border-t border-[#F1EEF4] p-4 space-y-3 bg-[#FAF8FB]/40">
+                  {day.sessions.length === 0 ? (
+                    <p className="py-4 text-center text-xs text-[#756883]">
+                      No sessions configured for this day yet.
+                    </p>
+                  ) : (
+                    day.sessions.map((session) => {
                         const isCancelled = session.name.startsWith('[CANCELLED]');
                         const displaySessionName = isCancelled
                           ? session.name.replace(/^\[CANCELLED\]\s*/, '')
@@ -1149,31 +1069,6 @@ export function AttendancePage() {
                 </div>
               );
             })}
-
-            {filteredDays.length === 0 && (
-              <div className="py-12 text-center bg-white rounded-2xl border border-[#E5E0EB] p-8 flex flex-col items-center justify-center">
-                <img
-                  src={hawiQuestionImg}
-                  alt="Hawi Question"
-                  className="h-28 w-28 sm:h-36 sm:w-36 object-contain mx-auto mb-3"
-                />
-                <p className="text-sm font-bold text-[#24133F]">No sessions found</p>
-                <p className="text-xs text-[#756883] mt-1 max-w-xs mx-auto">
-                  No attendance sessions match your search or date filters.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearch('');
-                    setStatusFilter('all');
-                    setAcademicYearFilter('all');
-                  }}
-                  className="mt-4 px-4 py-1.5 rounded-xl text-xs font-bold text-[#7026B7] bg-[#FAF7FD] border border-[#E9DDF8] hover:bg-[#F3EDFB] transition-colors"
-                >
-                  Clear search & filters
-                </button>
-              </div>
-            )}
           </div>
         ) : (
         /* Events Directory List View */
