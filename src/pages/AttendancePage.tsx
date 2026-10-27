@@ -1279,7 +1279,6 @@ export function AttendancePage() {
         onClose={() => setIsEditEventOpen(false)}
         title="Edit Event Details"
         description="Update event information and schedule dates."
-        icon={<Calendar className="h-5 w-5" />}
         maxWidth="md"
         footer={
           <div className="flex items-center justify-end gap-2.5">
