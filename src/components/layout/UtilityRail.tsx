@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Bell, LogOut, X } from 'lucide-react';
 import { useAuth } from '../../features/auth';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
+import hawiWavingImg from '../../assets/illustrations/Hawi Waving.png';
 
 type Panel = 'account' | 'notifications';
 
@@ -200,6 +201,10 @@ export function UtilityRail() {
         description="Are you sure you want to sign out of your account? You will need to log back in to access the system."
         confirmLabel="Sign Out"
         cancelLabel="Cancel"
+        illustration={hawiWavingImg}
+        badgeIcon={<LogOut className="h-3 w-3" />}
+        confirmIcon={<LogOut className="h-3.5 w-3.5" />}
+        variant="brand"
       />
     </>
   );
