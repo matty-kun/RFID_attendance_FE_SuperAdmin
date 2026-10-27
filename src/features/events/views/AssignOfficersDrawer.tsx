@@ -317,7 +317,6 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
                       buttonClassName="h-7 max-w-[190px] px-2.5 text-[11px] font-semibold text-[#24133F] rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
                       menuClassName="min-w-[200px] z-50"
                       align="right"
-                      searchable
                     />
                   ) : (
                     <span className="text-[11px] text-[#756883]">{officer.location || 'No location'}</span>
@@ -372,35 +371,24 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
                 };
 
                 return (
-                  <div key={admin.id} className="py-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          checked={isChecked}
-                          onChange={() => handleToggleSelect(admin.id)}
-                        />
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-[#756883]">
-                          {admin.initials}
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-[#24133F]">{admin.name}</p>
-                          <p className="text-[11px] text-[#756883]">{admin.role}</p>
-                        </div>
+                  <div key={admin.id} className="flex items-center justify-between py-2.5">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={isChecked}
+                        onChange={() => handleToggleSelect(admin.id)}
+                      />
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-[#756883]">
+                        {admin.initials}
                       </div>
-
-                      <span className="rounded-full bg-[#E4F7EB] px-2 py-0.5 text-[10px] font-bold text-[#16883F]">
-                        {admin.status}
-                      </span>
+                      <div>
+                        <p className="text-xs font-bold text-[#24133F]">{admin.name}</p>
+                        <p className="text-[11px] text-[#756883]">{admin.role}</p>
+                      </div>
                     </div>
 
-                    {/* Location and Duty Type picker if checked */}
-                    {isChecked && (
-                      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-[#F1EEF4] pt-2">
-                        <span className="text-[11px] font-medium text-[#756883] flex items-center gap-1.5">
-                          <MapPin className="h-3 w-3 text-[#756883]" />
-                          Duty & Checkpoint:
-                        </span>
-                        <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      {isChecked ? (
+                        <>
                           <Dropdown
                             value={selectedConfig.dutyType}
                             onChange={(newDuty) => handleChangeDutyType(admin.id, newDuty as DutyType)}
@@ -414,15 +402,18 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
                               value={selectedConfig.location}
                               onChange={(newLoc) => handleChangeLocation(admin.id, newLoc)}
                               options={locationOptions}
-                              buttonClassName="h-7 max-w-[190px] px-2.5 text-[11px] font-semibold text-[#24133F] rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
+                              buttonClassName="h-7 max-w-[180px] px-2.5 text-[11px] font-semibold text-[#24133F] rounded-xl border-[#E5E0EB] bg-white shadow-none hover:border-[#451475]"
                               menuClassName="min-w-[200px] z-50"
                               align="right"
-                              searchable
                             />
                           )}
-                        </div>
-                      </div>
-                    )}
+                        </>
+                      ) : (
+                        <span className="rounded-full bg-[#E4F7EB] px-2 py-0.5 text-[10px] font-bold text-[#16883F]">
+                          {admin.status}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })
