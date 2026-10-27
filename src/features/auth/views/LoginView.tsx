@@ -13,6 +13,8 @@ export function LoginView() {
     setPassword,
     isLoading,
     error,
+    identifierError,
+    passwordError,
     clearError,
     handleSubmit,
   } = useLoginViewModel();
@@ -77,7 +79,7 @@ export function LoginView() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             {/* Admin ID / Identifier */}
             <div>
               <label
@@ -86,7 +88,13 @@ export function LoginView() {
               >
                 Admin ID
               </label>
-              <div className="flex h-11 items-center gap-2.5 rounded-2xl border border-[#D8B4ED] bg-white px-3.5 transition-all focus-within:border-[#7026B7] focus-within:ring-2 focus-within:ring-[#7026B7]/20">
+              <div
+                className={`flex h-11 items-center gap-2.5 rounded-2xl border bg-white px-3.5 transition-all ${
+                  identifierError
+                    ? 'border-[#EF3340] focus-within:border-[#EF3340] focus-within:ring-2 focus-within:ring-[#EF3340]/20'
+                    : 'border-[#D8B4ED] focus-within:border-[#7026B7] focus-within:ring-2 focus-within:ring-[#7026B7]/20'
+                }`}
+              >
                 <User className="h-4 w-4 text-[#756883] shrink-0" />
                 <input
                   id="admin-identifier"
@@ -99,7 +107,6 @@ export function LoginView() {
                     clearError();
                   }}
                   disabled={isLoading}
-                  required
                   className="h-full min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#24133F] outline-none placeholder:font-normal placeholder:text-[#A59CAC]"
                 />
               </div>
@@ -113,7 +120,13 @@ export function LoginView() {
               >
                 Password
               </label>
-              <div className="flex h-11 items-center gap-2.5 rounded-2xl border border-[#D8B4ED] bg-white px-3.5 transition-all focus-within:border-[#7026B7] focus-within:ring-2 focus-within:ring-[#7026B7]/20">
+              <div
+                className={`flex h-11 items-center gap-2.5 rounded-2xl border bg-white px-3.5 transition-all ${
+                  passwordError
+                    ? 'border-[#EF3340] focus-within:border-[#EF3340] focus-within:ring-2 focus-within:ring-[#EF3340]/20'
+                    : 'border-[#D8B4ED] focus-within:border-[#7026B7] focus-within:ring-2 focus-within:ring-[#7026B7]/20'
+                }`}
+              >
                 <KeyRound className="h-4 w-4 text-[#756883] shrink-0" />
                 <input
                   id="admin-password"
@@ -126,7 +139,6 @@ export function LoginView() {
                     clearError();
                   }}
                   disabled={isLoading}
-                  required
                   className="h-full min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#24133F] outline-none placeholder:font-normal placeholder:text-[#A59CAC]"
                 />
                 <button
