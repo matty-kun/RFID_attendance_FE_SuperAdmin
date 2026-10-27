@@ -42,10 +42,10 @@ export const WaveTransition: React.FC<WaveTransitionProps> = ({
   };
 
   const getTransitionStyle = (index: number) => {
-    const delay = phase === 'enter' ? index * 45 : index * 40;
+    const delay = phase === 'enter' ? index * 70 : index * 60;
     return {
       transform: getTransform(),
-      transition: `transform 520ms cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms`,
+      transition: `transform 750ms cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms`,
       willChange: 'transform',
     };
   };

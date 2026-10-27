@@ -63,8 +63,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         message: 'Entering Super Admin Dashboard…',
       });
 
-      // Wait 500ms for wave to cover screen
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Wait for waves to sweep across and cover screen + brief celebration hold
+      await new Promise((resolve) => setTimeout(resolve, 1100));
 
       setToken(newToken);
       setUser(newUser);
@@ -77,8 +77,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         message: 'Entering Super Admin Dashboard…',
       });
 
-      // Wait 550ms for wave to finish sweeping off screen
-      await new Promise((resolve) => setTimeout(resolve, 550));
+      // Wait for waves to finish sweeping off screen
+      await new Promise((resolve) => setTimeout(resolve, 950));
       setTransitionState(null);
 
       return newUser;
@@ -101,8 +101,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       message: 'Signing out…',
     });
 
-    // Wait 500ms for wave to cover screen
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Wait for waves to sweep across and cover screen + brief hold
+    await new Promise((resolve) => setTimeout(resolve, 1100));
 
     authService.logout();
     setToken(null);
@@ -116,8 +116,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       message: 'Signing out…',
     });
 
-    // Wait 550ms for wave to finish sweeping off screen
-    await new Promise((resolve) => setTimeout(resolve, 550));
+    // Wait for waves to finish sweeping off screen
+    await new Promise((resolve) => setTimeout(resolve, 950));
     setTransitionState(null);
   };
 
