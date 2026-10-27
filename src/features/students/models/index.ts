@@ -7,6 +7,7 @@ export interface StudentRecord {
   course?: string | null;
   year_level?: number | null;
   rfid_uid?: string | null;
+  avatar_url?: string | null;
   created_at: string;
   updated_at?: string;
 }
@@ -33,6 +34,7 @@ export interface UpdateStudentPayload {
   course?: string | null;
   year_level?: number | null;
   rfid_uid?: string | null;
+  avatar_url?: string | null;
 }
 
 export interface InventoryCard {

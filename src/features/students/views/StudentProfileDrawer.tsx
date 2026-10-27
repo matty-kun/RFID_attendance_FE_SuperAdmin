@@ -19,6 +19,7 @@ import {
   CreditCard,
   Radio,
   Loader2,
+  Camera,
 } from 'lucide-react';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
@@ -51,6 +52,7 @@ export interface StudentProfileDrawerProps {
   isArchived?: boolean;
   onArchiveStudent?: (studentId: string) => void;
   onRestoreStudent?: (studentId: string) => void;
+  onUploadAvatar?: (studentId: string, imageBase64: string) => Promise<string>;
 }
 
 const COURSE_OPTIONS = [
@@ -274,12 +276,47 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   isArchived = false,
   onArchiveStudent,
   onRestoreStudent,
+  onUploadAvatar,
 }) => {
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
   const [filterType, setFilterType] = useState<'all' | 'time_in' | 'time_out'>('all');
   const [copiedUid, setCopiedUid] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
+
+  // Photo Upload State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentStudent) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size exceeds 5MB limit.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      if (!base64 || !onUploadAvatar) return;
+      setIsUploadingPhoto(true);
+      try {
+        const newUrl = await onUploadAvatar(currentStudent.id, base64);
+        activeStudentRef.current = {
+          ...currentStudent,
+          avatar_url: newUrl,
+        };
+      } catch {
+        // error toast handled by viewmodel
+      } finally {
+        setIsUploadingPhoto(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Inline RFID Card Scanning & Pairing
   const [isScanningCard, setIsScanningCard] = useState(false);
@@ -601,13 +638,60 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             </div>
           </div>
 
-          {/* Character standing in center of banner */}
-          <div className="flex justify-center items-end mt-2 z-0 relative">
-            <img
-              src={hawiWavingImg}
-              alt="Student Character"
-              className="h-36 w-auto object-contain drop-shadow-md pointer-events-none"
+          {/* Character or Student Photo in center of banner */}
+          <div className="flex flex-col items-center justify-end mt-2 z-20 relative">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/png,image/jpeg,image/webp,image/jpg"
+              onChange={handlePhotoSelect}
+              className="hidden"
             />
+
+            {currentStudent.avatar_url ? (
+              <div className="relative group/avatar mb-1">
+                <img
+                  src={currentStudent.avatar_url}
+                  alt={currentStudent.name}
+                  className="h-32 w-32 rounded-full object-cover border-4 border-white shadow-xl ring-4 ring-black/5 select-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingPhoto || isArchived}
+                  title="Change profile picture"
+                  className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#24133F] hover:text-[#7026B7] shadow-lg border border-slate-200 transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  {isUploadingPhoto ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-[#7026B7]" />
+                  ) : (
+                    <Camera className="h-4 w-4 text-[#7026B7]" />
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="relative flex flex-col items-center">
+                <img
+                  src={hawiWavingImg}
+                  alt="Student Character"
+                  className="h-32 w-auto object-contain drop-shadow-md pointer-events-none select-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingPhoto || isArchived}
+                  title="Upload profile picture"
+                  className="absolute bottom-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 hover:bg-white text-xs font-bold text-[#24133F] hover:text-[#7026B7] shadow-md border border-slate-200/80 transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  {isUploadingPhoto ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7026B7]" />
+                  ) : (
+                    <Camera className="h-3.5 w-3.5 text-[#7026B7]" />
+                  )}
+                  <span>{isUploadingPhoto ? 'Uploading…' : 'Upload Photo'}</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Smooth Fog Transition Layer */}

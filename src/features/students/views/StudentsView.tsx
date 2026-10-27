@@ -49,6 +49,7 @@ export const StudentsView: React.FC = () => {
     handleQuickPair,
     handleUnlinkCard,
     handleUpdateStudent,
+    uploadStudentAvatar,
     loadStudents,
   } = useStudentsViewModel();
 
@@ -250,9 +251,17 @@ export const StudentsView: React.FC = () => {
                   >
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[10px] font-extrabold text-brand-700 group-hover:scale-105 transition-transform border border-brand-200/50">
-                          {initials(student.name)}
-                        </span>
+                        {student.avatar_url ? (
+                          <img
+                            src={student.avatar_url}
+                            alt={student.name}
+                            className="h-8 w-8 shrink-0 rounded-full object-cover group-hover:scale-105 transition-transform border border-brand-200/50 shadow-xs"
+                          />
+                        ) : (
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[10px] font-extrabold text-brand-700 group-hover:scale-105 transition-transform border border-brand-200/50">
+                            {initials(student.name)}
+                          </span>
+                        )}
                         <div>
                           <p className="font-bold text-slate-900 leading-snug group-hover:text-brand-700 transition-colors">
                             {student.name}
@@ -389,6 +398,7 @@ export const StudentsView: React.FC = () => {
         isArchived={activeProfileStudent ? archivedStudentIds.includes(activeProfileStudent.id) : false}
         onArchiveStudent={handleArchiveStudent}
         onRestoreStudent={handleRestoreStudent}
+        onUploadAvatar={uploadStudentAvatar}
       />
 
       {/* Slide-in Drawer: Add Single Student */}

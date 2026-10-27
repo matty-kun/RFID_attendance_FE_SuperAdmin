@@ -8,4 +8,6 @@ export const studentService = {
     request.post<StudentRecord>('/students', payload),
   updateStudent: (id: string, payload: UpdateStudentPayload) =>
     request.patch<StudentRecord>(`/students/${id}`, payload),
+  uploadAvatar: (id: string, imageBase64: string) =>
+    request.post<{ avatar_url: string }>(`/students/${id}/avatar`, { image: imageBase64 }),
 };
