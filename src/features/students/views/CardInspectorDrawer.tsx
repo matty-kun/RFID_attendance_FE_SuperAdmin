@@ -1,15 +1,11 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Drawer } from '../../../components/common/Drawer';
 import { Button } from '../../../components/common/Button';
-import { toast } from '../../../context';
 import { studentService } from '../services/studentService';
 import type { StudentRecord } from '../models';
 import {
   Radio,
-  Unlink,
   ExternalLink,
-  Copy,
-  Check,
   Search,
   Loader2,
   X,
@@ -23,7 +19,7 @@ export interface CardInspectorDrawerProps {
   students: StudentRecord[];
   cardlessStudents: StudentRecord[];
   onQuickPair: (studentId: string, cardUid: string) => Promise<{ success: boolean; message: string }>;
-  onUnlinkCard: (studentId: string, reason?: 'lost' | 'returned') => Promise<void>;
+  onUnlinkCard?: (studentId: string, reason?: 'lost' | 'returned') => Promise<void>;
   onViewStudent: (student: StudentRecord) => void;
 }
 
@@ -33,21 +29,16 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
   students,
   cardlessStudents,
   onQuickPair,
-  onUnlinkCard,
   onViewStudent,
 }) => {
   const [scannedUid, setScannedUid] = useState('');
   const [activeUid, setActiveUid] = useState<string | null>(null);
   const [matchedStudent, setMatchedStudent] = useState<StudentRecord | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-  const [copiedUid, setCopiedUid] = useState(false);
 
   // Quick Pair to Student
   const [studentSearchFilter, setStudentSearchFilter] = useState('');
   const [pairingStudentId, setPairingStudentId] = useState<string | null>(null);
-
-  // Unlink Confirmation State
-  const [isUnlinking, setIsUnlinking] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -192,13 +183,6 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
-  const handleCopyUid = (uid: string) => {
-    navigator.clipboard.writeText(uid);
-    setCopiedUid(true);
-    toast.success(`Copied ${uid} to clipboard!`);
-    setTimeout(() => setCopiedUid(false), 2000);
-  };
-
   const handlePairStudent = async (studentId: string) => {
     if (!activeUid || pairingStudentId) return;
     setPairingStudentId(studentId);
@@ -210,18 +194,6 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
       }
     } finally {
       setPairingStudentId(null);
-    }
-  };
-
-  const handleUnlinkSubmit = async () => {
-    if (!matchedStudent || isUnlinking) return;
-    setIsUnlinking(true);
-    try {
-      await onUnlinkCard(matchedStudent.id);
-      toast.success(`Card ${activeUid} unlinked! It is now available to pair.`);
-      setMatchedStudent(null);
-    } finally {
-      setIsUnlinking(false);
     }
   };
 
@@ -305,26 +277,9 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
 
         {/* STATE 1: Card is Active & Paired to a Student */}
         {activeUid && !isSearching && matchedStudent && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-right-3 duration-200">
-            {/* Scanned Tag Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xl font-black tracking-wide text-[#24133F]">
-                  {activeUid}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleCopyUid(activeUid)}
-                  title="Copy UID"
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  {copiedUid ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Student Identity with Inline Actions */}
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-4">
+          <div className="pt-1 animate-in fade-in slide-in-from-right-3 duration-200">
+            {/* Student Identity with Inline View Profile */}
+            <div className="flex items-center justify-between gap-4 py-1">
               <div className="flex items-center gap-3.5 min-w-0">
                 {matchedStudent.avatar_url ? (
                   <img
@@ -346,7 +301,7 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
                     <h3 className="text-base font-black text-[#24133F] truncate">
                       {matchedStudent.name}
                     </h3>
-                    <span className="text-xs font-bold text-[#7C27BD] bg-purple-50 px-2 py-0.5 rounded-full">
+                    <span className="text-xs font-bold text-[#7C27BD] bg-purple-50 px-2.5 py-0.5 rounded-full shrink-0">
                       @{matchedStudent.student_id}
                     </span>
                   </div>
@@ -361,19 +316,8 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Inline Actions on the Side */}
-              <div className="flex items-center gap-2 shrink-0">
-                <Button
-                  type="button"
-                  variant="danger"
-                  size="sm"
-                  onClick={handleUnlinkSubmit}
-                  isLoading={isUnlinking}
-                  leftIcon={<Unlink className="h-3.5 w-3.5" />}
-                >
-                  Unlink Card
-                </Button>
-
+              {/* View Profile Action */}
+              <div className="shrink-0">
                 <Button
                   type="button"
                   variant="primary"
@@ -393,38 +337,17 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
 
         {/* STATE 2: Card is Available / Unassigned */}
         {activeUid && !isSearching && !matchedStudent && (
-          <div className="space-y-5 animate-in fade-in slide-in-from-right-3 duration-200">
-            {/* Available Tag Header */}
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                    Available to Pair
-                  </span>
-                  <span className="text-[11px] font-bold text-slate-400">Unassigned Tag</span>
-                </div>
-                <div className="flex items-center gap-2 pt-0.5">
-                  <span className="font-mono text-2xl font-black tracking-wide text-[#24133F]">
-                    {activeUid}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyUid(activeUid)}
-                    title="Copy UID"
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                  >
-                    {copiedUid ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-                  </button>
-                </div>
-                <p className="text-xs text-slate-500 pt-0.5">
-                  Tag ready. Pick a student below to instantly link.
-                </p>
-              </div>
+          <div className="space-y-4 pt-1 animate-in fade-in slide-in-from-right-3 duration-200">
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                Available to Pair
+              </span>
+              <span className="text-xs text-slate-500">Pick a student below to link</span>
             </div>
 
             {/* Quick 1-Tap Student Assignment List */}
-            <div className="space-y-3 pt-3 border-t border-slate-100">
+            <div className="space-y-3 pt-2 border-t border-slate-100">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black uppercase tracking-wider text-slate-500">
                   Students Awaiting Cards ({cardlessStudents.length})
