@@ -538,8 +538,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       noPadding
     >
       <div className="flex flex-col min-h-full bg-white select-none">
-        {/* Duolingo-style Top Hero Banner with Smooth Fog Transition */}
-        <div className="relative bg-[#78C9FC] px-6 pt-5 pb-0 flex flex-col justify-between min-h-[230px] overflow-hidden">
+        {/* Brand Purple Top Hero Banner with Seamless Fog Transition */}
+        <div className="relative bg-gradient-to-b from-[#7026B7] via-[#832DCB] to-[#9A3DE8] px-6 pt-5 pb-0 flex flex-col justify-between min-h-[230px] overflow-hidden shadow-inner">
           {/* Top Bar inside banner */}
           <div className="flex items-center justify-between z-20 gap-3">
             {/* Seamless In-Place Name Editor */}
@@ -554,18 +554,18 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   }
                 }}
                 className={`group flex items-center gap-2 rounded-xl py-0.5 px-1 -ml-1 transition-all ${
-                  isArchived ? 'cursor-default' : 'hover:bg-white/30 cursor-pointer'
+                  isArchived ? 'cursor-default' : 'hover:bg-white/20 cursor-pointer'
                 }`}
                 title={isArchived ? undefined : 'Click to rename student'}
               >
-                <h2 className="text-2xl font-black text-[#15344F] tracking-tight truncate max-w-[340px]">
+                <h2 className="text-2xl font-black text-white tracking-tight truncate max-w-[340px] drop-shadow-sm">
                   {currentStudent.name}
                 </h2>
                 {!isArchived && (
-                  <Pencil className="h-4 w-4 text-[#15344F]/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  <Pencil className="h-4 w-4 text-white/70 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                 )}
                 {isArchived && (
-                  <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
+                  <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-400/90 text-amber-950 border border-amber-300 shadow-xs">
                     Archived
                   </span>
                 )}
@@ -587,11 +587,11 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   disabled={isSavingName}
                   autoFocus
                   placeholder="Student Full Name"
-                  className="text-2xl font-black text-[#15344F] tracking-tight bg-transparent border-b-2 border-[#15344F] outline-none px-0 py-0 w-full"
+                  className="text-2xl font-black text-white tracking-tight bg-transparent border-b-2 border-white outline-none px-0 py-0 w-full placeholder:text-white/60"
                 />
                 {isSavingName && (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#15344F] shrink-0">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#15344F]" />
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white shrink-0">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
                     Saving…
                   </span>
                 )}
@@ -606,7 +606,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   onClick={() => setIsArchiveConfirmOpen(true)}
                   title="Archive Student"
                   aria-label="Archive Student"
-                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-[#756883] hover:text-rose-600 shadow-xs active:scale-95 transition-all cursor-pointer"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 text-white hover:text-rose-200 border border-white/25 backdrop-blur-md shadow-xs active:scale-95 transition-all cursor-pointer"
                 >
                   <Archive className="h-4 w-4" />
                 </button>
@@ -616,7 +616,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   onClick={() => onRestoreStudent?.(currentStudent.id)}
                   title="Restore Student to Active Roster"
                   aria-label="Restore Student to Active Roster"
-                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-emerald-700 shadow-xs active:scale-95 transition-all cursor-pointer"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 text-emerald-200 border border-white/25 backdrop-blur-md shadow-xs active:scale-95 transition-all cursor-pointer"
                 >
                   <ArchiveRestore className="h-4 w-4" />
                 </button>
@@ -631,9 +631,9 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   onClose();
                 }}
                 aria-label="Close drawer"
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 hover:bg-white text-[#15344F] shadow-xs active:scale-95 transition-all cursor-pointer"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 text-white border border-white/25 backdrop-blur-md shadow-xs active:scale-95 transition-all cursor-pointer"
               >
-                <X className="h-5 w-5 stroke-[2.5]" />
+                <X className="h-5 w-5 stroke-[2.5] text-white" />
               </button>
             </div>
           </div>
@@ -653,14 +653,14 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                 <img
                   src={currentStudent.avatar_url}
                   alt={currentStudent.name}
-                  className="h-32 w-32 rounded-full object-cover border-4 border-white shadow-xl ring-4 ring-black/5 select-none"
+                  className="h-32 w-32 rounded-full object-cover border-4 border-white shadow-2xl ring-4 ring-purple-900/15 select-none"
                 />
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploadingPhoto || isArchived}
                   title="Change profile picture"
-                  className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#24133F] hover:text-[#7026B7] shadow-lg border border-slate-200 transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50"
+                  className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#7026B7] hover:bg-purple-50 shadow-lg border border-purple-200/80 transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50"
                 >
                   {isUploadingPhoto ? (
                     <Loader2 className="h-4 w-4 animate-spin text-[#7026B7]" />
@@ -681,7 +681,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploadingPhoto || isArchived}
                   title="Upload profile picture"
-                  className="absolute bottom-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 hover:bg-white text-xs font-bold text-[#24133F] hover:text-[#7026B7] shadow-md border border-slate-200/80 transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50"
+                  className="absolute bottom-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white hover:bg-purple-50 text-xs font-bold text-[#7026B7] shadow-md border border-purple-200/80 transition-all hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50"
                 >
                   {isUploadingPhoto ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7026B7]" />
@@ -694,10 +694,10 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             )}
           </div>
 
-          {/* Smooth Fog Transition Layer */}
+          {/* Seamless Fog Transition Layer from Brand Purple to White */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-white via-white/70 to-transparent z-10"
+            className="pointer-events-none absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-white via-white/80 to-transparent z-10"
           />
         </div>
 
