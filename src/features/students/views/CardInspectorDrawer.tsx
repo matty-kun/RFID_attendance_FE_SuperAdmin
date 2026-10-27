@@ -12,7 +12,6 @@ import {
   Check,
   Search,
   Loader2,
-  Sparkles,
   X,
 } from 'lucide-react';
 import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
@@ -465,25 +464,24 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
                       return (
                         <div
                           key={student.id}
-                          className="flex items-center justify-between py-2.5 px-1 hover:bg-purple-50/40 rounded-xl transition-colors"
+                          className="flex items-center justify-between py-2.5 px-1 hover:bg-slate-50 rounded-xl transition-colors"
                         >
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-black text-slate-900 truncate">
                               {student.name}
                             </p>
-                            <p className="text-[11px] font-bold text-[#7C27BD]">
-                              @{student.student_id} • {student.course || 'BSIT'}
+                            <p className="text-[11px] font-medium text-slate-500">
+                              @{student.student_id} • {student.course || 'BSIT'} • Year {student.year_level || 1}
                             </p>
                           </div>
 
                           <Button
                             type="button"
-                            variant="primary"
+                            variant="secondary"
                             size="sm"
                             onClick={() => void handlePairStudent(student.id)}
                             disabled={Boolean(pairingStudentId)}
                             isLoading={isThisPairing}
-                            leftIcon={!isThisPairing ? <Sparkles className="h-3.5 w-3.5" /> : undefined}
                           >
                             Pair Card
                           </Button>
