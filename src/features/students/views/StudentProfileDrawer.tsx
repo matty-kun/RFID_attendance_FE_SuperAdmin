@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Drawer } from '../../../components/common/Drawer';
 import { Button } from '../../../components/common/Button';
+import { Dropdown } from '../../../components/common/Dropdown';
 import { Modal } from '../../../components/common/Modal';
 import { toast } from '../../../context';
 import {
@@ -10,6 +11,7 @@ import {
   Unlink,
   X,
   Clock,
+  Calendar,
   MapPin,
   Pencil,
   Archive,
@@ -198,6 +200,66 @@ const generateStudentScans = (student: StudentRecord | null): StudentScanItem[] 
       kioskName: 'Kiosk 2',
       rfidUid: uid,
     },
+    {
+      id: 'scan-9',
+      eventId: 'ev-2',
+      eventName: 'CITE Tech Assembly 2026',
+      dayLabel: 'Day 1',
+      dateStr: 'October 10, 2026',
+      sessionName: 'Morning Time-In',
+      type: 'time_in',
+      status: 'on_time',
+      timestamp: isMaria ? '08:05 AM' : isCarlo ? '08:15 AM' : '08:20 AM',
+      timeWindow: '8:00 AM – 9:30 AM',
+      locationName: 'AVR 1 Entrance',
+      kioskName: 'Kiosk 3',
+      rfidUid: uid,
+    },
+    {
+      id: 'scan-10',
+      eventId: 'ev-2',
+      eventName: 'CITE Tech Assembly 2026',
+      dayLabel: 'Day 1',
+      dateStr: 'October 10, 2026',
+      sessionName: 'Afternoon Time-Out',
+      type: 'time_out',
+      status: 'on_time',
+      timestamp: isMaria ? '04:45 PM' : isCarlo ? '05:00 PM' : '04:50 PM',
+      timeWindow: '4:00 PM – 5:30 PM',
+      locationName: 'AVR 1 Exit',
+      kioskName: 'Kiosk 3',
+      rfidUid: uid,
+    },
+    {
+      id: 'scan-11',
+      eventId: 'ev-3',
+      eventName: 'Department Sports Fest 2026',
+      dayLabel: 'Day 1',
+      dateStr: 'October 18, 2026',
+      sessionName: 'Morning Time-In',
+      type: 'time_in',
+      status: isCarlo ? 'late' : 'on_time',
+      timestamp: isCarlo ? '08:42 AM' : isMaria ? '07:30 AM' : '07:55 AM',
+      timeWindow: '7:00 AM – 8:30 AM',
+      locationName: 'Grandstand Gate',
+      kioskName: 'Kiosk 5',
+      rfidUid: uid,
+    },
+    {
+      id: 'scan-12',
+      eventId: 'ev-3',
+      eventName: 'Department Sports Fest 2026',
+      dayLabel: 'Day 1',
+      dateStr: 'October 18, 2026',
+      sessionName: 'Afternoon Time-Out',
+      type: 'time_out',
+      status: 'on_time',
+      timestamp: isMaria ? '05:10 PM' : isCarlo ? '05:25 PM' : '05:15 PM',
+      timeWindow: '4:30 PM – 6:00 PM',
+      locationName: 'Grandstand Gate',
+      kioskName: 'Kiosk 5',
+      rfidUid: uid,
+    },
   ];
 };
 
@@ -213,6 +275,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   onArchiveStudent,
   onRestoreStudent,
 }) => {
+  const [selectedEventId, setSelectedEventId] = useState<string>('all');
   const [filterType, setFilterType] = useState<'all' | 'time_in' | 'time_out'>('all');
   const [copiedUid, setCopiedUid] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
@@ -281,6 +344,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       setIsScanningCard(false);
       setInlineCardUid('');
       setIsUnlinking(false);
+      setSelectedEventId('all');
+      setFilterType('all');
     }
   }, [currentStudent]);
 
@@ -362,10 +427,34 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
 
   const scans = useMemo(() => generateStudentScans(currentStudent), [currentStudent]);
 
+  // Dynamic list of unique events from scans
+  const eventOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    scans.forEach((s) => {
+      if (!map.has(s.eventId)) {
+        map.set(s.eventId, s.eventName);
+      }
+    });
+    return [
+      { value: 'all', label: `All Events (${map.size})` },
+      ...Array.from(map.entries()).map(([id, name]) => ({
+        value: id,
+        label: name,
+      })),
+    ];
+  }, [scans]);
+
+  // Filter by selected event
+  const eventFilteredScans = useMemo(() => {
+    if (selectedEventId === 'all') return scans;
+    return scans.filter((s) => s.eventId === selectedEventId);
+  }, [scans, selectedEventId]);
+
+  // Filter by scan type (all / time_in / time_out)
   const filteredScans = useMemo(() => {
-    if (filterType === 'all') return scans;
-    return scans.filter((s) => s.type === filterType);
-  }, [scans, filterType]);
+    if (filterType === 'all') return eventFilteredScans;
+    return eventFilteredScans.filter((s) => s.type === filterType);
+  }, [eventFilteredScans, filterType]);
 
   // Group scans by event day
   const groupedScans = useMemo(() => {
@@ -841,10 +930,23 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
 
           {/* SCAN HISTORY SECTION */}
           <div className="pt-2 space-y-2.5 relative">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase">
-                Scan History
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase shrink-0">
+                  Scan History
+                </p>
+                {scans.length > 0 && (
+                  <Dropdown
+                    value={selectedEventId}
+                    onChange={setSelectedEventId}
+                    options={eventOptions}
+                    icon={<Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />}
+                    className="w-48 sm:w-52"
+                    buttonClassName="h-7 py-0.5 px-2.5 text-xs rounded-xl bg-white border border-[#E5E0EB] hover:border-brand-500 font-bold text-slate-700 shadow-2xs"
+                    menuClassName="w-60 z-50 rounded-xl shadow-xl border border-slate-200 py-1"
+                  />
+                )}
+              </div>
 
               {/* Segmented Filter Pills */}
               {scans.length > 0 && (
@@ -858,7 +960,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                         : 'text-slate-500 hover:text-slate-900'
                     }`}
                   >
-                    All ({scans.length})
+                    All ({eventFilteredScans.length})
                   </button>
                   <button
                     type="button"
@@ -960,10 +1062,25 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   />
                   <p className="text-xs font-bold text-[#24133F]">No scan logs found</p>
                   <p className="text-[11px] text-[#756883] max-w-xs mt-0.5">
-                    {currentStudent.rfid_uid
+                    {selectedEventId !== 'all' || filterType !== 'all'
+                      ? 'No attendance records match the selected event or filter.'
+                      : currentStudent.rfid_uid
                       ? 'This student has not checked into any event sessions yet.'
                       : 'Link an RFID card first to track automatic event attendance.'}
                   </p>
+                  {(selectedEventId !== 'all' || filterType !== 'all') && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedEventId('all');
+                        setFilterType('all');
+                      }}
+                      className="mt-3 text-xs"
+                    >
+                      Reset Filters
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
