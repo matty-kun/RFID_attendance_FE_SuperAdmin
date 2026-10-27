@@ -92,20 +92,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [endDate, setEndDate] = useState(today);
   const [calendarMonth, setCalendarMonth] = useState(() => Number(today.slice(5, 7)) - 1);
   const [calendarYear, setCalendarYear] = useState(() => Number(today.slice(0, 4)));
-  const [existingEvents, setExistingEvents] = useState<EventRecord[]>([]);
-
-  useEffect(() => {
-    if (isOpen) {
-      adminService.getEvents().then(setExistingEvents).catch(() => {});
-    }
-  }, [isOpen]);
-
-  const dateConflict = useMemo(() => {
-    if (!startDate || !endDate) return null;
-    return existingEvents.find(
-      (e) => startDate <= e.end_date && endDate >= e.start_date
-    );
-  }, [existingEvents, startDate, endDate]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -361,12 +347,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         toast.error('Please select a valid Start Date and End Date.');
         return;
       }
-      if (dateConflict) {
-        toast.error(
-          `Date conflict: Overlaps with "${dateConflict.name}" (${dateConflict.start_date} to ${dateConflict.end_date}). Department events cannot overlap.`
-        );
-        return;
-      }
     }
     if (currentStep < 4) {
       setCurrentStep((prev) => prev + 1);
@@ -387,13 +367,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     }
     if (!startDate || !endDate || startDate > endDate) {
       toast.error('Valid Start Date and End Date are required.');
-      setCurrentStep(2);
-      return;
-    }
-    if (dateConflict) {
-      toast.error(
-        `Date conflict: Overlaps with "${dateConflict.name}" (${dateConflict.start_date} to ${dateConflict.end_date}). Department events cannot overlap.`
-      );
       setCurrentStep(2);
       return;
     }
@@ -644,13 +617,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   Select the start and end date for your event using the interactive calendar below.
                 </p>
               </div>
-
-              {dateConflict && (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-semibold text-rose-700 flex items-center gap-2">
-                  <span className="shrink-0 font-bold">⚠ Date Conflict:</span>
-                  <span>Overlaps with existing event &quot;{dateConflict.name}&quot; ({dateConflict.start_date} to {dateConflict.end_date}). Department events cannot overlap.</span>
-                </div>
-              )}
 
               {/* Selected Dates Display */}
               <div className="grid grid-cols-2 gap-4">
@@ -1350,7 +1316,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 <button
                   type="button"
                   onClick={handleNext}
-                  disabled={currentStep === 2 && Boolean(dateConflict)}
+                  disabled={currentStep === 2 && (!startDate || !endDate || startDate > endDate)}
                   className="rounded-2xl bg-[#7026B7] px-6 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_0_#451475] hover:bg-[#631FA4] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   Next →
