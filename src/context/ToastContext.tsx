@@ -154,7 +154,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       {activeToast &&
         createPortal(
           <div
-            className={`fixed bottom-6 left-6 z-[200] flex items-center gap-2.5 rounded-full px-5 py-3 shadow-2xl text-white animate-in slide-in-from-bottom-4 duration-200 ${
+            className={`fixed bottom-6 left-6 z-[1000] flex items-center gap-2.5 rounded-full px-5 py-3 shadow-2xl text-white animate-in slide-in-from-bottom-4 duration-200 ${
               activeToast.type === 'error'
                 ? 'bg-[#EF3340]'
                 : activeToast.type === 'warning'

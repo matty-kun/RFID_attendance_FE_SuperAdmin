@@ -297,8 +297,16 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     const file = e.target.files?.[0];
     if (!file || !currentStudent) return;
 
+    const isImage = file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp)$/i.test(file.name);
+    if (!isImage) {
+      toast.error('Invalid file format. Please upload an image file (PNG, JPG, or WEBP).');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     if (file.size > 10 * 1024 * 1024) {
       toast.error('File size exceeds 10MB limit.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
@@ -306,8 +314,21 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     reader.onload = () => {
       const base64 = reader.result as string;
       if (!base64) return;
-      setRawImageForCrop(base64);
-      setIsCropModalOpen(true);
+
+      const testImg = new Image();
+      testImg.onload = () => {
+        setRawImageForCrop(base64);
+        setIsCropModalOpen(true);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      };
+      testImg.onerror = () => {
+        toast.error('The selected file is not a valid image.');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      };
+      testImg.src = base64;
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read the selected file.');
       if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsDataURL(file);
