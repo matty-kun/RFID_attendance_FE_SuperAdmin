@@ -141,12 +141,12 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
             <span className="text-xs font-bold text-[#24133F]">{sessionTitle}</span>
             {windowType === 'IN' && (
               <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-                Check-in Window (IN)
+                Time-in Window (IN)
               </span>
             )}
             {windowType === 'OUT' && (
               <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-[#EF3340] border border-rose-200">
-                Check-out Window (OUT)
+                Time-out Window (OUT)
               </span>
             )}
             {windowType === 'Session' && (

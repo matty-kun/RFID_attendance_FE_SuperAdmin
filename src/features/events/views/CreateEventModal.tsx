@@ -259,9 +259,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         toast.error('A session must have at least one window. Uncheck the session checkbox to disable it.');
         return;
       }
-      toast.success(`${slot === 'IN' ? 'Check-in' : 'Check-out'} window removed.`);
+      toast.success(`${slot === 'IN' ? 'Time-in' : 'Time-out'} window removed.`);
     } else {
-      toast.success(`${slot === 'IN' ? 'Check-in' : 'Check-out'} window added.`);
+      toast.success(`${slot === 'IN' ? 'Time-in' : 'Time-out'} window added.`);
     }
 
     updateCurrentDaySchedule((prev) => ({
@@ -275,8 +275,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const getSessionBadge = (slot: SessionTimeSlot) => {
     if (slot.hasIn && slot.hasOut) return 'Both (IN + OUT)';
-    if (slot.hasIn) return 'Check-in Only';
-    if (slot.hasOut) return 'Check-out Only';
+    if (slot.hasIn) return 'Time-In Only';
+    if (slot.hasOut) return 'Time-Out Only';
     return 'Disabled';
   };
 
@@ -1078,14 +1078,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                               <div className="flex items-center justify-between">
                                 <span className="flex items-center gap-1 font-bold text-emerald-600 text-xs">
                                   <span className="h-2 w-2 rounded-full bg-emerald-600" />
-                                  Check-in Window
+                                  Time-In Window
                                 </span>
                                 <div className="flex items-center gap-1.5">
                                   <button
                                     type="button"
                                     onClick={() => handleOpenEditTimeSlot(session.type, 'IN', session.slot.inTime)}
                                     className="group flex items-center gap-1.5 rounded-lg bg-white hover:bg-[#FAF7FD] border border-[#E5E0EB] hover:border-[#451475] px-2.5 py-1 text-[11px] font-semibold text-[#24133F] hover:text-[#451475] transition-all shadow-xs"
-                                    title="Click to edit check-in window"
+                                    title="Click to edit time-in window"
                                   >
                                     <Clock className="h-3.5 w-3.5 text-[#451475]" />
                                     <span>{session.slot.inTime}</span>
@@ -1094,7 +1094,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                     type="button"
                                     onClick={() => handleToggleWindow(session.type, 'IN', false)}
                                     className="rounded-lg p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                                    title="Delete Check-in window"
+                                    title="Delete Time-In window"
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
@@ -1154,9 +1154,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                             >
                               <div className="flex items-center gap-1.5 text-emerald-600 font-bold">
                                 <Plus className="h-4 w-4" />
-                                <span>Add Check-in Window</span>
+                                <span>Add Time-In Window</span>
                               </div>
-                              <span className="text-[11px] text-[#756883] font-normal">Enable check-in attendance window</span>
+                              <span className="text-[11px] text-[#756883] font-normal">Enable time-in attendance window</span>
                             </button>
                           )}
 
@@ -1166,14 +1166,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                               <div className="flex items-center justify-between">
                                 <span className="flex items-center gap-1 font-bold text-[#EF3340] text-xs">
                                   <span className="h-2 w-2 rounded-full bg-[#EF3340]" />
-                                  Check-out Window
+                                  Time-Out Window
                                 </span>
                                 <div className="flex items-center gap-1.5">
                                   <button
                                     type="button"
                                     onClick={() => handleOpenEditTimeSlot(session.type, 'OUT', session.slot.outTime)}
                                     className="group flex items-center gap-1.5 rounded-lg bg-white hover:bg-[#FAF7FD] border border-[#E5E0EB] hover:border-[#EF3340] px-2.5 py-1 text-[11px] font-semibold text-[#24133F] hover:text-[#EF3340] transition-all shadow-xs"
-                                    title="Click to edit check-out window"
+                                    title="Click to edit time-out window"
                                   >
                                     <Clock className="h-3.5 w-3.5 text-[#EF3340]" />
                                     <span>{session.slot.outTime}</span>
@@ -1182,7 +1182,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                     type="button"
                                     onClick={() => handleToggleWindow(session.type, 'OUT', false)}
                                     className="rounded-lg p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                                    title="Delete Check-out window"
+                                    title="Delete Time-Out window"
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
@@ -1242,9 +1242,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                             >
                               <div className="flex items-center gap-1.5 text-[#EF3340] font-bold">
                                 <Plus className="h-4 w-4" />
-                                <span>Add Check-out Window</span>
+                                <span>Add Time-Out Window</span>
                               </div>
-                              <span className="text-[11px] text-[#756883] font-normal">Enable check-out attendance window</span>
+                              <span className="text-[11px] text-[#756883] font-normal">Enable time-out attendance window</span>
                             </button>
                           )}
                         </div>
