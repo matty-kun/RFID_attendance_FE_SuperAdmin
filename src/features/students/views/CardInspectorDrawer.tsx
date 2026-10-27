@@ -14,10 +14,7 @@ import {
   Search,
   Loader2,
   Sparkles,
-  Wifi,
-  UserCheck,
   X,
-  CreditCard,
 } from 'lucide-react';
 import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
@@ -246,93 +243,71 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
         {/* STATE 1: Card is Active & Paired to a Student */}
         {activeUid && !isSearching && matchedStudent && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-3 duration-200">
-            {/* Visual RFID Card Graphic */}
-            <div className="relative overflow-hidden rounded-3xl p-5 bg-gradient-to-br from-[#7C27BD] via-[#8B2CCB] to-[#58158C] text-white shadow-[0_12px_28px_rgba(124,39,189,0.22)] select-none">
-              {/* Decorative Card Ribbons */}
-              <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-white/10 blur-xl" />
-              <div className="pointer-events-none absolute -left-8 -bottom-8 h-36 w-36 rounded-full bg-purple-400/20 blur-lg" />
-
-              <div className="relative z-10 flex items-center justify-between">
+            {/* Scanned Tag Header */}
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-purple-200" />
-                  <span className="text-xs font-black uppercase tracking-wider text-purple-200">
-                    RFID Smart Card
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-300">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Active &amp; Linked
                   </span>
+                  <span className="text-[11px] font-bold text-slate-400">Physical Tag</span>
                 </div>
-              </div>
-
-              {/* Contactless Wave Icon & UID */}
-              <div className="relative z-10 my-6 flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-purple-200/75">
-                    Physical Tag UID
-                  </p>
-                  <p className="font-mono text-xl font-black tracking-wider text-white">
+                <div className="flex items-center gap-2 pt-0.5">
+                  <span className="font-mono text-2xl font-black tracking-wide text-[#24133F]">
                     {activeUid}
-                  </p>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyUid(activeUid)}
+                    title="Copy UID"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    {copiedUid ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleCopyUid(activeUid)}
-                  title="Copy UID"
-                  className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer"
-                >
-                  {copiedUid ? <Check className="h-4 w-4 text-emerald-300" /> : <Copy className="h-4 w-4" />}
-                </button>
-              </div>
-
-              {/* Card Footer Owner Name */}
-              <div className="relative z-10 flex items-center justify-between border-t border-white/15 pt-3">
-                <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-purple-200/75">
-                    Cardholder
-                  </p>
-                  <p className="text-sm font-black truncate max-w-[220px]">
-                    {matchedStudent.name}
-                  </p>
-                </div>
-                <Wifi className="h-5 w-5 text-purple-300 rotate-90" />
               </div>
             </div>
 
-            {/* Student Profile Quick View */}
-            <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+            {/* Student Identity (Unboxed) */}
+            <div className="pt-4 pb-2 border-t border-slate-100 flex items-center gap-4">
               {matchedStudent.avatar_url ? (
                 <img
                   src={matchedStudent.avatar_url}
                   alt={matchedStudent.name}
-                  className="h-16 w-16 rounded-full object-cover border-2 border-white shadow-md select-none shrink-0"
+                  className="h-16 w-16 rounded-full object-cover border-2 border-purple-100 shadow-xs shrink-0 select-none"
                 />
               ) : (
-                <div className="h-16 w-16 rounded-full bg-purple-100 border-2 border-white shadow-md flex items-center justify-center shrink-0">
+                <div className="h-16 w-16 rounded-full bg-purple-50 border-2 border-purple-100 flex items-center justify-center shrink-0">
                   <img
                     src={hawiWavingImg}
                     alt="Student"
-                    className="h-14 w-auto object-contain select-none"
+                    className="h-12 w-auto object-contain select-none"
                   />
                 </div>
               )}
-              <div className="min-w-0 flex-1 space-y-0.5">
-                <p className="text-base font-black text-[#24133F] truncate">
-                  {matchedStudent.name}
-                </p>
-                <p className="text-xs font-bold text-[#7C27BD]">
-                  @{matchedStudent.student_id}
-                </p>
-                <p className="text-xs text-[#756883] truncate">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-[#24133F] truncate">
+                    {matchedStudent.name}
+                  </h3>
+                  <span className="text-xs font-bold text-[#7C27BD] bg-purple-50 px-2 py-0.5 rounded-full">
+                    @{matchedStudent.student_id}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
                   {matchedStudent.course || 'BS Information Technology'} • Year {matchedStudent.year_level || 1}
                 </p>
+                {matchedStudent.email && (
+                  <p className="text-xs text-slate-400 truncate mt-0.5">
+                    {matchedStudent.email}
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Actions for Assigned Card */}
-            <div className="flex items-center justify-between gap-3 pt-2">
+            <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100">
               <Button
                 type="button"
                 variant="secondary"
@@ -375,55 +350,40 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
         {/* STATE 2: Card is Available / Unassigned */}
         {activeUid && !isSearching && !matchedStudent && (
           <div className="space-y-5 animate-in fade-in slide-in-from-right-3 duration-200">
-            {/* Visual Available Card Graphic */}
-            <div className="relative overflow-hidden rounded-3xl p-5 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.18)] select-none">
-              <div className="relative z-10 flex items-center justify-between">
+            {/* Available Tag Header */}
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-amber-400" />
-                  <span className="text-xs font-black uppercase tracking-wider text-slate-300">
-                    Unlinked Physical Tag
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    Available to Pair
                   </span>
+                  <span className="text-[11px] font-bold text-slate-400">Unassigned Tag</span>
                 </div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-black uppercase tracking-wider">
-                  Available to Pair
-                </div>
-              </div>
-
-              {/* UID */}
-              <div className="relative z-10 my-5 flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                    Card UID
-                  </p>
-                  <p className="font-mono text-xl font-black tracking-wider text-white">
+                <div className="flex items-center gap-2 pt-0.5">
+                  <span className="font-mono text-2xl font-black tracking-wide text-[#24133F]">
                     {activeUid}
-                  </p>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyUid(activeUid)}
+                    title="Copy UID"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    {copiedUid ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleCopyUid(activeUid)}
-                  title="Copy UID"
-                  className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-                >
-                  {copiedUid ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
-                </button>
-              </div>
-
-              <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-2.5 text-xs text-slate-400">
-                <span>Ready for student assignment</span>
-                <Wifi className="h-4 w-4 text-slate-400 rotate-90" />
+                <p className="text-xs text-slate-500 pt-0.5">
+                  Tag ready. Pick a student below to instantly link.
+                </p>
               </div>
             </div>
 
             {/* Quick 1-Tap Student Assignment List */}
-            <div className="space-y-3">
+            <div className="space-y-3 pt-3 border-t border-slate-100">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#24133F]">
-                  <UserCheck className="h-4 w-4 text-[#7C27BD]" />
-                  <span>Tap a student to pair immediately:</span>
-                </div>
-                <span className="text-[11px] font-bold text-slate-500">
-                  {cardlessStudents.length} awaiting cards
+                <span className="text-xs font-black uppercase tracking-wider text-slate-500">
+                  Students Awaiting Cards ({cardlessStudents.length})
                 </span>
               </div>
 
@@ -435,22 +395,22 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
                     type="text"
                     value={studentSearchFilter}
                     onChange={(e) => setStudentSearchFilter(e.target.value)}
-                    placeholder="Search by student name or student ID..."
-                    className="w-full pl-9 pr-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-xs"
+                    placeholder="Filter by name or ID..."
+                    className="w-full pl-9 pr-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all"
                   />
                 </div>
               )}
 
               {/* List of Cardless Students */}
               {cardlessStudents.length > 0 ? (
-                <div className="max-h-[260px] overflow-y-auto space-y-1.5 pr-1">
+                <div className="divide-y divide-slate-100 max-h-[300px] overflow-y-auto pr-1">
                   {filteredCardless.length > 0 ? (
                     filteredCardless.map((student) => {
                       const isThisPairing = pairingStudentId === student.id;
                       return (
                         <div
                           key={student.id}
-                          className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-slate-200 bg-white hover:border-purple-300 hover:bg-purple-50/30 transition-all shadow-xs"
+                          className="flex items-center justify-between py-2.5 px-1 hover:bg-purple-50/40 rounded-xl transition-colors"
                         >
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-black text-slate-900 truncate">
@@ -482,12 +442,12 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
                   )}
                 </div>
               ) : (
-                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center text-xs font-bold text-emerald-800">
+                <div className="py-6 text-center text-xs font-bold text-emerald-700 bg-emerald-50 rounded-xl">
                   All active students currently have assigned RFID cards!
                 </div>
               )}
 
-              <div className="pt-2">
+              <div className="pt-2 border-t border-slate-100">
                 <Button
                   type="button"
                   variant="secondary"
