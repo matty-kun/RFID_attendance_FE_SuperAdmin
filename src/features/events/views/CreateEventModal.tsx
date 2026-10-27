@@ -86,6 +86,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const today = useMemo(() => getTodayYMD(), []);
   const [eventName, setEventName] = useState('');
+  const [eventNameTouched, setEventNameTouched] = useState(false);
   const [eventDescription, setEventDescription] = useState('');
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
@@ -343,6 +344,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const resetForm = () => {
     setCurrentStep(1);
     setEventName('');
+    setEventNameTouched(false);
     setEventDescription('');
     setStartDate(today);
     setEndDate(today);
@@ -350,6 +352,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const handleNext = () => {
     if (currentStep === 1 && !eventName.trim()) {
+      setEventNameTouched(true);
       toast.error('Please enter an Event Name before continuing.');
       return;
     }
@@ -582,19 +585,38 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#24133F]">Event Name</label>
+                <label className="block text-xs font-bold text-[#24133F]">
+                  Event Name <span className="text-rose-500 font-bold ml-0.5" title="Required">*</span>
+                </label>
                 <input
                   type="text"
+                  required
                   value={eventName}
-                  onChange={(e) => setEventName(e.target.value)}
+                  onChange={(e) => {
+                    setEventName(e.target.value);
+                    if (eventNameTouched) setEventNameTouched(false);
+                  }}
+                  onBlur={() => setEventNameTouched(true)}
                   placeholder="Enter event name (e.g. Foundation Day 2026)"
-                  className="mt-1.5 w-full rounded-2xl border border-[#E5E0EB] px-4 py-2.5 text-xs text-[#24133F] placeholder-[#756883] focus:border-[#451475] focus:outline-none"
+                  className={cn(
+                    'mt-1.5 w-full rounded-2xl border px-4 py-2.5 text-xs text-[#24133F] placeholder-[#756883] focus:outline-none transition-colors',
+                    eventNameTouched && !eventName.trim()
+                      ? 'border-rose-400 focus:border-rose-500 bg-rose-50/20'
+                      : 'border-[#E5E0EB] focus:border-[#451475]'
+                  )}
                 />
+                {eventNameTouched && !eventName.trim() && (
+                  <p className="mt-1 text-[11px] font-medium text-rose-500">
+                    Event name is required
+                  </p>
+                )}
               </div>
 
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-[#24133F]">Event Description</label>
+                  <label className="block text-xs font-bold text-[#24133F]">
+                    Event Description <span className="text-[10px] font-normal text-slate-400 ml-1">(Optional)</span>
+                  </label>
                   <span className="text-[10px] text-[#756883]">{eventDescription.length}/500</span>
                 </div>
                 <textarea
