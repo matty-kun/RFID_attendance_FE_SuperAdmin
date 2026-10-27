@@ -22,7 +22,7 @@ import {
 import { useToast } from '../context';
 import { Button } from '../components/common/Button';
 import { Dropdown } from '../components/common/Dropdown';
-import { Modal } from '../components/common/Modal';
+import { Drawer } from '../components/common/Drawer';
 import { Input } from '../components/common/Input';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { DeleteConfirmationModal } from '../components/common/DeleteConfirmationModal';
@@ -1347,15 +1347,36 @@ export function AttendancePage() {
         </div>
       )}
 
-      {/* Edit Event Details & Dates Modal */}
-      <Modal
+      {/* Edit Event Details Drawer */}
+      <Drawer
         isOpen={isEditEventOpen}
         onClose={() => setIsEditEventOpen(false)}
         title="Edit Event Details"
         description="Update event name, description, and date range. Extending dates dynamically adds more days to the event."
+        icon={<Pencil className="h-5 w-5" />}
         maxWidth="md"
+        footer={
+          <div className="flex items-center justify-end gap-2.5">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsEditEventOpen(false)}
+              disabled={isSavingEvent}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="edit-event-form"
+              variant="primary"
+              isLoading={isSavingEvent}
+            >
+              Save Changes
+            </Button>
+          </div>
+        }
       >
-        <form onSubmit={handleSaveEditEvent} className="space-y-4">
+        <form id="edit-event-form" onSubmit={handleSaveEditEvent} className="space-y-4">
           <Input
             label="Event Name"
             placeholder="e.g. IT Week 2026"
@@ -1401,36 +1422,39 @@ export function AttendancePage() {
               Tip: Extending the date range will automatically create new day tabs. Existing sessions and attendance logs will not be affected.
             </span>
           </div>
+        </form>
+      </Drawer>
 
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E5E0EB]">
+      {/* Add Session to Day Drawer */}
+      <Drawer
+        isOpen={Boolean(addingSessionToDay)}
+        onClose={() => setAddingSessionToDay(null)}
+        title={`Add Session to ${addingSessionToDay?.dayLabel.split(' - ')[0] || 'Day'}`}
+        description={`Create a new attendance session for ${addingSessionToDay?.dateStr || ''}.`}
+        icon={<Plus className="h-5 w-5" />}
+        maxWidth="md"
+        footer={
+          <div className="flex items-center justify-end gap-2.5">
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setIsEditEventOpen(false)}
-              disabled={isSavingEvent}
+              onClick={() => setAddingSessionToDay(null)}
+              disabled={isSavingNewSession}
             >
               Cancel
             </Button>
             <Button
               type="submit"
+              form="add-session-form"
               variant="primary"
-              isLoading={isSavingEvent}
+              isLoading={isSavingNewSession}
             >
-              Save Changes
+              Add Session
             </Button>
           </div>
-        </form>
-      </Modal>
-
-      {/* Add Session to Day Modal */}
-      <Modal
-        isOpen={Boolean(addingSessionToDay)}
-        onClose={() => setAddingSessionToDay(null)}
-        title={`Add Session to ${addingSessionToDay?.dayLabel.split(' - ')[0] || 'Day'}`}
-        description={`Create a new attendance session for ${addingSessionToDay?.dateStr || ''}.`}
-        maxWidth="md"
+        }
       >
-        <form onSubmit={handleSaveNewSession} className="space-y-4">
+        <form id="add-session-form" onSubmit={handleSaveNewSession} className="space-y-4">
           {/* Quick preset selector */}
           <div>
             <label className="block text-xs font-semibold text-[#24133F] mb-1.5">
@@ -1546,26 +1570,8 @@ export function AttendancePage() {
               />
             </div>
           </div>
-
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E5E0EB]">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setAddingSessionToDay(null)}
-              disabled={isSavingNewSession}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              isLoading={isSavingNewSession}
-            >
-              Add Session
-            </Button>
-          </div>
         </form>
-      </Modal>
+      </Drawer>
 
       {/* Create Event Flow Modal */}
       <CreateEventModal
