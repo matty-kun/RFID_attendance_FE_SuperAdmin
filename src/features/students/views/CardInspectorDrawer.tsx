@@ -305,95 +305,88 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
 
         {/* STATE 1: Card is Active & Paired to a Student */}
         {activeUid && !isSearching && matchedStudent && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-3 duration-200">
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-3 duration-200">
             {/* Scanned Tag Header */}
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Active &amp; Linked
-                  </span>
-                  <span className="text-[11px] font-bold text-slate-400">Physical Tag</span>
-                </div>
-                <div className="flex items-center gap-2 pt-0.5">
-                  <span className="font-mono text-2xl font-black tracking-wide text-[#24133F]">
-                    {activeUid}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyUid(activeUid)}
-                    title="Copy UID"
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                  >
-                    {copiedUid ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-                  </button>
-                </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xl font-black tracking-wide text-[#24133F]">
+                  {activeUid}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopyUid(activeUid)}
+                  title="Copy UID"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  {copiedUid ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 
-            {/* Student Identity (Unboxed) */}
-            <div className="pt-4 pb-2 border-t border-slate-100 flex items-center gap-4">
-              {matchedStudent.avatar_url ? (
-                <img
-                  src={matchedStudent.avatar_url}
-                  alt={matchedStudent.name}
-                  className="h-16 w-16 rounded-full object-cover border-2 border-purple-100 shadow-xs shrink-0 select-none"
-                />
-              ) : (
-                <div className="h-16 w-16 rounded-full bg-purple-50 border-2 border-purple-100 flex items-center justify-center shrink-0">
+            {/* Student Identity with Inline Actions */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5 min-w-0">
+                {matchedStudent.avatar_url ? (
                   <img
-                    src={hawiWavingImg}
-                    alt="Student"
-                    className="h-12 w-auto object-contain select-none"
+                    src={matchedStudent.avatar_url}
+                    alt={matchedStudent.name}
+                    className="h-14 w-14 rounded-full object-cover border-2 border-purple-100 shadow-xs shrink-0 select-none"
                   />
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-black text-[#24133F] truncate">
-                    {matchedStudent.name}
-                  </h3>
-                  <span className="text-xs font-bold text-[#7C27BD] bg-purple-50 px-2 py-0.5 rounded-full">
-                    @{matchedStudent.student_id}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
-                  {matchedStudent.course || 'BS Information Technology'} • Year {matchedStudent.year_level || 1}
-                </p>
-                {matchedStudent.email && (
-                  <p className="text-xs text-slate-400 truncate mt-0.5">
-                    {matchedStudent.email}
-                  </p>
+                ) : (
+                  <div className="h-14 w-14 rounded-full bg-purple-50 border-2 border-purple-100 flex items-center justify-center shrink-0">
+                    <img
+                      src={hawiWavingImg}
+                      alt="Student"
+                      className="h-11 w-auto object-contain select-none"
+                    />
+                  </div>
                 )}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-black text-[#24133F] truncate">
+                      {matchedStudent.name}
+                    </h3>
+                    <span className="text-xs font-bold text-[#7C27BD] bg-purple-50 px-2 py-0.5 rounded-full">
+                      @{matchedStudent.student_id}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
+                    {matchedStudent.course || 'BS Information Technology'} • Year {matchedStudent.year_level || 1}
+                  </p>
+                  {matchedStudent.email && (
+                    <p className="text-xs text-slate-400 truncate mt-0.5">
+                      {matchedStudent.email}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Actions for Assigned Card */}
-            <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
-              <Button
-                type="button"
-                variant="danger"
-                size="md"
-                onClick={handleUnlinkSubmit}
-                isLoading={isUnlinking}
-                leftIcon={<Unlink className="h-4 w-4" />}
-              >
-                Unlink Card
-              </Button>
+              {/* Inline Actions on the Side */}
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  onClick={handleUnlinkSubmit}
+                  isLoading={isUnlinking}
+                  leftIcon={<Unlink className="h-3.5 w-3.5" />}
+                >
+                  Unlink Card
+                </Button>
 
-              <Button
-                type="button"
-                variant="primary"
-                size="md"
-                onClick={() => {
-                  onClose();
-                  onViewStudent(matchedStudent);
-                }}
-                leftIcon={<ExternalLink className="h-4 w-4" />}
-              >
-                View Profile
-              </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    onClose();
+                    onViewStudent(matchedStudent);
+                  }}
+                  leftIcon={<ExternalLink className="h-3.5 w-3.5" />}
+                >
+                  View Profile
+                </Button>
+              </div>
             </div>
           </div>
         )}
