@@ -627,7 +627,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     >
       <div className="flex flex-col min-h-full bg-white select-none">
         {/* Luminous Brand Violet Hero Header with Extended Downward Dissolve */}
-        <div className="relative bg-gradient-to-b from-[#9333EA] via-[#A855F7] via-[#C084FC]/80 via-[#F3E8FF] to-white px-6 pt-5 pb-10 flex flex-col justify-between">
+        <div className="relative bg-gradient-to-b from-[#9333EA] via-[#A855F7] via-[#C084FC]/80 to-[#F3E8FF] px-6 pt-5 pb-14 flex flex-col justify-between">
           {/* Top Bar inside banner */}
           <div className="flex items-center justify-between z-20 gap-3">
             {/* Seamless In-Place Name Editor */}
@@ -792,6 +792,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               </div>
             )}
           </div>
+          <svg aria-hidden="true" viewBox="0 0 800 48" preserveAspectRatio="none" className="pointer-events-none absolute inset-x-0 -bottom-px h-12 w-full text-white"><path fill="currentColor" d="M0 20 C105 2 190 4 285 23 C380 43 475 43 570 23 C665 4 735 4 800 18 L800 48 L0 48 Z" /></svg>
         </div>
 
         {/* Content Area Below Banner */}
