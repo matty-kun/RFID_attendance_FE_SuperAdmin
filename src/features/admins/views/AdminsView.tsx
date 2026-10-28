@@ -98,10 +98,10 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
         </div>
       </div>
 
-      {/* Admin Cards List */}
-      <div className="space-y-2.5">
+      {/* Admin List */}
+      <div>
         {error && (
-          <div role="alert" className="flex items-center justify-between rounded-xl bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700">
+          <div role="alert" className="flex items-center justify-between rounded-xl bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700 mb-2.5">
             <span>{error}</span>
             <button type="button" onClick={() => void loadAdmins()} className="underline">
               Retry
@@ -109,66 +109,68 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
           </div>
         )}
 
-        {visibleAdmins.map((admin) => (
-          <div
-            key={admin.id}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 transition-all hover:border-[#7026B7]/30 hover:shadow-xs"
-          >
-            {/* Left: Avatar + Details */}
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#DFE8F8] text-xs font-black text-[#294B85]">
-                {initials(admin.name)}
-              </span>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-bold text-[#24133F] truncate">{admin.name}</span>
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold',
-                      admin.role === 'super_admin'
-                        ? 'bg-[#F4EFFB] text-[#7026B7] border border-[#E9D5FF]'
-                        : 'bg-slate-100 text-slate-700 border border-slate-200'
-                    )}
-                  >
-                    {admin.role === 'super_admin' ? (
-                      <>
-                        <Shield className="h-3 w-3" />
-                        <span>Super Admin</span>
-                      </>
-                    ) : (
-                      <span>Scanner Admin</span>
-                    )}
+        {visibleAdmins.length > 0 ? (
+          <div className="max-h-[400px] divide-y divide-slate-100 overflow-y-auto">
+            {visibleAdmins.map((admin) => (
+              <div
+                key={admin.id}
+                className="flex items-center justify-between gap-3 rounded-xl px-1 py-2.5 transition-colors hover:bg-slate-50/70"
+              >
+                {/* Left: Avatar + Details */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#DFE8F8] text-[10px] font-black text-[#294B85]">
+                    {initials(admin.name)}
                   </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-[#24133F] truncate">{admin.name}</span>
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9.5px] font-bold',
+                          admin.role === 'super_admin'
+                            ? 'bg-[#F4EFFB] text-[#7026B7]'
+                            : 'bg-slate-100 text-slate-600'
+                        )}
+                      >
+                        {admin.role === 'super_admin' ? (
+                          <>
+                            <Shield className="h-2.5 w-2.5" />
+                            <span>Super Admin</span>
+                          </>
+                        ) : (
+                          <span>Scanner</span>
+                        )}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#756883] truncate">{admin.email}</p>
+                  </div>
                 </div>
-                <p className="text-[11px] text-[#756883] truncate mt-0.5">{admin.email}</p>
+
+                {/* Right: Actions */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setEditingAdmin(admin)}
+                    title={`Edit ${admin.name}`}
+                    aria-label={`Edit ${admin.name}`}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:text-[#7026B7] hover:bg-[#F4EFFB] active:scale-90 transition-all cursor-pointer"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeletingAdmin(admin)}
+                    title={`Delete ${admin.name}`}
+                    aria-label={`Delete ${admin.name}`}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all cursor-pointer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
-            </div>
-
-            {/* Right: Actions */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => setEditingAdmin(admin)}
-                title={`Edit ${admin.name}`}
-                aria-label={`Edit ${admin.name}`}
-                className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 hover:bg-[#F4EFFB] active:scale-90 transition-all cursor-pointer"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setDeletingAdmin(admin)}
-                title={`Delete ${admin.name}`}
-                aria-label={`Delete ${admin.name}`}
-                className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-[#756883] hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 active:scale-90 transition-all cursor-pointer"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
+            ))}
           </div>
-        ))}
-
-        {!visibleAdmins.length && (
+        ) : (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center text-xs text-[#756883]">
             {isLoading
               ? 'Loading administrators…'

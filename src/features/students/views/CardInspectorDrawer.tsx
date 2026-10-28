@@ -47,11 +47,14 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const lastInputTimeRef = useRef<number>(0);
+  const scanRequestIdRef = useRef(0);
+  const lastInspectedUidRef = useRef<string | null>(null);
 
   // Reset & focus on open
   useEffect(() => {
     if (isOpen) {
+      scanRequestIdRef.current += 1;
+      lastInspectedUidRef.current = null;
       setScannedUid('');
       setActiveUid(null);
       setMatchedStudent(null);
@@ -89,9 +92,10 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
   }, [isOpen]);
 
   // Lookup Card UID
-  const inspectCard = async (rawUid: string) => {
+  const inspectCard = async (rawUid: string, force = false) => {
     const clean = rawUid.trim().toUpperCase();
     if (!clean) return;
+    if (!force && lastInspectedUidRef.current === clean) return;
 
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -99,6 +103,8 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
     }
 
     if (!isValidRfidUid(clean)) {
+      scanRequestIdRef.current += 1;
+      lastInspectedUidRef.current = null;
       setValidationError('Invalid card UID format. Tap a physical RFID card or enter a 10-digit UID.');
       setActiveUid(null);
       setMatchedStudent(null);
@@ -107,13 +113,19 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
       return;
     }
 
+    const requestId = ++scanRequestIdRef.current;
+    lastInspectedUidRef.current = clean;
     setValidationError(null);
     setActiveUid(clean);
     setIsSearching(true);
     setStudentSearchFilter('');
 
-    // Keep input updated with inspected UID without selecting/highlighting text
+    // Keep input updated with inspected UID and select all text
+    // so the next hardware scan burst instantly replaces it
     setScannedUid(clean);
+    requestAnimationFrame(() => {
+      if (inputRef.current?.value === clean) inputRef.current.select();
+    });
 
     // 1. Check in-memory list first (instant 0ms)
     const localMatch = students.find((s) => s.rfid_uid?.trim().toUpperCase() === clean);
@@ -128,42 +140,44 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
       const res = await studentService.getStudents(1, clean);
       const backendStudents: StudentRecord[] = res?.students || [];
       const remoteMatch = backendStudents.find((s: StudentRecord) => s.rfid_uid?.trim().toUpperCase() === clean);
-      setMatchedStudent(remoteMatch || null);
+      if (requestId === scanRequestIdRef.current) setMatchedStudent(remoteMatch || null);
     } catch {
-      setMatchedStudent(null);
+      if (requestId === scanRequestIdRef.current) setMatchedStudent(null);
     } finally {
-      setIsSearching(false);
+      if (requestId === scanRequestIdRef.current) setIsSearching(false);
     }
   };
 
   const handleInputChange = (rawVal: string) => {
-    const now = Date.now();
-    const timeDelta = now - lastInputTimeRef.current;
-    lastInputTimeRef.current = now;
-
     let nextVal = rawVal;
 
-    // If a card was already inspected or active on screen,
-    // and a new scan begins after a pause (> 300ms):
-    if (activeUid && timeDelta > 300) {
-      // Instantly erase previous card state and student info
+    // If input text was selected (from select() after inspectCard),
+    // the browser replaces selected text with the new char(s).
+    // But if the input wasn't selected and a new scan appends to old UID:
+    if (activeUid && nextVal.length > 10) {
+      // The old UID is still in the input and new digits got appended.
+      // Extract only the new trailing characters.
+      if (nextVal.startsWith(scannedUid)) {
+        nextVal = nextVal.slice(scannedUid.length);
+      } else if (nextVal.endsWith(scannedUid)) {
+        nextVal = nextVal.slice(0, nextVal.length - scannedUid.length);
+      } else {
+        nextVal = nextVal.slice(-10);
+      }
+
+      // Clear old state immediately for the new scan
       setActiveUid(null);
       setMatchedStudent(null);
       setStudentSearchFilter('');
-
-      // Extract new character(s) if text was appended to old UID
-      if (rawVal.startsWith(scannedUid) && rawVal.length > scannedUid.length) {
-        nextVal = rawVal.slice(scannedUid.length);
-      } else if (rawVal.endsWith(scannedUid) && rawVal.length > scannedUid.length) {
-        nextVal = rawVal.slice(0, rawVal.length - scannedUid.length);
-      } else if (rawVal.length > 10) {
-        nextVal = rawVal.slice(-10);
-      }
-    } else if (nextVal.length > 10) {
-      // If RFID burst appended to existing 10 digits without selection, take the latest 10
+    } else if (!activeUid && nextVal.length > 10) {
+      // If RFID burst appended without prior selection, take latest 10
       nextVal = nextVal.slice(-10);
     }
 
+    if (nextVal !== scannedUid) {
+      lastInspectedUidRef.current = null;
+      scanRequestIdRef.current += 1;
+    }
     setScannedUid(nextVal);
 
     if (debounceTimerRef.current) {
@@ -206,6 +220,8 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
   };
 
   const handleReset = () => {
+    scanRequestIdRef.current += 1;
+    lastInspectedUidRef.current = null;
     setScannedUid('');
     setActiveUid(null);
     setMatchedStudent(null);
@@ -222,7 +238,7 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
       const res = await onQuickPair(studentId, activeUid);
       if (res?.success) {
         // Re-inspect to immediately display the paired student card
-        await inspectCard(activeUid);
+        await inspectCard(activeUid, true);
       }
     } finally {
       setPairingStudentId(null);

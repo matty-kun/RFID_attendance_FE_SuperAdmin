@@ -29,6 +29,8 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [assignedCount, setAssignedCount] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [queuedCount, setQueuedCount] = useState(0);
   const [lastScanned, setLastScanned] = useState<{
     uid: string;
     studentName: string;
@@ -37,6 +39,9 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const isProcessingRef = useRef(false);
+  const activeScanUidRef = useRef<string | null>(null);
+  const lastAssignedStudentIdRef = useRef<string | null>(null);
+  const pendingScansRef = useRef<string[]>([]);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const successTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -48,6 +53,11 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
       setAssignedCount(0);
       setLastScanned(null);
       isProcessingRef.current = false;
+      activeScanUidRef.current = null;
+      lastAssignedStudentIdRef.current = null;
+      pendingScansRef.current = [];
+      setIsProcessing(false);
+      setQueuedCount(0);
       const timer = setTimeout(() => inputRef.current?.focus(), 120);
       return () => {
         clearTimeout(timer);
@@ -90,11 +100,21 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
   const processScan = useCallback(
     async (rawUid: string) => {
       const clean = rawUid.trim().toUpperCase();
-      if (!clean || isProcessingRef.current) return;
+      if (!clean) return;
 
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = null;
+      }
+
+      // Hold a second tap until the first card moves the student queue forward.
+      if (isProcessingRef.current || currentStudent?.id === lastAssignedStudentIdRef.current) {
+        if (clean !== activeScanUidRef.current && pendingScansRef.current.at(-1) !== clean) {
+          pendingScansRef.current.push(clean);
+          setQueuedCount(pendingScansRef.current.length);
+        }
+        setInputValue('');
+        return;
       }
 
       const targetStudent = currentStudent;
@@ -125,6 +145,9 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
       }
 
       isProcessingRef.current = true;
+      activeScanUidRef.current = clean;
+      lastAssignedStudentIdRef.current = targetStudent.id;
+      setIsProcessing(true);
       setInputValue('');
 
       // ⚡ INSTANT FEEDBACK (0ms):
@@ -147,21 +170,33 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
       try {
         const res = await onCardScannedForStudent(targetStudent.id, clean);
         if (!res.success) {
+          lastAssignedStudentIdRef.current = null;
           soundManager.playErrorBuzz();
           setAssignedCount((prev) => Math.max(0, prev - 1));
           setLastScanned(null);
         }
       } catch {
+        lastAssignedStudentIdRef.current = null;
         soundManager.playErrorBuzz();
         setAssignedCount((prev) => Math.max(0, prev - 1));
         setLastScanned(null);
       } finally {
         isProcessingRef.current = false;
+        activeScanUidRef.current = null;
+        setIsProcessing(false);
         inputRef.current?.focus();
       }
     },
     [currentStudent, students, onCardScannedForStudent]
   );
+
+  useEffect(() => {
+    if (!isOpen || isProcessing || !currentStudent || currentStudent.id === lastAssignedStudentIdRef.current) return;
+    const nextUid = pendingScansRef.current.shift();
+    if (!nextUid) return;
+    setQueuedCount(pendingScansRef.current.length);
+    void processScan(nextUid);
+  }, [isOpen, isProcessing, currentStudent, queuedCount, processScan]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
