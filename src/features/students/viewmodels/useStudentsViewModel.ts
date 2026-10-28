@@ -51,6 +51,7 @@ export interface UseStudentsViewModelReturn {
   // Archiving
   archivedStudentIds: string[];
   handleArchiveStudent: (studentId: string) => Promise<void>;
+  handleDeleteStudent: (studentId: string) => Promise<boolean>;
   handleRestoreStudent: (studentId: string) => Promise<void>;
   handleRestoreLostCard: (uid: string) => void;
 
@@ -413,6 +414,28 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     toast.success(`Card ${cleaned} restored to available stock pool.`);
   };
 
+  const handleDeleteStudent = async (studentId: string): Promise<boolean> => {
+    const student = students.find((s) => s.id === studentId);
+    if (!student) return false;
+
+    try {
+      const res = await studentService.deleteStudent(studentId);
+      const freedUid = res?.unlinked_rfid_uid || student.rfid_uid;
+      if (freedUid) {
+        handleCardScannedForInventory(freedUid);
+      }
+
+      setStudents((prev) => prev.filter((s) => s.id !== studentId));
+      setArchivedStudentIds((prev) => prev.filter((id) => id !== studentId));
+      toast.success(`Student "${student.name}" permanently deleted.`);
+      return true;
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.message || 'Failed to delete student.';
+      toast.error(msg);
+      return false;
+    }
+  };
+
   const handleArchiveStudent = async (studentId: string) => {
     const student = students.find((s) => s.id === studentId);
     if (!student) return;
@@ -515,6 +538,7 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     // Archiving
     archivedStudentIds,
     handleArchiveStudent,
+    handleDeleteStudent,
     handleRestoreStudent,
     handleRestoreLostCard,
 

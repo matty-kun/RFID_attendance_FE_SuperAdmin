@@ -10,4 +10,6 @@ export const studentService = {
     request.patch<StudentRecord>(`/students/${id}`, payload),
   uploadAvatar: (id: string, imageBase64: string) =>
     request.post<{ avatar_url: string }>(`/students/${id}/avatar`, { image: imageBase64 }),
+  deleteStudent: (id: string) =>
+    request.delete<{ deleted_student_id: string; deleted_student_name: string; unlinked_rfid_uid: string | null }>(`/students/${id}`),
 };

@@ -22,7 +22,9 @@ import {
   Loader2,
   Camera,
   Zap,
+  Trash2,
 } from 'lucide-react';
+import { DeleteStudentConfirmationModal } from './DeleteStudentConfirmationModal';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
 import type { StudentRecord } from '../models';
@@ -56,6 +58,7 @@ export interface StudentProfileDrawerProps {
   onArchiveStudent?: (studentId: string) => void;
   onRestoreStudent?: (studentId: string) => void;
   onUploadAvatar?: (studentId: string, imageBase64: string) => Promise<string>;
+  onDeleteStudent?: (studentId: string) => Promise<boolean>;
 }
 
 const COURSE_OPTIONS = [
@@ -280,12 +283,14 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   onArchiveStudent,
   onRestoreStudent,
   onUploadAvatar,
+  onDeleteStudent,
 }) => {
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
   const [filterType, setFilterType] = useState<'all' | 'time_in' | 'time_out'>('all');
   const [copiedUid, setCopiedUid] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Photo Upload & Centering/Crop State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -692,6 +697,16 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   <ArchiveRestore className="h-4 w-4" />
                 </button>
               )}
+
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(true)}
+                title="Delete Student Permanently"
+                aria-label="Delete Student Permanently"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 hover:bg-rose-600 text-white border border-white/25 backdrop-blur-md shadow-xs active:scale-95 transition-all cursor-pointer"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
 
               <button
                 type="button"
@@ -1330,6 +1345,22 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         imageSrc={rawImageForCrop}
         onConfirmCrop={handleConfirmCrop}
         isSaving={isUploadingPhoto}
+      />
+
+      {/* Delete Student Confirmation Modal */}
+      <DeleteStudentConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        student={currentStudent}
+        onConfirmDelete={async (id) => {
+          if (!onDeleteStudent) return false;
+          const ok = await onDeleteStudent(id);
+          if (ok) {
+            setIsDeleteModalOpen(false);
+            onClose();
+          }
+          return ok;
+        }}
       />
     </Drawer>
   );

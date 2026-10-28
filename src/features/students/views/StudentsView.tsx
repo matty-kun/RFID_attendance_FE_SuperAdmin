@@ -44,6 +44,7 @@ export const StudentsView: React.FC = () => {
     setIsBulkImportOpen,
     archivedStudentIds,
     handleArchiveStudent,
+    handleDeleteStudent,
     handleRestoreStudent,
     handleRegisterStudent,
     handleCardScannedForStudent,
@@ -418,6 +419,7 @@ export const StudentsView: React.FC = () => {
         isArchived={activeProfileStudent ? archivedStudentIds.includes(activeProfileStudent.id) : false}
         onArchiveStudent={handleArchiveStudent}
         onRestoreStudent={handleRestoreStudent}
+        onDeleteStudent={handleDeleteStudent}
         onUploadAvatar={uploadStudentAvatar}
       />
 
