@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Calendar, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 export interface DateRange {
@@ -43,8 +43,8 @@ function formatDisplayRange(start?: string, end?: string): string {
 }
 
 export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
-  startDate,
-  endDate,
+  startDate = '',
+  endDate = '',
   onChange,
   className,
 }) => {
@@ -55,14 +55,19 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
   const [viewMonth, setViewMonth] = useState(initialDate.getMonth());
   const [viewYear, setViewYear] = useState(initialDate.getFullYear());
 
-  const [tempStart, setTempStart] = useState<string | null>(startDate || null);
-  const [tempEnd, setTempEnd] = useState<string | null>(endDate || null);
+  const [tempStart, setTempStart] = useState<string>(startDate);
+  const [tempEnd, setTempEnd] = useState<string>(endDate);
   const [hoverDate, setHoverDate] = useState<string | null>(null);
 
   // Synchronize internal state with external props
   useEffect(() => {
-    setTempStart(startDate || null);
-    setTempEnd(endDate || null);
+    setTempStart(startDate);
+    setTempEnd(endDate);
+    if (startDate) {
+      const d = new Date(`${startDate}T00:00:00`);
+      setViewMonth(d.getMonth());
+      setViewYear(d.getFullYear());
+    }
   }, [startDate, endDate]);
 
   // Click outside listener
@@ -89,69 +94,61 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
   const prevMonth = () => {
     if (viewMonth === 0) {
       setViewMonth(11);
-      setViewYear(viewYear - 1);
+      setViewYear((y) => y - 1);
     } else {
-      setViewMonth(viewMonth - 1);
+      setViewMonth((m) => m - 1);
     }
   };
 
   const nextMonth = () => {
     if (viewMonth === 11) {
       setViewMonth(0);
-      setViewYear(viewYear + 1);
+      setViewYear((y) => y + 1);
     } else {
-      setViewMonth(viewMonth + 1);
+      setViewMonth((m) => m + 1);
     }
   };
 
-  const handleDayClick = (ymd: string) => {
-    if (!tempStart || (tempStart && tempEnd)) {
-      setTempStart(ymd);
-      setTempEnd(null);
-    } else if (tempStart && !tempEnd) {
-      if (ymd < tempStart) {
+  const handleDayClick = (dayStr: string) => {
+    if (!tempStart || (tempStart && tempEnd && tempStart !== tempEnd)) {
+      setTempStart(dayStr);
+      setTempEnd(dayStr);
+    } else if (tempStart && (!tempEnd || tempStart === tempEnd)) {
+      if (dayStr < tempStart) {
         setTempEnd(tempStart);
-        setTempStart(ymd);
+        setTempStart(dayStr);
       } else {
-        setTempEnd(ymd);
+        setTempEnd(dayStr);
       }
     }
   };
 
-  const applyRange = (start: string | null, end: string | null) => {
-    const finalStart = start || '';
-    const finalEnd = end || finalStart;
-    onChange({
-      startDate: finalStart,
-      endDate: finalEnd,
-      label: formatDisplayRange(finalStart, finalEnd),
-    });
-    setIsOpen(false);
-  };
-
-  const setPreset = (preset: 'today' | 'last7' | 'last30' | 'thisMonth' | 'all') => {
+  const setPreset = (preset: 'all' | 'today' | 'last7' | 'last30' | 'thisMonth') => {
     const today = new Date();
     if (preset === 'today') {
       const ymd = toYMD(today);
       setTempStart(ymd);
       setTempEnd(ymd);
-      applyRange(ymd, ymd);
+      setViewMonth(today.getMonth());
+      setViewYear(today.getFullYear());
     } else if (preset === 'last7') {
       const past = new Date(today);
-      past.setDate(past.getDate() - 6);
+      past.setDate(today.getDate() - 6);
       const start = toYMD(past);
       const end = toYMD(today);
       setTempStart(start);
       setTempEnd(end);
-      applyRange(start, end);
+      setViewMonth(today.getMonth());
+      setViewYear(today.getFullYear());
     } else if (preset === 'last30') {
       const past = new Date(today);
-      past.setDate(past.getDate() - 29);
+      past.setDate(today.getDate() - 29);
       const start = toYMD(past);
       const end = toYMD(today);
       setTempStart(start);
       setTempEnd(end);
-      applyRange(start, end);
+      setViewMonth(today.getMonth());
+      setViewYear(today.getFullYear());
     } else if (preset === 'thisMonth') {
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
       const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
@@ -159,133 +156,127 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
       const end = toYMD(lastDay);
       setTempStart(start);
       setTempEnd(end);
-      applyRange(start, end);
+      setViewMonth(today.getMonth());
+      setViewYear(today.getFullYear());
     } else if (preset === 'all') {
-      setTempStart(null);
-      setTempEnd(null);
-      onChange({ startDate: '', endDate: '', label: 'All Dates' });
-      setIsOpen(false);
+      setTempStart('');
+      setTempEnd('');
     }
   };
 
-  // Calendar matrix calculation
-  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const firstDayIndex = new Date(viewYear, viewMonth, 1).getDay(); // 0 is Sunday
-
-  const days: { ymd: string; dayNum: number; isCurrentMonth: boolean }[] = [];
-  // Days from previous month
-  const prevMonthDays = new Date(viewYear, viewMonth, 0).getDate();
-  for (let i = firstDayIndex - 1; i >= 0; i--) {
-    const d = prevMonthDays - i;
-    const m = viewMonth === 0 ? 11 : viewMonth - 1;
-    const y = viewMonth === 0 ? viewYear - 1 : viewYear;
-    days.push({
-      ymd: `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
-      dayNum: d,
-      isCurrentMonth: false,
+  const handleApply = () => {
+    onChange({
+      startDate: tempStart,
+      endDate: tempEnd,
+      label: formatDisplayRange(tempStart, tempEnd),
     });
-  }
+    setIsOpen(false);
+  };
 
-  // Current month days
-  for (let d = 1; d <= daysInMonth; d++) {
-    days.push({
-      ymd: `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
-      dayNum: d,
-      isCurrentMonth: true,
+  const handleClear = () => {
+    setTempStart('');
+    setTempEnd('');
+    onChange({
+      startDate: '',
+      endDate: '',
+      label: 'All Dates',
     });
-  }
-
-  // Fill remaining trailing days
-  const remaining = 42 - days.length; // 6 rows * 7
-  for (let d = 1; d <= remaining && days.length < 35; d++) {
-    const m = viewMonth === 11 ? 0 : viewMonth + 1;
-    const y = viewMonth === 11 ? viewYear + 1 : viewYear;
-    days.push({
-      ymd: `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
-      dayNum: d,
-      isCurrentMonth: false,
-    });
-  }
-
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
-  ];
+    setIsOpen(false);
+  };
 
   const displayTrigger = formatDisplayRange(startDate, endDate);
 
+  // Month rendering calculation (matching CreateEventModal)
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+
+  // Active range determination (including hover preview)
+  const effectiveEnd = useMemo(() => {
+    if (tempEnd) return tempEnd;
+    if (tempStart && hoverDate && hoverDate >= tempStart) return hoverDate;
+    return tempStart;
+  }, [tempStart, tempEnd, hoverDate]);
+
+  const effectiveStart = useMemo(() => {
+    if (tempStart && hoverDate && !tempEnd && hoverDate < tempStart) return hoverDate;
+    return tempStart;
+  }, [tempStart, tempEnd, hoverDate]);
+
   return (
     <div className={cn('relative inline-block', className)} ref={containerRef}>
-      {/* Trigger Button Matching Mockup */}
+      {/* Trigger Button with Single Chevron and Calendar Icon */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs font-semibold text-[#24133F] hover:border-brand-700 transition-colors focus-visible:outline-2 focus-visible:outline-brand-700"
+        className="flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs font-semibold text-[#24133F] hover:border-[#7026B7] transition-colors focus-visible:outline-2 focus-visible:outline-[#7026B7]"
         aria-haspopup="dialog"
         aria-expanded={isOpen}
       >
-        <CalendarDays className="h-4 w-4 text-[#756883]" />
+        <Calendar className="h-4 w-4 text-[#756883]" />
         <span>{displayTrigger}</span>
-        <ChevronDown className="h-3.5 w-3.5 text-[#756883]" />
+        <ChevronDown
+          className={cn(
+            'h-3.5 w-3.5 text-[#756883] transition-transform duration-200',
+            isOpen && 'rotate-180 text-[#7026B7]'
+          )}
+        />
       </button>
 
-      {/* Popover Dropdown */}
+      {/* Popover Dropdown matching CreateEventModal calendar design */}
       {isOpen && (
         <div
           role="dialog"
           aria-label="Date range calendar picker"
-          className="absolute left-0 top-[calc(100%+6px)] z-50 w-[310px] sm:w-[340px] rounded-2xl border border-[#E5E0EB] bg-white p-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+          className="absolute left-0 top-[calc(100%+6px)] z-50 w-[320px] sm:w-[350px] rounded-2xl border border-[#E5E0EB] bg-white p-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
         >
-          {/* Quick Presets */}
-          <div className="mb-3 flex flex-wrap gap-1 border-b border-[#F0E8FC] pb-2.5">
-            <button
-              type="button"
-              onClick={() => setPreset('all')}
-              className="rounded-lg px-2 py-1 text-[11px] font-semibold text-[#756883] hover:bg-[#F4F6FA] hover:text-[#24133F]"
-            >
-              All Dates
-            </button>
-            <button
-              type="button"
-              onClick={() => setPreset('today')}
-              className="rounded-lg px-2 py-1 text-[11px] font-semibold text-[#756883] hover:bg-[#F4F6FA] hover:text-[#24133F]"
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={() => setPreset('last7')}
-              className="rounded-lg px-2 py-1 text-[11px] font-semibold text-[#756883] hover:bg-[#F4F6FA] hover:text-[#24133F]"
-            >
-              Last 7 Days
-            </button>
-            <button
-              type="button"
-              onClick={() => setPreset('last30')}
-              className="rounded-lg px-2 py-1 text-[11px] font-semibold text-[#756883] hover:bg-[#F4F6FA] hover:text-[#24133F]"
-            >
-              Last 30 Days
-            </button>
-            <button
-              type="button"
-              onClick={() => setPreset('thisMonth')}
-              className="rounded-lg px-2 py-1 text-[11px] font-semibold text-[#756883] hover:bg-[#F4F6FA] hover:text-[#24133F]"
-            >
-              This Month
-            </button>
+          {/* Quick Presets (Pill Chips) */}
+          <div className="mb-3.5 flex flex-wrap gap-1.5 border-b border-[#F1EEF4] pb-3">
+            {[
+              { id: 'all', label: 'All Dates' },
+              { id: 'today', label: 'Today' },
+              { id: 'last7', label: 'Last 7 Days' },
+              { id: 'last30', label: 'Last 30 Days' },
+              { id: 'thisMonth', label: 'This Month' },
+            ].map((p) => {
+              const isSelected =
+                (p.id === 'all' && !tempStart && !tempEnd) ||
+                (p.id === 'today' && tempStart === toYMD(new Date()) && tempEnd === toYMD(new Date()));
+
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPreset(p.id as any)}
+                  className={cn(
+                    'rounded-lg px-2.5 py-1 text-xs font-semibold transition-all',
+                    isSelected
+                      ? 'bg-[#F4EFFB] text-[#7026B7] font-bold'
+                      : 'text-[#756883] hover:bg-slate-100 hover:text-[#24133F]'
+                  )}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Month/Year Navigation */}
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-extrabold text-[#24133F]">
-              {monthNames[viewMonth]} {viewYear}
-            </h3>
+          <div className="flex items-center justify-between pb-3 border-b border-[#F1EEF4]">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-[#7026B7]" />
+              <span className="text-xs font-bold text-[#24133F]">
+                {new Date(viewYear, viewMonth).toLocaleDateString('en-US', {
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </span>
+            </div>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={prevMonth}
                 aria-label="Previous month"
-                className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#E5E0EB] text-[#756883] hover:bg-slate-50 hover:text-[#24133F]"
+                className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F] transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -293,83 +284,129 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
                 type="button"
                 onClick={nextMonth}
                 aria-label="Next month"
-                className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#E5E0EB] text-[#756883] hover:bg-slate-50 hover:text-[#24133F]"
+                className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F] transition-colors"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>
 
-          {/* Days Header */}
-          <div className="grid grid-cols-7 text-center text-[11px] font-bold text-[#637596] mb-1">
-            <span>Su</span>
-            <span>Mo</span>
-            <span>Tu</span>
-            <span>We</span>
-            <span>Th</span>
-            <span>Fr</span>
-            <span>Sa</span>
+          {/* Day Headers */}
+          <div className="mt-3 grid grid-cols-7 text-center text-[10px] font-bold text-[#756883]">
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+              <div key={d} className="py-1">
+                {d}
+              </div>
+            ))}
           </div>
 
-          {/* Days Grid */}
-          <div className="grid grid-cols-7 gap-y-1">
-            {days.map(({ ymd, dayNum, isCurrentMonth }) => {
-              const isStart = tempStart === ymd;
-              const isEnd = tempEnd === ymd;
-              const isInRange =
-                tempStart &&
-                tempEnd &&
-                ymd > tempStart &&
-                ymd < tempEnd;
-              const isHoverInRange =
-                tempStart &&
-                !tempEnd &&
-                hoverDate &&
-                ymd > tempStart &&
-                ymd <= hoverDate;
+          {/* Interactive Day Cells with CreateEventModal Range Ribbon */}
+          <div className="grid grid-cols-7 text-center text-xs">
+            {(() => {
+              const cells = [];
 
-              return (
-                <button
-                  type="button"
-                  key={ymd}
-                  onClick={() => handleDayClick(ymd)}
-                  onMouseEnter={() => setHoverDate(ymd)}
-                  className={cn(
-                    'relative h-8 w-full text-xs font-semibold flex items-center justify-center transition-colors',
-                    !isCurrentMonth ? 'text-slate-300' : 'text-[#24133F]',
-                    (isStart || isEnd) &&
-                      'bg-brand-700 text-white font-extrabold rounded-lg shadow-sm z-10',
-                    (isInRange || isHoverInRange) &&
-                      'bg-[#F0E8FC] text-brand-900 rounded-none'
-                  )}
-                >
-                  {dayNum}
-                </button>
-              );
-            })}
+              // Blank spaces for initial offset
+              for (let i = 0; i < firstDay; i++) {
+                cells.push(<div key={`blank-${i}`} className="h-8" />);
+              }
+
+              for (let day = 1; day <= daysInMonth; day++) {
+                const dayStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isStart = dayStr === effectiveStart;
+                const isEnd = dayStr === effectiveEnd;
+                const inRange =
+                  effectiveStart && effectiveEnd && dayStr > effectiveStart && dayStr < effectiveEnd;
+                const hasRange =
+                  effectiveStart && effectiveEnd && effectiveStart !== effectiveEnd;
+
+                const dayOfWeek = (firstDay + day - 1) % 7;
+                const isRowStart = dayOfWeek === 0;
+                const isRowEnd = dayOfWeek === 6;
+
+                cells.push(
+                  <div
+                    key={day}
+                    className="relative flex h-9 items-center justify-center py-0.5"
+                    onMouseEnter={() => setHoverDate(dayStr)}
+                    onMouseLeave={() => setHoverDate(null)}
+                  >
+                    {hasRange && (
+                      <>
+                        {isStart && (
+                          <div
+                            className={cn(
+                              'absolute right-0 top-0.5 bottom-0.5 left-1/2 bg-[#E9D5FF]/60',
+                              isRowEnd && 'rounded-r-full'
+                            )}
+                          />
+                        )}
+                        {inRange && (
+                          <div
+                            className={cn(
+                              'absolute inset-x-0 top-0.5 bottom-0.5 bg-[#E9D5FF]/60',
+                              isRowStart && isRowEnd && 'rounded-full',
+                              isRowStart && !isRowEnd && 'rounded-l-full',
+                              isRowEnd && !isRowStart && 'rounded-r-full'
+                            )}
+                          />
+                        )}
+                        {isEnd && (
+                          <div
+                            className={cn(
+                              'absolute left-0 top-0.5 bottom-0.5 right-1/2 bg-[#E9D5FF]/60',
+                              isRowStart && 'rounded-l-full'
+                            )}
+                          />
+                        )}
+                      </>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleDayClick(dayStr)}
+                      className={cn(
+                        'relative z-10 flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors',
+                        isStart || isEnd
+                          ? 'bg-[#7026B7] font-bold text-white shadow-xs'
+                          : inRange
+                          ? 'text-[#7026B7] font-bold hover:bg-[#D8B4FE]/40'
+                          : 'text-[#24133F] hover:bg-slate-100'
+                      )}
+                    >
+                      {day}
+                    </button>
+                  </div>
+                );
+              }
+              return cells;
+            })()}
           </div>
 
-          {/* Footer with Apply / Clear */}
-          <div className="mt-4 flex items-center justify-between border-t border-[#E5E0EB] pt-3 text-xs">
+          {/* Footer Actions */}
+          <div className="mt-4 flex items-center justify-between border-t border-[#F1EEF4] pt-3 text-xs">
             <button
               type="button"
-              onClick={() => setPreset('all')}
-              className="text-[#756883] hover:text-[#24133F] font-semibold"
+              onClick={handleClear}
+              className="text-xs font-semibold text-[#756883] hover:text-[#24133F] transition-colors"
             >
               Clear
             </button>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setIsOpen(false)}
-                className="rounded-lg border border-[#E5E0EB] px-3 py-1.5 font-bold text-[#756883] hover:bg-slate-50"
+                onClick={() => {
+                  setTempStart(startDate);
+                  setTempEnd(endDate);
+                  setIsOpen(false);
+                }}
+                className="rounded-xl border border-[#E5E0EB] px-3 py-1.5 text-xs font-bold text-[#756883] hover:bg-slate-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={() => applyRange(tempStart, tempEnd)}
-                className="rounded-lg bg-brand-700 px-3.5 py-1.5 font-bold text-white shadow-sm hover:bg-brand-800"
+                onClick={handleApply}
+                className="rounded-xl bg-[#7026B7] px-4 py-1.5 text-xs font-bold text-white shadow-[0_2px_0_0_#451475] hover:bg-[#621FA3] active:translate-y-[1px] transition-all"
               >
                 Apply
               </button>

@@ -4,7 +4,7 @@ import { Button } from '../../../components/common/Button';
 import { Dropdown } from '../../../components/common/Dropdown';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
-import { Pencil, Plus, RefreshCw, Search, Sparkles, Trash2, UserCheck } from 'lucide-react';
+import { Activity, Pencil, Plus, RefreshCw, Search, Shield, Sparkles, Trash2, UserCheck } from 'lucide-react';
 
 export const AdminsView: React.FC = () => {
   const {
@@ -37,6 +37,7 @@ export const AdminsView: React.FC = () => {
         <Dropdown
           value={roleFilter}
           onChange={(val) => setRoleFilter(val)}
+          icon={<Shield className="h-4 w-4 text-[#756883]" />}
           options={[
             { value: 'all', label: 'All Roles' },
             { value: 'super_admin', label: 'Super Admin' },
@@ -47,6 +48,7 @@ export const AdminsView: React.FC = () => {
           value="all"
           disabled
           onChange={() => {}}
+          icon={<Activity className="h-4 w-4 text-[#756883]" />}
           options={[{ value: 'all', label: 'All Status' }]}
         />
         <div className="ml-auto flex items-center gap-2">
@@ -56,14 +58,22 @@ export const AdminsView: React.FC = () => {
       </div>
 
       {/* Admins Table */}
-      <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2.5">
         {error && (
           <div role="alert" className="mb-2 flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
             <span>{error}</span>
             <button type="button" onClick={() => void loadAdmins()} className="underline">Retry</button>
           </div>
         )}
-        <table className="w-full min-w-[630px] text-left text-xs"><thead><tr className="bg-[#F4F6FA] text-[10px] uppercase text-[#637596]"><th className="rounded-l-xl px-3 py-3 font-medium">Admin</th><th className="px-3 py-3 font-medium">Email / Account</th><th className="px-3 py-3 font-medium">Role</th><th className="rounded-r-xl px-3 py-3 font-medium"><span className="sr-only">Actions</span></th></tr></thead>
+        <table className="w-full min-w-[630px] text-left text-xs">
+          <thead>
+            <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500">
+              <th className="px-3 py-3">Admin</th>
+              <th className="px-3 py-3">Email / Account</th>
+              <th className="px-3 py-3">Role</th>
+              <th className="px-3 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
           <tbody>{visibleAdmins.map((admin) => <tr key={admin.id} className="border-b border-[#EEF0F4] last:border-b-0 hover:bg-[#FAF8FC]"><td className="px-3 py-3"><div className="flex items-center gap-2.5"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#DFE8F8] text-[9px] font-extrabold text-[#294B85]">{initials(admin.name)}</span><span className="font-bold">{admin.name}</span></div></td><td className="px-3 py-3 text-[11px] text-[#637596]">{admin.email}</td><td className="px-3 py-3 text-[11px] font-semibold">{admin.role === 'super_admin' ? 'Super Admin' : 'Scanner Admin'}</td><td className="px-3 py-3"><div className="flex justify-end gap-3"><button type="button" disabled title="Edit is not available yet" aria-label={`Edit ${admin.name} unavailable`} className="text-[#756883] opacity-40"><Pencil className="h-4 w-4" /></button><button type="button" disabled title="Delete is not available yet" aria-label={`Delete ${admin.name} unavailable`} className="text-rose-500 opacity-40"><Trash2 className="h-4 w-4" /></button></div></td></tr>)}</tbody>
         </table>
         {!visibleAdmins.length && (

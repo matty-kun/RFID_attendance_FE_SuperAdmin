@@ -1,12 +1,14 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
+  Activity,
   AlertCircle,
   Calendar,
   ChevronLeft,
   ChevronRight,
   Clock,
   Copy,
+  GraduationCap,
   Plus,
   Search,
   Users,
@@ -828,6 +830,7 @@ export function AttendancePage() {
             <Dropdown
               value={statusFilter}
               onChange={setStatusFilter}
+              icon={<Activity className="h-4 w-4 text-[#756883]" />}
               buttonClassName="h-10 rounded-xl"
               options={[
                 { value: 'all', label: 'All Status' },
@@ -840,6 +843,7 @@ export function AttendancePage() {
             <Dropdown
               value={academicYearFilter}
               onChange={setAcademicYearFilter}
+              icon={<GraduationCap className="h-4 w-4 text-[#756883]" />}
               buttonClassName="h-10 rounded-xl font-semibold"
               options={academicYearOptions}
             />

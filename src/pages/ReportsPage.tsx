@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ChevronRight, Pencil, RefreshCw, Search, Trash2 } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowRightLeft,
+  ChevronRight,
+  Clock,
+  GraduationCap,
+  MapPin,
+  Pencil,
+  RefreshCw,
+  Search,
+  Trash2,
+} from 'lucide-react';
 import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
@@ -440,22 +451,11 @@ export function ReportsPage() {
             setEndDate(range.endDate);
           }}
         />
-        {(startDate || endDate) && (
-          <button
-            type="button"
-            onClick={() => {
-              setStartDate('');
-              setEndDate('');
-            }}
-            className="h-10 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs font-semibold text-[#756883] hover:bg-slate-50 hover:text-[#24133F]"
-          >
-            All dates
-          </button>
-        )}
 
         <Dropdown
           value={session}
           onChange={setSession}
+          icon={<Clock className="h-4 w-4 text-[#756883]" />}
           options={[
             { value: 'all', label: 'All Sessions' },
             ...sessions.map((s) => ({ value: s, label: s })),
@@ -465,6 +465,7 @@ export function ReportsPage() {
         <Dropdown
           value={course}
           onChange={setCourse}
+          icon={<GraduationCap className="h-4 w-4 text-[#756883]" />}
           options={[
             { value: 'all', label: 'All Courses' },
             ...courses.map((c) => ({ value: c, label: c })),
@@ -474,6 +475,7 @@ export function ReportsPage() {
         <Dropdown
           value={type}
           onChange={setType}
+          icon={<ArrowRightLeft className="h-4 w-4 text-[#756883]" />}
           options={[
             { value: 'all', label: 'All Types' },
             { value: 'time_in', label: 'Time In' },
@@ -484,6 +486,7 @@ export function ReportsPage() {
         <Dropdown
           value={location}
           onChange={setLocation}
+          icon={<MapPin className="h-4 w-4 text-[#756883]" />}
           options={[
             { value: 'all', label: 'All Locations' },
             ...locations.map((loc) => ({ value: loc, label: loc })),

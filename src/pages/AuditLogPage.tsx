@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Check, RefreshCw, Search, Users } from 'lucide-react';
+import { Activity, AlertCircle, RefreshCw, Search, Users } from 'lucide-react';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { Dropdown } from '../components/common/Dropdown';
 import { Button } from '../components/common/Button';
@@ -194,19 +194,6 @@ export function AuditLogPage() {
             setPage(1);
           }}
         />
-        {(startDate || endDate) && (
-          <button
-            type="button"
-            onClick={() => {
-              setStartDate('');
-              setEndDate('');
-              setPage(1);
-            }}
-            className="h-10 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs font-semibold text-[#756883] hover:bg-slate-50 hover:text-[#24133F]"
-          >
-            Clear dates
-          </button>
-        )}
 
         {/* Action Dropdown Filter */}
         <Dropdown
@@ -215,7 +202,7 @@ export function AuditLogPage() {
             setActionFilter(val as AttendanceFilterType);
             setPage(1);
           }}
-          icon={<Check className="h-4 w-4" />}
+          icon={<Activity className="h-4 w-4 text-[#756883]" />}
           options={[
             { value: 'all', label: 'All Actions' },
             { value: 'time_in', label: 'Time In Recorded' },
@@ -229,7 +216,7 @@ export function AuditLogPage() {
           onChange={(val) => {
             setUserFilter(val);
           }}
-          icon={<Users className="h-4 w-4" />}
+          icon={<Users className="h-4 w-4 text-[#756883]" />}
           options={[
             { value: 'all', label: 'All Users' },
             ...uniqueUsers.map((user) => ({ value: user, label: user })),
@@ -238,7 +225,7 @@ export function AuditLogPage() {
       </div>
 
       {/* Audit Log Table */}
-      <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2.5">
         {error && (
           <div role="alert" className="mb-2 flex items-center justify-between gap-2 rounded-xl bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700">
             <span className="flex items-center gap-1.5">
@@ -253,20 +240,20 @@ export function AuditLogPage() {
 
         <table className="w-full min-w-[760px] text-left text-xs">
           <thead>
-            <tr className="bg-[#F4F6FA] text-[10px] uppercase text-[#637596]">
-              <th scope="col" className="rounded-l-xl px-3.5 py-3 font-semibold">
+            <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500">
+              <th scope="col" className="px-3.5 py-3">
                 Date / Time
               </th>
-              <th scope="col" className="px-3.5 py-3 font-semibold">
+              <th scope="col" className="px-3.5 py-3">
                 User / Admin
               </th>
-              <th scope="col" className="px-3.5 py-3 font-semibold">
+              <th scope="col" className="px-3.5 py-3">
                 Action
               </th>
-              <th scope="col" className="px-3.5 py-3 font-semibold">
+              <th scope="col" className="px-3.5 py-3">
                 Description
               </th>
-              <th scope="col" className="rounded-r-xl px-3.5 py-3 font-semibold text-right sm:text-left">
+              <th scope="col" className="px-3.5 py-3 text-right sm:text-left">
                 Related Record
               </th>
             </tr>
