@@ -4,11 +4,9 @@ import {
   Bell,
   CalendarDays,
   ChartNoAxesColumn,
-  ChevronDown,
   ClipboardList,
   History,
   LayoutGrid,
-  LogOut,
   MapPin,
   Radio,
   Search,
@@ -16,7 +14,6 @@ import {
   UsersRound,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
-import { useAuth } from '../../features/auth';
 
 const navigation = [
   { name: 'Overview', path: '/overview', icon: LayoutGrid },
@@ -86,12 +83,9 @@ function NavTab({ name, path, icon: Icon }: { name: string; path: string; icon: 
 export function Header() {
   const pagesDialog = useRef<HTMLDialogElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
-  const avatarMenuRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
   const matchingPages = commands.filter(({ name, keywords }) => `${name} ${keywords}`.toLowerCase().includes(query.trim().toLowerCase()));
   const shortcutLabel = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K';
 
@@ -134,21 +128,6 @@ export function Header() {
     return () => window.removeEventListener('keydown', onShortcut);
   }, []);
 
-  // Click outside listener for avatar menu
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (avatarMenuRef.current && !avatarMenuRef.current.contains(event.target as Node)) {
-        setIsAvatarMenuOpen(false);
-      }
-    };
-    if (isAvatarMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isAvatarMenuOpen]);
-
   return (
     <header className="relative flex min-h-[84px] flex-wrap items-center justify-between gap-2 pl-7 pr-11 py-3 md:flex-nowrap">
       <NavLink to="/overview" className="z-10 text-[30px] font-extrabold leading-none tracking-tight text-[#24133F] md:text-[34px]">
@@ -172,72 +151,6 @@ export function Header() {
           <Search className="h-4 w-4" />
           <kbd className="hidden text-[10px] font-semibold lg:inline">{shortcutLabel}</kbd>
         </button>
-
-        {/* User Avatar & Settings Menu */}
-        <div className="relative" ref={avatarMenuRef}>
-          <button
-            type="button"
-            onClick={() => setIsAvatarMenuOpen((prev) => !prev)}
-            aria-expanded={isAvatarMenuOpen}
-            aria-haspopup="menu"
-            aria-label="User account menu"
-            className="flex h-8 items-center gap-1 rounded-xl border border-[#E5E0EB] bg-white p-1 pr-1.5 text-xs font-semibold text-[#24133F] hover:border-[#7026B7]/40 active:scale-95 active:translate-y-[1px] transition-all focus-visible:outline-2 focus-visible:outline-brand-700 cursor-pointer"
-          >
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#DFE8F8] text-[10px] font-extrabold text-[#294B85]">
-              {user?.name ? user.name.slice(0, 2).toUpperCase() : 'SA'}
-            </span>
-            <ChevronDown
-              className={cn(
-                'h-3 w-3 text-[#756883] transition-transform duration-200',
-                isAvatarMenuOpen && 'rotate-180 text-[#7026B7]'
-              )}
-            />
-          </button>
-
-          {isAvatarMenuOpen && (
-            <div
-              role="menu"
-              aria-label="User account options"
-              className="absolute right-0 top-[calc(100%+6px)] z-50 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl animate-in fade-in zoom-in-95 duration-150 text-[#24133F]"
-            >
-              <div className="border-b border-slate-100 px-3 py-2">
-                <p className="text-xs font-bold text-[#24133F] truncate">{user?.name || 'Administrator'}</p>
-                <p className="text-[11px] text-[#756883] truncate">{user?.email}</p>
-                <span className="mt-1 inline-flex items-center rounded-md bg-[#F4EFFB] px-1.5 py-0.5 text-[10px] font-bold text-[#7026B7]">
-                  Super Admin
-                </span>
-              </div>
-
-              <div className="py-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAvatarMenuOpen(false);
-                    window.dispatchEvent(new CustomEvent('presnt:open-admins-drawer'));
-                  }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#24133F] hover:bg-[#F4EFFB] hover:text-[#7026B7] active:scale-[0.98] active:translate-y-[1px] transition-all cursor-pointer"
-                >
-                  <Shield className="h-4 w-4 text-[#7026B7]" />
-                  <span>Manage Admins</span>
-                </button>
-              </div>
-
-              <div className="border-t border-slate-100 pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAvatarMenuOpen(false);
-                    logout();
-                  }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 active:scale-[0.98] active:translate-y-[1px] transition-all cursor-pointer"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>Sign out</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
       <dialog ref={pagesDialog} aria-label="Command palette" onClick={(event) => { if (event.target === pagesDialog.current) pagesDialog.current?.close(); }} className="w-[min(560px,calc(100%-32px))] overflow-hidden rounded-2xl border border-[#E5E0EB] bg-white p-0 text-[#24133F] shadow-2xl backdrop:bg-[#170D29]/40 backdrop:backdrop-blur-md">

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { FileSpreadsheet, Download } from 'lucide-react';
+import { FileSpreadsheet, Download, Eye, EyeOff, FileUp, CheckCircle2 } from 'lucide-react';
 import { Modal } from '../../../components/common/Modal';
 import { Input } from '../../../components/common/Input';
 import { toast } from '../../../context';
@@ -72,6 +72,7 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
   const [parsedRows, setParsedRows] = useState<BulkImportStudentRow[]>([]);
   const [fileName, setFileName] = useState('');
   const [defaultTemporaryPassword, setDefaultTemporaryPassword] = useState('TempPass2026!');
+  const [showPassword, setShowPassword] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -152,6 +153,32 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
     toast.success(`Loaded sample roster with ${rows.length} students.`);
   };
 
+  const handleDownloadTemplate = () => {
+    const wsData = [
+      {
+        student_id: '2026-00101',
+        name: 'Juan Dela Cruz',
+        email: 'juan.delacruz@university.edu',
+        course: 'BS Information Technology',
+        year_level: 1,
+        rfid_uid: '',
+      },
+      {
+        student_id: '2026-00102',
+        name: 'Maria Santos',
+        email: 'maria.santos@university.edu',
+        course: 'BS Computer Science',
+        year_level: 2,
+        rfid_uid: '',
+      },
+    ];
+    const ws = XLSX.utils.json_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Template');
+    XLSX.writeFile(wb, 'student_roster_template.xlsx');
+    toast.success('Downloaded roster template (.xlsx).');
+  };
+
   const handleDownloadRoster = () => {
     if (parsedRows.length === 0) return;
 
@@ -202,66 +229,122 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Bulk import students"
-      description="Upload your student roster file (Excel or CSV). Each row will be registered in the backend with a temporary password."
-      maxWidth="lg"
+      description="Upload your student roster file (Excel or CSV). Review student details below before importing."
+      maxWidth="4xl"
     >
       <div className="space-y-4 pt-1">
-        {/* Dropzone */}
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`rounded-2xl border-2 border-dashed p-6 text-center transition-all ${
-            isDragging
-              ? 'border-[#7026B7] bg-[#F4EFFB]'
-              : 'border-[#D5CEDD] bg-[#FAF8FC] hover:border-[#7026B7]'
-          }`}
-        >
-          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-[#7026B7] mb-2.5">
-            <FileSpreadsheet className="h-5 w-5" />
-          </div>
-          <p className="text-sm font-bold text-[#24133F]">
-            {fileName ? fileName : 'Upload student Excel or CSV roster'}
-          </p>
-          <p className="text-xs text-[#756883] mt-1">
-            Accepts <span className="font-semibold text-[#24133F]">.xlsx, .xls, .csv</span> · Columns: <code className="font-mono text-[#24133F]">student_id, name, email, course, year_level</code>
-          </p>
+        {/* Upload Dropzone / Loaded State */}
+        {parsedRows.length === 0 ? (
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`rounded-2xl border-2 border-dashed p-6 text-center transition-all ${
+              isDragging
+                ? 'border-[#7026B7] bg-[#F4EFFB]'
+                : 'border-[#D5CEDD] bg-[#FAF8FC] hover:border-[#7026B7]'
+            }`}
+          >
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-[#7026B7] mb-2.5">
+              <FileSpreadsheet className="h-5 w-5" />
+            </div>
+            <p className="text-sm font-bold text-[#24133F]">
+              Upload student Excel or CSV roster
+            </p>
+            <p className="text-xs text-[#756883] mt-1">
+              Accepts <span className="font-semibold text-[#24133F]">.xlsx, .xls, .csv, .txt</span> · Expected columns:{' '}
+              <code className="font-mono text-[#24133F]">student_id, name, email, course, year_level</code>
+            </p>
 
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-            <label className="cursor-pointer rounded-xl bg-white border border-[#E5E0EB] px-4 py-2 text-xs font-semibold text-[#24133F] hover:bg-slate-50 transition-colors shadow-2xs active:scale-95">
-              Browse Excel or CSV
-              <input
-                type="file"
-                accept=".xlsx,.xls,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={handleLoadSample}
-              className="rounded-xl bg-white border border-[#E5E0EB] px-4 py-2 text-xs font-semibold text-[#7026B7] hover:bg-purple-50/50 transition-colors shadow-2xs active:scale-95"
-            >
-              Load sample roster
-            </button>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <label className="cursor-pointer rounded-xl bg-white border border-[#E5E0EB] px-4 py-2 text-xs font-semibold text-[#24133F] hover:bg-slate-50 transition-colors shadow-2xs active:scale-95">
+                Browse Excel or CSV
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={handleLoadSample}
+                className="rounded-xl bg-white border border-[#E5E0EB] px-4 py-2 text-xs font-semibold text-[#7026B7] hover:bg-purple-50/50 transition-colors shadow-2xs active:scale-95"
+              >
+                Load sample roster
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                className="rounded-xl bg-white border border-[#E5E0EB] px-4 py-2 text-xs font-semibold text-[#756883] hover:text-[#24133F] transition-colors shadow-2xs active:scale-95"
+              >
+                Download template
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E5E0EB] bg-[#FAF8FC] p-3.5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-[#7026B7]">
+                <FileSpreadsheet className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-[#24133F] truncate">{fileName}</p>
+                <div className="flex items-center gap-2 text-xs text-[#756883]">
+                  <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {parsedRows.length} students loaded
+                  </span>
+                </div>
+              </div>
+            </div>
 
-        {/* Default Temporary Password for Backend Registration */}
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-white border border-[#E5E0EB] px-3 py-1.5 text-xs font-semibold text-[#24133F] hover:bg-slate-50 transition-colors shadow-2xs active:scale-95">
+                <FileUp className="h-3.5 w-3.5 text-[#7026B7]" />
+                Replace file
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                className="rounded-xl bg-white border border-[#E5E0EB] px-3 py-1.5 text-xs font-semibold text-[#756883] hover:text-[#24133F] transition-colors shadow-2xs active:scale-95"
+              >
+                Download template
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Default Temporary Password Configuration */}
         {parsedRows.length > 0 && (
-          <div className="rounded-xl border border-[#E5E0EB] bg-white p-3.5 space-y-2">
+          <div className="rounded-xl border border-[#E5E0EB] bg-white p-3.5 space-y-1.5">
             <Input
               label="Default Temporary Password (min 12 chars)"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               placeholder="e.g. TempPass2026!"
               value={defaultTemporaryPassword}
               onChange={(e) => setDefaultTemporaryPassword(e.target.value)}
               minLength={12}
               required
+              helperText="Assigned to students without a password in the file. Students must change this on first login."
+              rightElement={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="p-1.5 text-[#756883] hover:text-[#24133F] transition-colors focus:outline-none cursor-pointer"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              }
             />
-            <p className="text-[11px] text-[#756883]">
-              Students must change this temporary password after their first login.
-            </p>
           </div>
         )}
 
@@ -269,41 +352,68 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
         {parsedRows.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#756883]">
-                Roster preview ({parsedRows.length} students detected)
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-[#24133F]">Student Roster Preview</span>
+                <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[11px] font-bold text-[#7026B7] border border-purple-200">
+                  {parsedRows.length} detected
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={handleDownloadRoster}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7026B7] hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7026B7] hover:underline cursor-pointer"
               >
                 <Download className="h-3.5 w-3.5" />
                 <span>Export roster (.xlsx)</span>
               </button>
             </div>
 
-            <div className="max-h-56 overflow-y-auto rounded-xl border border-[#E5E0EB] bg-white">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-[#F1EEF4] bg-[#FAF8FC] text-xs font-medium text-[#756883] sticky top-0">
+            <div className="max-h-72 overflow-y-auto overflow-x-auto rounded-xl border border-[#E5E0EB] bg-white">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="sticky top-0 z-10 border-b border-[#E5E0EB] bg-[#FAF8FC] text-[11px] font-bold uppercase tracking-wider text-[#756883]">
                   <tr>
-                    <th className="px-3 py-2">Student ID</th>
-                    <th className="px-3 py-2">Name</th>
-                    <th className="px-3 py-2">Email</th>
-                    <th className="px-3 py-2">Course</th>
-                    <th className="px-3 py-2">Year</th>
-                    <th className="px-3 py-2">RFID card</th>
+                    <th className="w-10 px-3 py-2.5 text-center">#</th>
+                    <th className="px-3.5 py-2.5 whitespace-nowrap">Student ID</th>
+                    <th className="px-3.5 py-2.5 whitespace-nowrap">Full Name</th>
+                    <th className="px-3.5 py-2.5 whitespace-nowrap">Email Address</th>
+                    <th className="px-3.5 py-2.5 whitespace-nowrap">Course</th>
+                    <th className="px-3.5 py-2.5 whitespace-nowrap text-center">Year</th>
+                    <th className="px-3.5 py-2.5 whitespace-nowrap">RFID Card</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F1EEF4]">
                   {parsedRows.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-[#FAF8FC]">
-                      <td className="px-3 py-2 font-mono text-[#24133F] font-bold">{row.student_id}</td>
-                      <td className="px-3 py-2 font-medium text-[#24133F]">{row.name}</td>
-                      <td className="px-3 py-2 text-[#756883]">{row.email}</td>
-                      <td className="px-3 py-2 text-[#756883]">{row.course}</td>
-                      <td className="px-3 py-2 text-[#756883]">{formatYearLevel(row.year_level)}</td>
-                      <td className="px-3 py-2 font-mono font-semibold text-[#7026B7]">
-                        {row.rfid_uid ? row.rfid_uid : 'Unassigned'}
+                    <tr key={idx} className="hover:bg-[#FAF8FC]/80 transition-colors">
+                      <td className="w-10 px-3 py-2 text-center font-mono text-[11px] text-[#9B89B0]">
+                        {idx + 1}
+                      </td>
+                      <td className="px-3.5 py-2 whitespace-nowrap">
+                        <span className="font-mono font-bold text-[#24133F]">{row.student_id}</span>
+                      </td>
+                      <td className="px-3.5 py-2 whitespace-nowrap font-semibold text-[#24133F]">
+                        {row.name}
+                      </td>
+                      <td className="px-3.5 py-2 whitespace-nowrap text-[#5D526A]">
+                        {row.email}
+                      </td>
+                      <td className="px-3.5 py-2 whitespace-nowrap text-[#24133F]">
+                        {row.course}
+                      </td>
+                      <td className="px-3.5 py-2 whitespace-nowrap text-center">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-purple-50 text-[#7026B7] border border-purple-100">
+                          {formatYearLevel(row.year_level)}
+                        </span>
+                      </td>
+                      <td className="px-3.5 py-2 whitespace-nowrap">
+                        {row.rfid_uid ? (
+                          <span className="font-mono font-bold text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                            {row.rfid_uid}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-[#9B89B0] italic">
+                            Unassigned
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -318,7 +428,7 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-[#E5E0EB] px-4 py-2.5 text-xs font-bold text-[#756883] hover:bg-slate-50 transition-colors"
+            className="rounded-xl border border-[#E5E0EB] px-4 py-2.5 text-xs font-bold text-[#756883] hover:bg-slate-50 transition-colors cursor-pointer"
           >
             Cancel
           </button>
