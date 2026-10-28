@@ -43,6 +43,7 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
     deletingAdmin,
     setDeletingAdmin,
     handleDeleteAdmin,
+    uploadAdminAvatar,
   } = useAdminsViewModel();
   const [roleFilter, setRoleFilter] = useState('all');
   const visibleAdmins = admins.filter((admin) => roleFilter === 'all' || admin.role === roleFilter);
@@ -118,9 +119,7 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
               >
                 {/* Left: Avatar + Details */}
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#DFE8F8] text-[10px] font-black text-[#294B85]">
-                    {initials(admin.name)}
-                  </span>
+                  {admin.avatar_url ? <img src={admin.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#DFE8F8] text-[10px] font-black text-[#294B85]">{initials(admin.name)}</span>}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-[#24133F] truncate">{admin.name}</span>
@@ -331,6 +330,7 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
         onClose={() => setEditingAdmin(null)}
         admin={editingAdmin}
         onSave={handleUpdateAdmin}
+        onUploadAvatar={uploadAdminAvatar}
       />
 
       {/* Delete Admin Confirmation Modal */}

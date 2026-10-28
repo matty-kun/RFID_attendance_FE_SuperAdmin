@@ -2,8 +2,8 @@ import { request } from '../../../services/apiClient';
 import type { StudentRecord, StudentPage, RegisterStudentPayload, UpdateStudentPayload } from '../models';
 
 export const studentService = {
-  getStudents: (page = 1, q = '') =>
-    request.get<StudentPage>('/students', { params: { page, limit: 25, ...(q ? { q } : {}) } }),
+  getStudents: (page = 1, q = '', sort = 'created_at', direction = 'desc') =>
+    request.get<StudentPage>('/students', { params: { page, limit: 25, sort, direction, ...(q ? { q } : {}) } }),
   registerStudent: (payload: RegisterStudentPayload) =>
     request.post<StudentRecord>('/students', payload),
   updateStudent: (id: string, payload: UpdateStudentPayload) =>

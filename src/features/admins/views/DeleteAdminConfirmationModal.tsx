@@ -86,9 +86,7 @@ export const DeleteAdminConfirmationModal: React.FC<DeleteAdminConfirmationModal
         {/* Admin Summary Card */}
         <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 flex items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#DFE8F8] text-xs font-black text-[#294B85]">
-              {initials}
-            </div>
+            {admin.avatar_url ? <img src={admin.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" /> : <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#DFE8F8] text-xs font-black text-[#294B85]">{initials}</div>}
             <div className="min-w-0">
               <p className="text-sm font-bold text-[#24133F] truncate">{admin.name}</p>
               <p className="text-xs text-[#756883] truncate">{admin.email}</p>

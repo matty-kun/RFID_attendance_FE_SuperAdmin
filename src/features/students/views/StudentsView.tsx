@@ -19,6 +19,7 @@ import {
   Users,
   UserCheck,
   Archive,
+  ArrowDownAZ,
 } from 'lucide-react';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
 import hawiFindingImg from '../../../assets/illustrations/Hawi Finding.png';
@@ -29,6 +30,10 @@ export const StudentsView: React.FC = () => {
     filteredStudents,
     searchQuery,
     setSearchQuery,
+    sort,
+    setSort,
+    direction,
+    setDirection,
     isLoading,
     isSubmitting,
     page,
@@ -233,6 +238,28 @@ export const StudentsView: React.FC = () => {
                   label: `Archived (${archivedStudents.length})`,
                   icon: <Archive className="h-3.5 w-3.5 text-slate-500" />,
                 },
+              ]}
+            />
+            <Dropdown
+              value={`${sort}:${direction}`}
+              onChange={(value) => {
+                const [field, order] = value.split(':');
+                setSort(field as typeof sort);
+                setDirection(order as typeof direction);
+                setPage(1);
+              }}
+              icon={<ArrowDownAZ className="h-4 w-4" />}
+              options={[
+                { value: 'created_at:desc', label: 'Newest first' },
+                { value: 'created_at:asc', label: 'Oldest first' },
+                { value: 'name:asc', label: 'Name A–Z' },
+                { value: 'name:desc', label: 'Name Z–A' },
+                { value: 'course:asc', label: 'Course A–Z' },
+                { value: 'course:desc', label: 'Course Z–A' },
+                { value: 'year_level:asc', label: 'Year level 1–4' },
+                { value: 'year_level:desc', label: 'Year level 4–1' },
+                { value: 'student_id:asc', label: 'Student ID ascending' },
+                { value: 'student_id:desc', label: 'Student ID descending' },
               ]}
             />
           </div>

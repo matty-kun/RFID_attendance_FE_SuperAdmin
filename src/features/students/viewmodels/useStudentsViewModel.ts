@@ -11,6 +11,8 @@ import { toast } from '../../../context';
 
 const ARCHIVED_STORAGE_KEY = 'presnt_archived_students';
 const LOST_CARDS_STORAGE_KEY = 'presnt_lost_cards';
+type StudentSortField = 'created_at' | 'name' | 'student_id' | 'course' | 'year_level';
+type StudentSortDirection = 'asc' | 'desc';
 
 export interface LostCardRecord {
   id: string;
@@ -27,6 +29,10 @@ export interface UseStudentsViewModelReturn {
   filteredStudents: StudentRecord[];
   searchQuery: string;
   setSearchQuery: (q: string) => void;
+  sort: StudentSortField;
+  setSort: (value: StudentSortField) => void;
+  direction: StudentSortDirection;
+  setDirection: (value: StudentSortDirection) => void;
   isLoading: boolean;
   isSubmitting: boolean;
   page: number;
@@ -72,6 +78,8 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [unassignedPool, setUnassignedPool] = useState<InventoryCard[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sort, setSort] = useState<StudentSortField>('created_at');
+  const [direction, setDirection] = useState<StudentSortDirection>('desc');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -108,7 +116,7 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     setIsLoading(true);
     setError('');
     try {
-      const data = await studentService.getStudents(page, searchQuery.trim());
+      const data = await studentService.getStudents(page, searchQuery.trim(), sort, direction);
       setStudents(data.students);
       setTotal(data.total);
     } catch (err: any) {
@@ -116,7 +124,7 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, searchQuery]);
+  }, [page, searchQuery, sort, direction]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -514,6 +522,10 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     filteredStudents,
     searchQuery,
     setSearchQuery,
+    sort,
+    setSort,
+    direction,
+    setDirection,
     isLoading,
     isSubmitting,
     page,

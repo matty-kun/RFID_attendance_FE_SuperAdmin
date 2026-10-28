@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { AdminRecord, UpdateAdminPayload } from '../models';
 import { adminManagementService } from '../services';
 import { toast } from '../../../context';
+import { useAuth } from '../../auth/context/AuthContext';
 
 export interface UseAdminsViewModelReturn {
   admins: AdminRecord[];
@@ -32,9 +33,11 @@ export interface UseAdminsViewModelReturn {
   deletingAdmin: AdminRecord | null;
   setDeletingAdmin: (admin: AdminRecord | null) => void;
   handleDeleteAdmin: (adminId: string) => Promise<boolean>;
+  uploadAdminAvatar: (adminId: string, image: string) => Promise<string>;
 }
 
 export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
+  const { user, refreshUser } = useAuth();
   const [admins, setAdmins] = useState<AdminRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -144,6 +147,20 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     }
   };
 
+  const uploadAdminAvatar = async (adminId: string, image: string): Promise<string> => {
+    try {
+      const { avatar_url } = await adminManagementService.uploadAvatar(adminId, image);
+      setAdmins((previous) => previous.map((admin) => admin.id === adminId ? { ...admin, avatar_url } : admin));
+      setEditingAdmin((previous) => previous?.id === adminId ? { ...previous, avatar_url } : previous);
+      if (user?.id === adminId) await refreshUser();
+      toast.success('Administrator profile picture updated.');
+      return avatar_url;
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || err?.message || 'Failed to upload administrator photo.');
+      throw err;
+    }
+  };
+
   return {
     admins,
     isLoading,
@@ -173,5 +190,6 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     deletingAdmin,
     setDeletingAdmin,
     handleDeleteAdmin,
+    uploadAdminAvatar,
   };
 };

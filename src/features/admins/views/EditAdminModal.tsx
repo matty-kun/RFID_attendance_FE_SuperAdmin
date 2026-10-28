@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, KeyRound, Loader2, Save, Shield, User } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Camera, Eye, EyeOff, KeyRound, Loader2, Save, Shield, User } from 'lucide-react';
 import { Modal } from '../../../components/common/Modal';
 import { Button } from '../../../components/common/Button';
 import { Input } from '../../../components/common/Input';
 import { Dropdown } from '../../../components/common/Dropdown';
+import { ImageCropModal } from '../../../components/common/ImageCropModal';
 import type { AdminRecord, UpdateAdminPayload } from '../models';
 
 export interface EditAdminModalProps {
@@ -11,6 +12,7 @@ export interface EditAdminModalProps {
   onClose: () => void;
   admin: AdminRecord | null;
   onSave: (adminId: string, payload: UpdateAdminPayload) => Promise<boolean>;
+  onUploadAvatar: (adminId: string, image: string) => Promise<string>;
 }
 
 export const EditAdminModal: React.FC<EditAdminModalProps> = ({
@@ -18,6 +20,7 @@ export const EditAdminModal: React.FC<EditAdminModalProps> = ({
   onClose,
   admin,
   onSave,
+  onUploadAvatar,
 }) => {
   const [name, setName] = useState('');
   const [role, setRole] = useState<'admin' | 'super_admin'>('admin');
@@ -25,6 +28,10 @@ export const EditAdminModal: React.FC<EditAdminModalProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rawImage, setRawImage] = useState<string | null>(null);
+  const [isCropOpen, setIsCropOpen] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (admin && isOpen) {
@@ -34,6 +41,8 @@ export const EditAdminModal: React.FC<EditAdminModalProps> = ({
       setShowPassword(false);
       setError(null);
       setIsSubmitting(false);
+      setRawImage(null);
+      setIsCropOpen(false);
     }
   }, [admin, isOpen]);
 
@@ -79,10 +88,48 @@ export const EditAdminModal: React.FC<EditAdminModalProps> = ({
     }
   };
 
-  return (
+  const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Choose a JPG, PNG, or WebP image.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Choose an image smaller than 10 MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const source = reader.result;
+      if (typeof source !== 'string') return;
+      const image = new Image();
+      image.onload = () => { setError(null); setRawImage(source); setIsCropOpen(true); };
+      image.onerror = () => setError('The selected file is not a valid image.');
+      image.src = source;
+    };
+    reader.onerror = () => setError('Could not read the selected image.');
+    reader.readAsDataURL(file);
+  };
+
+  const handleConfirmCrop = async (image: string) => {
+    setIsUploadingPhoto(true);
+    try {
+      await onUploadAvatar(admin.id, image);
+      setIsCropOpen(false);
+      setRawImage(null);
+    } catch {
+      setError('Could not upload the profile picture. Please try again.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  return <>
     <Modal
       isOpen={isOpen}
-      onClose={isSubmitting ? () => {} : onClose}
+      onClose={isSubmitting || isUploadingPhoto || isCropOpen ? () => {} : onClose}
       title="Edit Administrator"
       description="Update account profile details, system permissions, or reset login password."
       maxWidth="md"
@@ -97,9 +144,11 @@ export const EditAdminModal: React.FC<EditAdminModalProps> = ({
 
         {/* Identity Header Card */}
         <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#DFE8F8] text-xs font-black text-[#294B85]">
-            {initials}
-          </div>
+          <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoSelect} className="hidden" aria-label="Choose administrator profile picture" />
+          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploadingPhoto || isSubmitting} title="Upload profile picture" className="group relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[#DFE8F8] text-xs font-black text-[#294B85] disabled:opacity-50">
+            {admin.avatar_url ? <img src={admin.avatar_url} alt="" className="h-full w-full object-cover" /> : initials}
+            <span className="absolute inset-0 flex items-center justify-center bg-[#24133F]/55 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">{isUploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}</span>
+          </button>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-[#24133F] truncate">{admin.name}</p>
             <p className="text-[11px] text-[#756883] truncate">{admin.email}</p>
@@ -108,6 +157,7 @@ export const EditAdminModal: React.FC<EditAdminModalProps> = ({
             {admin.role === 'super_admin' ? 'Super Admin' : 'Scanner Admin'}
           </span>
         </div>
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploadingPhoto || isSubmitting} className="text-xs font-semibold text-[#7026B7] hover:underline disabled:opacity-50">{admin.avatar_url ? 'Change profile picture' : 'Upload profile picture'}</button>
 
         {/* Full Name */}
         <div className="space-y-1">
@@ -216,7 +266,8 @@ export const EditAdminModal: React.FC<EditAdminModalProps> = ({
         </div>
       </form>
     </Modal>
-  );
+    <ImageCropModal isOpen={isCropOpen} onClose={() => { setIsCropOpen(false); setRawImage(null); }} imageSrc={rawImage} onConfirmCrop={handleConfirmCrop} isSaving={isUploadingPhoto} />
+  </>;
 };
 
 export default EditAdminModal;

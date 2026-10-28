@@ -17,4 +17,8 @@ export const adminManagementService = {
   async deleteAdmin(adminId: string): Promise<{ message: string }> {
     return adminService.deleteAdmin(adminId);
   },
+
+  async uploadAvatar(adminId: string, image: string): Promise<{ avatar_url: string }> {
+    return adminService.uploadAdminAvatar(adminId, image);
+  },
 };

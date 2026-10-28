@@ -49,6 +49,8 @@ export const adminService = {
     request.patch<AdminRecord>(`/admins/${encodeURIComponent(adminId)}`, payload),
   deleteAdmin: (adminId: string) =>
     request.delete<{ message: string }>(`/admins/${encodeURIComponent(adminId)}`),
+  uploadAdminAvatar: (adminId: string, image: string) =>
+    request.post<{ avatar_url: string }>(`/admins/${encodeURIComponent(adminId)}/avatar`, { image }),
   getMetrics: () => request.get<DashboardMetrics>('/analytics/dashboard'),
 };
 
