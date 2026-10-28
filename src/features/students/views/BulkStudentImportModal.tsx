@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { FileSpreadsheet, Download, Eye, EyeOff, FileUp, CheckCircle2, Loader2 } from 'lucide-react';
+import { FileSpreadsheet, Eye, EyeOff, FileUp, Loader2 } from 'lucide-react';
 import { Modal } from '../../../components/common/Modal';
 import { Input } from '../../../components/common/Input';
 import { toast } from '../../../context';
@@ -304,25 +304,6 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
     toast.success('Downloaded roster template (.xlsx).');
   };
 
-  const handleDownloadRoster = () => {
-    if (parsedRows.length === 0) return;
-
-    const wsData = parsedRows.map((r) => ({
-      'Student ID': r.student_id,
-      'Full Name': r.name,
-      Email: r.email,
-      Course: r.course,
-      'Year Level': r.year_level,
-      'Card UID': r.rfid_uid || 'Unassigned',
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(wsData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Roster');
-    XLSX.writeFile(wb, `Student_Import_Roster_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    toast.success('Roster exported to Excel.');
-  };
-
   const handleConfirmImport = async () => {
     if (parsedRows.length === 0) return;
     const tempPass = (defaultTemporaryPassword || 'TempPass2026!').trim();
@@ -421,12 +402,6 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-bold text-[#24133F] truncate">{fileName}</p>
-                <div className="flex items-center gap-2 text-xs text-[#756883]">
-                  <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    {parsedRows.length} students loaded
-                  </span>
-                </div>
               </div>
             </div>
 
@@ -486,17 +461,9 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-[#24133F]">Student Roster Preview</span>
                 <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[11px] font-bold text-[#7026B7] border border-purple-200">
-                  {parsedRows.length} detected
+                  {parsedRows.length} students
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={handleDownloadRoster}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7026B7] hover:underline cursor-pointer"
-              >
-                <Download className="h-3.5 w-3.5" />
-                <span>Export roster (.xlsx)</span>
-              </button>
             </div>
 
             <div className="max-h-72 overflow-y-auto overflow-x-auto rounded-xl border border-[#E5E0EB] bg-white">
