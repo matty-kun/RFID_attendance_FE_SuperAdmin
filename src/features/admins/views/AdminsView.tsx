@@ -4,6 +4,8 @@ import { Button } from '../../../components/common/Button';
 import { Dropdown } from '../../../components/common/Dropdown';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
+import { EditAdminModal } from './EditAdminModal';
+import { DeleteAdminConfirmationModal } from './DeleteAdminConfirmationModal';
 import { Pencil, Plus, Search, Shield, Sparkles, Trash2, UserCheck } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 
@@ -25,9 +27,22 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
     setEmail,
     role,
     setRole,
-    temporaryPassword, setTemporaryPassword, searchQuery, setSearchQuery, page, setPage, total, error,
+    temporaryPassword,
+    setTemporaryPassword,
+    searchQuery,
+    setSearchQuery,
+    page,
+    setPage,
+    total,
+    error,
     loadAdmins,
     handleCreate,
+    editingAdmin,
+    setEditingAdmin,
+    handleUpdateAdmin,
+    deletingAdmin,
+    setDeletingAdmin,
+    handleDeleteAdmin,
   } = useAdminsViewModel();
   const [roleFilter, setRoleFilter] = useState('all');
   const visibleAdmins = admins.filter((admin) => roleFilter === 'all' || admin.role === roleFilter);
@@ -133,19 +148,19 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
-                disabled
-                title="Edit is not available yet"
-                aria-label={`Edit ${admin.name} unavailable`}
-                className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-[#756883] opacity-40 hover:bg-slate-50 transition-colors cursor-not-allowed"
+                onClick={() => setEditingAdmin(admin)}
+                title={`Edit ${admin.name}`}
+                aria-label={`Edit ${admin.name}`}
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 hover:bg-[#F4EFFB] active:scale-90 transition-all cursor-pointer"
               >
                 <Pencil className="h-3.5 w-3.5" />
               </button>
               <button
                 type="button"
-                disabled
-                title="Delete is not available yet"
-                aria-label={`Delete ${admin.name} unavailable`}
-                className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-rose-500 opacity-40 hover:bg-rose-50 transition-colors cursor-not-allowed"
+                onClick={() => setDeletingAdmin(admin)}
+                title={`Delete ${admin.name}`}
+                aria-label={`Delete ${admin.name}`}
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-[#756883] hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 active:scale-90 transition-all cursor-pointer"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -164,40 +179,42 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
               : 'No administrators available.'}
           </div>
         )}
-
-        {total > 0 && (
-          <div className="flex items-center justify-between gap-3 pt-2 text-xs text-[#756883]">
-            <span>
-              {total.toLocaleString()} admins · Page {page} of {Math.max(1, Math.ceil(total / 25))}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={page <= 1 || isLoading}
-                onClick={() => setPage(page - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={page * 25 >= total || isLoading}
-                onClick={() => setPage(page + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Create Admin Modal */}
+      {/* Pagination */}
+      {total > 25 && (
+        <div className="flex items-center justify-between pt-2 text-xs text-[#756883]">
+          <span>
+            Showing {visibleAdmins.length} of {total} admins
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page * 25 >= total}
+              onClick={() => setPage(page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Admin Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Add Admin"
+        title="Register Administrator"
         description="Create an admin login with a temporary password. Share it privately; the admin must change it after first login."
+        maxWidth="md"
       >
         <form onSubmit={handleCreate} className="space-y-4 mt-2">
           {formError && (
@@ -305,6 +322,22 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
           </div>
         </form>
       </Modal>
+
+      {/* Edit Admin Modal */}
+      <EditAdminModal
+        isOpen={Boolean(editingAdmin)}
+        onClose={() => setEditingAdmin(null)}
+        admin={editingAdmin}
+        onSave={handleUpdateAdmin}
+      />
+
+      {/* Delete Admin Confirmation Modal */}
+      <DeleteAdminConfirmationModal
+        isOpen={Boolean(deletingAdmin)}
+        onClose={() => setDeletingAdmin(null)}
+        admin={deletingAdmin}
+        onConfirmDelete={handleDeleteAdmin}
+      />
     </div>
   );
 };

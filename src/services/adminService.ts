@@ -45,6 +45,10 @@ export const adminService = {
     request.get<AdminPage>('/admins', { params: { page, limit, ...(q ? { q } : {}) } }),
   createAdmin: (payload: Pick<AdminRecord, 'name' | 'email' | 'role'> & { temporary_password: string }) =>
     request.post<AdminRecord>('/admins', payload),
+  updateAdmin: (adminId: string, payload: { name?: string; role?: 'admin' | 'super_admin'; password?: string }) =>
+    request.patch<AdminRecord>(`/admins/${encodeURIComponent(adminId)}`, payload),
+  deleteAdmin: (adminId: string) =>
+    request.delete<{ message: string }>(`/admins/${encodeURIComponent(adminId)}`),
   getMetrics: () => request.get<DashboardMetrics>('/analytics/dashboard'),
 };
 

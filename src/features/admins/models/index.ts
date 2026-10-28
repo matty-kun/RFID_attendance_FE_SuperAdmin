@@ -15,3 +15,9 @@ export interface CreateAdminPayload {
   role: 'super_admin' | 'admin';
   temporary_password: string;
 }
+
+export interface UpdateAdminPayload {
+  name?: string;
+  role?: 'super_admin' | 'admin';
+  password?: string;
+}

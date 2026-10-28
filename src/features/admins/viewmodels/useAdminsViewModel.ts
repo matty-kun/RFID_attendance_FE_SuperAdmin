@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { AdminRecord } from '../models';
+import { AdminRecord, UpdateAdminPayload } from '../models';
 import { adminManagementService } from '../services';
 import { toast } from '../../../context';
 
@@ -26,6 +26,12 @@ export interface UseAdminsViewModelReturn {
   error: string;
   loadAdmins: () => Promise<void>;
   handleCreate: (e: React.FormEvent) => Promise<void>;
+  editingAdmin: AdminRecord | null;
+  setEditingAdmin: (admin: AdminRecord | null) => void;
+  handleUpdateAdmin: (adminId: string, payload: UpdateAdminPayload) => Promise<boolean>;
+  deletingAdmin: AdminRecord | null;
+  setDeletingAdmin: (admin: AdminRecord | null) => void;
+  handleDeleteAdmin: (adminId: string) => Promise<boolean>;
 }
 
 export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
@@ -35,7 +41,7 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Form state
+  // Create Form state
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'admin' | 'super_admin'>('admin');
@@ -44,6 +50,10 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState('');
+
+  // Edit / Delete state
+  const [editingAdmin, setEditingAdmin] = useState<AdminRecord | null>(null);
+  const [deletingAdmin, setDeletingAdmin] = useState<AdminRecord | null>(null);
 
   const loadAdmins = useCallback(async () => {
     setIsLoading(true);
@@ -98,6 +108,42 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     }
   };
 
+  const handleUpdateAdmin = async (adminId: string, payload: UpdateAdminPayload): Promise<boolean> => {
+    setIsSubmitting(true);
+    setFormError(null);
+    try {
+      await adminManagementService.updateAdmin(adminId, payload);
+      toast.success('Administrator updated successfully.');
+      setEditingAdmin(null);
+      await loadAdmins();
+      return true;
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to update administrator.';
+      setFormError(apiMsg);
+      toast.error(apiMsg);
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteAdmin = async (adminId: string): Promise<boolean> => {
+    setIsSubmitting(true);
+    try {
+      await adminManagementService.deleteAdmin(adminId);
+      toast.success('Administrator deleted successfully.');
+      setDeletingAdmin(null);
+      await loadAdmins();
+      return true;
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to delete administrator.';
+      toast.error(apiMsg);
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return {
     admins,
     isLoading,
@@ -121,5 +167,11 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     error,
     loadAdmins,
     handleCreate,
+    editingAdmin,
+    setEditingAdmin,
+    handleUpdateAdmin,
+    deletingAdmin,
+    setDeletingAdmin,
+    handleDeleteAdmin,
   };
 };
