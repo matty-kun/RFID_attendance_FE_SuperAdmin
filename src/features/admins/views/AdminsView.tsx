@@ -4,7 +4,7 @@ import { Button } from '../../../components/common/Button';
 import { Dropdown } from '../../../components/common/Dropdown';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
-import { Pencil, Plus, RefreshCw, Search, Shield, Sparkles, Trash2, UserCheck } from 'lucide-react';
+import { Pencil, Plus, Search, Shield, Sparkles, Trash2, UserCheck } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 
 export interface AdminsViewProps {
@@ -72,16 +72,7 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
           />
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => void loadAdmins()}
-            isLoading={isLoading}
-            leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
-          >
-            Refresh
-          </Button>
+        <div className="self-end sm:self-auto">
           <Button
             variant="primary"
             leftIcon={<Plus className="h-4 w-4" />}
