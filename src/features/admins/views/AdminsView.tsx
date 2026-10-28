@@ -4,7 +4,7 @@ import { Button } from '../../../components/common/Button';
 import { Dropdown } from '../../../components/common/Dropdown';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
-import { Activity, Pencil, Plus, RefreshCw, Search, Shield, Sparkles, Trash2, UserCheck } from 'lucide-react';
+import { Pencil, Plus, RefreshCw, Search, Shield, Sparkles, Trash2, UserCheck } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 
 export interface AdminsViewProps {
@@ -42,52 +42,128 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
           <p className="text-[11px] text-[#756883]">Manage admin accounts and monitor attendance access.</p>
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[310px]"><Search className="h-4 w-4" /><span className="sr-only">Search admins</span><input type="search" value={searchQuery} onChange={(event) => { setPage(1); setSearchQuery(event.target.value); }} placeholder="Search admin name or email" className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]" /></label>
-        <Dropdown
-          value={roleFilter}
-          onChange={(val) => setRoleFilter(val)}
-          icon={<Shield className="h-4 w-4 text-[#756883]" />}
-          options={[
-            { value: 'all', label: 'All Roles' },
-            { value: 'super_admin', label: 'Super Admin' },
-            { value: 'admin', label: 'Scanner Admin' },
-          ]}
-        />
-        <Dropdown
-          value="all"
-          disabled
-          onChange={() => {}}
-          icon={<Activity className="h-4 w-4 text-[#756883]" />}
-          options={[{ value: 'all', label: 'All Status' }]}
-        />
-        <div className="ml-auto flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={() => void loadAdmins()} isLoading={isLoading} leftIcon={<RefreshCw className="h-3.5 w-3.5" />}>Refresh</Button>
-          <Button variant="primary" leftIcon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>Add Admin</Button>
+      {/* Toolbar: Search, Role Filter, Refresh, Add Admin */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[#756883] sm:max-w-[320px]">
+            <Search className="h-4 w-4 shrink-0 text-slate-400" />
+            <span className="sr-only">Search admins</span>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => {
+                setPage(1);
+                setSearchQuery(event.target.value);
+              }}
+              placeholder="Search admin name or email…"
+              className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
+            />
+          </label>
+
+          <Dropdown
+            value={roleFilter}
+            onChange={(val) => setRoleFilter(val)}
+            icon={<Shield className="h-4 w-4 text-[#756883]" />}
+            options={[
+              { value: 'all', label: 'All Roles' },
+              { value: 'super_admin', label: 'Super Admin' },
+              { value: 'admin', label: 'Scanner Admin' },
+            ]}
+          />
+        </div>
+
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void loadAdmins()}
+            isLoading={isLoading}
+            leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+          >
+            Refresh
+          </Button>
+          <Button
+            variant="primary"
+            leftIcon={<Plus className="h-4 w-4" />}
+            onClick={() => setIsModalOpen(true)}
+          >
+            Add Admin
+          </Button>
         </div>
       </div>
 
-      {/* Admins Table */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2.5">
+      {/* Admin Cards List */}
+      <div className="space-y-2.5">
         {error && (
-          <div role="alert" className="mb-2 flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+          <div role="alert" className="flex items-center justify-between rounded-xl bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700">
             <span>{error}</span>
-            <button type="button" onClick={() => void loadAdmins()} className="underline">Retry</button>
+            <button type="button" onClick={() => void loadAdmins()} className="underline">
+              Retry
+            </button>
           </div>
         )}
-        <table className="w-full min-w-[630px] text-left text-xs">
-          <thead>
-            <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500">
-              <th className="px-3 py-3">Admin</th>
-              <th className="px-3 py-3">Email / Account</th>
-              <th className="px-3 py-3">Role</th>
-              <th className="px-3 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>{visibleAdmins.map((admin) => <tr key={admin.id} className="border-b border-[#EEF0F4] last:border-b-0 hover:bg-[#FAF8FC]"><td className="px-3 py-3"><div className="flex items-center gap-2.5"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#DFE8F8] text-[9px] font-extrabold text-[#294B85]">{initials(admin.name)}</span><span className="font-bold">{admin.name}</span></div></td><td className="px-3 py-3 text-[11px] text-[#637596]">{admin.email}</td><td className="px-3 py-3 text-[11px] font-semibold">{admin.role === 'super_admin' ? 'Super Admin' : 'Scanner Admin'}</td><td className="px-3 py-3"><div className="flex justify-end gap-3"><button type="button" disabled title="Edit is not available yet" aria-label={`Edit ${admin.name} unavailable`} className="text-[#756883] opacity-40"><Pencil className="h-4 w-4" /></button><button type="button" disabled title="Delete is not available yet" aria-label={`Delete ${admin.name} unavailable`} className="text-rose-500 opacity-40"><Trash2 className="h-4 w-4" /></button></div></td></tr>)}</tbody>
-        </table>
+
+        {visibleAdmins.map((admin) => (
+          <div
+            key={admin.id}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 transition-all hover:border-[#7026B7]/30 hover:shadow-xs"
+          >
+            {/* Left: Avatar + Details */}
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#DFE8F8] text-xs font-black text-[#294B85]">
+                {initials(admin.name)}
+              </span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-[#24133F] truncate">{admin.name}</span>
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold',
+                      admin.role === 'super_admin'
+                        ? 'bg-[#F4EFFB] text-[#7026B7] border border-[#E9D5FF]'
+                        : 'bg-slate-100 text-slate-700 border border-slate-200'
+                    )}
+                  >
+                    {admin.role === 'super_admin' ? (
+                      <>
+                        <Shield className="h-3 w-3" />
+                        <span>Super Admin</span>
+                      </>
+                    ) : (
+                      <span>Scanner Admin</span>
+                    )}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#756883] truncate mt-0.5">{admin.email}</p>
+              </div>
+            </div>
+
+            {/* Right: Actions */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                disabled
+                title="Edit is not available yet"
+                aria-label={`Edit ${admin.name} unavailable`}
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-[#756883] opacity-40 hover:bg-slate-50 transition-colors cursor-not-allowed"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                disabled
+                title="Delete is not available yet"
+                aria-label={`Delete ${admin.name} unavailable`}
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-rose-500 opacity-40 hover:bg-rose-50 transition-colors cursor-not-allowed"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        ))}
+
         {!visibleAdmins.length && (
-          <p className="px-4 py-10 text-center text-xs text-[#756883]">
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center text-xs text-[#756883]">
             {isLoading
               ? 'Loading administrators…'
               : error
@@ -95,9 +171,34 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
               : searchQuery || roleFilter !== 'all'
               ? 'No administrators match these filters.'
               : 'No administrators available.'}
-          </p>
+          </div>
         )}
-        <div className="flex items-center justify-between gap-3 border-t border-[#EEF0F4] px-3 py-3 text-xs text-[#756883]"><span>{total.toLocaleString()} admins · Page {page} of {Math.max(1, Math.ceil(total / 25))}</span><div className="flex gap-2"><Button variant="secondary" size="sm" disabled={page <= 1 || isLoading} onClick={() => setPage(page - 1)}>Previous</Button><Button variant="secondary" size="sm" disabled={page * 25 >= total || isLoading} onClick={() => setPage(page + 1)}>Next</Button></div></div>
+
+        {total > 0 && (
+          <div className="flex items-center justify-between gap-3 pt-2 text-xs text-[#756883]">
+            <span>
+              {total.toLocaleString()} admins · Page {page} of {Math.max(1, Math.ceil(total / 25))}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={page <= 1 || isLoading}
+                onClick={() => setPage(page - 1)}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={page * 25 >= total || isLoading}
+                onClick={() => setPage(page + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Create Admin Modal */}
