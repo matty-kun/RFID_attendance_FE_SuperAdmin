@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { FileSpreadsheet, Eye, EyeOff, FileUp, Loader2 } from 'lucide-react';
 import { Modal } from '../../../components/common/Modal';
@@ -69,6 +69,19 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Reset all state when modal opens fresh
+  useEffect(() => {
+    if (isOpen) {
+      setParsedRows([]);
+      setFileName('');
+      setDefaultTemporaryPassword('TempPass2026!');
+      setShowPassword(false);
+      setIsProcessing(false);
+      setImportProgress(null);
+      setIsDragging(false);
+    }
+  }, [isOpen]);
 
   const processFile = (file: File) => {
     setFileName(file.name);
