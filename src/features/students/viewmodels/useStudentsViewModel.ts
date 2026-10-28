@@ -239,13 +239,25 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
       return { success: false, message: msg };
     }
 
+    const targetStudent = students.find((s) => s.id === studentId);
+    const previousUid = targetStudent?.rfid_uid;
+
+    // Instant optimistic update (0ms UI transition to next student in queue)
+    setStudents((prev) =>
+      prev.map((s) => (s.id === studentId ? { ...s, rfid_uid: clean } : s))
+    );
+    setUnassignedPool((prev) => prev.filter((c) => c.uid.toUpperCase() !== clean));
+
     try {
       await studentService.updateStudent(studentId, { rfid_uid: clean });
-      setUnassignedPool((prev) => prev.filter((c) => c.uid.toUpperCase() !== clean));
-      await loadStudents();
-      toast.success(`Card ${clean} successfully linked to student!`);
+      // Non-blocking background re-sync
+      void loadStudents();
       return { success: true, message: `Card ${clean} successfully linked to student!` };
     } catch (err: any) {
+      // Revert optimistic update on failure
+      setStudents((prev) =>
+        prev.map((s) => (s.id === studentId ? { ...s, rfid_uid: previousUid } : s))
+      );
       const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to link card to student.';
       toast.error(apiMsg);
       return { success: false, message: apiMsg };
