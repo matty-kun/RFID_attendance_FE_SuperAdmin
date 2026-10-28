@@ -17,6 +17,13 @@ class SoundManager {
   }
 
   /**
+   * Pre-warms the AudioContext on user interaction to eliminate audio latency.
+   */
+  init() {
+    this.getContext();
+  }
+
+  /**
    * Plays a pleasant double-chime high pitch beep on successful card tap.
    */
   playSuccessBeep() {

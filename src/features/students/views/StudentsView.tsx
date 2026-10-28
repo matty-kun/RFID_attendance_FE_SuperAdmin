@@ -434,6 +434,7 @@ export const StudentsView: React.FC = () => {
       <RapidCardScanDrawer
         isOpen={isRapidScanOpen}
         onClose={() => setIsRapidScanOpen(false)}
+        students={students}
         cardlessStudents={cardlessStudents}
         onCardScannedForStudent={handleCardScannedForStudent}
       />

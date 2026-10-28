@@ -12,6 +12,7 @@ import { formatYearLevel } from '../../../utils/formatters';
 export interface RapidCardScanDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  students?: StudentRecord[];
   cardlessStudents: StudentRecord[];
   onCardScannedForStudent: (
     studentId: string,
@@ -22,6 +23,7 @@ export interface RapidCardScanDrawerProps {
 export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
   isOpen,
   onClose,
+  students,
   cardlessStudents,
   onCardScannedForStudent,
 }) => {
@@ -38,9 +40,10 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const successTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Reset & focus on open
+  // Reset & pre-warm audio context on open
   useEffect(() => {
     if (isOpen) {
+      soundManager.init();
       setInputValue('');
       setAssignedCount(0);
       setLastScanned(null);
@@ -102,6 +105,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
         return;
       }
 
+      // Format validation (< 1ms)
       if (!isValidRfidUid(clean)) {
         soundManager.playErrorBuzz();
         toast.error('Invalid RFID card UID format.');
@@ -109,34 +113,54 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
         return;
       }
 
+      // In-memory duplicate check (< 1ms)
+      const duplicateStudent = students?.find(
+        (s) => s.rfid_uid?.trim().toUpperCase() === clean && s.id !== targetStudent.id
+      );
+      if (duplicateStudent) {
+        soundManager.playErrorBuzz();
+        toast.error(`Card ${clean} is already assigned to ${duplicateStudent.name} (${duplicateStudent.student_id})!`);
+        setInputValue('');
+        return;
+      }
+
       isProcessingRef.current = true;
       setInputValue('');
 
+      // ⚡ INSTANT FEEDBACK (0ms):
+      // Play success chime immediately upon physical card tap!
+      soundManager.playSuccessBeep();
+      setAssignedCount((prev) => prev + 1);
+      setLastScanned({
+        uid: clean,
+        studentName: targetStudent.name,
+        studentId: targetStudent.student_id,
+      });
+
+      // Auto-clear success banner after 1.8s so it doesn't linger
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => {
+        setLastScanned(null);
+      }, 1800);
+
+      // Background card linking with optimistic update
       try {
         const res = await onCardScannedForStudent(targetStudent.id, clean);
-        if (res.success) {
-          soundManager.playSuccessBeep();
-          setAssignedCount((prev) => prev + 1);
-          setLastScanned({
-            uid: clean,
-            studentName: targetStudent.name,
-            studentId: targetStudent.student_id,
-          });
-
-          // Auto-clear success banner after 1.8s so it doesn't linger
-          if (successTimerRef.current) clearTimeout(successTimerRef.current);
-          successTimerRef.current = setTimeout(() => {
-            setLastScanned(null);
-          }, 1800);
-        } else {
+        if (!res.success) {
           soundManager.playErrorBuzz();
+          setAssignedCount((prev) => Math.max(0, prev - 1));
+          setLastScanned(null);
         }
+      } catch {
+        soundManager.playErrorBuzz();
+        setAssignedCount((prev) => Math.max(0, prev - 1));
+        setLastScanned(null);
       } finally {
         isProcessingRef.current = false;
         inputRef.current?.focus();
       }
     },
-    [currentStudent, onCardScannedForStudent]
+    [currentStudent, students, onCardScannedForStudent]
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,7 +173,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = setTimeout(() => {
         void processScan(clean);
-      }, 70);
+      }, 40);
     }
   };
 
@@ -157,6 +181,10 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
     if (e.key === 'Enter') {
       e.preventDefault();
       const rawUid = (e.currentTarget.value || inputValue).trim();
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
       void processScan(rawUid);
     }
   };
