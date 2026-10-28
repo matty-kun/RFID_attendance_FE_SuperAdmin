@@ -1,13 +1,60 @@
 import React, { useState } from 'react';
+import * as XLSX from 'xlsx';
+import { FileSpreadsheet, Download } from 'lucide-react';
 import { Modal } from '../../../components/common/Modal';
 import { Input } from '../../../components/common/Input';
 import { toast } from '../../../context';
 import type { BulkImportStudentRow } from '../models';
+import { formatYearLevel } from '../../../utils/formatters';
 
 export interface BulkStudentImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onImport: (students: BulkImportStudentRow[], autoPair: boolean) => Promise<void>;
+}
+
+function parseYearLevel(val: any): number {
+  if (typeof val === 'number' && !isNaN(val)) return Math.min(Math.max(1, Math.round(val)), 6);
+  if (typeof val === 'string') {
+    const match = val.match(/\d+/);
+    if (match) return Math.min(Math.max(1, parseInt(match[0], 10)), 6);
+  }
+  return 1;
+}
+
+function normalizeRow(row: Record<string, any>): BulkImportStudentRow | null {
+  const getField = (aliases: string[]) => {
+    for (const key of Object.keys(row)) {
+      const normalizedKey = key.trim().toLowerCase().replace(/[\s_-]+/g, '');
+      for (const alias of aliases) {
+        if (normalizedKey === alias.replace(/[\s_-]+/g, '').toLowerCase()) {
+          const val = row[key];
+          return val != null ? String(val).trim() : '';
+        }
+      }
+    }
+    return '';
+  };
+
+  const student_id = getField(['student_id', 'studentid', 'id', 'studentno', 'studentnumber']);
+  const name = getField(['name', 'fullname', 'studentname', 'student']);
+  if (!student_id || !name) return null;
+
+  const email = getField(['email', 'emailaddress', 'studentemail']) || `${student_id.toLowerCase().replace(/[^a-z0-9]/g, '')}@university.edu`;
+  const course = getField(['course', 'program', 'degree', 'department']) || 'BS Information Technology';
+  const year_level = parseYearLevel(getField(['year_level', 'yearlevel', 'year', 'gradelevel']));
+  const rfid_uid = getField(['rfid_uid', 'carduid', 'rfiduid', 'rfid', 'uid']) || undefined;
+  const temporary_password = getField(['temporary_password', 'temporarypassword', 'temppassword', 'password']) || undefined;
+
+  return {
+    student_id,
+    name,
+    email,
+    course,
+    year_level,
+    rfid_uid,
+    temporary_password,
+  };
 }
 
 const SAMPLE_CSV = `student_id,name,email,course,year_level
@@ -24,86 +71,111 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
 }) => {
   const [parsedRows, setParsedRows] = useState<BulkImportStudentRow[]>([]);
   const [fileName, setFileName] = useState('');
-  const [defaultTemporaryPassword, setDefaultTemporaryPassword] = useState('');
+  const [defaultTemporaryPassword, setDefaultTemporaryPassword] = useState('TempPass2026!');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const parseCsvText = (text: string) => {
-    try {
-      const lines = text.split(/\r?\n/).filter((l) => l.trim() !== '');
-      if (lines.length <= 1) {
-        toast.error('CSV file is empty or has only headers.');
-        return;
-      }
-
-      const rows: BulkImportStudentRow[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const parts = lines[i].split(',').map((p) => p.trim());
-        if (parts[0] && parts[1]) {
-          rows.push({
-            student_id: parts[0],
-            name: parts[1],
-            email: parts[2] || `${parts[0]}@university.edu`,
-            course: parts[3] || 'BS Information Technology',
-            year_level: Number(parts[4]) || 1,
-            rfid_uid: parts[5] || undefined,
-            temporary_password: parts[6] || undefined,
-          });
-        }
-      }
-
-      setParsedRows(rows);
-      toast.success(`Successfully parsed ${rows.length} students from roster.`);
-    } catch {
-      toast.error('Failed to parse CSV format. Please check the columns.');
-    }
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processFile = (file: File) => {
     setFileName(file.name);
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const content = event.target?.result as string;
-      parseCsvText(content);
+      try {
+        const buffer = event.target?.result;
+        if (!buffer) return;
+
+        const workbook = XLSX.read(buffer, { type: 'array', raw: true });
+        const sheetName = workbook.SheetNames[0];
+        if (!sheetName) {
+          toast.error('The selected file has no readable sheets.');
+          return;
+        }
+
+        const sheet = workbook.Sheets[sheetName];
+        const rawJson = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { raw: true, defval: '' });
+
+        if (rawJson.length === 0) {
+          toast.error('File has no student rows. Please check file content.');
+          return;
+        }
+
+        const rows: BulkImportStudentRow[] = [];
+        for (const item of rawJson) {
+          const norm = normalizeRow(item);
+          if (norm) rows.push(norm);
+        }
+
+        if (rows.length === 0) {
+          toast.error('Could not find student_id and name columns in file.');
+          return;
+        }
+
+        setParsedRows(rows);
+        toast.success(`Successfully parsed ${rows.length} students from ${file.name}.`);
+      } catch (err: any) {
+        console.error('File parsing error:', err);
+        toast.error('Failed to parse file. Please upload a valid .xlsx, .xls, or .csv roster.');
+      }
     };
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+    e.target.value = '';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
   };
 
   const handleLoadSample = () => {
     setFileName('student_roster_sample.csv');
-    parseCsvText(SAMPLE_CSV);
+    const workbook = XLSX.read(SAMPLE_CSV, { type: 'string', raw: true });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rawJson = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { raw: true, defval: '' });
+    const rows = rawJson.map(normalizeRow).filter((r): r is BulkImportStudentRow => r !== null);
+    setParsedRows(rows);
+    toast.success(`Loaded sample roster with ${rows.length} students.`);
   };
 
   const handleDownloadRoster = () => {
     if (parsedRows.length === 0) return;
 
-    let csvContent = 'data:text/csv;charset=utf-8,';
-    csvContent += 'Student ID,Full Name,Email,Course,Year Level,Card UID\n';
+    const wsData = parsedRows.map((r) => ({
+      'Student ID': r.student_id,
+      'Full Name': r.name,
+      'Email': r.email,
+      'Course': r.course,
+      'Year Level': r.year_level,
+      'Card UID': r.rfid_uid || 'Unassigned',
+    }));
 
-    parsedRows.forEach((row) => {
-      const uid = row.rfid_uid || 'Unassigned';
-      csvContent += `"${row.student_id}","${row.name}","${row.email}","${row.course}","${row.year_level}","${uid}"\n`;
-    });
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Student_Import_Roster_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Roster downloaded.');
+    const ws = XLSX.utils.json_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Roster');
+    XLSX.writeFile(wb, `Student_Import_Roster_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success('Roster exported to Excel.');
   };
 
   const handleConfirmImport = async () => {
     if (parsedRows.length === 0) return;
-    const missingPasswords = parsedRows.some(
-      (r) => (!r.temporary_password || r.temporary_password.length < 12) && defaultTemporaryPassword.length < 12
-    );
-    if (missingPasswords) {
-      toast.error('Please enter a default Temporary Password (at least 12 characters) for imported student accounts.');
+    const tempPass = (defaultTemporaryPassword || 'TempPass2026!').trim();
+    if (tempPass.length < 12) {
+      toast.error('Default temporary password must be at least 12 characters.');
       return;
     }
 
@@ -114,12 +186,12 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
         temporary_password:
           row.temporary_password && row.temporary_password.length >= 12
             ? row.temporary_password
-            : defaultTemporaryPassword,
+            : tempPass,
       }));
       await onImport(rowsWithPasswords, false);
       onClose();
     } catch {
-      // Errors are handled and reported in onImport
+      // Errors handled in onImport
     } finally {
       setIsProcessing(false);
     }
@@ -130,28 +202,45 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Bulk import students"
-      description="Upload your student roster file. Each row will be registered in the backend with a temporary password."
+      description="Upload your student roster file (Excel or CSV). Each row will be registered in the backend with a temporary password."
       maxWidth="lg"
     >
       <div className="space-y-4 pt-1">
         {/* Dropzone */}
-        <div className="rounded-2xl border border-dashed border-[#D5CEDD] bg-[#FAF8FC] p-6 text-center hover:border-[#7026B7] transition-all">
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`rounded-2xl border-2 border-dashed p-6 text-center transition-all ${
+            isDragging
+              ? 'border-[#7026B7] bg-[#F4EFFB]'
+              : 'border-[#D5CEDD] bg-[#FAF8FC] hover:border-[#7026B7]'
+          }`}
+        >
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-[#7026B7] mb-2.5">
+            <FileSpreadsheet className="h-5 w-5" />
+          </div>
           <p className="text-sm font-bold text-[#24133F]">
-            {fileName ? fileName : 'Upload student CSV or Excel roster'}
+            {fileName ? fileName : 'Upload student Excel or CSV roster'}
           </p>
           <p className="text-xs text-[#756883] mt-1">
-            Columns: <code className="font-mono text-[#24133F]">student_id, name, email, course, year_level</code>
+            Accepts <span className="font-semibold text-[#24133F]">.xlsx, .xls, .csv</span> · Columns: <code className="font-mono text-[#24133F]">student_id, name, email, course, year_level</code>
           </p>
 
-          <div className="mt-4 flex items-center justify-center gap-2">
-            <label className="cursor-pointer rounded-xl bg-white border border-[#E5E0EB] px-4 py-2 text-xs font-semibold text-[#24133F] hover:bg-slate-50 transition-colors">
-              Browse CSV file
-              <input type="file" accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <label className="cursor-pointer rounded-xl bg-white border border-[#E5E0EB] px-4 py-2 text-xs font-semibold text-[#24133F] hover:bg-slate-50 transition-colors shadow-2xs active:scale-95">
+              Browse Excel or CSV
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
             </label>
             <button
               type="button"
               onClick={handleLoadSample}
-              className="rounded-xl bg-white border border-[#E5E0EB] px-4 py-2 text-xs font-semibold text-[#7026B7] hover:bg-purple-50/50 transition-colors"
+              className="rounded-xl bg-white border border-[#E5E0EB] px-4 py-2 text-xs font-semibold text-[#7026B7] hover:bg-purple-50/50 transition-colors shadow-2xs active:scale-95"
             >
               Load sample roster
             </button>
@@ -164,7 +253,7 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
             <Input
               label="Default Temporary Password (min 12 chars)"
               type="password"
-              placeholder="Required for creating student accounts"
+              placeholder="e.g. TempPass2026!"
               value={defaultTemporaryPassword}
               onChange={(e) => setDefaultTemporaryPassword(e.target.value)}
               minLength={12}
@@ -186,31 +275,36 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
               <button
                 type="button"
                 onClick={handleDownloadRoster}
-                className="text-xs font-semibold text-[#7026B7] hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7026B7] hover:underline"
               >
-                Download distribution checklist (.csv)
+                <Download className="h-3.5 w-3.5" />
+                <span>Export roster (.xlsx)</span>
               </button>
             </div>
 
-            <div className="max-h-48 overflow-y-auto rounded-xl border border-[#E5E0EB] bg-white">
+            <div className="max-h-56 overflow-y-auto rounded-xl border border-[#E5E0EB] bg-white">
               <table className="w-full text-left text-xs">
-                <thead className="border-b border-[#F1EEF4] bg-[#FAF8FC] text-xs font-medium text-[#756883]">
+                <thead className="border-b border-[#F1EEF4] bg-[#FAF8FC] text-xs font-medium text-[#756883] sticky top-0">
                   <tr>
-                    <th className="px-3 py-2">RFID card</th>
                     <th className="px-3 py-2">Student ID</th>
                     <th className="px-3 py-2">Name</th>
-                    <th className="px-3 py-2">Program</th>
+                    <th className="px-3 py-2">Email</th>
+                    <th className="px-3 py-2">Course</th>
+                    <th className="px-3 py-2">Year</th>
+                    <th className="px-3 py-2">RFID card</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F1EEF4]">
                   {parsedRows.map((row, idx) => (
                     <tr key={idx} className="hover:bg-[#FAF8FC]">
-                      <td className="px-3 py-2 font-mono font-semibold text-[#7026B7]">
-                        {row.rfid_uid ? row.rfid_uid : 'No card'}
-                      </td>
-                      <td className="px-3 py-2 font-mono text-[#24133F]">{row.student_id}</td>
+                      <td className="px-3 py-2 font-mono text-[#24133F] font-bold">{row.student_id}</td>
                       <td className="px-3 py-2 font-medium text-[#24133F]">{row.name}</td>
+                      <td className="px-3 py-2 text-[#756883]">{row.email}</td>
                       <td className="px-3 py-2 text-[#756883]">{row.course}</td>
+                      <td className="px-3 py-2 text-[#756883]">{formatYearLevel(row.year_level)}</td>
+                      <td className="px-3 py-2 font-mono font-semibold text-[#7026B7]">
+                        {row.rfid_uid ? row.rfid_uid : 'Unassigned'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -220,12 +314,19 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
         )}
 
         {/* Footer Actions */}
-        <div className="pt-3 border-t border-[#F1EEF4] flex items-center justify-end">
+        <div className="pt-3 border-t border-[#F1EEF4] flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-[#E5E0EB] px-4 py-2.5 text-xs font-bold text-[#756883] hover:bg-slate-50 transition-colors"
+          >
+            Cancel
+          </button>
           <button
             type="button"
             onClick={handleConfirmImport}
             disabled={parsedRows.length === 0 || isProcessing}
-            className="rounded-xl bg-[#7026B7] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#621FA3] shadow-[0_4px_0_0_#451475] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50"
+            className="rounded-xl bg-[#7026B7] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#621FA3] shadow-[0_4px_0_0_#451475] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50 cursor-pointer"
           >
             {isProcessing ? 'Importing students...' : `Import ${parsedRows.length} Students`}
           </button>
@@ -234,3 +335,5 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
     </Modal>
   );
 };
+
+export default BulkStudentImportModal;
