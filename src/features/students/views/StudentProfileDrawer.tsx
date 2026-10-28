@@ -627,7 +627,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     >
       <div className="flex flex-col min-h-full bg-white select-none">
         {/* Luminous Brand Violet Hero Header with Extended Downward Dissolve */}
-        <div className="relative bg-gradient-to-b from-[#9333EA] via-[#A855F7] via-[#C084FC]/80 to-[#F3E8FF] px-6 pt-5 pb-14 flex flex-col justify-between">
+        <div className="relative bg-gradient-to-b from-[#9333EA] via-[#A855F7] via-[#C084FC]/80 via-[#F3E8FF] to-white px-6 pt-5 pb-10 flex flex-col justify-between">
           {/* Top Bar inside banner */}
           <div className="flex items-center justify-between z-20 gap-3">
             {/* Seamless In-Place Name Editor */}
@@ -747,7 +747,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             />
 
             {currentStudent.avatar_url ? (
-              <div className="relative group/avatar">
+              <div className="flex flex-col items-center">
+                <div className="relative group/avatar">
                 <img
                   src={currentStudent.avatar_url}
                   alt={currentStudent.name}
@@ -766,7 +767,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                     <Camera className="h-4 w-4 text-[#7C27BD]" />
                   )}
                 </button>
-                <button type="button" onClick={() => void handleRemovePhoto()} disabled={isUploadingPhoto || isArchived} className="mx-auto mt-2 block rounded-full bg-white px-3 py-1.5 text-xs font-bold text-rose-700 shadow-sm transition-colors hover:bg-rose-50 disabled:opacity-50">Remove photo</button>
+                </div>
+                <button type="button" onClick={() => void handleRemovePhoto()} disabled={isUploadingPhoto || isArchived} className="mt-3 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-rose-700 shadow-sm transition-colors hover:bg-rose-50 disabled:opacity-50">Remove photo</button>
               </div>
             ) : (
               <div className="relative flex flex-col items-center">
@@ -792,7 +794,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               </div>
             )}
           </div>
-          <svg aria-hidden="true" viewBox="0 0 800 48" preserveAspectRatio="none" className="pointer-events-none absolute inset-x-0 -bottom-px h-12 w-full text-white"><path fill="currentColor" d="M0 20 C105 2 190 4 285 23 C380 43 475 43 570 23 C665 4 735 4 800 18 L800 48 L0 48 Z" /></svg>
         </div>
 
         {/* Content Area Below Banner */}

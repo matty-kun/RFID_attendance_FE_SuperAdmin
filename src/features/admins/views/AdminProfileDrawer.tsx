@@ -141,7 +141,7 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
       noPadding
     >
       {admin && <div className="flex min-h-full select-none flex-col bg-white text-[#24133F]">
-        <div className="relative flex flex-col justify-between bg-gradient-to-b from-[#9333EA] via-[#A855F7] via-[#C084FC]/80 to-[#F3E8FF] px-6 pb-14 pt-5">
+        <div className="relative flex flex-col justify-between bg-gradient-to-b from-[#9333EA] via-[#A855F7] via-[#C084FC]/80 via-[#F3E8FF] to-white px-6 pb-10 pt-5">
           <div className="z-20 flex items-center justify-between gap-3">
             {isEditingName ? <input autoFocus aria-label="Administrator name" value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} onBlur={() => void saveName()} onKeyDown={(event) => { if (event.key === 'Enter') void saveName(); if (event.key === 'Escape') setIsEditingName(false); }} disabled={isSaving} className="min-w-0 max-w-[340px] flex-1 border-b-2 border-white bg-transparent text-2xl font-black tracking-tight text-white outline-none" /> : <button type="button" onClick={() => { if (!admin.archived_at) { setNameDraft(admin.name); setIsEditingName(true); } }} title="Click to edit name" disabled={Boolean(admin.archived_at)} className="group flex min-w-0 items-center gap-2 rounded-xl px-1 py-0.5 text-left transition-colors hover:bg-white/20 disabled:cursor-default"><h2 className="max-w-[340px] truncate text-2xl font-black tracking-tight text-white drop-shadow-sm">{admin.name}</h2>{!admin.archived_at && <Pencil className="h-4 w-4 shrink-0 text-white/70 opacity-0 transition-opacity group-hover:opacity-100" />}</button>}
             <div className="flex shrink-0 items-center gap-2">
@@ -158,7 +158,6 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
             </div>
             {admin.avatar_url && <button type="button" onClick={() => void handleRemovePhoto()} disabled={isUploading} className="mt-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-rose-700 shadow-sm hover:bg-rose-50 disabled:opacity-50">Remove photo</button>}
           </div>
-          <svg aria-hidden="true" viewBox="0 0 800 48" preserveAspectRatio="none" className="pointer-events-none absolute inset-x-0 -bottom-px h-12 w-full text-white"><path fill="currentColor" d="M0 20 C105 2 190 4 285 23 C380 43 475 43 570 23 C665 4 735 4 800 18 L800 48 L0 48 Z" /></svg>
         </div>
 
         <div className="relative z-20 flex-1 space-y-4 bg-white p-5 pt-1 pb-8">
