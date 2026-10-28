@@ -459,7 +459,7 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#24133F]">Student Roster Preview</span>
+                <span className="text-xs font-bold text-[#24133F]">Students Preview</span>
                 <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[11px] font-bold text-[#7026B7] border border-purple-200">
                   {parsedRows.length} students
                 </span>
