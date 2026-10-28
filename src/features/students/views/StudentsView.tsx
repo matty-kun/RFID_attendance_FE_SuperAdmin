@@ -134,7 +134,6 @@ export const StudentsView: React.FC = () => {
             onAddStudent={() => setIsAddDrawerOpen(true)}
             onRapidScan={() => setIsRapidScanOpen(true)}
             onBulkImport={() => setIsBulkImportOpen(true)}
-            onInspectCard={() => setIsCardInspectorOpen(true)}
           />
         </div>
       </div>
