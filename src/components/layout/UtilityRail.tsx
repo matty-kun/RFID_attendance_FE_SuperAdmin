@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, LogOut, X } from 'lucide-react';
+import { Bell, LogOut, Shield, X } from 'lucide-react';
 import { useAuth } from '../../features/auth';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 import hawiWavingImg from '../../assets/illustrations/Hawi Waving.png';
@@ -131,6 +131,9 @@ export function UtilityRail() {
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-[#24133F] truncate">{user?.name || 'Administrator'}</p>
                     <p className="text-xs text-[#756883] truncate">{user?.email}</p>
+                    <span className="mt-0.5 inline-flex items-center rounded-md bg-[#F4EFFB] px-1.5 py-0.5 text-[10px] font-bold text-[#7026B7]">
+                      Super Admin
+                    </span>
                   </div>
                 </div>
 
@@ -143,6 +146,19 @@ export function UtilityRail() {
                   <X className="h-4 w-4" />
                 </button>
               </div>
+
+              {/* Manage Admins Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  window.dispatchEvent(new CustomEvent('presnt:open-admins-drawer'));
+                }}
+                className="inline-flex w-full items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-[#7026B7] bg-[#F4EFFB] hover:bg-[#ECE3F8] transition-colors cursor-pointer"
+              >
+                <Shield className="h-4 w-4" />
+                <span>Manage Admins</span>
+              </button>
 
               {/* Sign Out Button */}
               <button

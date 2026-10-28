@@ -5,8 +5,13 @@ import { Dropdown } from '../../../components/common/Dropdown';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
 import { Activity, Pencil, Plus, RefreshCw, Search, Shield, Sparkles, Trash2, UserCheck } from 'lucide-react';
+import { cn } from '../../../utils/cn';
 
-export const AdminsView: React.FC = () => {
+export interface AdminsViewProps {
+  isDrawer?: boolean;
+}
+
+export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
   const {
     admins,
     isModalOpen,
@@ -29,11 +34,16 @@ export const AdminsView: React.FC = () => {
   const initials = (fullName: string) => fullName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('');
 
   return (
-    <div className="mx-auto w-full max-w-[1120px] space-y-4 text-[#24133F]">
-      {/* Top Header */}
-      <div><h1 className="text-[22px] font-extrabold leading-tight">Admin Accounts</h1><p className="text-[11px] text-[#756883]">Manage admin accounts and monitor attendance access.</p></div>
+    <div className={cn('w-full space-y-4 text-[#24133F]', !isDrawer && 'mx-auto max-w-[1120px]')}>
+      {/* Top Header (only in full page view) */}
+      {!isDrawer && (
+        <div>
+          <h1 className="text-[22px] font-extrabold leading-tight">Admin Accounts</h1>
+          <p className="text-[11px] text-[#756883]">Manage admin accounts and monitor attendance access.</p>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex h-10 min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[310px]"><Search className="h-4 w-4" /><span className="sr-only">Search admins</span><input type="search" value={searchQuery} onChange={(event) => { setPage(1); setSearchQuery(event.target.value); }} placeholder="Search admin name or email" className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]" /></label>
+        <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[310px]"><Search className="h-4 w-4" /><span className="sr-only">Search admins</span><input type="search" value={searchQuery} onChange={(event) => { setPage(1); setSearchQuery(event.target.value); }} placeholder="Search admin name or email" className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]" /></label>
         <Dropdown
           value={roleFilter}
           onChange={(val) => setRoleFilter(val)}
