@@ -59,7 +59,7 @@ export interface UseStudentsViewModelReturn {
   handleCardScannedForInventory: (uid: string) => { success: boolean; message: string; cardNumber?: number };
   handleCardScannedForStudent: (studentId: string, uid: string) => Promise<{ success: boolean; message: string }>;
   handleAutoPairSequential: () => Promise<{ pairedCount: number }>;
-  handleBulkImport: (newStudents: BulkImportStudentRow[], autoPair: boolean) => Promise<void>;
+  handleBulkImport: (newStudents: BulkImportStudentRow[], autoPair: boolean, onProgress?: (current: number, total: number) => void) => Promise<void>;
   handleQuickPair: (studentId: string, cardUid: string) => Promise<{ success: boolean; message: string }>;
   handleUnlinkCard: (studentId: string, reason?: 'lost' | 'returned') => Promise<void>;
   handleUpdateStudent: (studentId: string, payload: UpdateStudentPayload) => Promise<StudentRecord>;
@@ -298,7 +298,8 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
   // 5. Bulk Import Students from CSV via real POST /api/v1/students
   const handleBulkImport = async (
     newRows: BulkImportStudentRow[],
-    autoPair: boolean
+    autoPair: boolean,
+    onProgress?: (current: number, total: number) => void
   ) => {
     const available = [...unassignedCards];
     let cardIdx = 0;
@@ -307,29 +308,37 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     let lastError = '';
     const usedUids = new Set<string>();
 
-    for (const row of newRows) {
-      let uid = row.rfid_uid || undefined;
-      if (!uid && autoPair && cardIdx < available.length) {
-        uid = available[cardIdx].uid;
-        cardIdx++;
-      }
+    const CONCURRENCY = 4;
+    for (let i = 0; i < newRows.length; i += CONCURRENCY) {
+      const chunk = newRows.slice(i, i + CONCURRENCY);
+      await Promise.all(
+        chunk.map(async (row) => {
+          let uid = row.rfid_uid || undefined;
+          if (!uid && autoPair && cardIdx < available.length) {
+            uid = available[cardIdx].uid;
+            cardIdx++;
+          }
 
-      try {
-        await studentService.registerStudent({
-          student_id: row.student_id.trim(),
-          name: row.name.trim(),
-          email: (row.email || `${row.student_id}@university.edu`).trim().toLowerCase(),
-          temporary_password: row.temporary_password || '',
-          course: row.course || 'BS Information Technology',
-          year_level: row.year_level || 1,
-          rfid_uid: uid,
-        });
-        successCount++;
-        if (uid) usedUids.add(uid.toUpperCase());
-      } catch (err: any) {
-        failureCount++;
-        lastError = err?.response?.data?.error?.message || err?.message || 'Registration failed';
-      }
+          try {
+            const cleanId = row.student_id.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+            await studentService.registerStudent({
+              student_id: row.student_id.trim(),
+              name: row.name.trim(),
+              email: (row.email || `${cleanId}@ndmc.edu.ph`).trim().toLowerCase(),
+              temporary_password: row.temporary_password || '',
+              course: row.course || 'BS Information Technology',
+              year_level: row.year_level || 1,
+              rfid_uid: uid,
+            });
+            successCount++;
+            if (uid) usedUids.add(uid.toUpperCase());
+          } catch (err: any) {
+            failureCount++;
+            lastError = err?.response?.data?.error?.message || err?.message || 'Registration failed';
+          }
+        })
+      );
+      onProgress?.(Math.min(i + chunk.length, newRows.length), newRows.length);
     }
 
     if (usedUids.size > 0) {

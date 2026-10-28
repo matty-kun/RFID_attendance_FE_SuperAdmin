@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { FileSpreadsheet, Download, Eye, EyeOff, FileUp, CheckCircle2 } from 'lucide-react';
+import { FileSpreadsheet, Download, Eye, EyeOff, FileUp, CheckCircle2, Loader2 } from 'lucide-react';
 import { Modal } from '../../../components/common/Modal';
 import { Input } from '../../../components/common/Input';
 import { toast } from '../../../context';
@@ -10,8 +10,25 @@ import { formatYearLevel } from '../../../utils/formatters';
 export interface BulkStudentImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (students: BulkImportStudentRow[], autoPair: boolean) => Promise<void>;
+  onImport: (
+    students: BulkImportStudentRow[],
+    autoPair: boolean,
+    onProgress?: (current: number, total: number) => void
+  ) => Promise<void>;
 }
+
+const COURSE_ALIAS_MAP: Record<string, string> = {
+  BSIT: 'BS Information Technology',
+  BSIS: 'BS Information Systems',
+  BSCPE: 'BS Computer Engineering',
+  BSCS: 'BS Computer Science',
+  BSECE: 'BS Electronics Engineering',
+  IT: 'BS Information Technology',
+  IS: 'BS Information Systems',
+  CS: 'BS Computer Science',
+  CPE: 'BS Computer Engineering',
+  ECE: 'BS Electronics Engineering',
+};
 
 function parseYearLevel(val: any): number {
   if (typeof val === 'number' && !isNaN(val)) return Math.min(Math.max(1, Math.round(val)), 6);
@@ -22,39 +39,15 @@ function parseYearLevel(val: any): number {
   return 1;
 }
 
-function normalizeRow(row: Record<string, any>): BulkImportStudentRow | null {
-  const getField = (aliases: string[]) => {
-    for (const key of Object.keys(row)) {
-      const normalizedKey = key.trim().toLowerCase().replace(/[\s_-]+/g, '');
-      for (const alias of aliases) {
-        if (normalizedKey === alias.replace(/[\s_-]+/g, '').toLowerCase()) {
-          const val = row[key];
-          return val != null ? String(val).trim() : '';
-        }
-      }
-    }
-    return '';
-  };
+function resolveCourseName(raw: string): string {
+  const trimmed = raw.trim();
+  const upper = trimmed.toUpperCase();
+  if (COURSE_ALIAS_MAP[upper]) return COURSE_ALIAS_MAP[upper];
+  return trimmed || 'BS Information Technology';
+}
 
-  const student_id = getField(['student_id', 'studentid', 'id', 'studentno', 'studentnumber']);
-  const name = getField(['name', 'fullname', 'studentname', 'student']);
-  if (!student_id || !name) return null;
-
-  const email = getField(['email', 'emailaddress', 'studentemail']) || `${student_id.toLowerCase().replace(/[^a-z0-9]/g, '')}@university.edu`;
-  const course = getField(['course', 'program', 'degree', 'department']) || 'BS Information Technology';
-  const year_level = parseYearLevel(getField(['year_level', 'yearlevel', 'year', 'gradelevel']));
-  const rfid_uid = getField(['rfid_uid', 'carduid', 'rfiduid', 'rfid', 'uid']) || undefined;
-  const temporary_password = getField(['temporary_password', 'temporarypassword', 'temppassword', 'password']) || undefined;
-
-  return {
-    student_id,
-    name,
-    email,
-    course,
-    year_level,
-    rfid_uid,
-    temporary_password,
-  };
+function normalizeKey(str: string): string {
+  return str.trim().toLowerCase().replace(/[\s_.-]+/g, '');
 }
 
 const SAMPLE_CSV = `student_id,name,email,course,year_level
@@ -74,6 +67,7 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
   const [defaultTemporaryPassword, setDefaultTemporaryPassword] = useState('TempPass2026!');
   const [showPassword, setShowPassword] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const processFile = (file: File) => {
@@ -85,7 +79,7 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
         const buffer = event.target?.result;
         if (!buffer) return;
 
-        const workbook = XLSX.read(buffer, { type: 'array', raw: true });
+        const workbook = XLSX.read(buffer, { type: 'array', raw: true, codepage: 65001 });
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) {
           toast.error('The selected file has no readable sheets.');
@@ -93,26 +87,135 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
         }
 
         const sheet = workbook.Sheets[sheetName];
-        const rawJson = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { raw: true, defval: '' });
+        const rawGrid = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, raw: true, defval: '' });
 
-        if (rawJson.length === 0) {
-          toast.error('File has no student rows. Please check file content.');
+        if (rawGrid.length === 0) {
+          toast.error('File has no student rows.');
           return;
         }
 
+        // 1. Scan for header row within first 35 rows
+        let headerIdx = -1;
+        let idCol = -1;
+        let nameCol = -1;
+        let yearCol = -1;
+        let courseCol = -1;
+        let emailCol = -1;
+        let rfidCol = -1;
+        let pwdCol = -1;
+
+        const ID_ALIASES = ['id', 'idno', 'studentid', 'studentno', 'studentnumber', 'schoolid'];
+        const NAME_ALIASES = ['students', 'student', 'name', 'fullname', 'studentname'];
+        const YEAR_ALIASES = ['yearlevel', 'year', 'gradelevel', 'lvl', 'yr'];
+        const COURSE_ALIASES = ['course', 'program', 'degree', 'department'];
+        const EMAIL_ALIASES = ['email', 'emailaddress', 'studentemail', 'mail'];
+        const RFID_ALIASES = ['rfid', 'rfiduid', 'carduid', 'uid', 'card'];
+        const PWD_ALIASES = ['temporarypassword', 'password', 'temppassword'];
+
+        for (let i = 0; i < Math.min(rawGrid.length, 35); i++) {
+          const row = rawGrid[i];
+          if (!Array.isArray(row)) continue;
+          const lower = row.map((cell) => normalizeKey(String(cell || '')));
+          const foundId = lower.findIndex((c) => ID_ALIASES.includes(c));
+          const foundName = lower.findIndex((c) => NAME_ALIASES.includes(c));
+
+          if (foundId !== -1 && foundName !== -1) {
+            headerIdx = i;
+            idCol = foundId;
+            nameCol = foundName;
+            yearCol = lower.findIndex((c) => YEAR_ALIASES.includes(c));
+            courseCol = lower.findIndex((c) => COURSE_ALIASES.includes(c));
+            emailCol = lower.findIndex((c) => EMAIL_ALIASES.includes(c));
+            rfidCol = lower.findIndex((c) => RFID_ALIASES.includes(c));
+            pwdCol = lower.findIndex((c) => PWD_ALIASES.includes(c));
+            break;
+          }
+        }
+
         const rows: BulkImportStudentRow[] = [];
-        for (const item of rawJson) {
-          const norm = normalizeRow(item);
-          if (norm) rows.push(norm);
+
+        if (headerIdx !== -1) {
+          // Multi-row header detected (e.g. Dean's NDMC export)
+          for (let i = headerIdx + 1; i < rawGrid.length; i++) {
+            const row = rawGrid[i];
+            if (!Array.isArray(row)) continue;
+
+            const rawId = String(row[idCol] || '').trim();
+            const rawName = String(row[nameCol] || '').trim();
+
+            if (!rawId || !rawName) continue;
+            // Skip repeated header rows
+            if (/^(id|id\s*no|no|students?)$/i.test(rawId)) continue;
+            // Skip section title rows (e.g. "Bachelor of Science in ...")
+            if (/bachelor of science|college|school year|list of students/i.test(rawName) || /bachelor of science/i.test(rawId)) {
+              continue;
+            }
+
+            const rawYear = yearCol !== -1 ? row[yearCol] : '';
+            const rawCourse = courseCol !== -1 ? String(row[courseCol] || '').trim() : '';
+            const course = resolveCourseName(rawCourse);
+            const year_level = parseYearLevel(rawYear);
+
+            const cleanId = rawId.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const email = emailCol !== -1 && row[emailCol] ? String(row[emailCol]).trim() : `${cleanId}@ndmc.edu.ph`;
+            const rfid_uid = rfidCol !== -1 && row[rfidCol] ? String(row[rfidCol]).trim() : undefined;
+            const temporary_password = pwdCol !== -1 && row[pwdCol] ? String(row[pwdCol]).trim() : undefined;
+
+            rows.push({
+              student_id: rawId,
+              name: rawName,
+              email,
+              course,
+              year_level,
+              rfid_uid,
+              temporary_password,
+            });
+          }
+        } else {
+          // Standard single-header object fallback
+          const rawJson = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { raw: true, defval: '' });
+          for (const item of rawJson) {
+            const getField = (aliases: string[]) => {
+              for (const key of Object.keys(item)) {
+                const normKey = normalizeKey(key);
+                if (aliases.some((a) => normalizeKey(a) === normKey)) {
+                  const val = item[key];
+                  return val != null ? String(val).trim() : '';
+                }
+              }
+              return '';
+            };
+
+            const student_id = getField(ID_ALIASES);
+            const name = getField(NAME_ALIASES);
+            if (!student_id || !name) continue;
+
+            const cleanId = student_id.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const email = getField(EMAIL_ALIASES) || `${cleanId}@ndmc.edu.ph`;
+            const course = resolveCourseName(getField(COURSE_ALIASES));
+            const year_level = parseYearLevel(getField(YEAR_ALIASES));
+            const rfid_uid = getField(RFID_ALIASES) || undefined;
+            const temporary_password = getField(PWD_ALIASES) || undefined;
+
+            rows.push({
+              student_id,
+              name,
+              email,
+              course,
+              year_level,
+              rfid_uid,
+              temporary_password,
+            });
+          }
         }
 
         if (rows.length === 0) {
-          toast.error('Could not find student_id and name columns in file.');
+          toast.error('Could not find student ID and Name columns in file. Please check file format.');
           return;
         }
 
         setParsedRows(rows);
-        toast.success(`Successfully parsed ${rows.length} students from ${file.name}.`);
+        toast.success(`Successfully parsed ${rows.length} students from ${file.name}!`);
       } catch (err: any) {
         console.error('File parsing error:', err);
         toast.error('Failed to parse file. Please upload a valid .xlsx, .xls, or .csv roster.');
@@ -148,7 +251,13 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
     const workbook = XLSX.read(SAMPLE_CSV, { type: 'string', raw: true });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rawJson = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { raw: true, defval: '' });
-    const rows = rawJson.map(normalizeRow).filter((r): r is BulkImportStudentRow => r !== null);
+    const rows: BulkImportStudentRow[] = rawJson.map((r: any) => ({
+      student_id: String(r.student_id || ''),
+      name: String(r.name || ''),
+      email: String(r.email || ''),
+      course: String(r.course || 'BS Information Technology'),
+      year_level: parseYearLevel(r.year_level),
+    }));
     setParsedRows(rows);
     toast.success(`Loaded sample roster with ${rows.length} students.`);
   };
@@ -156,25 +265,33 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
   const handleDownloadTemplate = () => {
     const wsData = [
       {
-        student_id: '2026-00101',
-        name: 'Juan Dela Cruz',
-        email: 'juan.delacruz@university.edu',
-        course: 'BS Information Technology',
-        year_level: 1,
-        rfid_uid: '',
+        'ID No.': '25-2036',
+        Students: 'Abagon, Ivan Rhynz Mendoza',
+        'Year Level': 1,
+        Course: 'BSIT',
+        Gender: 'M',
+        Status: 'NEW',
       },
       {
-        student_id: '2026-00102',
-        name: 'Maria Santos',
-        email: 'maria.santos@university.edu',
-        course: 'BS Computer Science',
-        year_level: 2,
-        rfid_uid: '',
+        'ID No.': '25-2044',
+        Students: 'Acoon, Abdul Malik Maruhom',
+        'Year Level': 1,
+        Course: 'BSIT',
+        Gender: 'M',
+        Status: 'NEW',
+      },
+      {
+        'ID No.': '20244014',
+        Students: 'Abogutal, Michael Jhon Pateño',
+        'Year Level': 3,
+        Course: 'BSIT',
+        Gender: 'M',
+        Status: 'OLD STUDENT',
       },
     ];
     const ws = XLSX.utils.json_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Template');
+    XLSX.utils.book_append_sheet(wb, ws, 'Roster');
     XLSX.writeFile(wb, 'student_roster_template.xlsx');
     toast.success('Downloaded roster template (.xlsx).');
   };
@@ -185,8 +302,8 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
     const wsData = parsedRows.map((r) => ({
       'Student ID': r.student_id,
       'Full Name': r.name,
-      'Email': r.email,
-      'Course': r.course,
+      Email: r.email,
+      Course: r.course,
       'Year Level': r.year_level,
       'Card UID': r.rfid_uid || 'Unassigned',
     }));
@@ -207,6 +324,8 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
     }
 
     setIsProcessing(true);
+    setImportProgress({ current: 0, total: parsedRows.length });
+
     try {
       const rowsWithPasswords = parsedRows.map((row) => ({
         ...row,
@@ -215,19 +334,24 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
             ? row.temporary_password
             : tempPass,
       }));
-      await onImport(rowsWithPasswords, false);
+
+      await onImport(rowsWithPasswords, false, (current, total) => {
+        setImportProgress({ current, total });
+      });
+
       onClose();
     } catch {
       // Errors handled in onImport
     } finally {
       setIsProcessing(false);
+      setImportProgress(null);
     }
   };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={isProcessing ? () => {} : onClose}
       title="Bulk import students"
       description="Upload your student roster file (Excel or CSV). Review student details below before importing."
       maxWidth="4xl"
@@ -252,8 +376,7 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
               Upload student Excel or CSV roster
             </p>
             <p className="text-xs text-[#756883] mt-1">
-              Accepts <span className="font-semibold text-[#24133F]">.xlsx, .xls, .csv, .txt</span> · Expected columns:{' '}
-              <code className="font-mono text-[#24133F]">student_id, name, email, course, year_level</code>
+              Accepts <span className="font-semibold text-[#24133F]">.xlsx, .xls, .csv, .txt</span> · Auto-detects official NDMC rosters and standard spreadsheets
             </p>
 
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -423,12 +546,34 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
           </div>
         )}
 
+        {/* Import Progress Bar */}
+        {isProcessing && importProgress && (
+          <div className="rounded-xl border border-purple-100 bg-purple-50/60 p-3 space-y-1.5 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between text-xs font-semibold text-[#24133F]">
+              <span className="flex items-center gap-1.5 text-[#7026B7]">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Registering students into backend...
+              </span>
+              <span>
+                {importProgress.current} / {importProgress.total} ({Math.round((importProgress.current / importProgress.total) * 100)}%)
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-purple-200/60">
+              <div
+                className="h-full bg-[#7026B7] transition-all duration-150 ease-out"
+                style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Footer Actions */}
         <div className="pt-3 border-t border-[#F1EEF4] flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-[#E5E0EB] px-4 py-2.5 text-xs font-bold text-[#756883] hover:bg-slate-50 transition-colors cursor-pointer"
+            disabled={isProcessing}
+            className="rounded-xl border border-[#E5E0EB] px-4 py-2.5 text-xs font-bold text-[#756883] hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-40"
           >
             Cancel
           </button>
@@ -436,9 +581,16 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
             type="button"
             onClick={handleConfirmImport}
             disabled={parsedRows.length === 0 || isProcessing}
-            className="rounded-xl bg-[#7026B7] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#621FA3] shadow-[0_4px_0_0_#451475] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#7026B7] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#621FA3] shadow-[0_4px_0_0_#451475] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50 cursor-pointer"
           >
-            {isProcessing ? 'Importing students...' : `Import ${parsedRows.length} Students`}
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Importing ({importProgress ? `${importProgress.current}/${importProgress.total}` : 'Please wait...'})</span>
+              </>
+            ) : (
+              <span>Import {parsedRows.length} Students</span>
+            )}
           </button>
         </div>
       </div>
