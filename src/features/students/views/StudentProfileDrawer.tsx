@@ -58,6 +58,7 @@ export interface StudentProfileDrawerProps {
   onArchiveStudent?: (studentId: string) => void;
   onRestoreStudent?: (studentId: string) => void;
   onUploadAvatar?: (studentId: string, imageBase64: string) => Promise<string>;
+  onRemoveAvatar?: (studentId: string) => Promise<void>;
   onDeleteStudent?: (studentId: string) => Promise<boolean>;
 }
 
@@ -283,6 +284,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   onArchiveStudent,
   onRestoreStudent,
   onUploadAvatar,
+  onRemoveAvatar,
   onDeleteStudent,
 }) => {
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
@@ -355,6 +357,16 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     } finally {
       setIsUploadingPhoto(false);
     }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!onRemoveAvatar || !currentStudent || isUploadingPhoto) return;
+    setIsUploadingPhoto(true);
+    try {
+      await onRemoveAvatar(currentStudent.id);
+      activeStudentRef.current = { ...currentStudent, avatar_url: null };
+    } catch { /* The viewmodel shows the error toast. */ }
+    finally { setIsUploadingPhoto(false); }
   };
 
   // Inline RFID Card Scanning & Pairing with Auto-Enter
@@ -754,6 +766,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                     <Camera className="h-4 w-4 text-[#7C27BD]" />
                   )}
                 </button>
+                <button type="button" onClick={() => void handleRemovePhoto()} disabled={isUploadingPhoto || isArchived} className="mx-auto mt-2 block rounded-full bg-white px-3 py-1.5 text-xs font-bold text-rose-700 shadow-sm transition-colors hover:bg-rose-50 disabled:opacity-50">Remove photo</button>
               </div>
             ) : (
               <div className="relative flex flex-col items-center">

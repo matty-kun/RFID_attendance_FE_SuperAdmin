@@ -41,16 +41,19 @@ export const adminService = {
   getLocations: () => request.get<LocationRecord[]>('/locations'),
   createLocation: (payload: Partial<LocationRecord>) =>
     request.post<LocationRecord>('/locations', payload),
-  getAdmins: (page = 1, q = '', limit = 25) =>
-    request.get<AdminPage>('/admins', { params: { page, limit, ...(q ? { q } : {}) } }),
+  getAdmins: (page = 1, q = '', limit = 25, archived = false) =>
+    request.get<AdminPage>('/admins', { params: { page, limit, archived, ...(q ? { q } : {}) } }),
   createAdmin: (payload: Pick<AdminRecord, 'name' | 'email' | 'role'> & { temporary_password: string }) =>
     request.post<AdminRecord>('/admins', payload),
   updateAdmin: (adminId: string, payload: { name?: string; role?: 'admin' | 'super_admin'; password?: string }) =>
     request.patch<AdminRecord>(`/admins/${encodeURIComponent(adminId)}`, payload),
+  archiveAdmin: (adminId: string) => request.post<AdminRecord>(`/admins/${encodeURIComponent(adminId)}/archive`, {}),
+  restoreAdmin: (adminId: string) => request.post<AdminRecord>(`/admins/${encodeURIComponent(adminId)}/restore`, {}),
   deleteAdmin: (adminId: string) =>
     request.delete<{ message: string }>(`/admins/${encodeURIComponent(adminId)}`),
   uploadAdminAvatar: (adminId: string, image: string) =>
     request.post<{ avatar_url: string }>(`/admins/${encodeURIComponent(adminId)}/avatar`, { image }),
+  removeAdminAvatar: (adminId: string) => request.delete<{ avatar_url: null }>(`/admins/${encodeURIComponent(adminId)}/avatar`),
   getMetrics: () => request.get<DashboardMetrics>('/analytics/dashboard'),
 };
 

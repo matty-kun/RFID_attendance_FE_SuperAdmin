@@ -4,17 +4,18 @@ import { Button } from '../../../components/common/Button';
 import { Dropdown } from '../../../components/common/Dropdown';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
-import { EditAdminModal } from './EditAdminModal';
 import { DeleteAdminConfirmationModal } from './DeleteAdminConfirmationModal';
 import { AdminProfileDrawer } from './AdminProfileDrawer';
-import { ChevronRight, Plus, Search, Shield, Sparkles, UserCheck } from 'lucide-react';
+import { Plus, Search, Shield, Sparkles, UserCheck } from 'lucide-react';
 import { cn } from '../../../utils/cn';
+import { useAuth } from '../../auth/context/AuthContext';
 
 export interface AdminsViewProps {
   isDrawer?: boolean;
 }
 
 export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
+  const { user } = useAuth();
   const {
     admins,
     isModalOpen,
@@ -36,15 +37,18 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
     setPage,
     total,
     error,
+    showArchived,
+    setShowArchived,
     loadAdmins,
     handleCreate,
-    editingAdmin,
-    setEditingAdmin,
     handleUpdateAdmin,
+    handleArchiveAdmin,
+    handleRestoreAdmin,
     deletingAdmin,
     setDeletingAdmin,
     handleDeleteAdmin,
     uploadAdminAvatar,
+    removeAdminAvatar,
   } = useAdminsViewModel();
   const [roleFilter, setRoleFilter] = useState('all');
   const [selectedAdminId, setSelectedAdminId] = useState<string | null>(null);
@@ -86,7 +90,7 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
             options={[
               { value: 'all', label: 'All Roles' },
               { value: 'super_admin', label: 'Super Admin' },
-              { value: 'admin', label: 'Scanner Admin' },
+              { value: 'admin', label: 'Admin' },
             ]}
           />
         </div>
@@ -102,36 +106,32 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
         </div>
       </div>
 
+      <div className="flex gap-2 text-xs font-bold" role="tablist" aria-label="Administrator status">
+        <button type="button" role="tab" aria-selected={!showArchived} onClick={() => { setPage(1); setSelectedAdminId(null); setShowArchived(false); }} className={cn('rounded-xl px-3 py-2', !showArchived ? 'bg-[#7026B7] text-white' : 'bg-white text-[#756883]')}>Active</button>
+        <button type="button" role="tab" aria-selected={showArchived} onClick={() => { setPage(1); setSelectedAdminId(null); setShowArchived(true); }} className={cn('rounded-xl px-3 py-2', showArchived ? 'bg-[#7026B7] text-white' : 'bg-white text-[#756883]')}>Archived</button>
+      </div>
+
       {/* Admin List */}
       <div>
-        {error && (
-          <div role="alert" className="flex items-center justify-between rounded-xl bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700 mb-2.5">
-            <span>{error}</span>
-            <button type="button" onClick={() => void loadAdmins()} className="underline">
-              Retry
-            </button>
-          </div>
-        )}
-
         {visibleAdmins.length > 0 ? (
-          <div className="max-h-[400px] divide-y divide-slate-100 overflow-y-auto">
+          <div className="max-h-[520px] divide-y divide-slate-100 overflow-y-auto">
             {visibleAdmins.map((admin) => (
               <button
                 type="button"
                 key={admin.id}
                 onClick={() => setSelectedAdminId(admin.id)}
                 aria-label={`View ${admin.name} profile`}
-                className="flex w-full items-center justify-between gap-3 rounded-xl px-1 py-2.5 text-left transition-colors hover:bg-slate-50/70 focus-visible:outline-2 focus-visible:outline-[#7026B7]"
+                className="flex w-full items-center justify-between gap-4 rounded-xl px-3 py-4 text-left transition-colors hover:bg-slate-50/70 focus-visible:outline-2 focus-visible:outline-[#7026B7]"
               >
                 {/* Left: Avatar + Details */}
-                <div className="flex items-center gap-3 min-w-0">
-                  {admin.avatar_url ? <img src={admin.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#DFE8F8] text-[10px] font-black text-[#294B85]">{initials(admin.name)}</span>}
+                <div className="flex min-w-0 items-center gap-4">
+                  {admin.avatar_url ? <img src={admin.avatar_url} alt="" className="h-14 w-14 shrink-0 rounded-full border-2 border-slate-200 object-cover" /> : <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-slate-200 bg-[#DFE8F8] text-lg font-black text-[#294B85]">{initials(admin.name)}</span>}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-[#24133F] truncate">{admin.name}</span>
+                      <span className="truncate text-base font-extrabold text-[#24133F]">{admin.name}</span>
                       <span
                         className={cn(
-                          'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9.5px] font-bold',
+                          'inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold',
                           admin.role === 'super_admin'
                             ? 'bg-[#F4EFFB] text-[#7026B7]'
                             : 'bg-slate-100 text-slate-600'
@@ -143,15 +143,15 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
                             <span>Super Admin</span>
                           </>
                         ) : (
-                          <span>Scanner</span>
+                          <span>Admin</span>
                         )}
                       </span>
                     </div>
-                    <p className="text-[11px] text-[#756883] truncate">{admin.email}</p>
+                    <p className="mt-1 truncate text-xs text-[#A59AAB]">{admin.email}</p>
                   </div>
                 </div>
 
-                <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-[#7026B7]">View profile<ChevronRight className="h-4 w-4" /></span>
+                <span className="inline-flex shrink-0 items-center rounded-xl bg-[#7026B7] px-4 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_#451475]">View Profile</span>
               </button>
             ))}
           </div>
@@ -160,10 +160,10 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
             {isLoading
               ? 'Loading administrators…'
               : error
-              ? 'Unable to show administrators.'
+              ? <button type="button" onClick={() => void loadAdmins()} className="font-bold text-[#7026B7] underline">Retry loading administrators</button>
               : searchQuery || roleFilter !== 'all'
               ? 'No administrators match these filters.'
-              : 'No administrators available.'}
+              : showArchived ? 'No archived administrators.' : 'No administrators available.'}
           </div>
         )}
       </div>
@@ -257,7 +257,7 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
                 />
                 <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
                   <UserCheck className="w-3.5 h-3.5 text-slate-600" />
-                  Scanner Admin
+                  Admin
                 </div>
                 <div className="text-[11px] text-slate-500 mt-1">
                   RFID scanner operation & attendance tap logging
@@ -313,19 +313,15 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
       {/* Edit Admin Modal */}
       <AdminProfileDrawer
         isOpen={Boolean(selectedAdmin)}
-        onClose={() => { if (!editingAdmin && !deletingAdmin) setSelectedAdminId(null); }}
+        onClose={() => { if (!deletingAdmin) setSelectedAdminId(null); }}
         admin={selectedAdmin}
-        onEdit={setEditingAdmin}
+        onUpdate={handleUpdateAdmin}
+        onArchive={handleArchiveAdmin}
+        onRestore={async (adminId) => { const restored = await handleRestoreAdmin(adminId); if (restored) setSelectedAdminId(null); return restored; }}
+        isSelf={user?.id === selectedAdmin?.id}
         onDelete={setDeletingAdmin}
         onUploadAvatar={uploadAdminAvatar}
-      />
-
-      <EditAdminModal
-        isOpen={Boolean(editingAdmin)}
-        onClose={() => setEditingAdmin(null)}
-        admin={editingAdmin}
-        onSave={handleUpdateAdmin}
-        onUploadAvatar={uploadAdminAvatar}
+        onRemoveAvatar={removeAdminAvatar}
       />
 
       {/* Delete Admin Confirmation Modal */}

@@ -25,15 +25,18 @@ export interface UseAdminsViewModelReturn {
   setPage: (v: number) => void;
   total: number;
   error: string;
+  showArchived: boolean;
+  setShowArchived: (value: boolean) => void;
   loadAdmins: () => Promise<void>;
   handleCreate: (e: React.FormEvent) => Promise<void>;
-  editingAdmin: AdminRecord | null;
-  setEditingAdmin: (admin: AdminRecord | null) => void;
   handleUpdateAdmin: (adminId: string, payload: UpdateAdminPayload) => Promise<boolean>;
+  handleArchiveAdmin: (adminId: string) => Promise<boolean>;
+  handleRestoreAdmin: (adminId: string) => Promise<boolean>;
   deletingAdmin: AdminRecord | null;
   setDeletingAdmin: (admin: AdminRecord | null) => void;
   handleDeleteAdmin: (adminId: string) => Promise<boolean>;
   uploadAdminAvatar: (adminId: string, image: string) => Promise<string>;
+  removeAdminAvatar: (adminId: string) => Promise<void>;
 }
 
 export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
@@ -53,24 +56,26 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
 
   // Edit / Delete state
-  const [editingAdmin, setEditingAdmin] = useState<AdminRecord | null>(null);
   const [deletingAdmin, setDeletingAdmin] = useState<AdminRecord | null>(null);
 
   const loadAdmins = useCallback(async () => {
     setIsLoading(true);
     setError('');
     try {
-      const data = await adminManagementService.getAdmins(page, searchQuery.trim());
+      const data = await adminManagementService.getAdmins(page, searchQuery.trim(), showArchived);
       setAdmins(data.admins);
       setTotal(data.total);
     } catch (err: any) {
-      setError(err?.response?.data?.error?.message || 'Could not load administrators. Try again.');
+      const message = err?.response?.data?.error?.message || 'Could not load administrators. Try again.';
+      setError(message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
-  }, [page, searchQuery]);
+  }, [page, searchQuery, showArchived]);
 
   useEffect(() => {
     const timer = setTimeout(() => { void loadAdmins(); }, 250);
@@ -117,7 +122,6 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     try {
       await adminManagementService.updateAdmin(adminId, payload);
       toast.success('Administrator updated successfully.');
-      setEditingAdmin(null);
       await loadAdmins();
       return true;
     } catch (err: any) {
@@ -127,6 +131,30 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
       return false;
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleArchiveAdmin = async (adminId: string): Promise<boolean> => {
+    try {
+      await adminManagementService.archiveAdmin(adminId);
+      toast.success('Administrator archived. Login access disabled.');
+      await loadAdmins();
+      return true;
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || 'Failed to archive administrator.');
+      return false;
+    }
+  };
+
+  const handleRestoreAdmin = async (adminId: string): Promise<boolean> => {
+    try {
+      await adminManagementService.restoreAdmin(adminId);
+      toast.success('Administrator restored. Login access enabled.');
+      await loadAdmins();
+      return true;
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || 'Failed to restore administrator.');
+      return false;
     }
   };
 
@@ -151,12 +179,23 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     try {
       const { avatar_url } = await adminManagementService.uploadAvatar(adminId, image);
       setAdmins((previous) => previous.map((admin) => admin.id === adminId ? { ...admin, avatar_url } : admin));
-      setEditingAdmin((previous) => previous?.id === adminId ? { ...previous, avatar_url } : previous);
       if (user?.id === adminId) await refreshUser();
       toast.success('Administrator profile picture updated.');
       return avatar_url;
     } catch (err: any) {
       toast.error(err?.response?.data?.error?.message || err?.message || 'Failed to upload administrator photo.');
+      throw err;
+    }
+  };
+
+  const removeAdminAvatar = async (adminId: string): Promise<void> => {
+    try {
+      await adminManagementService.removeAvatar(adminId);
+      setAdmins((previous) => previous.map((admin) => admin.id === adminId ? { ...admin, avatar_url: null } : admin));
+      if (user?.id === adminId) await refreshUser();
+      toast.success('Administrator photo removed.');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || 'Failed to remove administrator photo.');
       throw err;
     }
   };
@@ -182,14 +221,17 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     setPage,
     total,
     error,
+    showArchived,
+    setShowArchived,
     loadAdmins,
     handleCreate,
-    editingAdmin,
-    setEditingAdmin,
     handleUpdateAdmin,
+    handleArchiveAdmin,
+    handleRestoreAdmin,
     deletingAdmin,
     setDeletingAdmin,
     handleDeleteAdmin,
     uploadAdminAvatar,
+    removeAdminAvatar,
   };
 };

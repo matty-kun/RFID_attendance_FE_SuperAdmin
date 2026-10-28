@@ -58,6 +58,7 @@ export const StudentsView: React.FC = () => {
     handleUnlinkCard,
     handleUpdateStudent,
     uploadStudentAvatar,
+    removeStudentAvatar,
     loadStudents,
   } = useStudentsViewModel();
 
@@ -448,6 +449,7 @@ export const StudentsView: React.FC = () => {
         onRestoreStudent={handleRestoreStudent}
         onDeleteStudent={handleDeleteStudent}
         onUploadAvatar={uploadStudentAvatar}
+        onRemoveAvatar={removeStudentAvatar}
       />
 
       {/* Slide-in Drawer: Add Single Student */}

@@ -5,6 +5,7 @@ export interface AdminRecord {
   email: string;
   role: 'super_admin' | 'admin';
   avatar_url?: string | null;
+  archived_at?: string | null;
   created_at: string;
 }
 

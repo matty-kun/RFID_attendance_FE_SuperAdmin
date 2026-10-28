@@ -95,7 +95,7 @@ export const DeleteAdminConfirmationModal: React.FC<DeleteAdminConfirmationModal
 
           <span className="shrink-0 rounded-md bg-[#F4EFFB] px-2 py-0.5 text-[10px] font-bold text-[#7026B7] border border-[#E9D5FF] flex items-center gap-1">
             <Shield className="h-3 w-3" />
-            <span>{admin.role === 'super_admin' ? 'Super Admin' : 'Scanner Admin'}</span>
+            <span>{admin.role === 'super_admin' ? 'Super Admin' : 'Admin'}</span>
           </span>
         </div>
 

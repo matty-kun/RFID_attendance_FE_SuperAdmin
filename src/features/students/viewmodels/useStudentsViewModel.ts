@@ -71,6 +71,7 @@ export interface UseStudentsViewModelReturn {
   handleUnlinkCard: (studentId: string, reason?: 'lost' | 'returned') => Promise<void>;
   handleUpdateStudent: (studentId: string, payload: UpdateStudentPayload) => Promise<StudentRecord>;
   uploadStudentAvatar: (studentId: string, imageBase64: string) => Promise<string>;
+  removeStudentAvatar: (studentId: string) => Promise<void>;
   loadStudents: () => Promise<void>;
 }
 
@@ -517,6 +518,17 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     }
   };
 
+  const handleRemoveAvatar = async (studentId: string): Promise<void> => {
+    try {
+      await studentService.removeAvatar(studentId);
+      setStudents((previous) => previous.map((student) => student.id === studentId ? { ...student, avatar_url: null } : student));
+      toast.success('Student photo removed.');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || 'Failed to remove student photo.');
+      throw err;
+    }
+  };
+
   return {
     students,
     filteredStudents,
@@ -564,6 +576,7 @@ export const useStudentsViewModel = (): UseStudentsViewModelReturn => {
     handleUnlinkCard,
     handleUpdateStudent,
     uploadStudentAvatar: handleUploadAvatar,
+    removeStudentAvatar: handleRemoveAvatar,
     loadStudents,
   };
 };
