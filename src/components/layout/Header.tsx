@@ -167,7 +167,7 @@ export function Header() {
           onClick={openPalette}
           aria-label="Open command palette"
           title={`Search everything (${shortcutLabel})`}
-          className="flex h-8 items-center justify-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-2.5 text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 transition-colors focus-visible:outline-2 focus-visible:outline-brand-700 cursor-pointer"
+          className="flex h-8 items-center justify-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-2.5 text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 active:scale-95 active:translate-y-[1px] transition-all focus-visible:outline-2 focus-visible:outline-brand-700 cursor-pointer"
         >
           <Search className="h-4 w-4" />
           <kbd className="hidden text-[10px] font-semibold lg:inline">{shortcutLabel}</kbd>
@@ -181,7 +181,7 @@ export function Header() {
             aria-expanded={isAvatarMenuOpen}
             aria-haspopup="menu"
             aria-label="User account menu"
-            className="flex h-8 items-center gap-1.5 rounded-xl border border-[#E5E0EB] bg-white pl-1 pr-2 text-xs font-semibold text-[#24133F] hover:border-[#7026B7]/40 hover:shadow-xs transition-all focus-visible:outline-2 focus-visible:outline-brand-700 cursor-pointer"
+            className="flex h-8 items-center gap-1.5 rounded-xl border border-[#E5E0EB] bg-white pl-1 pr-2 text-xs font-semibold text-[#24133F] hover:border-[#7026B7]/40 active:scale-95 active:translate-y-[1px] transition-all focus-visible:outline-2 focus-visible:outline-brand-700 cursor-pointer"
           >
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#DFE8F8] text-[10px] font-extrabold text-[#294B85]">
               {user?.name ? user.name.slice(0, 2).toUpperCase() : 'SA'}
@@ -218,7 +218,7 @@ export function Header() {
                     setIsAvatarMenuOpen(false);
                     window.dispatchEvent(new CustomEvent('presnt:open-admins-drawer'));
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#24133F] hover:bg-[#F4EFFB] hover:text-[#7026B7] transition-colors cursor-pointer"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[#24133F] hover:bg-[#F4EFFB] hover:text-[#7026B7] active:scale-[0.98] active:translate-y-[1px] transition-all cursor-pointer"
                 >
                   <Shield className="h-4 w-4 text-[#7026B7]" />
                   <span>Manage Admins</span>
@@ -232,7 +232,7 @@ export function Header() {
                     setIsAvatarMenuOpen(false);
                     logout();
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 active:scale-[0.98] active:translate-y-[1px] transition-all cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
                   <span>Sign out</span>
