@@ -181,13 +181,10 @@ export function Header() {
             aria-expanded={isAvatarMenuOpen}
             aria-haspopup="menu"
             aria-label="User account menu"
-            className="flex h-8 items-center gap-1.5 rounded-xl border border-[#E5E0EB] bg-white pl-1 pr-2 text-xs font-semibold text-[#24133F] hover:border-[#7026B7]/40 active:scale-95 active:translate-y-[1px] transition-all focus-visible:outline-2 focus-visible:outline-brand-700 cursor-pointer"
+            className="flex h-8 items-center gap-1 rounded-xl border border-[#E5E0EB] bg-white p-1 pr-1.5 text-xs font-semibold text-[#24133F] hover:border-[#7026B7]/40 active:scale-95 active:translate-y-[1px] transition-all focus-visible:outline-2 focus-visible:outline-brand-700 cursor-pointer"
           >
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#DFE8F8] text-[10px] font-extrabold text-[#294B85]">
               {user?.name ? user.name.slice(0, 2).toUpperCase() : 'SA'}
-            </span>
-            <span className="hidden sm:inline max-w-[80px] truncate text-xs font-bold text-[#24133F]">
-              {user?.name?.split(' ')[0] || 'Admin'}
             </span>
             <ChevronDown
               className={cn(
