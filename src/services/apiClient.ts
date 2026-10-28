@@ -26,17 +26,10 @@ api.interceptors.request.use(
 // Response interceptor to handle unauthorized/forbidden
 api.interceptors.response.use(
   (response) => {
-    window.dispatchEvent(new CustomEvent('api-success'));
     // Backend envelopes responses with { success, data }
     return response.data?.data !== undefined ? response.data.data : response.data;
   },
   (error: AxiosError) => {
-    const response = error.response?.data as
-      | { error?: { message?: string }; message?: string }
-      | undefined;
-    const message = response?.error?.message || response?.message ||
-      (error.response ? 'The server could not complete this request.' : 'Cannot reach the server. Check your connection and try again.');
-    window.dispatchEvent(new CustomEvent<string>('api-error', { detail: message }));
     if (error.response?.status === 401) {
       localStorage.removeItem('super_admin_token');
       localStorage.removeItem('super_admin_user');

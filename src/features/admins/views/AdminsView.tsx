@@ -6,7 +6,8 @@ import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
 import { EditAdminModal } from './EditAdminModal';
 import { DeleteAdminConfirmationModal } from './DeleteAdminConfirmationModal';
-import { Pencil, Plus, Search, Shield, Sparkles, Trash2, UserCheck } from 'lucide-react';
+import { AdminProfileDrawer } from './AdminProfileDrawer';
+import { ChevronRight, Plus, Search, Shield, Sparkles, UserCheck } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 
 export interface AdminsViewProps {
@@ -46,7 +47,9 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
     uploadAdminAvatar,
   } = useAdminsViewModel();
   const [roleFilter, setRoleFilter] = useState('all');
+  const [selectedAdminId, setSelectedAdminId] = useState<string | null>(null);
   const visibleAdmins = admins.filter((admin) => roleFilter === 'all' || admin.role === roleFilter);
+  const selectedAdmin = admins.find((admin) => admin.id === selectedAdminId) ?? null;
   const initials = (fullName: string) => fullName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('');
 
   return (
@@ -113,9 +116,12 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
         {visibleAdmins.length > 0 ? (
           <div className="max-h-[400px] divide-y divide-slate-100 overflow-y-auto">
             {visibleAdmins.map((admin) => (
-              <div
+              <button
+                type="button"
                 key={admin.id}
-                className="flex items-center justify-between gap-3 rounded-xl px-1 py-2.5 transition-colors hover:bg-slate-50/70"
+                onClick={() => setSelectedAdminId(admin.id)}
+                aria-label={`View ${admin.name} profile`}
+                className="flex w-full items-center justify-between gap-3 rounded-xl px-1 py-2.5 text-left transition-colors hover:bg-slate-50/70 focus-visible:outline-2 focus-visible:outline-[#7026B7]"
               >
                 {/* Left: Avatar + Details */}
                 <div className="flex items-center gap-3 min-w-0">
@@ -145,28 +151,8 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
                   </div>
                 </div>
 
-                {/* Right: Actions */}
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setEditingAdmin(admin)}
-                    title={`Edit ${admin.name}`}
-                    aria-label={`Edit ${admin.name}`}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:text-[#7026B7] hover:bg-[#F4EFFB] active:scale-90 transition-all cursor-pointer"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeletingAdmin(admin)}
-                    title={`Delete ${admin.name}`}
-                    aria-label={`Delete ${admin.name}`}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all cursor-pointer"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
+                <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-[#7026B7]">View profile<ChevronRight className="h-4 w-4" /></span>
+              </button>
             ))}
           </div>
         ) : (
@@ -325,6 +311,15 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
       </Modal>
 
       {/* Edit Admin Modal */}
+      <AdminProfileDrawer
+        isOpen={Boolean(selectedAdmin)}
+        onClose={() => { if (!editingAdmin && !deletingAdmin) setSelectedAdminId(null); }}
+        admin={selectedAdmin}
+        onEdit={setEditingAdmin}
+        onDelete={setDeletingAdmin}
+        onUploadAvatar={uploadAdminAvatar}
+      />
+
       <EditAdminModal
         isOpen={Boolean(editingAdmin)}
         onClose={() => setEditingAdmin(null)}
@@ -338,7 +333,11 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
         isOpen={Boolean(deletingAdmin)}
         onClose={() => setDeletingAdmin(null)}
         admin={deletingAdmin}
-        onConfirmDelete={handleDeleteAdmin}
+        onConfirmDelete={async (adminId) => {
+          const deleted = await handleDeleteAdmin(adminId);
+          if (deleted) setSelectedAdminId(null);
+          return deleted;
+        }}
       />
     </div>
   );

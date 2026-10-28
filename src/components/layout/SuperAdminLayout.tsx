@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
-import { ApiErrorBanner } from '../common/ApiErrorBanner';
 import { UtilityRail } from './UtilityRail';
 import { AdminsDrawer } from '../../features/admins';
 
@@ -19,7 +18,6 @@ export const SuperAdminLayout: React.FC = () => {
       <Header />
       <UtilityRail />
       <main className="w-full px-4 pb-9 pt-8 md:pl-[92px] md:pr-10 md:pt-4">
-        <ApiErrorBanner />
         <Outlet />
       </main>
 
