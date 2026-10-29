@@ -120,12 +120,8 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
     setIsSearching(true);
     setStudentSearchFilter('');
 
-    // Keep input updated with inspected UID and select all text
-    // so the next hardware scan burst instantly replaces it
+    // Keep the inspected UID visible without highlighting it.
     setScannedUid(clean);
-    requestAnimationFrame(() => {
-      if (inputRef.current?.value === clean) inputRef.current.select();
-    });
 
     // 1. Check in-memory list first (instant 0ms)
     const localMatch = students.find((s) => s.rfid_uid?.trim().toUpperCase() === clean);
@@ -151,9 +147,7 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
   const handleInputChange = (rawVal: string) => {
     let nextVal = rawVal;
 
-    // If input text was selected (from select() after inspectCard),
-    // the browser replaces selected text with the new char(s).
-    // But if the input wasn't selected and a new scan appends to old UID:
+    // When a new scan appends to the previous UID, keep only the new burst.
     if (activeUid && nextVal.length > 10) {
       // The old UID is still in the input and new digits got appended.
       // Extract only the new trailing characters.

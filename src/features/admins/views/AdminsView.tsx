@@ -6,7 +6,7 @@ import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
 import { DeleteAdminConfirmationModal } from './DeleteAdminConfirmationModal';
 import { AdminProfileDrawer } from './AdminProfileDrawer';
-import { Plus, Search, Shield, Sparkles, UserCheck } from 'lucide-react';
+import { ExternalLink, Plus, Search, Shield, Sparkles, UserCheck } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import { useAuth } from '../../auth/context/AuthContext';
 
@@ -114,27 +114,27 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
       {/* Admin List */}
       <div>
         {visibleAdmins.length > 0 ? (
-          <div className="max-h-[520px] divide-y divide-slate-100 overflow-y-auto">
+          <div className="max-h-[520px] space-y-1 overflow-y-auto">
             {visibleAdmins.map((admin) => (
               <button
                 type="button"
                 key={admin.id}
                 onClick={() => setSelectedAdminId(admin.id)}
                 aria-label={`View ${admin.name} profile`}
-                className="flex w-full items-center justify-between gap-4 rounded-xl px-3 py-4 text-left transition-colors hover:bg-slate-50/70 focus-visible:outline-2 focus-visible:outline-[#7026B7]"
+                className="flex w-full items-center justify-between gap-4 rounded-xl px-1 py-3 text-left transition-colors hover:bg-slate-50/70 focus-visible:outline-2 focus-visible:outline-[#7026B7]"
               >
                 {/* Left: Avatar + Details */}
                 <div className="flex min-w-0 items-center gap-4">
-                  {admin.avatar_url ? <img src={admin.avatar_url} alt="" className="h-14 w-14 shrink-0 rounded-full border-2 border-slate-200 object-cover" /> : <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-slate-200 bg-[#DFE8F8] text-lg font-black text-[#294B85]">{initials(admin.name)}</span>}
+                  {admin.avatar_url ? <img src={admin.avatar_url} alt="" className="h-14 w-14 shrink-0 rounded-full border-2 border-purple-100 object-cover shadow-xs" /> : <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-purple-100 bg-purple-50 text-lg font-black text-[#7026B7]">{initials(admin.name)}</span>}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="truncate text-base font-extrabold text-[#24133F]">{admin.name}</span>
+                      <span className="truncate text-base font-black text-[#24133F]">{admin.name}</span>
                       <span
                         className={cn(
-                          'inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold',
+                          'inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold',
                           admin.role === 'super_admin'
                             ? 'bg-[#F4EFFB] text-[#7026B7]'
-                            : 'bg-slate-100 text-slate-600'
+                            : 'bg-purple-50 text-[#7C27BD]'
                         )}
                       >
                         {admin.role === 'super_admin' ? (
@@ -147,11 +147,11 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
                         )}
                       </span>
                     </div>
-                    <p className="mt-1 truncate text-xs text-[#A59AAB]">{admin.email}</p>
+                    <p className="mt-0.5 truncate text-xs text-slate-400">{admin.email}</p>
                   </div>
                 </div>
 
-                <span className="inline-flex shrink-0 items-center rounded-xl bg-[#7026B7] px-4 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_#451475]">View Profile</span>
+                <span className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#7026B7] px-4 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_#451475]"><ExternalLink className="h-4 w-4" />View Profile</span>
               </button>
             ))}
           </div>
