@@ -15,6 +15,8 @@ export interface UseLocationsViewModelReturn {
   setName: (v: string) => void;
   loadLocations: () => Promise<void>;
   handleCreate: (e: React.FormEvent) => Promise<void>;
+  handleUpdate: (id: string, name: string) => Promise<void>;
+  handleDelete: (id: string) => Promise<void>;
 }
 
 export const useLocationsViewModel = (): UseLocationsViewModelReturn => {
@@ -71,6 +73,18 @@ export const useLocationsViewModel = (): UseLocationsViewModelReturn => {
     }
   };
 
+  const handleUpdate = async (id: string, nextName: string) => {
+    const updated = await locationService.updateLocation(id, nextName.trim());
+    setLocations((current) => current.map((item) => item.id === id ? updated : item));
+    toast.success('Checkpoint updated');
+  };
+
+  const handleDelete = async (id: string) => {
+    await locationService.deleteLocation(id);
+    setLocations((current) => current.filter((item) => item.id !== id));
+    toast.success('Checkpoint deleted');
+  };
+
   return {
     locations,
     isLoading,
@@ -83,5 +97,7 @@ export const useLocationsViewModel = (): UseLocationsViewModelReturn => {
     setName,
     loadLocations,
     handleCreate,
+    handleUpdate,
+    handleDelete,
   };
 };

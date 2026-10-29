@@ -72,7 +72,7 @@ export const EventsView: React.FC = () => {
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex h-10 min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[310px]">
+        <label className="flex h-10 min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] transition-all focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100 sm:max-w-[310px]">
           <Search className="h-4 w-4" />
           <span className="sr-only">Search events</span>
           <input

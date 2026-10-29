@@ -10,6 +10,7 @@ export interface StudentRecord {
   avatar_url?: string | null;
   created_at: string;
   updated_at?: string;
+  archived_at?: string | null;
 }
 
 export interface StudentPage {
@@ -17,6 +18,13 @@ export interface StudentPage {
   total: number;
   page: number;
   limit: number;
+}
+
+export interface StudentRosterStats {
+  active: number;
+  with_cards: number;
+  without_cards: number;
+  archived: number;
 }
 
 export interface RegisterStudentPayload {

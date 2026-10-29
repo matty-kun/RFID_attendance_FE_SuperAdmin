@@ -80,7 +80,7 @@ export const Modal: React.FC<ModalProps> = ({
         aria-modal="true"
         aria-label={title}
         className={cn(
-          'w-full bg-white rounded-2xl border border-[#E5E0EB] overflow-hidden transition-all duration-180 cubic-bezier(0.16,1,0.3,1)',
+          'flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden rounded-2xl border border-[#E5E0EB] bg-white transition-all duration-180 cubic-bezier(0.16,1,0.3,1)',
           maxW[maxWidth],
           isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'
         )}
@@ -99,7 +99,7 @@ export const Modal: React.FC<ModalProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-6">{children}</div>
+        <div className="min-h-0 overflow-y-auto p-6">{children}</div>
       </div>
     </div>,
     document.body

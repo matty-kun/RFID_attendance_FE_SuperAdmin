@@ -17,7 +17,36 @@
   .animate-nav-settle {
     animation: nav-settle 320ms cubic-bezier(.2, .8, .2, 1) both;
   }
+
+  .command-palette[open]:not(.palette-closing) {
+    animation: palette-enter 200ms cubic-bezier(.2, .8, .2, 1) both;
+  }
+
+  .command-palette[open].palette-closing {
+    animation: palette-exit 180ms ease-in both;
+  }
+
+  .command-palette[open]::backdrop {
+    animation: palette-backdrop-enter 200ms ease-out both;
+  }
+
+  .command-palette[open].palette-closing::backdrop {
+    animation: palette-backdrop-exit 180ms ease-in both;
+  }
 }
+
+@keyframes palette-enter {
+  from { opacity: 0; transform: translate(-50%, -47%) scale(.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes palette-exit {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -47%) scale(.96); }
+}
+
+@keyframes palette-backdrop-enter { from { opacity: 0; } to { opacity: 1; } }
+@keyframes palette-backdrop-exit { from { opacity: 1; } to { opacity: 0; } }
 
 @font-face {
   font-family: 'Nunito Sans';

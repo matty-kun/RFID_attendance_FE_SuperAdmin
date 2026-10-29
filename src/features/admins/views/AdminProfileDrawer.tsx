@@ -1,8 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, CalendarDays, Camera, ChevronDown, Clock3, KeyRound, Loader2, Mail, MapPin, Pencil, Shield, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, CalendarDays, Camera, ChevronDown, Clock3, Eye, EyeOff, KeyRound, Loader2, Mail, MapPin, Pencil, Shield, Trash2, X } from 'lucide-react';
 import { Drawer } from '../../../components/common/Drawer';
+import { Modal } from '../../../components/common/Modal';
+import { Button } from '../../../components/common/Button';
 import { ImageCropModal } from '../../../components/common/ImageCropModal';
 import type { AdminCheckpointActivityPage, AdminCheckpointActivityRecord, AdminRecord, UpdateAdminPayload } from '../models';
+import hawiFindingImg from '../../../assets/illustrations/Hawi Finding.png';
+import hawiBoxImg from '../../../assets/illustrations/Hawi Box.png';
 
 interface AdminProfileDrawerProps {
   isOpen: boolean;
@@ -21,6 +25,11 @@ interface AdminProfileDrawerProps {
 export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
   isOpen, onClose, admin, onUpdate, onArchive, onRestore, isSelf, onDelete, onUploadAvatar, onRemoveAvatar, onLoadCheckpointActivity,
 }) => {
+  const formatTime = (value: string | null) => {
+    if (!value) return '—';
+    const [hour, minute] = value.split(':').map(Number);
+    return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour >= 12 ? 'PM' : 'AM'}`;
+  };
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [rawImage, setRawImage] = useState<string | null>(null);
   const [isCropOpen, setIsCropOpen] = useState(false);
@@ -31,6 +40,7 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
   const [isRoleOpen, setIsRoleOpen] = useState(false);
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [passwordDraft, setPasswordDraft] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
@@ -50,6 +60,7 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
       setIsRoleOpen(false);
       setIsPasswordOpen(false);
       setPasswordDraft('');
+      setShowPassword(false);
       setInlineError(null);
       setIsArchiveConfirmOpen(false);
     }
@@ -173,7 +184,7 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
     setInlineError(null);
     const saved = await onUpdate(admin.id, { password: passwordDraft });
     setIsSaving(false);
-    if (saved) { setPasswordDraft(''); setIsPasswordOpen(false); }
+    if (saved) { setPasswordDraft(''); setShowPassword(false); setIsPasswordOpen(false); }
     else setInlineError('Could not reset password.');
   };
 
@@ -191,8 +202,8 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
           <div className="z-20 flex items-center justify-between gap-3">
             {isEditingName ? <input autoFocus aria-label="Administrator name" value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} onBlur={() => void saveName()} onKeyDown={(event) => { if (event.key === 'Enter') void saveName(); if (event.key === 'Escape') setIsEditingName(false); }} disabled={isSaving} className="min-w-0 max-w-[340px] flex-1 border-b-2 border-white bg-transparent text-2xl font-black tracking-tight text-white outline-none" /> : <button type="button" onClick={() => { if (!admin.archived_at) { setNameDraft(admin.name); setIsEditingName(true); } }} title="Click to edit name" disabled={Boolean(admin.archived_at)} className="group flex min-w-0 items-center gap-2 rounded-xl px-1 py-0.5 text-left transition-colors hover:bg-white/20 disabled:cursor-default"><h2 className="max-w-[340px] truncate text-2xl font-black tracking-tight text-white drop-shadow-sm">{admin.name}</h2>{!admin.archived_at && <Pencil className="h-4 w-4 shrink-0 text-white/70 opacity-0 transition-opacity group-hover:opacity-100" />}</button>}
             <div className="flex shrink-0 items-center gap-2">
-              <button type="button" onClick={() => admin.archived_at ? void onRestore(admin.id) : setIsArchiveConfirmOpen(true)} disabled={isSelf || isSaving} title={admin.archived_at ? 'Restore administrator' : 'Archive administrator'} aria-label={admin.archived_at ? 'Restore administrator' : 'Archive administrator'} className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/25 bg-white/20 text-white shadow-xs backdrop-blur-md transition-all hover:bg-white/30 active:scale-95 disabled:opacity-50">{admin.archived_at ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</button>
-              <button type="button" onClick={() => onDelete(admin)} title="Delete administrator" aria-label="Delete administrator" className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/25 bg-white/20 text-white shadow-xs backdrop-blur-md transition-all hover:bg-white/30 hover:text-rose-200 active:scale-95"><Trash2 className="h-4 w-4" /></button>
+              <button type="button" onClick={() => admin.archived_at ? void onRestore(admin.id) : setIsArchiveConfirmOpen(true)} disabled={isSelf || isSaving} title={isSelf ? 'You cannot archive your own account' : admin.archived_at ? 'Restore administrator' : 'Archive administrator'} aria-label={admin.archived_at ? 'Restore administrator' : 'Archive administrator'} className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/50 bg-white/30 text-white shadow-xs backdrop-blur-md transition-all hover:bg-white/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60">{admin.archived_at ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</button>
+              <button type="button" onClick={() => onDelete(admin)} disabled={isSelf || isSaving} title={isSelf ? 'You cannot delete your own account' : 'Delete administrator'} aria-label="Delete administrator" className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/50 bg-white/30 text-white shadow-xs backdrop-blur-md transition-all hover:bg-white/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"><Trash2 className="h-4 w-4" /></button>
               <button type="button" onClick={onClose} title="Close profile" aria-label="Close profile" className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/25 bg-white/20 text-white shadow-xs backdrop-blur-md transition-all hover:bg-white/30 active:scale-95"><X className="h-5 w-5" /></button>
             </div>
           </div>
@@ -213,9 +224,9 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
 
           <div className="flex items-stretch gap-2">
             <div className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-bold shadow-[0_4px_0_#D0C9D5]"><Mail className="h-4 w-4 shrink-0 text-[#A59AAB]" /><span className="truncate">{admin.email}</span></div>
-            <button type="button" onClick={() => setIsPasswordOpen((open) => !open)} disabled={Boolean(admin.archived_at)} title="Reset password" className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-[#7026B7] px-4 py-3 text-xs font-bold text-white shadow-[0_4px_0_#451475] transition-colors hover:bg-[#621FA3] disabled:opacity-50"><KeyRound className="h-4 w-4" />Password</button>
+            <button type="button" onClick={() => { setShowPassword(false); setIsPasswordOpen((open) => !open); }} disabled={Boolean(admin.archived_at)} title="Reset password" className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-[#7026B7] px-4 py-3 text-xs font-bold text-white shadow-[0_4px_0_#451475] transition-colors hover:bg-[#621FA3] disabled:opacity-50"><KeyRound className="h-4 w-4" />Password</button>
           </div>
-          {isPasswordOpen && <form onSubmit={(event) => { event.preventDefault(); void savePassword(); }} className="flex items-center gap-2 rounded-2xl border border-slate-200 p-3"><input type="password" autoComplete="new-password" aria-label="New temporary password" placeholder="New password (12+ characters)" value={passwordDraft} onChange={(event) => setPasswordDraft(event.target.value)} className="min-w-0 flex-1 text-xs outline-none" /><button type="submit" disabled={isSaving} className="rounded-xl bg-[#7026B7] px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Save</button></form>}
+          {isPasswordOpen && <form onSubmit={(event) => { event.preventDefault(); void savePassword(); }} className="flex items-center gap-2 rounded-2xl border border-slate-200 p-3"><input type={showPassword ? 'text' : 'password'} autoComplete="new-password" aria-label="New temporary password" placeholder="New password (12+ characters)" value={passwordDraft} onChange={(event) => setPasswordDraft(event.target.value)} className="min-w-0 flex-1 text-xs outline-none" /><button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'} title={showPassword ? 'Hide password' : 'Show password'} className="rounded-lg p-1.5 text-[#756883] hover:bg-purple-50 hover:text-[#7026B7]">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button><button type="submit" disabled={isSaving} className="rounded-xl bg-[#7026B7] px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Save</button></form>}
 
           <section aria-label="Administrator overview" className="pt-1">
             <p className="text-[11px] font-black uppercase tracking-wider text-[#A59AAB]">Overview</p>
@@ -225,21 +236,21 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
             </div>
           </section>
 
-          <section aria-label="Checkpoint activity" className="pt-1">
+          <section aria-label="Assignment history" className="pt-1">
             <div className="flex items-baseline justify-between gap-2">
-              <p className="text-[11px] font-black uppercase tracking-wider text-[#A59AAB]">Checkpoint activity</p>
-              {activityTotal > 0 && <span className="text-[11px] font-semibold text-[#756883]">{activityTotal} scan{activityTotal === 1 ? '' : 's'}</span>}
+              <p className="text-[11px] font-black uppercase tracking-wider text-[#A59AAB]">Assignment history</p>
+              {activityTotal > 0 && <span className="text-[11px] font-semibold text-[#756883]">{activityTotal} assignment{activityTotal === 1 ? '' : 's'}</span>}
             </div>
-            <p className="mt-1 text-xs text-[#756883]">Attendance scans recorded by this admin.</p>
+            <p className="mt-1 text-xs text-[#756883]">Events, checkpoints, and time sessions assigned to this admin.</p>
             <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
               {activityRecords.map((record) => (
                 <div key={record.id} className="border-b border-slate-100 px-4 py-3 last:border-0">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-xs font-bold text-[#24133F]">{record.event_name} <span className="font-medium text-[#756883]">· {record.session_name}</span></p>
-                      <p className="mt-1 text-xs text-[#24133F]">{record.type === 'time_in' ? 'Time In' : 'Time Out'} · {record.student_name}</p>
+                      <p className="mt-1 text-xs text-[#24133F]">{record.type === 'time_in' ? 'Time In' : 'Time Out'} · {formatTime(record.time_start)} – {formatTime(record.time_end)}</p>
                     </div>
-                    <span className="shrink-0 text-[11px] font-semibold text-[#756883]">{new Date(record.recorded_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                    {record.session_date && <span className="shrink-0 text-[11px] font-semibold text-[#756883]">{record.session_date}</span>}
                   </div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#756883]">
                     <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{record.location_name}</span>
@@ -247,16 +258,25 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
                   </div>
                 </div>
               ))}
-              {!activityLoading && !activityError && activityRecords.length === 0 && <p className="px-4 py-8 text-center text-xs text-[#756883]">No checkpoint scans recorded by this admin yet.</p>}
-              {activityLoading && activityRecords.length === 0 && <p className="px-4 py-8 text-center text-xs text-[#756883]">Loading checkpoint activity…</p>}
-              {activityError && <div className="px-4 py-5 text-center text-xs text-[#756883]">Could not load checkpoint activity. <button type="button" onClick={() => void loadMoreActivity()} className="font-bold text-[#7026B7] underline">Retry</button></div>}
+              {!activityLoading && !activityError && activityRecords.length === 0 && <p className="px-4 py-8 text-center text-xs text-[#756883]">No checkpoint assignments for this admin yet.</p>}
+              {activityLoading && activityRecords.length === 0 && <div className="flex min-h-44 w-full flex-col items-center justify-center px-4 py-5 text-center" role="status" aria-live="polite"><img src={hawiFindingImg} alt="" className="h-20 w-20 object-contain motion-safe:animate-bounce" /><p className="mt-2 text-xs font-semibold text-[#7026B7]">Hawi is finding assignments…</p><p className="mt-1 text-[11px] text-[#756883]">Loading this admin’s checkpoint history.</p></div>}
+              {activityError && <div className="px-4 py-5 text-center text-xs text-[#756883]">Could not load assignments. <button type="button" onClick={() => void loadMoreActivity()} className="font-bold text-[#7026B7] underline">Retry</button></div>}
             </div>
-            {activityRecords.length > 0 && activityRecords.length < activityTotal && <button type="button" onClick={() => void loadMoreActivity()} disabled={activityLoading} className="mt-3 w-full rounded-xl border border-[#E5E0EB] bg-white px-4 py-2.5 text-xs font-bold text-[#7026B7] hover:bg-purple-50 disabled:opacity-50">{activityLoading ? 'Loading…' : 'Load more activity'}</button>}
+            {activityRecords.length > 0 && activityRecords.length < activityTotal && <button type="button" onClick={() => void loadMoreActivity()} disabled={activityLoading} className="mt-3 w-full rounded-xl border border-[#E5E0EB] bg-white px-4 py-2.5 text-xs font-bold text-[#7026B7] hover:bg-purple-50 disabled:opacity-50">{activityLoading ? 'Loading…' : 'Load more assignments'}</button>}
           </section>
         </div>
       </div>}
     </Drawer>
-    {isArchiveConfirmOpen && admin && <div className="fixed inset-0 z-[600] flex items-center justify-center bg-[#24133F]/50 p-4 backdrop-blur-sm" role="presentation"><div role="dialog" aria-modal="true" aria-label="Archive administrator" className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"><h3 className="text-lg font-bold text-[#24133F]">Archive {admin.name}?</h3><p className="mt-2 text-sm text-[#756883]">This removes the account from active admins and blocks sign in. You can restore it later.</p><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setIsArchiveConfirmOpen(false)} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold">Cancel</button><button type="button" disabled={isSaving} onClick={async () => { setIsSaving(true); const archived = await onArchive(admin.id); setIsSaving(false); if (archived) { setIsArchiveConfirmOpen(false); onClose(); } }} className="rounded-xl bg-[#7026B7] px-4 py-2 text-xs font-bold text-white disabled:opacity-50">Archive</button></div></div></div>}
+    <Modal isOpen={isArchiveConfirmOpen && Boolean(admin)} onClose={() => { if (!isSaving) setIsArchiveConfirmOpen(false); }} title="Archive administrator" maxWidth="sm" zIndex={600}>
+      {admin && <div className="space-y-4 pt-1">
+        <img src={hawiBoxImg} alt="Hawi with an archive box" className="mx-auto h-24 w-24 object-contain" />
+        <p className="text-sm text-[#756883]">Archive <strong className="text-[#24133F]">{admin.name}</strong>? This removes the account from active admins and blocks sign in. You can restore it later.</p>
+        <div className="flex justify-end gap-3 border-t border-[#F1EEF4] pt-4">
+          <Button type="button" variant="secondary" disabled={isSaving} onClick={() => setIsArchiveConfirmOpen(false)}>Cancel</Button>
+          <Button type="button" variant="primary" isLoading={isSaving} onClick={async () => { setIsSaving(true); try { const archived = await onArchive(admin.id); if (archived) { setIsArchiveConfirmOpen(false); onClose(); } } finally { setIsSaving(false); } }}>Archive</Button>
+        </div>
+      </div>}
+    </Modal>
     <ImageCropModal isOpen={isCropOpen} onClose={() => { setIsCropOpen(false); setRawImage(null); }} imageSrc={rawImage} onConfirmCrop={handleConfirmCrop} isSaving={isUploading} />
   </>;
 };

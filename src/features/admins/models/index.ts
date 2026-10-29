@@ -14,12 +14,12 @@ export interface AdminPage { admins: AdminRecord[]; total: number; page: number;
 export interface AdminCheckpointActivityRecord {
   id: string;
   type: 'time_in' | 'time_out';
-  recorded_at: string;
-  student_name: string;
   session_name: string;
   session_date: string | null;
   event_name: string;
   location_name: string;
+  time_start: string | null;
+  time_end: string | null;
 }
 
 export interface AdminCheckpointActivityPage {

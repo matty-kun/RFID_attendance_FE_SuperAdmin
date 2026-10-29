@@ -12,6 +12,7 @@ import { Modal } from '../../../components/common/Modal';
 import { Button } from '../../../components/common/Button';
 import { Input } from '../../../components/common/Input';
 import type { AdminRecord } from '../models';
+import hawiTrashCanImg from '../../../assets/illustrations/Hawi Trash Can.png';
 
 export interface DeleteAdminConfirmationModalProps {
   isOpen: boolean;
@@ -84,19 +85,17 @@ export const DeleteAdminConfirmationModal: React.FC<DeleteAdminConfirmationModal
         )}
 
         {/* Admin Summary Card */}
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 flex items-center justify-between gap-3 shadow-2xs">
+        <div className="relative flex items-center justify-between gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/70 py-3.5 pl-3.5 pr-24 shadow-2xs">
           <div className="flex items-center gap-3 min-w-0">
             {admin.avatar_url ? <img src={admin.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" /> : <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#DFE8F8] text-xs font-black text-[#294B85]">{initials}</div>}
             <div className="min-w-0">
               <p className="text-sm font-bold text-[#24133F] truncate">{admin.name}</p>
               <p className="text-xs text-[#756883] truncate">{admin.email}</p>
+              <span className="mt-1 inline-flex items-center gap-1 rounded-md border border-[#E9D5FF] bg-[#F4EFFB] px-2 py-0.5 text-[10px] font-bold text-[#7026B7]"><Shield className="h-3 w-3" />{admin.role === 'super_admin' ? 'Super Admin' : 'Admin'}</span>
             </div>
           </div>
 
-          <span className="shrink-0 rounded-md bg-[#F4EFFB] px-2 py-0.5 text-[10px] font-bold text-[#7026B7] border border-[#E9D5FF] flex items-center gap-1">
-            <Shield className="h-3 w-3" />
-            <span>{admin.role === 'super_admin' ? 'Super Admin' : 'Admin'}</span>
-          </span>
+          <img src={hawiTrashCanImg} alt="Hawi in a trash can" className="pointer-events-none absolute bottom-0 right-2 h-20 w-20 object-contain object-bottom" />
         </div>
 
         {/* Consequences Card */}
@@ -121,7 +120,7 @@ export const DeleteAdminConfirmationModal: React.FC<DeleteAdminConfirmationModal
             <div className="flex items-start gap-2.5 text-[11px] leading-relaxed text-[#7A1C25]">
               <ShieldAlert className="h-4 w-4 shrink-0 text-[#EF3340] mt-0.5" />
               <span>
-                <strong>Audit trail protection:</strong> If this administrator has recorded attendance scans or created events, deletion will be rejected by the database to preserve history.
+                <strong>Audit trail protection:</strong> If this administrator has recorded attendance scans or created events, deletion will be rejected to preserve history.
               </span>
             </div>
           </div>

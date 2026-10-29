@@ -1,13 +1,16 @@
 import { request } from '../../../services/apiClient';
-import type { StudentRecord, StudentPage, RegisterStudentPayload, UpdateStudentPayload } from '../models';
+import type { StudentRecord, StudentPage, StudentRosterStats, RegisterStudentPayload, UpdateStudentPayload } from '../models';
 
 export const studentService = {
-  getStudents: (page = 1, q = '', sort = 'created_at', direction = 'desc') =>
-    request.get<StudentPage>('/students', { params: { page, limit: 25, sort, direction, ...(q ? { q } : {}) } }),
+  getStudents: (page = 1, q = '', sort = 'created_at', direction = 'desc', limit = 25, archived = false) =>
+    request.get<StudentPage>('/students', { params: { page, limit, sort, direction, archived, ...(q ? { q } : {}) } }),
+  getRosterStats: () => request.get<StudentRosterStats>('/students/stats'),
   registerStudent: (payload: RegisterStudentPayload) =>
     request.post<StudentRecord>('/students', payload),
   updateStudent: (id: string, payload: UpdateStudentPayload) =>
     request.patch<StudentRecord>(`/students/${id}`, payload),
+  archiveStudent: (id: string) => request.post<StudentRecord>(`/students/${id}/archive`, {}),
+  restoreStudent: (id: string) => request.post<StudentRecord>(`/students/${id}/restore`, {}),
   uploadAvatar: (id: string, imageBase64: string) =>
     request.post<{ avatar_url: string }>(`/students/${id}/avatar`, { image: imageBase64 }),
   removeAvatar: (id: string) => request.delete<{ avatar_url: null }>(`/students/${id}/avatar`),

@@ -14,6 +14,7 @@ import { Button } from '../../../components/common/Button';
 import { Input } from '../../../components/common/Input';
 import type { StudentRecord } from '../models';
 import { formatYearLevel } from '../../../utils/formatters';
+import hawiTrashCanImg from '../../../assets/illustrations/Hawi Trash Can.png';
 
 export interface DeleteStudentConfirmationModalProps {
   isOpen: boolean;
@@ -71,6 +72,7 @@ export const DeleteStudentConfirmationModal: React.FC<DeleteStudentConfirmationM
       maxWidth="md"
     >
       <div className="space-y-4 pt-1">
+        <img src={hawiTrashCanImg} alt="Hawi in a trash can" className="mx-auto h-20 w-20 object-contain" />
         {/* Student Summary Card */}
         <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FC] p-3.5 flex items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-3 min-w-0">

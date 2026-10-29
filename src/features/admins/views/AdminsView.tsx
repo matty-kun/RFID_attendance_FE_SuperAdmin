@@ -9,6 +9,7 @@ import { AdminProfileDrawer } from './AdminProfileDrawer';
 import { Archive, ExternalLink, Plus, Search, Shield, Sparkles, UserCheck, Users } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import { useAuth } from '../../auth/context/AuthContext';
+import hawiFindingImg from '../../../assets/illustrations/Hawi Finding.png';
 
 export interface AdminsViewProps {
   isDrawer?: boolean;
@@ -69,7 +70,7 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
       {/* Toolbar: Search, Role Filter, Refresh, Add Admin */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="flex flex-wrap items-center gap-2 flex-1">
-          <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[#756883] sm:max-w-[320px]">
+          <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[#756883] transition-all focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100 sm:max-w-[320px]">
             <Search className="h-4 w-4 shrink-0 text-slate-400" />
             <span className="sr-only">Search admins</span>
             <input
@@ -122,7 +123,13 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
 
       {/* Admin List */}
       <div>
-        {visibleAdmins.length > 0 ? (
+        {isLoading ? (
+          <div className="flex min-h-[360px] w-full flex-col items-center justify-center px-6 text-center" role="status" aria-live="polite">
+            <img src={hawiFindingImg} alt="" className="h-32 w-32 object-contain motion-safe:animate-bounce" />
+            <p className="mt-3 text-sm font-bold text-[#7026B7]">Hawi is finding admin accounts…</p>
+            <p className="mt-1 text-xs text-[#756883]">Loading the administrator list.</p>
+          </div>
+        ) : visibleAdmins.length > 0 ? (
           <div className="max-h-[520px] space-y-1 overflow-y-auto">
             {visibleAdmins.map((admin) => (
               <button
@@ -166,9 +173,7 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center text-xs text-[#756883]">
-            {isLoading
-              ? 'Loading administrators…'
-              : error
+            {error
               ? <button type="button" onClick={() => void loadAdmins()} className="font-bold text-[#7026B7] underline">Retry loading administrators</button>
               : searchQuery || roleFilter !== 'all'
               ? 'No administrators match these filters.'

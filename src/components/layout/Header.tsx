@@ -82,6 +82,8 @@ function NavTab({ name, path, icon: Icon }: { name: string; path: string; icon: 
 
 export function Header() {
   const pagesDialog = useRef<HTMLDialogElement>(null);
+  const paletteTrigger = useRef<HTMLButtonElement>(null);
+  const closeTimer = useRef<number | null>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -90,14 +92,30 @@ export function Header() {
   const shortcutLabel = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K';
 
   const openPalette = () => {
+    if (closeTimer.current !== null) { window.clearTimeout(closeTimer.current); closeTimer.current = null; }
+    pagesDialog.current?.classList.remove('palette-closing');
     setQuery('');
     setSelectedIndex(0);
     pagesDialog.current?.showModal();
     requestAnimationFrame(() => searchInput.current?.focus());
   };
 
+  const closePalette = (afterClose?: () => void) => {
+    const dialog = pagesDialog.current;
+    if (!dialog?.open || closeTimer.current !== null) return;
+    dialog.classList.add('palette-closing');
+    const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180;
+    closeTimer.current = window.setTimeout(() => {
+      dialog.close();
+      dialog.classList.remove('palette-closing');
+      closeTimer.current = null;
+      paletteTrigger.current?.focus();
+      afterClose?.();
+    }, duration);
+  };
+
   const runCommand = (command: (typeof commands)[number]) => {
-    pagesDialog.current?.close();
+    closePalette(() => {
     if (command.action === 'inspect-card') {
       navigate('/students');
       requestAnimationFrame(() => {
@@ -114,18 +132,22 @@ export function Header() {
     } else if (command.path) {
       navigate(command.path);
     }
+    });
   };
 
   useEffect(() => {
     const onShortcut = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
-        if (pagesDialog.current?.open) pagesDialog.current.close();
+        if (pagesDialog.current?.open) closePalette();
         else openPalette();
       }
     };
     window.addEventListener('keydown', onShortcut);
-    return () => window.removeEventListener('keydown', onShortcut);
+    return () => {
+      window.removeEventListener('keydown', onShortcut);
+      if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+    };
   }, []);
 
   return (
@@ -142,6 +164,7 @@ export function Header() {
 
       <div className="z-10 flex items-center gap-2">
         <button
+          ref={paletteTrigger}
           type="button"
           onClick={openPalette}
           aria-label="Open command palette"
@@ -153,7 +176,7 @@ export function Header() {
         </button>
       </div>
 
-      <dialog ref={pagesDialog} aria-label="Command palette" onClick={(event) => { if (event.target === pagesDialog.current) pagesDialog.current?.close(); }} className="fixed left-1/2 top-1/2 m-0 w-[min(560px,calc(100%-32px))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-[#E5E0EB] bg-white p-0 text-[#24133F] shadow-2xl backdrop:bg-[#170D29]/40 backdrop:backdrop-blur-md">
+      <dialog ref={pagesDialog} aria-label="Command palette" onCancel={(event) => { event.preventDefault(); closePalette(); }} onClick={(event) => { if (event.target === pagesDialog.current) closePalette(); }} className="command-palette fixed left-1/2 top-1/2 m-0 w-[min(560px,calc(100%-32px))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-[#E5E0EB] bg-white p-0 text-[#24133F] backdrop:bg-[#170D29]/40 backdrop:backdrop-blur-md">
         <div className="flex items-center gap-3 border-b border-[#E5E0EB] px-4 py-4">
           <Search className="h-5 w-5 text-[#756883]" />
           <input ref={searchInput} value={query} onChange={(event) => { setQuery(event.target.value); setSelectedIndex(0); }} onKeyDown={(event) => {

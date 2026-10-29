@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, AlertCircle, RefreshCw, Search, Users } from 'lucide-react';
+import { Activity, AlertCircle, Search, Users } from 'lucide-react';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { Dropdown } from '../components/common/Dropdown';
 import { Button } from '../components/common/Button';
-import { attendanceService } from '../features/attendance/services';
+import { request } from '../services/apiClient';
 import { adminService } from '../services/adminService';
-import type { AttendanceFilterType, AttendanceRecord } from '../features/attendance/models';
 import type { AdminRecord } from '../types';
+import hawi from '../assets/illustrations/Hawi Finding.png';
+
+interface AuditEvent { id: string; occurred_at: string; actor_id: string | null; actor_name: string; action: string; entity_type: string; entity_id: string | null; description: string }
+interface AuditPage { records: AuditEvent[]; total: number; page: number; limit: number }
+const labelForAction = (action: string) => action === 'attendance.time_in' ? 'Time In Recorded' : action === 'attendance.time_out' ? 'Time Out Recorded' : action.replaceAll('_', ' ').replace('.', ' · ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 function formatTimestamp(timestamp: string) {
   const date = new Date(timestamp);
@@ -33,37 +37,44 @@ function getInitials(fullName: string) {
 }
 
 export function AuditLogPage() {
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [records, setRecords] = useState<AuditEvent[]>([]);
   const [admins, setAdmins] = useState<AdminRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const [search, setSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [actionFilter, setActionFilter] = useState<AttendanceFilterType>('all');
+  const [actionFilter, setActionFilter] = useState('all');
   const [userFilter, setUserFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [totalServer, setTotalServer] = useState(0);
   const pageSize = 30;
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => { setSearchQuery(search.trim()); setPage(1); }, 250);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const [attendanceRes, adminsRes] = await Promise.all([
-        attendanceService.getRecentAttendance(page, actionFilter, startDate, endDate, pageSize),
+      const [attendanceRes, adminsRes, archivedAdminsRes] = await Promise.all([
+        request.get<AuditPage>('/audit', { params: { page, limit: pageSize, action: actionFilter, actor_id: userFilter, search: searchQuery, from: startDate, to: endDate } }),
         adminService.getAdmins(1, '', 100).catch(() => ({ admins: [], total: 0, page: 1, limit: 100 })),
+        adminService.getAdmins(1, '', 100, true).catch(() => ({ admins: [], total: 0, page: 1, limit: 100 })),
       ]);
       setRecords(attendanceRes.records);
       setTotalServer(attendanceRes.total);
-      setAdmins(adminsRes.admins);
+      setAdmins([...adminsRes.admins, ...archivedAdminsRes.admins]);
     } catch (err: any) {
       setError(err?.response?.data?.error?.message || 'Could not load audit log records. Try again.');
     } finally {
       setLoading(false);
     }
-  }, [page, actionFilter, startDate, endDate]);
+  }, [page, actionFilter, userFilter, searchQuery, startDate, endDate]);
 
   useEffect(() => {
     void loadData();
@@ -77,71 +88,39 @@ export function AuditLogPage() {
     return map;
   }, [admins]);
 
-  // Transform real attendance records into audit entries
+  // Historical scans and new management events share one append-only feed.
   const mappedEntries = useMemo(() => {
     return records.map((rec) => {
-      const admin = adminMap.get(rec.recorded_by);
-      const adminName = admin?.name || `Admin (${rec.recorded_by.slice(0, 8)})`;
-      const isTimeIn = rec.type === 'time_in';
-      const actionLabel = isTimeIn ? 'Time In Recorded' : 'Time Out Recorded';
-      const badgeClass = isTimeIn
-        ? 'bg-[#10B981] text-white'
-        : 'bg-[#EF4444] text-white';
-      const studentName = rec.student?.name || 'Student';
-      const studentNumber = rec.student?.student_id || rec.student_id.slice(0, 8);
-      const sessionName = rec.session?.name || rec.session_id.slice(0, 8);
-      const locationName = rec.location?.name || rec.location_id.slice(0, 8);
+      const admin = rec.actor_id ? adminMap.get(rec.actor_id) : undefined;
+      const adminName = admin?.name || rec.actor_name;
+      const isTimeIn = rec.action === 'attendance.time_in';
+      const actionLabel = labelForAction(rec.action);
+      const badgeClass = isTimeIn ? 'bg-[#E4F7EB] text-[#16883F]' : rec.action === 'attendance.time_out' || rec.action.endsWith('.deleted') ? 'bg-[#FDE8EA] text-[#C52736]' : 'bg-[#F1E9FC] text-[#7025BE]';
 
       return {
         id: rec.id,
-        timestamp: rec.recorded_at,
+        timestamp: rec.occurred_at,
         user: {
-          id: rec.recorded_by,
+          id: rec.actor_id,
           name: adminName,
           initials: getInitials(adminName),
-          avatarBg: isTimeIn ? 'bg-[#DFE8F8]' : 'bg-[#F0E8FC]',
-          avatarColor: isTimeIn ? 'text-[#294B85]' : 'text-[#5B21B6]',
+          avatarUrl: admin?.avatar_url,
         },
-        action: rec.type,
+        action: rec.action,
         actionLabel,
         badgeClass,
-        description: `${studentName} (${studentNumber}) scanned at ${locationName} · ${sessionName}`,
-        relatedRecord: studentNumber,
+        description: rec.description,
       };
     });
   }, [records, adminMap]);
 
-  const uniqueUsers = useMemo(() => {
-    const names = new Set<string>();
-    for (const admin of admins) {
-      names.add(admin.name);
-    }
-    for (const entry of mappedEntries) {
-      names.add(entry.user.name);
-    }
-    return Array.from(names).sort();
-  }, [admins, mappedEntries]);
+  const uniqueUsers = useMemo(() => Array.from(new Map([
+    ...admins.map((admin) => [admin.id, admin.name] as const),
+    ...records.filter((record) => record.actor_id).map((record) => [record.actor_id!, record.actor_name] as const),
+  ]).entries()).map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label)), [admins, records]);
 
-  const filtered = useMemo(() => {
-    return mappedEntries.filter((record) => {
-      if (userFilter !== 'all' && record.user.name !== userFilter) return false;
-
-      if (search.trim()) {
-        const query = search.toLowerCase();
-        const matchesDate = formatTimestamp(record.timestamp).toLowerCase().includes(query);
-        const matchesUser = record.user.name.toLowerCase().includes(query);
-        const matchesAction = record.actionLabel.toLowerCase().includes(query);
-        const matchesDesc = record.description.toLowerCase().includes(query);
-        const matchesRecord = record.relatedRecord.toLowerCase().includes(query);
-        return matchesDate || matchesUser || matchesAction || matchesDesc || matchesRecord;
-      }
-
-      return true;
-    });
-  }, [mappedEntries, userFilter, search]);
-
-  const hasClientFilter = Boolean(search.trim()) || userFilter !== 'all';
-  const totalCount = hasClientFilter ? filtered.length : totalServer;
+  const filtered = mappedEntries;
+  const totalCount = totalServer;
   const pageCount = Math.max(1, Math.ceil(totalServer / pageSize));
 
   return (
@@ -153,24 +132,15 @@ export function AuditLogPage() {
             Audit Log
           </h1>
           <p className="text-xs text-[#756883] mt-0.5">
-            Immutable attendance scan records and officer activity
+            Read-only history of scans and management changes
           </p>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => void loadData()}
-          isLoading={loading}
-          leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
-        >
-          Refresh
-        </Button>
       </div>
 
       {/* Filter Bar */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {/* Search Input */}
-        <label className="flex h-10 min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[320px]">
+        <label className="flex h-10 min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] transition-all focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100 sm:max-w-[320px]">
           <Search className="h-4 w-4 shrink-0" />
           <span className="sr-only">Search Audit Log</span>
           <input
@@ -179,7 +149,7 @@ export function AuditLogPage() {
             onChange={(e) => {
               setSearch(e.target.value);
             }}
-            placeholder="Search Date, user, action or record"
+            placeholder="Search user, action or record"
             className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
           />
         </label>
@@ -199,14 +169,15 @@ export function AuditLogPage() {
         <Dropdown
           value={actionFilter}
           onChange={(val) => {
-            setActionFilter(val as AttendanceFilterType);
+            setActionFilter(val);
             setPage(1);
           }}
           icon={<Activity className="h-4 w-4 text-[#756883]" />}
           options={[
             { value: 'all', label: 'All Actions' },
-            { value: 'time_in', label: 'Time In Recorded' },
-            { value: 'time_out', label: 'Time Out Recorded' },
+            { value: 'attendance.time_in', label: 'Time In Recorded' },
+            { value: 'attendance.time_out', label: 'Time Out Recorded' },
+            ...Array.from(new Set(records.map((record) => record.action))).filter((action) => !action.startsWith('attendance.')).map((action) => ({ value: action, label: labelForAction(action) })),
           ]}
         />
 
@@ -215,11 +186,12 @@ export function AuditLogPage() {
           value={userFilter}
           onChange={(val) => {
             setUserFilter(val);
+            setPage(1);
           }}
           icon={<Users className="h-4 w-4 text-[#756883]" />}
           options={[
             { value: 'all', label: 'All Users' },
-            ...uniqueUsers.map((user) => ({ value: user, label: user })),
+            ...uniqueUsers,
           ]}
         />
       </div>
@@ -238,7 +210,7 @@ export function AuditLogPage() {
           </div>
         )}
 
-        <table className="w-full min-w-[760px] text-left text-xs">
+        <table className="w-full min-w-[640px] text-left text-xs">
           <thead>
             <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500">
               <th scope="col" className="px-3.5 py-3">
@@ -253,21 +225,18 @@ export function AuditLogPage() {
               <th scope="col" className="px-3.5 py-3">
                 Description
               </th>
-              <th scope="col" className="px-3.5 py-3 text-right sm:text-left">
-                Related Record
-              </th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="py-12 text-center text-xs text-[#756883]">
-                  Loading audit log records…
+                <td colSpan={4} className="py-12 text-center text-xs text-[#756883]">
+                  <div role="status" className="flex flex-col items-center gap-2"><img src={hawi} alt="" className="mx-auto h-24 w-24 object-contain"/><span>Hawi is checking activity…</span></div>
                 </td>
               </tr>
             ) : error && filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-12 text-center text-xs text-rose-600">
+                <td colSpan={4} className="py-12 text-center text-xs text-rose-600">
                   Unable to load audit log records.{' '}
                   <button type="button" onClick={() => void loadData()} className="font-bold underline">
                     Retry
@@ -276,7 +245,7 @@ export function AuditLogPage() {
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-12 text-center text-xs text-[#756883]">
+                <td colSpan={4} className="py-12 text-center text-xs text-[#756883]">
                   {search || startDate || endDate || actionFilter !== 'all' || userFilter !== 'all'
                     ? 'No audit log entries match the selected filters or date range.'
                     : 'No recent activity.'}
@@ -289,21 +258,20 @@ export function AuditLogPage() {
                   className="border-b border-[#EEF0F4] last:border-b-0 hover:bg-[#FAF8FC] transition-colors"
                 >
                   {/* Date / Time */}
-                  <td className="whitespace-nowrap px-3.5 py-3.5 text-[12px] text-[#637596] font-medium">
+                  <td className="whitespace-nowrap px-3.5 py-3.5 text-[12px] text-[#756883] font-medium">
                     {formatTimestamp(entry.timestamp)}
                   </td>
 
                   {/* User / Admin */}
                   <td className="px-3.5 py-3.5">
                     <div className="flex items-center gap-2.5">
-                      <span
-                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold ${
-                          entry.user.avatarBg
-                        } ${entry.user.avatarColor}`}
-                        aria-hidden="true"
-                      >
-                        {entry.user.initials}
-                      </span>
+                      {entry.user.avatarUrl ? (
+                        <img src={entry.user.avatarUrl} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
+                      ) : (
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F1E9FC] text-[10px] font-extrabold text-[#7026B7]" aria-hidden="true">
+                          {entry.user.initials}
+                        </span>
+                      )}
                       <span className="font-bold text-[13px] text-[#24133F]">
                         {entry.user.name}
                       </span>
@@ -313,25 +281,15 @@ export function AuditLogPage() {
                   {/* Action Pill Badge */}
                   <td className="px-3.5 py-3.5">
                     <span
-                      className={`inline-block px-3 py-1 rounded-full text-[11px] font-bold shadow-sm whitespace-nowrap ${entry.badgeClass}`}
+                      className={`inline-block px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap ${entry.badgeClass}`}
                     >
                       {entry.actionLabel}
                     </span>
                   </td>
 
                   {/* Description */}
-                  <td className="px-3.5 py-3.5 text-[12px] text-[#24133F] font-medium max-w-xs">
+                  <td className="px-3.5 py-3.5 text-[12px] text-[#24133F] font-medium">
                     {entry.description}
-                  </td>
-
-                  {/* Related Record Badge */}
-                  <td className="px-3.5 py-3.5 text-right sm:text-left">
-                    <span
-                      title={`Audited Entity Reference ID: ${entry.relatedRecord}`}
-                      className="inline-block px-2.5 py-1 rounded-lg bg-[#F1F5F9] text-[#334155] font-mono text-[11px] font-bold tracking-tight border border-slate-200/60 select-all cursor-default"
-                    >
-                      {entry.relatedRecord}
-                    </span>
                   </td>
                 </tr>
               ))

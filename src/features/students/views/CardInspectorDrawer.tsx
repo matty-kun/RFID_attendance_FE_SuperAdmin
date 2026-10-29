@@ -260,7 +260,7 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
       icon={<Radio className="h-5 w-5 text-[#7C27BD]" />}
       maxWidth="lg"
     >
-      <div className="flex flex-col h-full space-y-6 pt-1">
+      <div className="flex min-h-full flex-col space-y-6 pt-1 pb-6">
         {/* Sleek Auto-Sensing Scanner Bar */}
         <div className="space-y-2">
           <form onSubmit={handleFormSubmit} className="relative">
@@ -400,7 +400,7 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
 
         {/* STATE 2: Card is Available / Unassigned */}
         {activeUid && !isSearching && !matchedStudent && isValidRfidUid(activeUid) && (
-          <div className="space-y-4 pt-1 animate-in fade-in slide-in-from-right-3 duration-200">
+          <div className="shrink-0 space-y-4 pt-1 animate-in fade-in slide-in-from-right-3 duration-200">
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
@@ -433,7 +433,7 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
 
               {/* List of Cardless Students */}
               {cardlessStudents.length > 0 ? (
-                <div className="divide-y divide-slate-100 max-h-[300px] overflow-y-auto pr-1">
+                <div className="divide-y divide-slate-100 pr-1">
                   {filteredCardless.length > 0 ? (
                     filteredCardless.map((student) => {
                       const isThisPairing = pairingStudentId === student.id;

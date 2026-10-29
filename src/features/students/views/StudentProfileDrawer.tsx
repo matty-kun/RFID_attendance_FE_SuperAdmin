@@ -27,6 +27,7 @@ import {
 import { DeleteStudentConfirmationModal } from './DeleteStudentConfirmationModal';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
+import hawiBoxImg from '../../../assets/illustrations/Hawi Box.png';
 import type { StudentRecord } from '../models';
 import { formatYearLevel } from '../../../utils/formatters';
 
@@ -55,7 +56,7 @@ export interface StudentProfileDrawerProps {
   onOpenRapidScan: () => void;
   onUpdateStudent?: (studentId: string, payload: { name: string; course: string; year_level: number }) => Promise<any>;
   isArchived?: boolean;
-  onArchiveStudent?: (studentId: string) => void;
+  onArchiveStudent?: (studentId: string) => Promise<boolean>;
   onRestoreStudent?: (studentId: string) => void;
   onUploadAvatar?: (studentId: string, imageBase64: string) => Promise<string>;
   onRemoveAvatar?: (studentId: string) => Promise<void>;
@@ -292,6 +293,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   const [copiedUid, setCopiedUid] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Photo Upload & Centering/Crop State
@@ -1234,11 +1236,12 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       {/* Archive Student Confirmation Modal */}
       <Modal
         isOpen={isArchiveConfirmOpen}
-        onClose={() => setIsArchiveConfirmOpen(false)}
+        onClose={() => { if (!isArchiving) setIsArchiveConfirmOpen(false); }}
         title="Archive Student"
         maxWidth="md"
       >
         <div className="space-y-4 pt-1">
+          <img src={hawiBoxImg} alt="Hawi with an archive box" className="mx-auto h-24 w-24 object-contain" />
           <p className="text-sm text-[#24133F] leading-relaxed">
             Are you sure you want to archive <span className="font-extrabold text-[#7026B7]">{currentStudent.name}</span> (<span className="font-extrabold text-[#24133F]">{currentStudent.student_id}</span>)?
           </p>
@@ -1269,6 +1272,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               type="button"
               variant="secondary"
               size="md"
+              disabled={isArchiving}
               onClick={() => setIsArchiveConfirmOpen(false)}
             >
               Cancel
@@ -1277,12 +1281,15 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               type="button"
               variant="danger"
               size="md"
+              disabled={isArchiving}
               onClick={() => {
-                setIsArchiveConfirmOpen(false);
-                onArchiveStudent?.(currentStudent.id);
-                onClose();
+                if (!onArchiveStudent || isArchiving) return;
+                setIsArchiving(true);
+                void onArchiveStudent(currentStudent.id).then((success) => {
+                  if (success) { setIsArchiveConfirmOpen(false); onClose(); }
+                }).finally(() => setIsArchiving(false));
               }}
-              leftIcon={<Archive className="h-4 w-4" />}
+              leftIcon={isArchiving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
             >
               Archive Student
             </Button>
