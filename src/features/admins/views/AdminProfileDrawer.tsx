@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, CalendarDays, Camera, ChevronDown, KeyRound, Loader2, Mail, Pencil, Shield, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, CalendarDays, Camera, ChevronDown, Clock3, KeyRound, Loader2, Mail, MapPin, Pencil, Shield, Trash2, X } from 'lucide-react';
 import { Drawer } from '../../../components/common/Drawer';
 import { ImageCropModal } from '../../../components/common/ImageCropModal';
-import type { AdminRecord, UpdateAdminPayload } from '../models';
+import type { AdminCheckpointActivityPage, AdminCheckpointActivityRecord, AdminRecord, UpdateAdminPayload } from '../models';
 
 interface AdminProfileDrawerProps {
   isOpen: boolean;
@@ -15,10 +15,11 @@ interface AdminProfileDrawerProps {
   onDelete: (admin: AdminRecord) => void;
   onUploadAvatar: (adminId: string, image: string) => Promise<string>;
   onRemoveAvatar: (adminId: string) => Promise<void>;
+  onLoadCheckpointActivity: (adminId: string, page: number) => Promise<AdminCheckpointActivityPage>;
 }
 
 export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
-  isOpen, onClose, admin, onUpdate, onArchive, onRestore, isSelf, onDelete, onUploadAvatar, onRemoveAvatar,
+  isOpen, onClose, admin, onUpdate, onArchive, onRestore, isSelf, onDelete, onUploadAvatar, onRemoveAvatar, onLoadCheckpointActivity,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [rawImage, setRawImage] = useState<string | null>(null);
@@ -33,6 +34,12 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
+  const [activityRecords, setActivityRecords] = useState<AdminCheckpointActivityRecord[]>([]);
+  const [activityTotal, setActivityTotal] = useState(0);
+  const [activityPage, setActivityPage] = useState(0);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState(false);
+  const activityAdminIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -47,6 +54,45 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
       setIsArchiveConfirmOpen(false);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    const adminId = isOpen ? admin?.id ?? null : null;
+    activityAdminIdRef.current = adminId;
+    setActivityRecords([]);
+    setActivityTotal(0);
+    setActivityPage(0);
+    setActivityError(false);
+    if (!adminId) { setActivityLoading(false); return; }
+    setActivityLoading(true);
+    void onLoadCheckpointActivity(adminId, 1).then((result) => {
+      if (activityAdminIdRef.current !== adminId) return;
+      setActivityRecords(result.records);
+      setActivityTotal(result.total);
+      setActivityPage(1);
+    }).catch(() => {
+      if (activityAdminIdRef.current === adminId) setActivityError(true);
+    }).finally(() => {
+      if (activityAdminIdRef.current === adminId) setActivityLoading(false);
+    });
+  }, [isOpen, admin?.id, onLoadCheckpointActivity]);
+
+  const loadMoreActivity = async () => {
+    if (!admin || activityLoading) return;
+    const adminId = admin.id;
+    setActivityLoading(true);
+    setActivityError(false);
+    try {
+      const result = await onLoadCheckpointActivity(adminId, activityPage + 1);
+      if (activityAdminIdRef.current !== adminId) return;
+      setActivityRecords((previous) => [...previous, ...result.records]);
+      setActivityTotal(result.total);
+      setActivityPage(result.page);
+    } catch {
+      if (activityAdminIdRef.current === adminId) setActivityError(true);
+    } finally {
+      if (activityAdminIdRef.current === adminId) setActivityLoading(false);
+    }
+  };
 
   const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -179,12 +225,33 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
             </div>
           </section>
 
-          <section aria-label="Account access" className="pt-1">
-            <p className="text-[11px] font-black uppercase tracking-wider text-[#A59AAB]">Account access</p>
-            <div className="mt-2 rounded-2xl border border-slate-200 bg-white p-4 text-xs">
-              <p className="font-bold text-[#24133F]">{admin.role === 'super_admin' ? 'Full system management' : 'RFID scanning and attendance'}</p>
-              <p className="mt-1 text-[#756883]">Click the name or role above to update this account.</p>
+          <section aria-label="Checkpoint activity" className="pt-1">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-[11px] font-black uppercase tracking-wider text-[#A59AAB]">Checkpoint activity</p>
+              {activityTotal > 0 && <span className="text-[11px] font-semibold text-[#756883]">{activityTotal} scan{activityTotal === 1 ? '' : 's'}</span>}
             </div>
+            <p className="mt-1 text-xs text-[#756883]">Attendance scans recorded by this admin.</p>
+            <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+              {activityRecords.map((record) => (
+                <div key={record.id} className="border-b border-slate-100 px-4 py-3 last:border-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-bold text-[#24133F]">{record.event_name} <span className="font-medium text-[#756883]">· {record.session_name}</span></p>
+                      <p className="mt-1 text-xs text-[#24133F]">{record.type === 'time_in' ? 'Time In' : 'Time Out'} · {record.student_name}</p>
+                    </div>
+                    <span className="shrink-0 text-[11px] font-semibold text-[#756883]">{new Date(record.recorded_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#756883]">
+                    <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{record.location_name}</span>
+                    {record.session_date && <span className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{record.session_date}</span>}
+                  </div>
+                </div>
+              ))}
+              {!activityLoading && !activityError && activityRecords.length === 0 && <p className="px-4 py-8 text-center text-xs text-[#756883]">No checkpoint scans recorded by this admin yet.</p>}
+              {activityLoading && activityRecords.length === 0 && <p className="px-4 py-8 text-center text-xs text-[#756883]">Loading checkpoint activity…</p>}
+              {activityError && <div className="px-4 py-5 text-center text-xs text-[#756883]">Could not load checkpoint activity. <button type="button" onClick={() => void loadMoreActivity()} className="font-bold text-[#7026B7] underline">Retry</button></div>}
+            </div>
+            {activityRecords.length > 0 && activityRecords.length < activityTotal && <button type="button" onClick={() => void loadMoreActivity()} disabled={activityLoading} className="mt-3 w-full rounded-xl border border-[#E5E0EB] bg-white px-4 py-2.5 text-xs font-bold text-[#7026B7] hover:bg-purple-50 disabled:opacity-50">{activityLoading ? 'Loading…' : 'Load more activity'}</button>}
           </section>
         </div>
       </div>}

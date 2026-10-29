@@ -43,6 +43,8 @@ export const adminService = {
     request.post<LocationRecord>('/locations', payload),
   getAdmins: (page = 1, q = '', limit = 25, archived = false) =>
     request.get<AdminPage>('/admins', { params: { page, limit, archived, ...(q ? { q } : {}) } }),
+  getAdminCheckpointActivity: (adminId: string, page = 1, limit = 5) =>
+    request.get<import('../features/admins/models').AdminCheckpointActivityPage>(`/admins/${encodeURIComponent(adminId)}/checkpoint-activity`, { params: { page, limit } }),
   createAdmin: (payload: Pick<AdminRecord, 'name' | 'email' | 'role'> & { temporary_password: string }) =>
     request.post<AdminRecord>('/admins', payload),
   updateAdmin: (adminId: string, payload: { name?: string; role?: 'admin' | 'super_admin'; password?: string }) =>

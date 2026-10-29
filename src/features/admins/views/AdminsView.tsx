@@ -49,6 +49,7 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
     handleDeleteAdmin,
     uploadAdminAvatar,
     removeAdminAvatar,
+    loadAdminCheckpointActivity,
   } = useAdminsViewModel();
   const [roleFilter, setRoleFilter] = useState('all');
   const [selectedAdminId, setSelectedAdminId] = useState<string | null>(null);
@@ -330,6 +331,7 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
         onDelete={setDeletingAdmin}
         onUploadAvatar={uploadAdminAvatar}
         onRemoveAvatar={removeAdminAvatar}
+        onLoadCheckpointActivity={loadAdminCheckpointActivity}
       />
 
       {/* Delete Admin Confirmation Modal */}

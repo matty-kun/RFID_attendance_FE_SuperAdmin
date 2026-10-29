@@ -1,9 +1,12 @@
 import { adminService } from '../../../services/adminService';
-import { AdminRecord, AdminPage, CreateAdminPayload, UpdateAdminPayload } from '../models';
+import { AdminRecord, AdminPage, AdminCheckpointActivityPage, CreateAdminPayload, UpdateAdminPayload } from '../models';
 
 export const adminManagementService = {
   async getAdmins(page = 1, q = '', archived = false): Promise<AdminPage> {
     return adminService.getAdmins(page, q, 25, archived);
+  },
+  async getCheckpointActivity(adminId: string, page = 1): Promise<AdminCheckpointActivityPage> {
+    return adminService.getAdminCheckpointActivity(adminId, page);
   },
 
   async createAdmin(payload: CreateAdminPayload): Promise<AdminRecord> {

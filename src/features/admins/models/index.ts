@@ -11,6 +11,24 @@ export interface AdminRecord {
 
 export interface AdminPage { admins: AdminRecord[]; total: number; page: number; limit: number; }
 
+export interface AdminCheckpointActivityRecord {
+  id: string;
+  type: 'time_in' | 'time_out';
+  recorded_at: string;
+  student_name: string;
+  session_name: string;
+  session_date: string | null;
+  event_name: string;
+  location_name: string;
+}
+
+export interface AdminCheckpointActivityPage {
+  records: AdminCheckpointActivityRecord[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface CreateAdminPayload {
   name: string;
   email: string;

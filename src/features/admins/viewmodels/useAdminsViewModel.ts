@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { AdminRecord, UpdateAdminPayload } from '../models';
+import { AdminRecord, AdminCheckpointActivityPage, UpdateAdminPayload } from '../models';
 import { adminManagementService } from '../services';
 import { toast } from '../../../context';
 import { useAuth } from '../../auth/context/AuthContext';
@@ -37,6 +37,7 @@ export interface UseAdminsViewModelReturn {
   handleDeleteAdmin: (adminId: string) => Promise<boolean>;
   uploadAdminAvatar: (adminId: string, image: string) => Promise<string>;
   removeAdminAvatar: (adminId: string) => Promise<void>;
+  loadAdminCheckpointActivity: (adminId: string, page: number) => Promise<AdminCheckpointActivityPage>;
 }
 
 export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
@@ -200,6 +201,9 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     }
   };
 
+  const loadAdminCheckpointActivity = useCallback((adminId: string, page: number) =>
+    adminManagementService.getCheckpointActivity(adminId, page), []);
+
   return {
     admins,
     isLoading,
@@ -233,5 +237,6 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     handleDeleteAdmin,
     uploadAdminAvatar,
     removeAdminAvatar,
+    loadAdminCheckpointActivity,
   };
 };
