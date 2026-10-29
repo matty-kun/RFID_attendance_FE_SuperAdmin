@@ -4,12 +4,15 @@ import { Button } from '../../../components/common/Button';
 import { studentService } from '../services/studentService';
 import type { StudentRecord } from '../models';
 import { formatYearLevel } from '../../../utils/formatters';
+import { isValidRfidUid } from '../../../utils/rfid';
+import { soundManager } from '../../../utils/audioFeedback';
 import {
   Radio,
   ExternalLink,
   Search,
   Loader2,
   X,
+  AlertCircle,
 } from 'lucide-react';
 import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
@@ -36,6 +39,7 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
   const [activeUid, setActiveUid] = useState<string | null>(null);
   const [matchedStudent, setMatchedStudent] = useState<StudentRecord | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Quick Pair to Student
   const [studentSearchFilter, setStudentSearchFilter] = useState('');
@@ -43,11 +47,14 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const lastInputTimeRef = useRef<number>(0);
+  const scanRequestIdRef = useRef(0);
+  const lastInspectedUidRef = useRef<string | null>(null);
 
   // Reset & focus on open
   useEffect(() => {
     if (isOpen) {
+      scanRequestIdRef.current += 1;
+      lastInspectedUidRef.current = null;
       setScannedUid('');
       setActiveUid(null);
       setMatchedStudent(null);
@@ -85,20 +92,35 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
   }, [isOpen]);
 
   // Lookup Card UID
-  const inspectCard = async (rawUid: string) => {
+  const inspectCard = async (rawUid: string, force = false) => {
     const clean = rawUid.trim().toUpperCase();
     if (!clean) return;
+    if (!force && lastInspectedUidRef.current === clean) return;
 
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     }
 
+    if (!isValidRfidUid(clean)) {
+      scanRequestIdRef.current += 1;
+      lastInspectedUidRef.current = null;
+      setValidationError('Invalid card UID format. Tap a physical RFID card or enter a 10-digit UID.');
+      setActiveUid(null);
+      setMatchedStudent(null);
+      setIsSearching(false);
+      soundManager.playErrorBuzz();
+      return;
+    }
+
+    const requestId = ++scanRequestIdRef.current;
+    lastInspectedUidRef.current = clean;
+    setValidationError(null);
     setActiveUid(clean);
     setIsSearching(true);
     setStudentSearchFilter('');
 
-    // Keep input updated with inspected UID without selecting/highlighting text
+    // Keep the inspected UID visible without highlighting it.
     setScannedUid(clean);
 
     // 1. Check in-memory list first (instant 0ms)
@@ -114,42 +136,42 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
       const res = await studentService.getStudents(1, clean);
       const backendStudents: StudentRecord[] = res?.students || [];
       const remoteMatch = backendStudents.find((s: StudentRecord) => s.rfid_uid?.trim().toUpperCase() === clean);
-      setMatchedStudent(remoteMatch || null);
+      if (requestId === scanRequestIdRef.current) setMatchedStudent(remoteMatch || null);
     } catch {
-      setMatchedStudent(null);
+      if (requestId === scanRequestIdRef.current) setMatchedStudent(null);
     } finally {
-      setIsSearching(false);
+      if (requestId === scanRequestIdRef.current) setIsSearching(false);
     }
   };
 
   const handleInputChange = (rawVal: string) => {
-    const now = Date.now();
-    const timeDelta = now - lastInputTimeRef.current;
-    lastInputTimeRef.current = now;
-
     let nextVal = rawVal;
 
-    // If a card was already inspected or active on screen,
-    // and a new scan begins after a pause (> 300ms):
-    if (activeUid && timeDelta > 300) {
-      // Instantly erase previous card state and student info
+    // When a new scan appends to the previous UID, keep only the new burst.
+    if (activeUid && nextVal.length > 10) {
+      // The old UID is still in the input and new digits got appended.
+      // Extract only the new trailing characters.
+      if (nextVal.startsWith(scannedUid)) {
+        nextVal = nextVal.slice(scannedUid.length);
+      } else if (nextVal.endsWith(scannedUid)) {
+        nextVal = nextVal.slice(0, nextVal.length - scannedUid.length);
+      } else {
+        nextVal = nextVal.slice(-10);
+      }
+
+      // Clear old state immediately for the new scan
       setActiveUid(null);
       setMatchedStudent(null);
       setStudentSearchFilter('');
-
-      // Extract new character(s) if text was appended to old UID
-      if (rawVal.startsWith(scannedUid) && rawVal.length > scannedUid.length) {
-        nextVal = rawVal.slice(scannedUid.length);
-      } else if (rawVal.endsWith(scannedUid) && rawVal.length > scannedUid.length) {
-        nextVal = rawVal.slice(0, rawVal.length - scannedUid.length);
-      } else if (rawVal.length > 10) {
-        nextVal = rawVal.slice(-10);
-      }
-    } else if (nextVal.length > 10) {
-      // If RFID burst appended to existing 10 digits without selection, take the latest 10
+    } else if (!activeUid && nextVal.length > 10) {
+      // If RFID burst appended without prior selection, take latest 10
       nextVal = nextVal.slice(-10);
     }
 
+    if (nextVal !== scannedUid) {
+      lastInspectedUidRef.current = null;
+      scanRequestIdRef.current += 1;
+    }
     setScannedUid(nextVal);
 
     if (debounceTimerRef.current) {
@@ -159,29 +181,45 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
 
     const clean = nextVal.trim();
 
-    // Standard RFID card UID length: auto-enter IMMEDIATELY with 0ms delay
-    if (clean.length === 10) {
+    // Standard 10-digit RFID card UID: auto-enter IMMEDIATELY with 0ms delay
+    if (clean.length === 10 && /^\d{10}$/.test(clean)) {
       void inspectCard(clean);
       return;
     }
 
-    // Auto-enter on burst scanner input (250ms debounce) for other UID lengths
-    if (clean.length >= 4) {
+    // Auto-enter only if input matches valid physical RFID format
+    if (isValidRfidUid(clean)) {
       debounceTimerRef.current = setTimeout(() => {
         void inspectCard(clean);
       }, 250);
+    } else if (activeUid) {
+      // Clear previous active card state if user edits to non-RFID text
+      setActiveUid(null);
+      setMatchedStudent(null);
     }
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    void inspectCard(scannedUid);
+    const clean = scannedUid.trim();
+    if (!clean) return;
+    if (!isValidRfidUid(clean)) {
+      setValidationError('Invalid card UID format. Tap a physical RFID card or enter a 10-digit UID.');
+      setActiveUid(null);
+      setMatchedStudent(null);
+      soundManager.playErrorBuzz();
+      return;
+    }
+    void inspectCard(clean);
   };
 
   const handleReset = () => {
+    scanRequestIdRef.current += 1;
+    lastInspectedUidRef.current = null;
     setScannedUid('');
     setActiveUid(null);
     setMatchedStudent(null);
+    setValidationError(null);
     setStudentSearchFilter('');
     setPairingStudentId(null);
     setTimeout(() => inputRef.current?.focus(), 50);
@@ -194,7 +232,7 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
       const res = await onQuickPair(studentId, activeUid);
       if (res?.success) {
         // Re-inspect to immediately display the paired student card
-        await inspectCard(activeUid);
+        await inspectCard(activeUid, true);
       }
     } finally {
       setPairingStudentId(null);
@@ -222,37 +260,59 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
       icon={<Radio className="h-5 w-5 text-[#7C27BD]" />}
       maxWidth="lg"
     >
-      <div className="flex flex-col h-full space-y-6 pt-1">
+      <div className="flex min-h-full flex-col space-y-6 pt-1 pb-6">
         {/* Sleek Auto-Sensing Scanner Bar */}
-        <form onSubmit={handleFormSubmit} className="relative">
-          <div className="relative flex items-center">
-            <div className="absolute left-3.5 flex items-center pointer-events-none text-[#7C27BD]">
-              <Radio className={`h-4 w-4 ${isSearching ? 'animate-pulse text-[#A855F7]' : ''}`} />
+        <div className="space-y-2">
+          <form onSubmit={handleFormSubmit} className="relative">
+            <div className="relative flex items-center">
+              <div className="absolute left-3.5 flex items-center pointer-events-none">
+                <Radio
+                  className={`h-4 w-4 transition-colors ${
+                    validationError
+                      ? 'text-[#EF3340]'
+                      : isSearching
+                      ? 'animate-pulse text-[#A855F7]'
+                      : 'text-[#7C27BD]'
+                  }`}
+                />
+              </div>
+              <input
+                ref={inputRef}
+                type="text"
+                value={scannedUid}
+                onChange={(e) => handleInputChange(e.target.value)}
+                placeholder="Tap physical card on reader..."
+                className={`w-full pl-10 pr-20 py-3 rounded-2xl border-2 bg-white text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none transition-all shadow-xs ${
+                  validationError
+                    ? 'border-[#EF3340] focus:border-[#EF3340] focus:ring-4 focus:ring-red-100'
+                    : 'border-[#D8B4ED] focus:border-[#7C27BD] focus:ring-4 focus:ring-purple-100'
+                }`}
+                autoFocus
+              />
+              {scannedUid && (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  title="Clear input"
+                  className="absolute right-3 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
-            <input
-              ref={inputRef}
-              type="text"
-              value={scannedUid}
-              onChange={(e) => handleInputChange(e.target.value)}
-              placeholder="Tap physical card on reader..."
-              className="w-full pl-10 pr-20 py-3 rounded-2xl border-2 border-brand-200/80 focus:border-[#7C27BD] bg-white text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:ring-4 focus:ring-purple-100 transition-all shadow-xs"
-              autoFocus
-            />
-            {scannedUid && (
-              <button
-                type="button"
-                onClick={handleReset}
-                title="Clear input"
-                className="absolute right-3 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </form>
+          </form>
+
+          {/* Validation Error Banner */}
+          {validationError && (
+            <div className="flex items-center gap-2 rounded-2xl bg-[#FDE8EA] border border-[#EF3340]/20 px-3.5 py-2.5 text-xs font-bold text-[#B91C2A] animate-in fade-in duration-150">
+              <AlertCircle className="h-4 w-4 shrink-0 text-[#EF3340]" />
+              <span>{validationError}</span>
+            </div>
+          )}
+        </div>
 
         {/* STATE 0: Idle / Waiting for Card Tap */}
-        {!activeUid && !isSearching && (
+        {!activeUid && !isSearching && !validationError && (
           <div className="flex-1 flex flex-col items-center justify-center py-12 px-4 text-center space-y-4">
             <div className="relative flex items-center justify-center">
               <div className="absolute h-36 w-36 rounded-full bg-purple-100/50 animate-ping opacity-30 pointer-events-none" />
@@ -339,8 +399,8 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
         )}
 
         {/* STATE 2: Card is Available / Unassigned */}
-        {activeUid && !isSearching && !matchedStudent && (
-          <div className="space-y-4 pt-1 animate-in fade-in slide-in-from-right-3 duration-200">
+        {activeUid && !isSearching && !matchedStudent && isValidRfidUid(activeUid) && (
+          <div className="shrink-0 space-y-4 pt-1 animate-in fade-in slide-in-from-right-3 duration-200">
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
@@ -373,7 +433,7 @@ export const CardInspectorDrawer: React.FC<CardInspectorDrawerProps> = ({
 
               {/* List of Cardless Students */}
               {cardlessStudents.length > 0 ? (
-                <div className="divide-y divide-slate-100 max-h-[300px] overflow-y-auto pr-1">
+                <div className="divide-y divide-slate-100 pr-1">
                   {filteredCardless.length > 0 ? (
                     filteredCardless.map((student) => {
                       const isThisPairing = pairingStudentId === student.id;

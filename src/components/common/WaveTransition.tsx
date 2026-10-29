@@ -59,7 +59,6 @@ export const WaveTransition: React.FC<WaveTransitionProps> = ({
         style={getTransitionStyle(0)}
         className="absolute inset-y-0 w-[150vw] -left-[25vw] flex items-stretch z-10"
       >
-        {!isLtr && (
           <svg
             viewBox="0 0 100 1000"
             preserveAspectRatio="none"
@@ -67,9 +66,7 @@ export const WaveTransition: React.FC<WaveTransitionProps> = ({
           >
             <path d="M100,0 C30,160 0,320 50,500 C100,680 15,820 100,1000 Z" fill="currentColor" />
           </svg>
-        )}
         <div className="flex-1 bg-gradient-to-r from-[#C084FC] via-[#A855F7] to-[#9333EA] shadow-2xl" />
-        {isLtr && (
           <svg
             viewBox="0 0 100 1000"
             preserveAspectRatio="none"
@@ -77,7 +74,6 @@ export const WaveTransition: React.FC<WaveTransitionProps> = ({
           >
             <path d="M0,0 C70,160 100,320 50,500 C0,680 85,820 0,1000 Z" fill="currentColor" />
           </svg>
-        )}
       </div>
 
       {/* Wave Layer 2 (Vibrant Brand Purple - Mid Wave) */}
@@ -85,7 +81,6 @@ export const WaveTransition: React.FC<WaveTransitionProps> = ({
         style={getTransitionStyle(1)}
         className="absolute inset-y-0 w-[150vw] -left-[25vw] flex items-stretch z-20"
       >
-        {!isLtr && (
           <svg
             viewBox="0 0 100 1000"
             preserveAspectRatio="none"
@@ -93,9 +88,7 @@ export const WaveTransition: React.FC<WaveTransitionProps> = ({
           >
             <path d="M100,0 C70,140 10,290 60,470 C110,650 25,790 100,1000 Z" fill="currentColor" />
           </svg>
-        )}
         <div className="flex-1 bg-gradient-to-r from-[#9333EA] via-[#8B2CCB] to-[#7026B7] shadow-2xl" />
-        {isLtr && (
           <svg
             viewBox="0 0 100 1000"
             preserveAspectRatio="none"
@@ -103,7 +96,6 @@ export const WaveTransition: React.FC<WaveTransitionProps> = ({
           >
             <path d="M0,0 C30,140 90,290 40,470 C-10,650 75,790 0,1000 Z" fill="currentColor" />
           </svg>
-        )}
       </div>
 
       {/* Wave Layer 3 (Deep Plum - Full Coverage Base Wave with Hawi Sprinting) */}
@@ -111,7 +103,6 @@ export const WaveTransition: React.FC<WaveTransitionProps> = ({
         style={getTransitionStyle(2)}
         className="absolute inset-y-0 w-[150vw] -left-[25vw] flex items-stretch z-30"
       >
-        {!isLtr && (
           <svg
             viewBox="0 0 100 1000"
             preserveAspectRatio="none"
@@ -119,11 +110,9 @@ export const WaveTransition: React.FC<WaveTransitionProps> = ({
           >
             <path d="M100,0 C20,200 80,360 30,540 C-20,720 70,860 100,1000 Z" fill="currentColor" />
           </svg>
-        )}
 
         <div className="flex-1 bg-gradient-to-r from-[#451475] via-[#351059] to-[#24133F] relative shadow-2xl" />
 
-        {isLtr && (
           <svg
             viewBox="0 0 100 1000"
             preserveAspectRatio="none"
@@ -131,7 +120,6 @@ export const WaveTransition: React.FC<WaveTransitionProps> = ({
           >
             <path d="M0,0 C80,200 20,360 70,540 C120,720 30,860 0,1000 Z" fill="currentColor" />
           </svg>
-        )}
 
         {/* Viewport-Centered Hawi Sprinting Mascot & Copy */}
         <div

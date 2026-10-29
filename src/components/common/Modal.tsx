@@ -9,7 +9,7 @@ export interface ModalProps {
   title: string;
   description?: string;
   children: React.ReactNode;
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl';
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl';
   zIndex?: number;
 }
 
@@ -57,6 +57,10 @@ export const Modal: React.FC<ModalProps> = ({
     md: 'max-w-md',
     lg: 'max-w-lg',
     xl: 'max-w-xl',
+    '2xl': 'max-w-2xl',
+    '3xl': 'max-w-3xl',
+    '4xl': 'max-w-4xl',
+    '5xl': 'max-w-5xl',
   };
 
   return createPortal(
@@ -76,7 +80,7 @@ export const Modal: React.FC<ModalProps> = ({
         aria-modal="true"
         aria-label={title}
         className={cn(
-          'w-full bg-white rounded-2xl border border-[#E5E0EB] overflow-hidden transition-all duration-180 cubic-bezier(0.16,1,0.3,1)',
+          'flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden rounded-2xl border border-[#E5E0EB] bg-white transition-all duration-180 cubic-bezier(0.16,1,0.3,1)',
           maxW[maxWidth],
           isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'
         )}
@@ -95,7 +99,7 @@ export const Modal: React.FC<ModalProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-6">{children}</div>
+        <div className="min-h-0 overflow-y-auto p-6">{children}</div>
       </div>
     </div>,
     document.body

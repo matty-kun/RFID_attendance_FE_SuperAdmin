@@ -3,15 +3,54 @@ import { useLocationsViewModel } from '../viewmodels';
 import { Button } from '../../../components/common/Button';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
-import { MapPin, Plus, RefreshCw, Search, Sparkles } from 'lucide-react';
+import { DeleteConfirmationModal } from '../../../components/common/DeleteConfirmationModal';
+import type { LocationRecord } from '../models';
+import { MapPin, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import hawiLooking from '../../../assets/illustrations/Hawi Finding.png';
 
 export const LocationsView = () => {
   const {
     locations, isLoading, error, isModalOpen, setIsModalOpen, isSubmitting, formError,
-    name, setName, loadLocations, handleCreate,
+    name, setName, loadLocations, handleCreate, handleUpdate, handleDelete,
   } = useLocationsViewModel();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [editing, setEditing] = useState<LocationRecord | null>(null);
+  const [deleting, setDeleting] = useState<LocationRecord | null>(null);
+  const [editName, setEditName] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [actionBusy, setActionBusy] = useState(false);
+
+  const openEdit = (location: LocationRecord) => {
+    setEditing(location);
+    setEditName(location.name);
+    setActionError('');
+  };
+
+  const saveEdit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!editing || !editName.trim()) return;
+    setActionBusy(true);
+    setActionError('');
+    try {
+      await handleUpdate(editing.id, editName);
+      setEditing(null);
+    } catch (error: any) {
+      setActionError(error?.response?.data?.error?.message || 'Could not update checkpoint.');
+    } finally { setActionBusy(false); }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    setActionBusy(true);
+    setActionError('');
+    try {
+      await handleDelete(deleting.id);
+      setDeleting(null);
+    } catch (error: any) {
+      setActionError(error?.response?.data?.error?.message || 'Could not delete checkpoint.');
+    } finally { setActionBusy(false); }
+  };
 
   const filteredLocations = useMemo(() => {
     if (!searchQuery.trim()) return locations;
@@ -32,7 +71,7 @@ export const LocationsView = () => {
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex h-10 min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] sm:max-w-[310px]">
+        <label className="flex h-10 min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] transition-all focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100 sm:max-w-[310px]">
           <Search className="h-4 w-4" />
           <span className="sr-only">Search checkpoints</span>
           <input
@@ -45,15 +84,6 @@ export const LocationsView = () => {
         </label>
         <div className="ml-auto flex items-center gap-2">
           <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => void loadLocations()}
-            isLoading={isLoading}
-            leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
-          >
-            Refresh
-          </Button>
-          <Button
             variant="primary"
             leftIcon={<Plus className="h-4 w-4" />}
             onClick={() => setIsModalOpen(true)}
@@ -64,7 +94,7 @@ export const LocationsView = () => {
       </div>
 
       {/* Locations Table */}
-      <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-2.5">
+      <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-3">
         {error && (
           <div role="alert" className="mb-2 flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
             <span>{error}</span>
@@ -73,23 +103,27 @@ export const LocationsView = () => {
             </button>
           </div>
         )}
-        <table className="w-full min-w-[500px] text-left text-xs">
+        <table className="w-full min-w-[620px] text-left text-xs">
           <thead>
-            <tr className="bg-[#F4F6FA] text-[10px] uppercase text-[#637596]">
-              <th className="rounded-l-xl px-3 py-3 font-medium">Checkpoint Location</th>
-              <th className="rounded-r-xl px-3 py-3 font-medium">Registered Date</th>
+            <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500">
+              <th className="px-3 py-3">Checkpoint location</th>
+              <th className="px-3 py-3">Registered date</th>
+              <th className="px-3 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={2} className="py-10 text-center text-xs text-[#756883]">
-                  Loading checkpoints…
+                <td colSpan={3} className="py-10 text-center text-xs text-[#756883]">
+                  <div role="status" className="flex flex-col items-center gap-2">
+                    <img src={hawiLooking} alt="" className="h-24 w-24 object-contain" />
+                    <span>Hawi is looking for checkpoints…</span>
+                  </div>
                 </td>
               </tr>
             ) : error && locations.length === 0 ? (
               <tr>
-                <td colSpan={2} className="py-10 text-center text-xs text-rose-600">
+                <td colSpan={3} className="py-10 text-center text-xs text-rose-600">
                   Unable to load checkpoints.{' '}
                   <button
                     type="button"
@@ -102,7 +136,7 @@ export const LocationsView = () => {
               </tr>
             ) : filteredLocations.length === 0 ? (
               <tr>
-                <td colSpan={2} className="py-10 text-center text-xs text-[#756883]">
+                <td colSpan={3} className="py-10 text-center text-xs text-[#756883]">
                   {searchQuery
                     ? 'No checkpoints match your search.'
                     : 'No checkpoints registered yet. Click "Add Location" to register one.'}
@@ -110,7 +144,7 @@ export const LocationsView = () => {
               </tr>
             ) : (
               filteredLocations.map((location) => (
-                <tr key={location.id} className="border-b border-[#EEF0F4] last:border-b-0 hover:bg-[#FAF8FC]">
+                <tr key={location.id} className="border-b border-slate-200 last:border-b-0 transition-colors hover:bg-slate-50">
                   <td className="px-3 py-3.5">
                     <div className="flex items-center gap-2 font-bold text-slate-900">
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-[#FFF3D8] text-[#F59E0B]">
@@ -123,6 +157,12 @@ export const LocationsView = () => {
                     {location.created_at
                       ? new Date(location.created_at).toLocaleDateString('en-PH', { dateStyle: 'medium' })
                       : '—'}
+                  </td>
+                  <td className="px-3 py-3.5 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button type="button" onClick={() => openEdit(location)} aria-label={`Edit ${location.name}`} className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-[#E5E0EB] bg-white text-[#7026B7] transition-colors hover:border-[#B78BE9] hover:bg-[#F7F0FF] focus-visible:outline-2 focus-visible:outline-brand-700"><Pencil className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => { setDeleting(location); setActionError(''); }} aria-label={`Delete ${location.name}`} className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-[#E5E0EB] bg-white text-[#EF3340] transition-colors hover:border-rose-300 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-rose-500"><Trash2 className="h-4 w-4" /></button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -166,13 +206,32 @@ export const LocationsView = () => {
               type="submit"
               variant="primary"
               isLoading={isSubmitting}
-              leftIcon={<Sparkles className="h-4 w-4" />}
             >
               Add Location
             </Button>
           </div>
         </form>
       </Modal>
+      <Modal isOpen={Boolean(editing)} onClose={() => { if (!actionBusy) setEditing(null); }} title="Edit checkpoint" description="Update the location name shown in attendance and session setup.">
+        <form onSubmit={(event) => void saveEdit(event)} className="mt-2 space-y-4">
+          {actionError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs font-semibold text-rose-700">{actionError}</p>}
+          <Input label="Location name" value={editName} onChange={(event) => setEditName(event.target.value)} maxLength={150} required />
+          <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
+            <Button type="button" variant="secondary" onClick={() => setEditing(null)} disabled={actionBusy}>Cancel</Button>
+            <Button type="submit" variant="primary" isLoading={actionBusy}>Save changes</Button>
+          </div>
+        </form>
+      </Modal>
+      <DeleteConfirmationModal
+        isOpen={Boolean(deleting)}
+        onClose={() => { if (!actionBusy) setDeleting(null); }}
+        onConfirm={() => void confirmDelete()}
+        title="Delete checkpoint"
+        itemName={deleting?.name}
+        description={<><span>Delete <strong>{deleting?.name}</strong>? A checkpoint assigned to a session or used in attendance records cannot be deleted.</span>{actionError && <span role="alert" className="mt-3 block rounded-lg bg-rose-50 p-3 font-semibold text-rose-700">{actionError}</span>}</>}
+        confirmLabel="Delete checkpoint"
+        isDeleting={actionBusy}
+      />
     </div>
   );
 };

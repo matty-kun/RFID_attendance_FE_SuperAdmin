@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, ChevronDown, FileSpreadsheet, FileJson, Printer, Check } from 'lucide-react';
+import { Upload, ChevronDown, FileSpreadsheet, FileText, Check } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
-export type ExportFormat = 'csv' | 'xlsx' | 'json' | 'pdf';
+export type ExportFormat = 'xlsx' | 'pdf' | 'docx';
 
 export interface ExportButtonProps {
   onExport: (format: ExportFormat) => void;
@@ -15,7 +15,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
   onExport,
   disabled = false,
   className,
-  defaultFormat = 'csv',
+  defaultFormat = 'xlsx',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>(defaultFormat);
@@ -54,28 +54,22 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
 
   const formats = [
     {
-      id: 'csv' as ExportFormat,
-      label: 'CSV Spreadsheet (.csv)',
-      desc: 'Comma-separated values for Excel or Google Sheets',
+      id: 'xlsx' as ExportFormat,
+      label: 'Excel (.xlsx)',
+      desc: 'Spreadsheet of the selected attendance records',
       icon: <FileSpreadsheet className="h-4 w-4 text-emerald-600" />,
     },
     {
-      id: 'xlsx' as ExportFormat,
-      label: 'Excel Document (.xls)',
-      desc: 'Formatted spreadsheet for Microsoft Excel',
-      icon: <FileSpreadsheet className="h-4 w-4 text-blue-600" />,
-    },
-    {
-      id: 'json' as ExportFormat,
-      label: 'JSON Data (.json)',
-      desc: 'Machine-readable structured raw data',
-      icon: <FileJson className="h-4 w-4 text-amber-600" />,
-    },
-    {
       id: 'pdf' as ExportFormat,
-      label: 'Print / Save as PDF',
-      desc: 'Printer-friendly printable attendance report',
-      icon: <Printer className="h-4 w-4 text-purple-600" />,
+      label: 'PDF (.pdf)',
+      desc: 'Downloadable attendance report',
+      icon: <FileText className="h-4 w-4 text-red-600" />,
+    },
+    {
+      id: 'docx' as ExportFormat,
+      label: 'Word (.docx)',
+      desc: 'Editable attendance report',
+      icon: <FileText className="h-4 w-4 text-blue-700" />,
     },
   ];
 
@@ -146,7 +140,9 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
                   className={cn(
                     'flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left transition-colors',
                     isSelected
-                      ? 'bg-[#F0E8FC] text-brand-700 font-bold'
+                      ? fmt.id === 'xlsx'
+                        ? 'bg-emerald-50 text-emerald-700 font-bold'
+                        : 'bg-[#F0E8FC] text-brand-700 font-bold'
                       : 'hover:bg-[#FAF8FC] text-[#24133F]'
                   )}
                 >
@@ -154,7 +150,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-bold flex items-center justify-between">
                       <span>{fmt.label}</span>
-                      {isSelected && <Check className="h-3.5 w-3.5 text-brand-700 ml-1" />}
+                      {isSelected && <Check className={cn('h-3.5 w-3.5 ml-1', fmt.id === 'xlsx' ? 'text-emerald-700' : 'text-brand-700')} />}
                     </div>
                     <div className="text-[10px] text-[#756883] mt-0.5 line-clamp-1 font-normal">
                       {fmt.desc}

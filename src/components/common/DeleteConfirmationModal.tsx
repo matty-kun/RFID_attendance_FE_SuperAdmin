@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Trash2, X } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { Button } from './Button';
+import hawiTrashCanImg from '../../assets/illustrations/Hawi Trash Can.png';
 
 export interface DeleteConfirmationModalProps {
   isOpen: boolean;
@@ -31,7 +32,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
   cancelLabel = 'Cancel',
   isDeleting = false,
   icon,
-  illustration,
+  illustration = hawiTrashCanImg,
   confirmIcon,
   variant = 'danger',
 }) => {

@@ -22,9 +22,12 @@ import {
   Loader2,
   Camera,
   Zap,
+  Trash2,
 } from 'lucide-react';
+import { DeleteStudentConfirmationModal } from './DeleteStudentConfirmationModal';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
+import hawiBoxImg from '../../../assets/illustrations/Hawi Box.png';
 import type { StudentRecord } from '../models';
 import { formatYearLevel } from '../../../utils/formatters';
 
@@ -53,9 +56,11 @@ export interface StudentProfileDrawerProps {
   onOpenRapidScan: () => void;
   onUpdateStudent?: (studentId: string, payload: { name: string; course: string; year_level: number }) => Promise<any>;
   isArchived?: boolean;
-  onArchiveStudent?: (studentId: string) => void;
+  onArchiveStudent?: (studentId: string) => Promise<boolean>;
   onRestoreStudent?: (studentId: string) => void;
   onUploadAvatar?: (studentId: string, imageBase64: string) => Promise<string>;
+  onRemoveAvatar?: (studentId: string) => Promise<void>;
+  onDeleteStudent?: (studentId: string) => Promise<boolean>;
 }
 
 const COURSE_OPTIONS = [
@@ -280,12 +285,16 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   onArchiveStudent,
   onRestoreStudent,
   onUploadAvatar,
+  onRemoveAvatar,
+  onDeleteStudent,
 }) => {
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
   const [filterType, setFilterType] = useState<'all' | 'time_in' | 'time_out'>('all');
   const [copiedUid, setCopiedUid] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Photo Upload & Centering/Crop State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -350,6 +359,16 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     } finally {
       setIsUploadingPhoto(false);
     }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!onRemoveAvatar || !currentStudent || isUploadingPhoto) return;
+    setIsUploadingPhoto(true);
+    try {
+      await onRemoveAvatar(currentStudent.id);
+      activeStudentRef.current = { ...currentStudent, avatar_url: null };
+    } catch { /* The viewmodel shows the error toast. */ }
+    finally { setIsUploadingPhoto(false); }
   };
 
   // Inline RFID Card Scanning & Pairing with Auto-Enter
@@ -695,6 +714,16 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
 
               <button
                 type="button"
+                onClick={() => setIsDeleteModalOpen(true)}
+                title="Delete Student Permanently"
+                aria-label="Delete Student Permanently"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 hover:bg-rose-600 text-white border border-white/25 backdrop-blur-md shadow-xs active:scale-95 transition-all cursor-pointer"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+
+              <button
+                type="button"
                 onClick={() => {
                   setIsEditingName(false);
                   setIsCourseMenuOpen(false);
@@ -720,7 +749,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             />
 
             {currentStudent.avatar_url ? (
-              <div className="relative group/avatar">
+              <div className="flex flex-col items-center">
+                <div className="relative group/avatar">
                 <img
                   src={currentStudent.avatar_url}
                   alt={currentStudent.name}
@@ -739,6 +769,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                     <Camera className="h-4 w-4 text-[#7C27BD]" />
                   )}
                 </button>
+                </div>
+                <button type="button" onClick={() => void handleRemovePhoto()} disabled={isUploadingPhoto || isArchived} className="mt-3 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-rose-700 shadow-sm transition-colors hover:bg-rose-50 disabled:opacity-50">Remove photo</button>
               </div>
             ) : (
               <div className="relative flex flex-col items-center">
@@ -1204,11 +1236,12 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       {/* Archive Student Confirmation Modal */}
       <Modal
         isOpen={isArchiveConfirmOpen}
-        onClose={() => setIsArchiveConfirmOpen(false)}
+        onClose={() => { if (!isArchiving) setIsArchiveConfirmOpen(false); }}
         title="Archive Student"
         maxWidth="md"
       >
         <div className="space-y-4 pt-1">
+          <img src={hawiBoxImg} alt="Hawi with an archive box" className="mx-auto h-24 w-24 object-contain" />
           <p className="text-sm text-[#24133F] leading-relaxed">
             Are you sure you want to archive <span className="font-extrabold text-[#7026B7]">{currentStudent.name}</span> (<span className="font-extrabold text-[#24133F]">{currentStudent.student_id}</span>)?
           </p>
@@ -1239,6 +1272,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               type="button"
               variant="secondary"
               size="md"
+              disabled={isArchiving}
               onClick={() => setIsArchiveConfirmOpen(false)}
             >
               Cancel
@@ -1247,12 +1281,15 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               type="button"
               variant="danger"
               size="md"
+              disabled={isArchiving}
               onClick={() => {
-                setIsArchiveConfirmOpen(false);
-                onArchiveStudent?.(currentStudent.id);
-                onClose();
+                if (!onArchiveStudent || isArchiving) return;
+                setIsArchiving(true);
+                void onArchiveStudent(currentStudent.id).then((success) => {
+                  if (success) { setIsArchiveConfirmOpen(false); onClose(); }
+                }).finally(() => setIsArchiving(false));
               }}
-              leftIcon={<Archive className="h-4 w-4" />}
+              leftIcon={isArchiving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
             >
               Archive Student
             </Button>
@@ -1330,6 +1367,22 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         imageSrc={rawImageForCrop}
         onConfirmCrop={handleConfirmCrop}
         isSaving={isUploadingPhoto}
+      />
+
+      {/* Delete Student Confirmation Modal */}
+      <DeleteStudentConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        student={currentStudent}
+        onConfirmDelete={async (id) => {
+          if (!onDeleteStudent) return false;
+          const ok = await onDeleteStudent(id);
+          if (ok) {
+            setIsDeleteModalOpen(false);
+            onClose();
+          }
+          return ok;
+        }}
       />
     </Drawer>
   );

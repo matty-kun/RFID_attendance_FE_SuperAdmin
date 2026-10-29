@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { CheckCircle2 } from 'lucide-react';
-import { Drawer } from '../../../components/common/Drawer';
+import { Drawer, getOpenDrawerCount } from '../../../components/common/Drawer';
 import { soundManager } from '../../../utils/audioFeedback';
 import { toast } from '../../../context';
+import { isValidRfidUid } from '../../../utils/rfid';
 import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
 import hawiCelebrateImg from '../../../assets/illustrations/Hawi Celebrate.png';
 import type { StudentRecord } from '../models';
@@ -11,18 +12,25 @@ import { formatYearLevel } from '../../../utils/formatters';
 export interface RapidCardScanDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  students?: StudentRecord[];
   cardlessStudents: StudentRecord[];
-  onCardScannedForStudent: (studentId: string, uid: string) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string };
+  onCardScannedForStudent: (
+    studentId: string,
+    uid: string
+  ) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string };
 }
 
 export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
   isOpen,
   onClose,
+  students,
   cardlessStudents,
   onCardScannedForStudent,
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [assignedCount, setAssignedCount] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [queuedCount, setQueuedCount] = useState(0);
   const [lastScanned, setLastScanned] = useState<{
     uid: string;
     studentName: string;
@@ -30,15 +38,56 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
   } | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const isProcessingRef = useRef(false);
+  const activeScanUidRef = useRef<string | null>(null);
+  const lastAssignedStudentIdRef = useRef<string | null>(null);
+  const pendingScansRef = useRef<string[]>([]);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const successTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Reset & pre-warm audio context on open
   useEffect(() => {
     if (isOpen) {
+      soundManager.init();
       setInputValue('');
       setAssignedCount(0);
       setLastScanned(null);
+      isProcessingRef.current = false;
+      activeScanUidRef.current = null;
+      lastAssignedStudentIdRef.current = null;
+      pendingScansRef.current = [];
+      setIsProcessing(false);
+      setQueuedCount(0);
       const timer = setTimeout(() => inputRef.current?.focus(), 120);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      };
     }
+  }, [isOpen]);
+
+  // Global window listener: redirect hardware scanner keystrokes to inputRef if drawer is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleWindowKeyDown = (e: KeyboardEvent) => {
+      // Do not redirect if another drawer is stacked on top
+      if (getOpenDrawerCount() > 1) return;
+
+      const target = e.target as HTMLElement | null;
+      if (target && target.tagName === 'INPUT' && target !== inputRef.current) return;
+      if (target && target.tagName === 'TEXTAREA') return;
+
+      if (document.activeElement !== inputRef.current && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.key.length === 1 || e.key === 'Enter') {
+          inputRef.current?.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleWindowKeyDown);
+    return () => window.removeEventListener('keydown', handleWindowKeyDown);
   }, [isOpen]);
 
   const handleContainerClick = () => {
@@ -48,35 +97,130 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
   const currentStudent = cardlessStudents[0];
   const upcomingStudents = cardlessStudents.slice(1, 4);
 
-  const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const rawUid = (e.currentTarget.value || inputValue).trim();
-      setInputValue('');
+  const processScan = useCallback(
+    async (rawUid: string) => {
+      const clean = rawUid.trim().toUpperCase();
+      if (!clean) return;
 
-      if (!rawUid) return;
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+
+      // Hold a second tap until the first card moves the student queue forward.
+      if (isProcessingRef.current || currentStudent?.id === lastAssignedStudentIdRef.current) {
+        if (clean !== activeScanUidRef.current && pendingScansRef.current.at(-1) !== clean) {
+          pendingScansRef.current.push(clean);
+          setQueuedCount(pendingScansRef.current.length);
+        }
+        setInputValue('');
+        return;
+      }
 
       const targetStudent = currentStudent;
       if (!targetStudent) {
         soundManager.playErrorBuzz();
         toast.info('All cardless students in queue have been assigned.');
+        setInputValue('');
         return;
       }
 
-      const res = await onCardScannedForStudent(targetStudent.id, rawUid);
-      if (res.success) {
-        soundManager.playSuccessBeep();
-        setAssignedCount((prev) => prev + 1);
-        setLastScanned({
-          uid: rawUid,
-          studentName: targetStudent.name,
-          studentId: targetStudent.student_id,
-        });
-        toast.success(`Card linked to ${targetStudent.name}`);
-      } else {
+      // Format validation (< 1ms)
+      if (!isValidRfidUid(clean)) {
         soundManager.playErrorBuzz();
-        toast.error(res.message);
+        toast.error('Invalid RFID card UID format.');
+        setInputValue('');
+        return;
       }
+
+      // In-memory duplicate check (< 1ms)
+      const duplicateStudent = students?.find(
+        (s) => s.rfid_uid?.trim().toUpperCase() === clean && s.id !== targetStudent.id
+      );
+      if (duplicateStudent) {
+        soundManager.playErrorBuzz();
+        toast.error(`Card ${clean} is already assigned to ${duplicateStudent.name} (${duplicateStudent.student_id})!`);
+        setInputValue('');
+        return;
+      }
+
+      isProcessingRef.current = true;
+      activeScanUidRef.current = clean;
+      lastAssignedStudentIdRef.current = targetStudent.id;
+      setIsProcessing(true);
+      setInputValue('');
+
+      // ⚡ INSTANT FEEDBACK (0ms):
+      // Play success chime immediately upon physical card tap!
+      soundManager.playSuccessBeep();
+      setAssignedCount((prev) => prev + 1);
+      setLastScanned({
+        uid: clean,
+        studentName: targetStudent.name,
+        studentId: targetStudent.student_id,
+      });
+
+      // Auto-clear success banner after 1.8s so it doesn't linger
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => {
+        setLastScanned(null);
+      }, 1800);
+
+      // Background card linking with optimistic update
+      try {
+        const res = await onCardScannedForStudent(targetStudent.id, clean);
+        if (!res.success) {
+          lastAssignedStudentIdRef.current = null;
+          soundManager.playErrorBuzz();
+          setAssignedCount((prev) => Math.max(0, prev - 1));
+          setLastScanned(null);
+        }
+      } catch {
+        lastAssignedStudentIdRef.current = null;
+        soundManager.playErrorBuzz();
+        setAssignedCount((prev) => Math.max(0, prev - 1));
+        setLastScanned(null);
+      } finally {
+        isProcessingRef.current = false;
+        activeScanUidRef.current = null;
+        setIsProcessing(false);
+        inputRef.current?.focus();
+      }
+    },
+    [currentStudent, students, onCardScannedForStudent]
+  );
+
+  useEffect(() => {
+    if (!isOpen || isProcessing || !currentStudent || currentStudent.id === lastAssignedStudentIdRef.current) return;
+    const nextUid = pendingScansRef.current.shift();
+    if (!nextUid) return;
+    setQueuedCount(pendingScansRef.current.length);
+    void processScan(nextUid);
+  }, [isOpen, isProcessing, currentStudent, queuedCount, processScan]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setInputValue(val);
+
+    // Auto-detect fast hardware scanner typing (e.g. 10 digits decimal or standard hex)
+    const clean = val.trim().toUpperCase();
+    if (isValidRfidUid(clean) && (clean.length === 10 || clean.length === 8)) {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => {
+        void processScan(clean);
+      }, 40);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const rawUid = (e.currentTarget.value || inputValue).trim();
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      void processScan(rawUid);
     }
   };
 
@@ -95,7 +239,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl bg-[#7026B7] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#621FA3] shadow-[0_4px_0_0_#451475] active:translate-y-[2px] active:shadow-none transition-all"
+            className="rounded-xl bg-[#7026B7] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#621FA3] shadow-[0_4px_0_0_#451475] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
           >
             Done Scanning
           </button>
@@ -112,7 +256,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
                   {cardlessStudents.length} student{cardlessStudents.length === 1 ? '' : 's'} remaining
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-xs text-amber-700 font-semibold">
-                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                   Waiting for card tap
                 </span>
               </div>
@@ -176,23 +320,24 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
 
           {/* HID Keystroke Input Capture */}
           <div className="pt-2 border-t border-[#F1EEF4]">
-            <div className="mb-1.5">
+            <div className="mb-1.5 flex items-center justify-between">
               <label htmlFor="usb-scanner-input" className="text-xs font-bold text-[#24133F]">
                 USB scanner listener
               </label>
+              <span className="text-[11px] text-[#756883]">Auto-captures hardware taps</span>
             </div>
             <input
               id="usb-scanner-input"
               ref={inputRef}
               type="text"
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               placeholder="Tap physical RFID card on scanner..."
-              className="w-full rounded-xl border border-[#D5CEDD] bg-[#FAF8FC] px-3.5 py-2.5 text-xs font-mono font-bold text-[#24133F] placeholder:text-[#A59AAB] focus:border-[#7026B7] focus:bg-white focus:outline-none"
+              className="w-full rounded-xl border border-[#D5CEDD] bg-[#FAF8FC] px-3.5 py-2.5 text-xs font-mono font-bold text-[#24133F] placeholder:text-[#A59AAB] focus:border-[#7026B7] focus:bg-white focus:outline-none transition-colors"
             />
             {lastScanned && (
-              <div className="mt-3 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/80 px-3.5 py-2.5 text-xs text-emerald-900 animate-in fade-in duration-150">
+              <div className="mt-3 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/90 px-3.5 py-2.5 text-xs text-emerald-900 animate-in fade-in duration-150 transition-all">
                 <div className="flex items-center gap-2.5">
                   <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                   <div>
@@ -204,7 +349,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
                     </p>
                   </div>
                 </div>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-md">
                   Linked ✓
                 </span>
               </div>
@@ -215,3 +360,5 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
     </Drawer>
   );
 };
+
+export default RapidCardScanDrawer;

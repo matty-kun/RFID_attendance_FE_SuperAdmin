@@ -7,13 +7,10 @@ export interface ReportTrendDay {
 }
 
 export interface ReportSessionItem {
+  id: string;
   name: string;
-  expected: number;
   timeIns: number;
   timeOuts: number;
-  noRecord: number;
-  rate: string;
-  rateBadgeColor: string;
 }
 
 export interface ReportCheckpointItem {
@@ -21,14 +18,6 @@ export interface ReportCheckpointItem {
   inScans: number;
   outScans: number;
   total: number;
-}
-
-export interface ReportIssueItem {
-  id: string;
-  title: string;
-  subtitle: string;
-  count: number;
-  badgeBg: string;
 }
 
 export interface ReportCourseItem {
@@ -46,7 +35,9 @@ export interface ReportStudentAttendanceRow {
   avatarColor: string;
   course: string;
   session: string;
+  day: string;
+  period: string;
   timeIn: string;
   timeOut: string;
-  status: 'Completed' | 'Missing Out' | 'No Record';
+  status: 'Completed' | 'Missing Out' | 'Time Out Only';
 }

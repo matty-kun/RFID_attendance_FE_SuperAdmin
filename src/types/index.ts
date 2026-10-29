@@ -52,6 +52,7 @@ export interface AdminRecord {
   name: string;
   email: string;
   role: AdminRole;
+  avatar_url?: string | null;
   created_at: string;
 }
 

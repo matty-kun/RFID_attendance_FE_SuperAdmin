@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, LogOut, X } from 'lucide-react';
+import { Bell, LogOut, Shield } from 'lucide-react';
 import { useAuth } from '../../features/auth';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 import hawiWavingImg from '../../assets/illustrations/Hawi Waving.png';
@@ -79,7 +79,7 @@ export function UtilityRail() {
           onClick={() => toggle('notifications')}
           aria-label="Notifications"
           title="Notifications"
-          className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all cursor-pointer shadow-sm ${
+          className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all cursor-pointer active:scale-90 active:translate-y-[1px] ${
             isOpen && panel === 'notifications'
               ? 'border-brand-600 bg-brand-50 text-brand-700 ring-2 ring-brand-300'
               : 'border-slate-200 bg-white text-[#756883] hover:text-brand-700 hover:border-brand-300'
@@ -88,13 +88,27 @@ export function UtilityRail() {
           <Bell className="h-4 w-4" />
         </button>
 
+        {/* Manage Admins Button (In line with notifications and profile) */}
+        <button
+          type="button"
+          onClick={() => {
+            setIsOpen(false);
+            window.dispatchEvent(new CustomEvent('presnt:open-admins-drawer'));
+          }}
+          aria-label="Manage Admins"
+          title="Manage Admins"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 active:scale-90 active:translate-y-[1px] transition-all cursor-pointer"
+        >
+          <Shield className="h-4 w-4" />
+        </button>
+
         {/* Account Avatar Button */}
         <button
           type="button"
           onClick={() => toggle('account')}
           aria-label="Account profile"
           title={user?.name || 'Account'}
-          className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full transition-all cursor-pointer shadow-sm ${
+          className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-slate-200 transition-all cursor-pointer active:scale-90 active:translate-y-[1px] ${
             isOpen && panel === 'account'
               ? 'ring-2 ring-brand-600 ring-offset-2'
               : 'hover:ring-2 hover:ring-brand-300'
@@ -114,77 +128,65 @@ export function UtilityRail() {
           ref={bubbleRef}
           role="region"
           aria-label="Quick actions bubble"
-          className="fixed bottom-26 left-6 md:left-10 z-50 w-[320px] rounded-3xl border border-[#E5E0EB] bg-white p-4 shadow-2xl animate-in fade-in zoom-in-95 slide-in-from-bottom-3 duration-200 text-[#24133F]"
+          className={`fixed left-[92px] z-50 w-[270px] rounded-2xl border border-slate-200/90 bg-white p-3 shadow-xl shadow-[#24133F]/10 animate-in fade-in zoom-in-95 duration-150 text-[#24133F] ${
+            panel === 'account' ? 'bottom-7' : 'bottom-[112px]'
+          }`}
         >
           {panel === 'account' ? (
-            <div className="space-y-4">
-              {/* Header with Avatar, Name, Email, and Close X */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 font-extrabold text-sm border border-brand-200/60">
-                    {user?.avatar_url ? (
-                      <img src={user.avatar_url} alt="" className="h-full w-full rounded-2xl object-cover" />
-                    ) : (
-                      initials
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-[#24133F] truncate">{user?.name || 'Administrator'}</p>
-                    <p className="text-xs text-[#756883] truncate">{user?.email}</p>
-                  </div>
+            <div className="space-y-2">
+              {/* Header with Avatar, Name, Email */}
+              <div className="flex items-center gap-2.5 min-w-0 pb-2.5 border-b border-slate-100">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#DFE8F8] text-[#294B85] font-extrabold text-xs">
+                  {user?.avatar_url ? (
+                    <img src={user.avatar_url} alt="" className="h-full w-full rounded-xl object-cover" />
+                  ) : (
+                    initials
+                  )}
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  aria-label="Close bubble"
-                  className="rounded-lg p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-xs font-bold text-[#24133F] truncate">{user?.name || 'Administrator'}</p>
+                    <span className="shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-[9.5px] font-bold bg-[#F4EFFB] text-[#7026B7] border border-[#E9D5FF]/60">
+                      Super Admin
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#756883] truncate mt-0.5">{user?.email}</p>
+                </div>
               </div>
 
-              {/* Sign Out Button */}
+              {/* Sign Out Action Row */}
               <button
                 type="button"
                 onClick={() => setIsSignOutConfirmOpen(true)}
-                className="inline-flex w-full items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 transition-colors cursor-pointer"
+                className="flex w-full items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50/80 active:scale-[0.98] transition-all cursor-pointer group"
               >
-                <LogOut className="h-4 w-4" />
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-rose-100/60 text-rose-600 group-hover:bg-rose-100 transition-colors">
+                  <LogOut className="h-3.5 w-3.5" />
+                </div>
                 <span>Sign out</span>
               </button>
             </div>
           ) : (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <Bell className="h-4 w-4 text-brand-700" />
-                  <span className="text-xs font-bold text-[#24133F]">Notifications</span>
+            <div className="space-y-2.5">
+              {/* Notifications Header */}
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                  <Bell className="h-3.5 w-3.5" />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  aria-label="Close bubble"
-                  className="rounded-lg p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <span className="text-xs font-bold text-[#24133F]">Notifications</span>
               </div>
 
-              <div className="py-4 px-2 text-center">
-                <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-slate-50 text-slate-400 border border-slate-200 mb-2">
-                  <Bell className="h-4 w-4" />
-                </div>
+              <div className="py-3 px-2 text-center">
                 <p className="text-xs font-bold text-[#24133F]">No new notifications</p>
-                <p className="text-[11px] text-[#756883] mt-0.5 max-w-[220px] mx-auto">
+                <p className="text-[11px] text-[#756883] mt-0.5">
                   System logs and attendance alerts will appear here in real time.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Chat Bubble Arrow Pointer pointing toward the bottom-left buttons */}
-          <div className="absolute -bottom-2 left-7 h-4 w-4 rotate-45 border-b border-r border-[#E5E0EB] bg-white pointer-events-none" />
+          {/* Pointer tail pointing left directly at the active trigger button */}
+          <div className="absolute -left-1.5 bottom-3.5 h-3 w-3 rotate-45 border-b border-l border-slate-200/90 bg-white pointer-events-none" />
         </div>
       )}
 

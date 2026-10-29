@@ -1,12 +1,14 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
+  Activity,
   AlertCircle,
   Calendar,
   ChevronLeft,
   ChevronRight,
   Clock,
   Copy,
+  GraduationCap,
   Plus,
   Search,
   Users,
@@ -164,6 +166,52 @@ export function AttendancePage() {
 
   const buildEventSchedule = useCallback(async (ev: EventRecord) => {
     const sessions: SessionRecord[] = await adminService.getSessions(ev.id);
+    const serverOfficers = new Map<string, AssignedOfficer[]>();
+    await Promise.all(sessions.map(async (session) => {
+      let result = await adminService.getSessionOfficers(session.id);
+      const legacyKey = `presnt_officers_${session.id}`;
+      const legacy = localStorage.getItem(legacyKey);
+      if (result.assignments.length === 0 && legacy) {
+        try {
+          const officers = JSON.parse(legacy) as AssignedOfficer[];
+          const assignments = officers.flatMap((officer) => {
+            if (!officer.locationId) return [];
+            const types: Array<'time_in' | 'time_out'> = officer.dutyType === 'in'
+              ? ['time_in'] : officer.dutyType === 'out' ? ['time_out'] : ['time_in', 'time_out'];
+            return types.map((type) => ({ admin_id: officer.id, location_id: officer.locationId!, type }));
+          });
+          if (assignments.length) {
+            await adminService.saveSessionOfficers(session.id, assignments);
+            result = await adminService.getSessionOfficers(session.id);
+          }
+          localStorage.removeItem(legacyKey);
+        } catch {
+          // Keep legacy data available for a later import attempt.
+        }
+      } else if (result.assignments.length > 0 && legacy) {
+        localStorage.removeItem(legacyKey);
+      }
+      const grouped = new Map<string, AssignedOfficer>();
+      for (const assignment of result.assignments) {
+        const key = `${assignment.admin_id}:${assignment.location_id}`;
+        const existing = grouped.get(key);
+        if (existing) {
+          existing.dutyType = 'both';
+        } else {
+          grouped.set(key, {
+            id: assignment.admin_id,
+            name: assignment.admin_name,
+            initials: assignment.admin_name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() || '').join(''),
+            role: assignment.admin_role === 'super_admin' ? 'Super Admin' : 'Admin',
+            location: assignment.location_name,
+            locationId: assignment.location_id,
+            dutyType: assignment.type === 'time_in' ? 'in' : 'out',
+            status: 'Offline',
+          });
+        }
+      }
+      serverOfficers.set(session.id, [...grouped.values()]);
+    }));
 
     const { label: dateRangeLabel, daysCount } = formatDateRangeLabel(ev.start_date, ev.end_date);
     const startObj = new Date(`${ev.start_date}T00:00:00`);
@@ -184,16 +232,7 @@ export function AttendancePage() {
           const status: SessionItem['status'] =
             rawStatus === 'open' ? 'Active' : rawStatus === 'upcoming' ? 'Upcoming' : 'Completed';
 
-          let cachedOfficers: AssignedOfficer[] = [];
-          try {
-            const raw = localStorage.getItem(`presnt_officers_${s.id}`);
-            if (raw) cachedOfficers = JSON.parse(raw);
-          } catch {}
-
-          const officers: AssignedOfficer[] = cachedOfficers.map((o) => ({
-            ...o,
-            dutyType: o.dutyType || 'both',
-          }));
+          const officers = serverOfficers.get(s.id) ?? [];
 
           return {
             id: s.id,
@@ -334,14 +373,26 @@ export function AttendancePage() {
     );
 
     try {
-      await adminService.saveSessionLocations(targetSessionId, {
-        time_in_location_ids: timeInLocationIds,
-        time_out_location_ids: timeOutLocationIds,
-      });
-
-      try {
-        localStorage.setItem(`presnt_officers_${targetSessionId}`, JSON.stringify(updatedOfficers));
-      } catch {}
+      const currentLocations = await adminService.getSessionLocations(targetSessionId);
+      const sameIds = (left: string[], right: string[]) => {
+        if (left.length !== right.length) return false;
+        const sortedRight = [...right].sort();
+        return [...left].sort().every((id, index) => id === sortedRight[index]);
+      };
+      if (!sameIds(timeInLocationIds, currentLocations.time_in_locations.map((location) => location.id)) ||
+          !sameIds(timeOutLocationIds, currentLocations.time_out_locations.map((location) => location.id))) {
+        await adminService.saveSessionLocations(targetSessionId, {
+          time_in_location_ids: timeInLocationIds,
+          time_out_location_ids: timeOutLocationIds,
+        });
+      }
+      await adminService.saveSessionOfficers(targetSessionId, updatedOfficers.flatMap((officer) => {
+        if (!officer.locationId) return [];
+        const types: Array<'time_in' | 'time_out'> = officer.dutyType === 'in'
+          ? ['time_in'] : officer.dutyType === 'out' ? ['time_out'] : ['time_in', 'time_out'];
+        return types.map((type) => ({ admin_id: officer.id, location_id: officer.locationId!, type }));
+      }));
+      localStorage.removeItem(`presnt_officers_${targetSessionId}`);
 
       setEventData((prev) =>
         !prev
@@ -811,7 +862,7 @@ export function AttendancePage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search events by name or description..."
-                className="h-10 w-60 rounded-xl border border-[#E5E0EB] bg-white pl-9 pr-4 text-xs text-[#24133F] placeholder-[#756883] transition-colors focus:border-brand-700 focus:outline-none md:w-72"
+                className="h-10 w-60 rounded-xl border border-[#E5E0EB] bg-white pl-9 pr-4 text-xs text-[#24133F] placeholder-[#756883] transition-all focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100 md:w-72"
               />
               {search && (
                 <button
@@ -828,6 +879,7 @@ export function AttendancePage() {
             <Dropdown
               value={statusFilter}
               onChange={setStatusFilter}
+              icon={<Activity className="h-4 w-4 text-[#756883]" />}
               buttonClassName="h-10 rounded-xl"
               options={[
                 { value: 'all', label: 'All Status' },
@@ -840,6 +892,7 @@ export function AttendancePage() {
             <Dropdown
               value={academicYearFilter}
               onChange={setAcademicYearFilter}
+              icon={<GraduationCap className="h-4 w-4 text-[#756883]" />}
               buttonClassName="h-10 rounded-xl font-semibold"
               options={academicYearOptions}
             />
