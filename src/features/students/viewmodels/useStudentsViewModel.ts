@@ -8,6 +8,7 @@ import type {
   UpdateStudentPayload,
 } from '../models';
 import { studentService } from '../services';
+import { request } from '../../../services/apiClient';
 import { toast } from '../../../context';
 
 const ARCHIVED_STORAGE_KEY = 'presnt_archived_students';
@@ -67,7 +68,6 @@ export interface UseStudentsViewModelReturn {
 
   // Actions
   handleRegisterStudent: (payload: RegisterStudentPayload) => Promise<void>;
-  handleCardScannedForInventory: (uid: string) => { success: boolean; message: string; cardNumber?: number };
   handleCardScannedForStudent: (studentId: string, uid: string) => Promise<{ success: boolean; message: string }>;
   handleAutoPairSequential: () => Promise<{ pairedCount: number }>;
   handleBulkImport: (newStudents: BulkImportStudentRow[], autoPair: boolean, onProgress?: (current: number, total: number) => void) => Promise<void>;
@@ -90,16 +90,9 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
 
   const archivedStudentIds = useMemo(() => students.filter((student) => Boolean(student.archived_at)).map((student) => student.id), [students]);
   const legacyArchiveMigrationStarted = useRef(false);
+  const legacyCardMigrationStarted = useRef(false);
 
-  // Lost / Revoked RFID Cards (Persisted to localStorage)
-  const [lostCards, setLostCards] = useState<LostCardRecord[]>(() => {
-    try {
-      const stored = localStorage.getItem(LOST_CARDS_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [lostCards, setLostCards] = useState<LostCardRecord[]>([]);
 
   // Drawer / Modal triggers
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
@@ -117,14 +110,17 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     setIsLoading(true);
     setError('');
     try {
-      const [data, stats] = await Promise.all([
+      const [data, stats, inventory] = await Promise.all([
         studentService.getStudents(page, searchQuery.trim(), sort, direction, 25, showArchived),
         studentService.getRosterStats(),
+        request.get<{cards: {id: string; uid: string; status: string; created_at: string; last_holder?: {student_name: string; student_number: string}}[]; total: number}>('/cards?limit=100'),
       ]);
       if (currentRequest === requestId.current) {
         setStudents(data.students);
         setTotal(data.total);
         setStudentStats(stats);
+        setUnassignedPool(inventory.cards.filter(card => card.status === 'available').map((card, index) => ({ id: card.id, cardNumber: index + 1, uid: card.uid, status: 'unassigned' as const, registeredAt: card.created_at })));
+        setLostCards(inventory.cards.filter(card => card.status === 'lost').map((card, index) => ({ id: card.id, cardNumber: index + 1, uid: card.uid, previousStudentName: card.last_holder?.student_name, previousStudentId: card.last_holder?.student_number, revokedAt: card.created_at, reason: 'lost' as const })));
       }
     } catch (err: any) {
       if (currentRequest === requestId.current) {
@@ -160,6 +156,36 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
       if (failed.length) toast.error(`${failed.length} previously archived student${failed.length === 1 ? '' : 's'} could not be moved to the database.`);
       void loadStudents();
     });
+  }, [loadStudents]);
+
+  useEffect(() => {
+    if (legacyCardMigrationStarted.current) return;
+    legacyCardMigrationStarted.current = true;
+    let legacy: LostCardRecord[] = [];
+    try {
+      const parsed: unknown = JSON.parse(localStorage.getItem(LOST_CARDS_STORAGE_KEY) || '[]');
+      if (Array.isArray(parsed)) legacy = parsed.filter((card): card is LostCardRecord => typeof card?.uid === 'string');
+    } catch { return; }
+    if (!legacy.length) return;
+    void (async () => {
+      const pending: LostCardRecord[] = [];
+      for (const card of legacy) {
+        try {
+          const uid = card.uid.trim();
+          const existing = await request.get<{ cards: { uid: string; status: string }[] }>(`/cards?q=${encodeURIComponent(uid)}&limit=100`);
+          const match = existing.cards.find(item => item.uid.toUpperCase() === uid.toUpperCase());
+          if (match?.status === 'lost') continue;
+          if (match && match.status !== 'available') { pending.push(card); continue; }
+          if (!match) await request.post(`/cards/${encodeURIComponent(uid)}/actions`, { action: 'register', note: 'Imported from previous browser card list' });
+          await request.post(`/cards/${encodeURIComponent(uid)}/actions`, { action: 'lost', note: `Previous holder: ${card.previousStudentName || 'unknown'} (${card.previousStudentId || 'unknown'})` });
+        } catch { pending.push(card); }
+      }
+      if (pending.length) {
+        localStorage.setItem(LOST_CARDS_STORAGE_KEY, JSON.stringify(pending));
+        toast.error(`${pending.length} older lost-card flag${pending.length === 1 ? '' : 's'} need review in RFID Cards.`);
+      } else localStorage.removeItem(LOST_CARDS_STORAGE_KEY);
+      void loadStudents();
+    })();
   }, [loadStudents]);
 
   // Reorder the current page during the click, then replace it with the server's
@@ -247,32 +273,6 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  // 2. Rapid Scan for Blank Inventory Card Pool
-  const handleCardScannedForInventory = (uid: string) => {
-    const clean = uid.trim().toUpperCase();
-
-    const existsInInventory = inventoryCards.some((c) => c.uid.toUpperCase() === clean);
-    if (existsInInventory) {
-      return { success: false, message: `Card ${clean} is already registered in inventory!` };
-    }
-
-    const nextNumber = inventoryCards.length + 1;
-    const newCard: InventoryCard = {
-      id: `card-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      cardNumber: nextNumber,
-      uid: clean,
-      status: 'unassigned',
-      registeredAt: new Date().toISOString(),
-    };
-
-    setUnassignedPool((prev) => [newCard, ...prev]);
-    return {
-      success: true,
-      message: `Card #${nextNumber} (${clean}) enrolled into card pool stock!`,
-      cardNumber: nextNumber,
-    };
   };
 
   // 3. Scan & Pair to Single Student
@@ -417,29 +417,14 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
       const targetStudent = students.find((s) => s.id === studentId);
       const oldUid = targetStudent?.rfid_uid;
 
-      await studentService.updateStudent(studentId, { rfid_uid: null });
+      if (oldUid) await request.post(`/cards/${encodeURIComponent(oldUid)}/actions`, { action: reason === 'lost' ? 'lost' : 'return' });
+      else await studentService.updateStudent(studentId, { rfid_uid: null });
 
       if (oldUid) {
         if (reason === 'returned') {
-          handleCardScannedForInventory(oldUid);
-          toast.success(`Card ${oldUid} unlinked.`);
+          toast.success(`Card ${oldUid} returned to available stock.`);
         } else {
-          // Report lost: Add to lost cards archive
-          const nextCardNumber = inventoryCards.length + 1;
-          const newLostCard: LostCardRecord = {
-            id: `lost-${Date.now()}`,
-            cardNumber: nextCardNumber,
-            uid: oldUid,
-            previousStudentName: targetStudent?.name,
-            previousStudentId: targetStudent?.student_id,
-            revokedAt: new Date().toISOString(),
-            reason: 'lost',
-          };
-          const updatedLost = [newLostCard, ...lostCards.filter((c) => c.uid !== oldUid)];
-          setLostCards(updatedLost);
-          localStorage.setItem(LOST_CARDS_STORAGE_KEY, JSON.stringify(updatedLost));
-          setUnassignedPool((prev) => prev.filter((c) => c.uid.toUpperCase() !== oldUid.toUpperCase()));
-          toast.success(`Card ${oldUid} reported lost and moved to Archived Cards.`);
+          toast.success(`Card ${oldUid} reported lost and blocked from scanning.`);
         }
       } else {
         toast.success('Card unlinked successfully.');
@@ -454,13 +439,10 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
 
   const handleRestoreLostCard = (uid: string) => {
     const cleaned = uid.trim().toUpperCase();
-    const updatedLost = lostCards.filter((c) => c.uid.toUpperCase() !== cleaned);
-    setLostCards(updatedLost);
-    localStorage.setItem(LOST_CARDS_STORAGE_KEY, JSON.stringify(updatedLost));
-
-    // Return to unassigned pool
-    handleCardScannedForInventory(cleaned);
-    toast.success(`Card ${cleaned} restored to available stock pool.`);
+    void request.post(`/cards/${encodeURIComponent(cleaned)}/actions`, { action: 'restore' }).then(() => {
+      toast.success(`Card ${cleaned} restored to available stock.`);
+      void loadStudents();
+    }).catch((error: any) => toast.error(error?.response?.data?.error?.message || 'Could not restore card.'));
   };
 
   const handleDeleteStudent = async (studentId: string): Promise<boolean> => {
@@ -468,14 +450,11 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     if (!student) return false;
 
     try {
-      const res = await studentService.deleteStudent(studentId);
-      const freedUid = res?.unlinked_rfid_uid || student.rfid_uid;
-      if (freedUid) {
-        handleCardScannedForInventory(freedUid);
-      }
+      await studentService.deleteStudent(studentId);
 
       setStudents((prev) => prev.filter((s) => s.id !== studentId));
       toast.success(`Student "${student.name}" permanently deleted.`);
+      await loadStudents();
       return true;
     } catch (err: any) {
       const msg = err?.response?.data?.error?.message || err?.message || 'Failed to delete student.';
@@ -489,20 +468,15 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     const succeeded: string[] = [];
     const failed: string[] = [];
     const failures: { id: string; name: string; message: string }[] = [];
-    const freedCards: string[] = [];
     let firstError = '';
     for (const student of targets) {
       try {
         if (action === 'delete') {
-          const result = await studentService.deleteStudent(student.id);
-          const freedCard = result.unlinked_rfid_uid || student.rfid_uid;
-          if (freedCard) freedCards.push(freedCard);
+          await studentService.deleteStudent(student.id);
         } else if (action === 'archive') {
           await studentService.archiveStudent(student.id);
-          if (student.rfid_uid) freedCards.push(student.rfid_uid);
         } else if (student.rfid_uid) {
-          await studentService.updateStudent(student.id, { rfid_uid: null });
-          freedCards.push(student.rfid_uid);
+          await request.post(`/cards/${encodeURIComponent(student.rfid_uid)}/actions`, { action: 'return' });
         }
         succeeded.push(student.id);
       } catch (err: any) {
@@ -517,22 +491,9 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
       setStudents((previous) => previous.filter((student) => !succeeded.includes(student.id)));
       setTotal((previous) => Math.max(0, previous - succeeded.length));
     }
-    if (freedCards.length) {
-      setUnassignedPool((previous) => {
-        const known = new Set(previous.map((card) => card.uid.toUpperCase()));
-        const additions: InventoryCard[] = [];
-        for (const uid of freedCards) {
-          const clean = uid.trim().toUpperCase();
-          if (known.has(clean)) continue;
-          known.add(clean);
-          additions.push({ id: `card-${Date.now()}-${additions.length}`, cardNumber: inventoryCards.length + additions.length + 1, uid: clean, status: 'unassigned', registeredAt: new Date().toISOString() });
-        }
-        return [...additions, ...previous];
-      });
-    }
     if (succeeded.length) await loadStudents();
 
-    const label = action === 'unlink' ? 'unlinked' : action === 'archive' ? 'archived' : 'deleted';
+    const label = action === 'unlink' ? 'returned' : action === 'archive' ? 'archived' : 'deleted';
     if (succeeded.length) toast.success(`${succeeded.length} student${succeeded.length === 1 ? '' : 's'} ${label}.`);
     if (failed.length) toast.error(`${failed.length} student${failed.length === 1 ? '' : 's'} failed. ${firstError}`);
     return { succeeded, failed, failures };
@@ -544,11 +505,6 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
 
     try {
       await studentService.archiveStudent(studentId);
-      if (student.rfid_uid) {
-        setUnassignedPool((previous) => previous.some((card) => card.uid.toUpperCase() === student.rfid_uid?.toUpperCase())
-          ? previous
-          : [{ id: `card-${Date.now()}`, cardNumber: inventoryCards.length + 1, uid: student.rfid_uid!, status: 'unassigned', registeredAt: new Date().toISOString() }, ...previous]);
-      }
 
       toast.success(`Student "${student.name}" archived. Attendance history preserved.`);
       await loadStudents();
@@ -659,7 +615,6 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
 
     // Handlers
     handleRegisterStudent,
-    handleCardScannedForInventory,
     handleCardScannedForStudent,
     handleAutoPairSequential,
     handleBulkImport,
