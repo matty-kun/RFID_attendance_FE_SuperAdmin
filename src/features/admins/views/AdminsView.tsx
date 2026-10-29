@@ -6,7 +6,7 @@ import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
 import { DeleteAdminConfirmationModal } from './DeleteAdminConfirmationModal';
 import { AdminProfileDrawer } from './AdminProfileDrawer';
-import { ExternalLink, Plus, Search, Shield, Sparkles, UserCheck } from 'lucide-react';
+import { Archive, ExternalLink, Plus, Search, Shield, Sparkles, UserCheck, Users } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import { useAuth } from '../../auth/context/AuthContext';
 
@@ -93,6 +93,19 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
               { value: 'admin', label: 'Admin' },
             ]}
           />
+          <Dropdown
+            value={showArchived ? 'archived' : 'active'}
+            onChange={(value) => {
+              setPage(1);
+              setSelectedAdminId(null);
+              setShowArchived(value === 'archived');
+            }}
+            icon={showArchived ? <Archive className="h-4 w-4 text-[#756883]" /> : <Users className="h-4 w-4 text-[#756883]" />}
+            options={[
+              { value: 'active', label: 'Active Admins', icon: <UserCheck className="h-3.5 w-3.5 text-[#7026B7]" /> },
+              { value: 'archived', label: 'Archived', icon: <Archive className="h-3.5 w-3.5 text-[#756883]" /> },
+            ]}
+          />
         </div>
 
         <div className="self-end sm:self-auto">
@@ -104,11 +117,6 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
             Add Admin
           </Button>
         </div>
-      </div>
-
-      <div className="flex gap-2 text-xs font-bold" role="tablist" aria-label="Administrator status">
-        <button type="button" role="tab" aria-selected={!showArchived} onClick={() => { setPage(1); setSelectedAdminId(null); setShowArchived(false); }} className={cn('rounded-xl px-3 py-2', !showArchived ? 'bg-[#7026B7] text-white' : 'bg-white text-[#756883]')}>Active</button>
-        <button type="button" role="tab" aria-selected={showArchived} onClick={() => { setPage(1); setSelectedAdminId(null); setShowArchived(true); }} className={cn('rounded-xl px-3 py-2', showArchived ? 'bg-[#7026B7] text-white' : 'bg-white text-[#756883]')}>Archived</button>
       </div>
 
       {/* Admin List */}
