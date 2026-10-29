@@ -18,6 +18,7 @@ import { FirstLoginPasswordPage } from './pages/FirstLoginPasswordPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { AuditLogPage } from './pages/AuditLogPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { CardsPage } from './pages/CardsPage';
 
 export const App: React.FC = () => {
   return (
@@ -42,6 +43,7 @@ export const App: React.FC = () => {
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/scans" element={<Navigate to="/audit-log" replace />} />
               <Route path="/students" element={<StudentsPage />} />
+              <Route path="/cards" element={<CardsPage />} />
               <Route path="/admins" element={<AdminsPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>

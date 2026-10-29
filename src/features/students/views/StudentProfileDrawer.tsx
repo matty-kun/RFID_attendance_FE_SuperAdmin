@@ -840,9 +840,9 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                 size="md"
                 onClick={() => setIsUnlinking(true)}
                 leftIcon={<Unlink className="h-4 w-4" />}
-                title="Unlink RFID Card"
+                title="Return RFID Card"
               >
-                Unlink
+                Return card
               </Button>
             </div>
           ) : (
@@ -1301,12 +1301,12 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       <Modal
         isOpen={isUnlinking}
         onClose={() => setIsUnlinking(false)}
-        title="Unlink RFID Card"
+        title="Return RFID Card"
         maxWidth="md"
       >
         <div className="space-y-4 pt-1">
           <p className="text-sm text-[#24133F] leading-relaxed">
-            Are you sure you want to unlink card <span className="font-mono font-extrabold text-[#EF4444] bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-200">{currentStudent.rfid_uid}</span> from <span className="font-extrabold text-[#7026B7]">{currentStudent.name}</span> (<span className="font-extrabold text-[#24133F]">{currentStudent.student_id}</span>)?
+            Confirm you received card <span className="font-mono font-extrabold text-[#7026B7] bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-200">{currentStudent.rfid_uid}</span> from <span className="font-extrabold text-[#7026B7]">{currentStudent.name}</span> (<span className="font-extrabold text-[#24133F]">{currentStudent.student_id}</span>).
           </p>
 
           <div className="space-y-2.5 text-xs text-[#756883] pt-1">
@@ -1349,7 +1349,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               }}
               leftIcon={<Unlink className="h-4 w-4" />}
             >
-              Unlink Card
+              Confirm return
             </Button>
           </div>
         </div>

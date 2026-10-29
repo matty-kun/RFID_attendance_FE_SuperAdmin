@@ -5,6 +5,7 @@ import {
   CalendarDays,
   ChartNoAxesColumn,
   ClipboardList,
+  CreditCard,
   History,
   LayoutGrid,
   MapPin,
@@ -20,6 +21,7 @@ const navigation = [
   { name: 'Audit Log', path: '/audit-log', icon: History },
   { name: 'Events & Attendance', path: '/attendance', icon: CalendarDays },
   { name: 'Students', path: '/students', icon: UsersRound },
+  { name: 'RFID Cards', path: '/cards', icon: CreditCard },
   { name: 'Reports', path: '/reports', icon: ChartNoAxesColumn },
 ] as const;
 
@@ -42,6 +44,7 @@ const labelWidths: Record<string, number> = {
   'Audit Log': 68,
   'Events & Attendance': 140,
   'Students': 64,
+  'RFID Cards': 78,
   'Reports': 60,
 };
 
