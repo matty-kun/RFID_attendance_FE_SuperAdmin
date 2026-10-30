@@ -30,6 +30,7 @@ import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
 import hawiBoxImg from '../../../assets/illustrations/Hawi Box.png';
 import type { StudentRecord } from '../models';
 import { formatYearLevel } from '../../../utils/formatters';
+import { request } from '../../../services/apiClient';
 
 export interface StudentScanItem {
   id: string;
@@ -39,12 +40,10 @@ export interface StudentScanItem {
   dateStr: string;
   sessionName: string;
   type: 'time_in' | 'time_out';
-  status: 'on_time' | 'late' | 'missed';
   timestamp?: string;
   timeWindow: string;
   locationName: string;
-  kioskName: string;
-  rfidUid?: string;
+  cardNumber: string | null;
 }
 
 export interface StudentProfileDrawerProps {
@@ -79,198 +78,47 @@ const YEAR_OPTIONS = [
   { value: 5, label: '5th Year' },
 ];
 
-// Generate deterministic event scan history based on student record
-const generateStudentScans = (student: StudentRecord | null): StudentScanItem[] => {
-  if (!student) return [];
-  if (!student.rfid_uid) return [];
+type RecordedScan = {
+  id: string;
+  type: 'time_in' | 'time_out';
+  recorded_at: string;
+  card_number: string | null;
+  location_name: string;
+  session: {
+    id: string;
+    name: string;
+    date: string;
+    event_id: string;
+    event_name: string;
+    event_start_date: string | null;
+    time_in_start: string;
+    time_in_end: string;
+    time_out_start: string;
+    time_out_end: string;
+  } | null;
+};
 
-  const uid = student.rfid_uid;
-  const isMaria = student.name.toLowerCase().includes('maria');
-  const isCarlo = student.name.toLowerCase().includes('carlo');
-  const isJson = student.name.toLowerCase().includes('json');
-
-  return [
-    {
-      id: 'scan-1',
-      eventId: 'ev-1',
-      eventName: 'Cite Festival 2026',
-      dayLabel: 'Day 1',
-      dateStr: 'October 2, 2026',
-      sessionName: 'Morning Time-In',
-      type: 'time_in',
-      status: 'on_time',
-      timestamp: isMaria ? '07:44 AM' : isCarlo ? '07:58 AM' : '08:12 AM',
-      timeWindow: '7:00 AM – 9:00 AM',
-      locationName: 'Cite Gate 1',
-      kioskName: 'Kiosk 1',
-      rfidUid: uid,
-    },
-    {
-      id: 'scan-2',
-      eventId: 'ev-1',
-      eventName: 'Cite Festival 2026',
-      dayLabel: 'Day 1',
-      dateStr: 'October 2, 2026',
-      sessionName: 'Afternoon Time-Out',
-      type: 'time_out',
-      status: 'on_time',
-      timestamp: isMaria ? '05:12 PM' : isCarlo ? '05:04 PM' : '04:58 PM',
-      timeWindow: '4:00 PM – 6:00 PM',
-      locationName: 'Cite Main Exit',
-      kioskName: 'Kiosk 2',
-      rfidUid: uid,
-    },
-    {
-      id: 'scan-3',
-      eventId: 'ev-1',
-      eventName: 'Cite Festival 2026',
-      dayLabel: 'Day 2',
-      dateStr: 'October 3, 2026',
-      sessionName: 'Morning Time-In',
-      type: 'time_in',
-      status: 'on_time',
-      timestamp: isMaria ? '07:38 AM' : isCarlo ? '08:02 AM' : '07:50 AM',
-      timeWindow: '7:00 AM – 9:00 AM',
-      locationName: 'Cite Gate 1',
-      kioskName: 'Kiosk 1',
-      rfidUid: uid,
-    },
-    {
-      id: 'scan-4',
-      eventId: 'ev-1',
-      eventName: 'Cite Festival 2026',
-      dayLabel: 'Day 2',
-      dateStr: 'October 3, 2026',
-      sessionName: 'Afternoon Time-Out',
-      type: 'time_out',
-      status: isJson ? 'missed' : 'on_time',
-      timestamp: isJson ? undefined : isMaria ? '05:35 PM' : '05:10 PM',
-      timeWindow: '4:00 PM – 6:00 PM',
-      locationName: 'Cite Main Exit',
-      kioskName: 'Kiosk 2',
-      rfidUid: isJson ? undefined : uid,
-    },
-    {
-      id: 'scan-5',
-      eventId: 'ev-1',
-      eventName: 'Cite Festival 2026',
-      dayLabel: 'Day 3',
-      dateStr: 'October 4, 2026',
-      sessionName: 'Morning Time-In',
-      type: 'time_in',
-      status: isCarlo ? 'late' : 'on_time',
-      timestamp: isCarlo ? '09:14 AM' : isMaria ? '07:51 AM' : '08:05 AM',
-      timeWindow: '7:00 AM – 9:00 AM',
-      locationName: 'Gym Entrance',
-      kioskName: 'Kiosk 4',
-      rfidUid: uid,
-    },
-    {
-      id: 'scan-6',
-      eventId: 'ev-1',
-      eventName: 'Cite Festival 2026',
-      dayLabel: 'Day 3',
-      dateStr: 'October 4, 2026',
-      sessionName: 'Afternoon Time-Out',
-      type: 'time_out',
-      status: 'on_time',
-      timestamp: isMaria ? '05:08 PM' : isCarlo ? '05:22 PM' : '05:01 PM',
-      timeWindow: '4:00 PM – 6:00 PM',
-      locationName: 'Gym Exit',
-      kioskName: 'Kiosk 4',
-      rfidUid: uid,
-    },
-    {
-      id: 'scan-7',
-      eventId: 'ev-1',
-      eventName: 'Cite Festival 2026',
-      dayLabel: 'Day 4',
-      dateStr: 'October 5, 2026',
-      sessionName: 'Morning Time-In',
-      type: 'time_in',
-      status: 'on_time',
-      timestamp: isMaria ? '07:49 AM' : isCarlo ? '07:55 AM' : '08:02 AM',
-      timeWindow: '7:00 AM – 9:00 AM',
-      locationName: 'Cite Gate 1',
-      kioskName: 'Kiosk 1',
-      rfidUid: uid,
-    },
-    {
-      id: 'scan-8',
-      eventId: 'ev-1',
-      eventName: 'Cite Festival 2026',
-      dayLabel: 'Day 4',
-      dateStr: 'October 5, 2026',
-      sessionName: 'Afternoon Time-Out',
-      type: 'time_out',
-      status: 'on_time',
-      timestamp: isMaria ? '04:55 PM' : isCarlo ? '05:15 PM' : '05:05 PM',
-      timeWindow: '4:00 PM – 6:00 PM',
-      locationName: 'Cite Main Exit',
-      kioskName: 'Kiosk 2',
-      rfidUid: uid,
-    },
-    {
-      id: 'scan-9',
-      eventId: 'ev-2',
-      eventName: 'CITE Tech Assembly 2026',
-      dayLabel: 'Day 1',
-      dateStr: 'October 10, 2026',
-      sessionName: 'Morning Time-In',
-      type: 'time_in',
-      status: 'on_time',
-      timestamp: isMaria ? '08:05 AM' : isCarlo ? '08:15 AM' : '08:20 AM',
-      timeWindow: '8:00 AM – 9:30 AM',
-      locationName: 'AVR 1 Entrance',
-      kioskName: 'Kiosk 3',
-      rfidUid: uid,
-    },
-    {
-      id: 'scan-10',
-      eventId: 'ev-2',
-      eventName: 'CITE Tech Assembly 2026',
-      dayLabel: 'Day 1',
-      dateStr: 'October 10, 2026',
-      sessionName: 'Afternoon Time-Out',
-      type: 'time_out',
-      status: 'on_time',
-      timestamp: isMaria ? '04:45 PM' : isCarlo ? '05:00 PM' : '04:50 PM',
-      timeWindow: '4:00 PM – 5:30 PM',
-      locationName: 'AVR 1 Exit',
-      kioskName: 'Kiosk 3',
-      rfidUid: uid,
-    },
-    {
-      id: 'scan-11',
-      eventId: 'ev-3',
-      eventName: 'Department Sports Fest 2026',
-      dayLabel: 'Day 1',
-      dateStr: 'October 18, 2026',
-      sessionName: 'Morning Time-In',
-      type: 'time_in',
-      status: isCarlo ? 'late' : 'on_time',
-      timestamp: isCarlo ? '08:42 AM' : isMaria ? '07:30 AM' : '07:55 AM',
-      timeWindow: '7:00 AM – 8:30 AM',
-      locationName: 'Grandstand Gate',
-      kioskName: 'Kiosk 5',
-      rfidUid: uid,
-    },
-    {
-      id: 'scan-12',
-      eventId: 'ev-3',
-      eventName: 'Department Sports Fest 2026',
-      dayLabel: 'Day 1',
-      dateStr: 'October 18, 2026',
-      sessionName: 'Afternoon Time-Out',
-      type: 'time_out',
-      status: 'on_time',
-      timestamp: isMaria ? '05:10 PM' : isCarlo ? '05:25 PM' : '05:15 PM',
-      timeWindow: '4:30 PM – 6:00 PM',
-      locationName: 'Grandstand Gate',
-      kioskName: 'Kiosk 5',
-      rfidUid: uid,
-    },
-  ];
+const formatScanTime = (value: string) => new Date(value).toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' });
+const formatWindowTime = (value: string) => new Date(`2000-01-01T${value}+08:00`).toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' });
+const toStudentScan = (record: RecordedScan): StudentScanItem => {
+  const session = record.session;
+  const scanDate = session?.date ?? new Date(record.recorded_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+  const dayNumber = session?.event_start_date ? Math.round((Date.parse(`${scanDate}T00:00:00Z`) - Date.parse(`${session.event_start_date}T00:00:00Z`)) / 86400000) + 1 : null;
+  const windowStart = record.type === 'time_in' ? session?.time_in_start : session?.time_out_start;
+  const windowEnd = record.type === 'time_in' ? session?.time_in_end : session?.time_out_end;
+  return {
+    id: record.id,
+    eventId: session?.event_id ?? 'unknown',
+    eventName: session?.event_name ?? 'Event',
+    dayLabel: dayNumber && dayNumber > 0 ? `Day ${dayNumber}` : 'Event day',
+    dateStr: new Date(`${scanDate}T00:00:00+08:00`).toLocaleDateString('en-PH', { dateStyle: 'long', timeZone: 'Asia/Manila' }),
+    sessionName: session?.name ?? (record.type === 'time_in' ? 'Time In' : 'Time Out'),
+    type: record.type,
+    timestamp: formatScanTime(record.recorded_at),
+    timeWindow: windowStart && windowEnd ? `${formatWindowTime(windowStart)} – ${formatWindowTime(windowEnd)}` : '',
+    locationName: record.location_name,
+    cardNumber: record.card_number,
+  };
 };
 
 export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
@@ -553,7 +401,21 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     }
   };
 
-  const scans = useMemo(() => generateStudentScans(currentStudent), [currentStudent]);
+  const [scans, setScans] = useState<StudentScanItem[]>([]);
+  const [loadingScans, setLoadingScans] = useState(false);
+  const [scanError, setScanError] = useState(false);
+  useEffect(() => {
+    if (!isOpen || !currentStudent?.id) return;
+    let cancelled = false;
+    setScans([]);
+    setLoadingScans(true);
+    setScanError(false);
+    void request.get<{ scans: RecordedScan[] }>(`/students/${currentStudent.id}/scans`)
+      .then(result => { if (!cancelled) setScans(result.scans.map(toStudentScan)); })
+      .catch(() => { if (!cancelled) { setScanError(true); toast.error('Could not load student scan history.'); } })
+      .finally(() => { if (!cancelled) setLoadingScans(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, currentStudent?.id]);
 
   // Dynamic list of unique events from scans
   const eventOptions = useMemo(() => {
@@ -1161,12 +1023,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                                 <span className="text-xs font-semibold text-[#24133F]">
                                   {scan.sessionName}
                                 </span>
-                                {scan.status === 'late' && (
-                                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-700">
-                                    <i className="h-1 w-1 rounded-full bg-amber-500" />
-                                    Late
-                                  </span>
-                                )}
                               </div>
 
                               <div className="flex items-center gap-3 text-[11px] text-[#756883] mt-1">
@@ -1179,6 +1035,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                                   <span>{scan.locationName}</span>
                                 </span>
                               </div>
+                              <p className="mt-1 text-[11px] text-[#756883]">Card used: <span className="font-semibold text-[#24133F]">{scan.cardNumber ?? 'Card not recorded'}</span></p>
                             </div>
 
                             <div className="text-right shrink-0">
@@ -1198,6 +1055,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                     </div>
                   ))}
                 </div>
+              ) : loadingScans ? (
+                <div className="flex items-center justify-center gap-2 rounded-2xl border border-[#E5E0EB] bg-white py-10 text-xs font-bold text-[#24133F]"><Loader2 className="h-4 w-4 animate-spin text-[#7026B7]" /> Loading scan history…</div>
               ) : (
                 <div className="flex flex-col items-center justify-center rounded-2xl border border-[#E5E0EB] bg-white py-12 px-4 text-center">
                   <img
@@ -1207,11 +1066,13 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   />
                   <p className="text-xs font-bold text-[#24133F]">No scan logs found</p>
                   <p className="text-[11px] text-[#756883] max-w-xs mt-0.5">
-                    {selectedEventId !== 'all' || filterType !== 'all'
+                    {scanError
+                      ? 'Scan history is unavailable right now.'
+                      : selectedEventId !== 'all' || filterType !== 'all'
                       ? 'No attendance records match the selected event or filter.'
                       : currentStudent.rfid_uid
                       ? 'This student has not checked into any event sessions yet.'
-                      : 'Link an RFID card first to track automatic event attendance.'}
+                      : 'No attendance scans recorded for this student.'}
                   </p>
                   {(selectedEventId !== 'all' || filterType !== 'all') && (
                     <Button
