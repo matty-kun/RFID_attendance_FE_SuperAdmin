@@ -30,11 +30,46 @@ export interface AttendanceRecord {
 
 export type AttendanceFilterType = 'all' | 'time_in' | 'time_out';
 
-export interface AttendancePage { records: AttendanceRecord[]; total: number; page: number; limit: number; }
+export interface AttendancePage {
+  records: AttendanceRecord[];
+  total: number;
+  page: number;
+  limit: number;
+}
 
 export interface ScanTelemetryPayload {
   session_id: string;
   location_id: string;
   rfid_uid: string;
   type: 'time_in' | 'time_out';
+}
+
+export type AttendanceRosterStatus = 'present' | 'absent' | 'pending';
+
+export interface SessionAttendanceStudent {
+  id: string;
+  student_id: string;
+  name: string;
+  course?: string | null;
+  year_level?: number | null;
+  email?: string | null;
+  rfid_uid?: string | null;
+  avatar_url?: string | null;
+  status: AttendanceRosterStatus;
+  time_in?: string | null;
+  time_out?: string | null;
+  time_in_location?: string | null;
+  time_out_location?: string | null;
+}
+
+export interface SessionAttendanceSummary {
+  session_id: string;
+  session_name?: string;
+  session_status?: string;
+  total_students: number;
+  present: number;
+  absent: number;
+  pending: number;
+  roster: SessionAttendanceStudent[];
+  students: SessionAttendanceStudent[];
 }

@@ -19,6 +19,9 @@ import {
   X,
   ArrowLeft,
   Loader2,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { useToast } from '../context';
 import { Button } from '../components/common/Button';
@@ -32,6 +35,11 @@ import {
   type AssignedOfficer,
 } from '../features/events/views/AssignOfficersDrawer';
 import { adminService } from '../services/adminService';
+import {
+  attendanceService,
+  type SessionAttendanceSummary,
+  type AttendanceRosterStatus,
+} from '../services/attendanceService';
 import { getEventStatus, getSessionStatus } from '../utils/status';
 import type { EventRecord, SessionRecord } from '../types';
 import hawiQuestionImg from '../assets/illustrations/Hawi Question.png';
@@ -48,6 +56,7 @@ interface SessionItem {
   timeWindow: string;
   status: 'Active' | 'Upcoming' | 'Completed';
   officers: AssignedOfficer[];
+  attendanceSummary: SessionAttendanceSummary | null;
 }
 
 interface DaySchedule {
@@ -116,6 +125,62 @@ function formatDateRangeLabel(startDate: string, endDate: string): { label: stri
   }
 }
 
+function formatRosterTimestamp(ts?: string | null): string {
+  if (!ts) return '—';
+  if (/^\d{2}:\d{2}/.test(ts)) {
+    return formatTo12(ts);
+  }
+  try {
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return ts;
+    return d.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Manila',
+    });
+  } catch {
+    return ts;
+  }
+}
+
+function getStudentInitials(fullName: string): string {
+  return (
+    fullName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() || '')
+      .join('') || 'ST'
+  );
+}
+
+function getRosterStatusBadge(status: AttendanceRosterStatus): {
+  label: 'Present' | 'Absent' | 'Pending';
+  className: string;
+  dotClassName: string;
+} {
+  if (status === 'present') {
+    return {
+      label: 'Present',
+      className: 'bg-[#E4F7EB] text-[#11883E] border border-[#17B556]/30',
+      dotClassName: 'bg-[#17B556]',
+    };
+  }
+  if (status === 'absent') {
+    return {
+      label: 'Absent',
+      className: 'bg-rose-50 text-rose-700 border border-rose-200',
+      dotClassName: 'bg-rose-500',
+    };
+  }
+  return {
+    label: 'Pending',
+    className: 'bg-amber-50 text-amber-700 border border-amber-200',
+    dotClassName: 'bg-amber-500',
+  };
+}
+
 export function AttendancePage() {
   const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -147,6 +212,14 @@ export function AttendancePage() {
   } | null>(null);
 
   const [highlightedSessionId, setHighlightedSessionId] = useState<string | null>(null);
+  const [rosterSearchBySession, setRosterSearchBySession] = useState<Record<string, string>>({});
+  const [rosterStatusFilterBySession, setRosterStatusFilterBySession] = useState<
+    Record<string, 'all' | AttendanceRosterStatus>
+  >({});
+  const [collapsedRosterSessions, setCollapsedRosterSessions] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [refreshingSessionIds, setRefreshingSessionIds] = useState<Record<string, boolean>>({});
 
   const triggerHighlight = (sessionId: string) => {
     setHighlightedSessionId(sessionId);
@@ -164,11 +237,48 @@ export function AttendancePage() {
     showToast(message, { type, actionLabel, onAction });
   };
 
+  const handleRefreshSessionSummary = useCallback(
+    async (sessionId: string) => {
+      setRefreshingSessionIds((prev) => ({ ...prev, [sessionId]: true }));
+      try {
+        const summary = await attendanceService.getSessionAttendanceSummary(sessionId);
+        setEventData((prev) =>
+          !prev
+            ? prev
+            : {
+                ...prev,
+                days: prev.days.map((d) => ({
+                  ...d,
+                  sessions: d.sessions.map((s) =>
+                    s.id === sessionId ? { ...s, attendanceSummary: summary } : s
+                  ),
+                })),
+              }
+        );
+      } catch (err: any) {
+        const apiMsg =
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          'Could not refresh session attendance summary.';
+        showFeedback(apiMsg, 'warning');
+      } finally {
+        setRefreshingSessionIds((prev) => ({ ...prev, [sessionId]: false }));
+      }
+    },
+    []
+  );
+
   const buildEventSchedule = useCallback(async (ev: EventRecord) => {
     const sessions: SessionRecord[] = await adminService.getSessions(ev.id);
     const serverOfficers = new Map<string, AssignedOfficer[]>();
+    const serverSummaries = new Map<string, SessionAttendanceSummary | null>();
     await Promise.all(sessions.map(async (session) => {
-      let result = await adminService.getSessionOfficers(session.id);
+      const [initialOfficers, summaryRes] = await Promise.all([
+        adminService.getSessionOfficers(session.id),
+        attendanceService.getSessionAttendanceSummary(session.id).catch(() => null),
+      ]);
+      serverSummaries.set(session.id, summaryRes);
+      let result = initialOfficers;
       const legacyKey = `presnt_officers_${session.id}`;
       const legacy = localStorage.getItem(legacyKey);
       if (result.assignments.length === 0 && legacy) {
@@ -233,6 +343,7 @@ export function AttendancePage() {
             rawStatus === 'open' ? 'Active' : rawStatus === 'upcoming' ? 'Upcoming' : 'Completed';
 
           const officers = serverOfficers.get(s.id) ?? [];
+          const attendanceSummary = serverSummaries.get(s.id) ?? null;
 
           return {
             id: s.id,
@@ -245,6 +356,7 @@ export function AttendancePage() {
             timeWindow: `IN: ${formatTo12(s.time_in_start)} - ${formatTo12(s.time_in_end)} · OUT: ${formatTo12(s.time_out_start)} - ${formatTo12(s.time_out_end)}`,
             status,
             officers,
+            attendanceSummary,
           };
         });
 
@@ -1111,6 +1223,244 @@ export function AttendancePage() {
                                 </button>
                               </div>
                             </div>
+
+                            {/* Session Attendance Summary & Student Roster */}
+                            {(() => {
+                              const summary = session.attendanceSummary;
+                              const totalStudents = summary?.total_students ?? 0;
+                              const presentCount = summary?.present ?? 0;
+                              const absentCount = summary?.absent ?? 0;
+                              const pendingCount =
+                                summary?.pending ?? Math.max(0, totalStudents - presentCount - absentCount);
+                              const roster = summary?.roster ?? [];
+                              const isRosterCollapsed = Boolean(collapsedRosterSessions[session.id]);
+                              const isRefreshing = Boolean(refreshingSessionIds[session.id]);
+                              const rosterQuery = (rosterSearchBySession[session.id] || '').trim().toLowerCase();
+                              const rosterStatusFilter = rosterStatusFilterBySession[session.id] || 'all';
+
+                              const filteredRoster = roster.filter((student) => {
+                                if (rosterStatusFilter !== 'all' && student.status !== rosterStatusFilter) {
+                                  return false;
+                                }
+                                if (rosterQuery) {
+                                  const matchesName = student.name.toLowerCase().includes(rosterQuery);
+                                  const matchesId = student.student_id.toLowerCase().includes(rosterQuery);
+                                  const matchesCourse = (student.course || '').toLowerCase().includes(rosterQuery);
+                                  return matchesName || matchesId || matchesCourse;
+                                }
+                                return true;
+                              });
+
+                              return (
+                                <div className="mt-3.5 border-t border-[#F1EEF4] pt-3.5 space-y-3">
+                                  {/* Summary Header & Metric Cards */}
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[11px] font-bold text-[#24133F]">
+                                        Session Attendance Summary
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => void handleRefreshSessionSummary(session.id)}
+                                        disabled={isRefreshing}
+                                        title="Refresh session attendance summary"
+                                        className="inline-flex items-center gap-1 rounded-lg border border-[#E5E0EB] bg-white px-2 py-0.5 text-[10px] font-semibold text-[#756883] hover:border-[#7026B7] hover:text-[#7026B7] transition-colors cursor-pointer disabled:opacity-50"
+                                      >
+                                        <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                                        <span>Refresh</span>
+                                      </button>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setCollapsedRosterSessions((prev) => ({
+                                          ...prev,
+                                          [session.id]: !prev[session.id],
+                                        }))
+                                      }
+                                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-[#7026B7] hover:bg-[#FAF7FD] transition-colors cursor-pointer"
+                                    >
+                                      <span>{isRosterCollapsed ? 'Show Student Roster' : 'Hide Student Roster'}</span>
+                                      {isRosterCollapsed ? (
+                                        <ChevronDown className="h-3.5 w-3.5" />
+                                      ) : (
+                                        <ChevronUp className="h-3.5 w-3.5" />
+                                      )}
+                                    </button>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                                    <div className="rounded-xl border border-[#E5E0EB] bg-[#FAF8FB] px-3 py-2">
+                                      <span className="block text-[10px] font-bold uppercase tracking-wider text-[#756883]">
+                                        Total Students
+                                      </span>
+                                      <span className="mt-0.5 block text-base font-extrabold text-[#24133F]">
+                                        {totalStudents}
+                                      </span>
+                                    </div>
+
+                                    <div className="rounded-xl border border-[#17B556]/25 bg-[#E4F7EB]/50 px-3 py-2">
+                                      <span className="block text-[10px] font-bold uppercase tracking-wider text-[#11883E]">
+                                        Present
+                                      </span>
+                                      <span className="mt-0.5 block text-base font-extrabold text-[#11883E]">
+                                        {presentCount}
+                                      </span>
+                                    </div>
+
+                                    <div className="rounded-xl border border-rose-200 bg-rose-50/60 px-3 py-2">
+                                      <span className="block text-[10px] font-bold uppercase tracking-wider text-rose-700">
+                                        Absent
+                                      </span>
+                                      <span className="mt-0.5 block text-base font-extrabold text-rose-700">
+                                        {absentCount}
+                                      </span>
+                                    </div>
+
+                                    <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-2">
+                                      <span className="block text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                                        Pending
+                                      </span>
+                                      <span className="mt-0.5 block text-base font-extrabold text-amber-700">
+                                        {pendingCount}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Student Attendance Roster */}
+                                  {!isRosterCollapsed && (
+                                    <div className="rounded-xl border border-[#E5E0EB] bg-[#FCFBFD] overflow-hidden">
+                                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#F1EEF4] px-3.5 py-2.5 bg-white">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-xs font-bold text-[#24133F]">
+                                            Student Attendance Roster
+                                          </span>
+                                          <span className="rounded-full bg-[#FAF7FD] border border-[#E5E0EB] px-2 py-0.5 text-[10px] font-bold text-[#7026B7]">
+                                            {filteredRoster.length} of {roster.length}
+                                          </span>
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <div className="relative">
+                                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#756883]" />
+                                            <input
+                                              type="text"
+                                              value={rosterSearchBySession[session.id] || ''}
+                                              onChange={(e) =>
+                                                setRosterSearchBySession((prev) => ({
+                                                  ...prev,
+                                                  [session.id]: e.target.value,
+                                                }))
+                                              }
+                                              placeholder="Search student name, ID, course..."
+                                              className="h-7 w-48 sm:w-56 rounded-lg border border-[#E5E0EB] bg-white pl-8 pr-6 text-[11px] text-[#24133F] placeholder-[#756883] focus:border-[#7026B7] focus:outline-none"
+                                            />
+                                            {rosterSearchBySession[session.id] && (
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  setRosterSearchBySession((prev) => ({
+                                                    ...prev,
+                                                    [session.id]: '',
+                                                  }))
+                                                }
+                                                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 text-[#756883] hover:text-[#24133F]"
+                                                title="Clear student search"
+                                              >
+                                                <X className="h-3 w-3" />
+                                              </button>
+                                            )}
+                                          </div>
+
+                                          <div className="flex items-center gap-1 rounded-lg bg-[#F6F4F8] p-0.5">
+                                            {(
+                                              [
+                                                { value: 'all', label: 'All' },
+                                                { value: 'present', label: 'Present' },
+                                                { value: 'absent', label: 'Absent' },
+                                                { value: 'pending', label: 'Pending' },
+                                              ] as const
+                                            ).map((tab) => (
+                                              <button
+                                                key={tab.value}
+                                                type="button"
+                                                onClick={() =>
+                                                  setRosterStatusFilterBySession((prev) => ({
+                                                    ...prev,
+                                                    [session.id]: tab.value,
+                                                  }))
+                                                }
+                                                className={`rounded-md px-2 py-1 text-[10px] font-bold transition-colors cursor-pointer ${
+                                                  rosterStatusFilter === tab.value
+                                                    ? 'bg-white text-[#24133F] shadow-2xs'
+                                                    : 'text-[#756883] hover:text-[#24133F]'
+                                                }`}
+                                              >
+                                                {tab.label}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {filteredRoster.length === 0 ? (
+                                        <div className="px-4 py-6 text-center text-xs text-[#756883]">
+                                          {roster.length === 0
+                                            ? 'No students found in the attendance roster for this session.'
+                                            : 'No students match your current search or status filter.'}
+                                        </div>
+                                      ) : (
+                                        <div className="max-h-72 overflow-y-auto divide-y divide-[#F1EEF4]">
+                                          {filteredRoster.map((student) => {
+                                            const badge = getRosterStatusBadge(student.status);
+                                            return (
+                                              <div
+                                                key={student.id || student.student_id}
+                                                className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-2.5 bg-white hover:bg-[#FAF8FB] transition-colors"
+                                              >
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#E9D5FF] text-[10px] font-bold text-[#6D21A8]">
+                                                    {getStudentInitials(student.name)}
+                                                  </div>
+                                                  <div className="min-w-0">
+                                                    <p className="text-xs font-bold text-[#24133F] truncate">
+                                                      {student.name}
+                                                    </p>
+                                                    <p className="text-[10px] text-[#756883] truncate">
+                                                      <span className="font-mono">{student.student_id}</span>
+                                                      {student.course ? ` · ${student.course}` : ''}
+                                                      {student.year_level ? ` (Yr ${student.year_level})` : ''}
+                                                    </p>
+                                                  </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-3">
+                                                  {(student.time_in || student.time_out) && (
+                                                    <div className="hidden sm:flex items-center gap-2 text-[10px] text-[#756883]">
+                                                      <span>IN: {formatRosterTimestamp(student.time_in)}</span>
+                                                      <span>·</span>
+                                                      <span>OUT: {formatRosterTimestamp(student.time_out)}</span>
+                                                    </div>
+                                                  )}
+
+                                                  <span
+                                                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${badge.className}`}
+                                                  >
+                                                    <span className={`h-1.5 w-1.5 rounded-full ${badge.dotClassName}`} />
+                                                    {badge.label}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
                         );
                       })
