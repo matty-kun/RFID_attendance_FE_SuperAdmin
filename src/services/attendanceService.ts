@@ -36,6 +36,34 @@ function normalizeRosterStatus(rawStatus: unknown): AttendanceRosterStatus {
   return 'pending';
 }
 
+function extractTimestampString(val: unknown): string | null {
+  if (!val) return null;
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object' && val !== null) {
+    const rec = val as Record<string, unknown>;
+    if (typeof rec.recorded_at === 'string') return rec.recorded_at;
+    if (typeof rec.timestamp === 'string') return rec.timestamp;
+  }
+  return null;
+}
+
+function extractLocationString(val: unknown): string | null {
+  if (!val) return null;
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object' && val !== null) {
+    const rec = val as Record<string, unknown>;
+    if (typeof rec.name === 'string') return rec.name;
+    if (
+      typeof rec.location === 'object' &&
+      rec.location !== null &&
+      typeof (rec.location as Record<string, unknown>).name === 'string'
+    ) {
+      return (rec.location as Record<string, unknown>).name as string;
+    }
+  }
+  return null;
+}
+
 function normalizeStudentRow(item: any, index: number): SessionAttendanceStudent {
   const studentObj = item?.student ?? {};
   const status = normalizeRosterStatus(item?.status ?? item?.attendance_status);
@@ -68,24 +96,30 @@ function normalizeStudentRow(item: any, index: number): SessionAttendanceStudent
     avatar_url: item?.avatar_url ?? studentObj?.avatar_url ?? null,
     status,
     time_in:
-      item?.time_in ??
-      item?.time_in_at ??
-      item?.check_in_time ??
-      item?.recorded_at ??
+      extractTimestampString(item?.time_in) ??
+      extractTimestampString(item?.time_in_record) ??
+      extractTimestampString(item?.time_in_at) ??
+      extractTimestampString(item?.check_in_time) ??
+      extractTimestampString(item?.recorded_at) ??
       null,
     time_out:
-      item?.time_out ??
-      item?.time_out_at ??
-      item?.check_out_time ??
+      extractTimestampString(item?.time_out) ??
+      extractTimestampString(item?.time_out_record) ??
+      extractTimestampString(item?.time_out_at) ??
+      extractTimestampString(item?.check_out_time) ??
       null,
     time_in_location:
-      item?.time_in_location ??
-      item?.location_in ??
-      item?.location?.name ??
+      extractLocationString(item?.time_in_location) ??
+      extractLocationString(item?.time_in) ??
+      extractLocationString(item?.time_in_record) ??
+      extractLocationString(item?.location_in) ??
+      extractLocationString(item?.location) ??
       null,
     time_out_location:
-      item?.time_out_location ??
-      item?.location_out ??
+      extractLocationString(item?.time_out_location) ??
+      extractLocationString(item?.time_out) ??
+      extractLocationString(item?.time_out_record) ??
+      extractLocationString(item?.location_out) ??
       null,
   };
 }

@@ -125,14 +125,21 @@ function formatDateRangeLabel(startDate: string, endDate: string): { label: stri
   }
 }
 
-function formatRosterTimestamp(ts?: string | null): string {
+function formatRosterTimestamp(ts?: unknown): string {
   if (!ts) return '—';
-  if (/^\d{2}:\d{2}/.test(ts)) {
-    return formatTo12(ts);
+  const rawStr =
+    typeof ts === 'string'
+      ? ts
+      : typeof ts === 'object' && ts !== null && typeof (ts as Record<string, unknown>).recorded_at === 'string'
+      ? ((ts as Record<string, unknown>).recorded_at as string)
+      : '';
+  if (!rawStr) return '—';
+  if (/^\d{2}:\d{2}/.test(rawStr)) {
+    return formatTo12(rawStr);
   }
   try {
-    const d = new Date(ts);
-    if (isNaN(d.getTime())) return ts;
+    const d = new Date(rawStr);
+    if (isNaN(d.getTime())) return rawStr;
     return d.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
@@ -140,7 +147,7 @@ function formatRosterTimestamp(ts?: string | null): string {
       timeZone: 'Asia/Manila',
     });
   } catch {
-    return ts;
+    return rawStr;
   }
 }
 
