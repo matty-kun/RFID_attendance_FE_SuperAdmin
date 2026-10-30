@@ -1,378 +1,128 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  AlertCircle,
-  ArrowRightLeft,
-  Clock,
-  GraduationCap,
-  MapPin,
-  Search,
-} from 'lucide-react';
+import { AlertCircle, ArrowRightLeft, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
 import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
 import { Checkbox } from '../components/common/Checkbox';
-import { attendanceService } from '../features/attendance/services/attendanceService';
-import { studentService } from '../features/students/services/studentService';
+import { request } from '../services/apiClient';
 import { adminService } from '../services/adminService';
-import type { AttendanceRecord } from '../features/attendance/models';
-import type { StudentRecord } from '../features/students/models';
-import type { EventRecord, LocationRecord } from '../types';
-import type {
-  ReportTrendDay,
-  ReportSessionItem,
-  ReportCheckpointItem,
-  ReportCourseItem,
-  ReportStudentAttendanceRow,
-} from './auditPreviewRecords';
+import type { EventRecord } from '../types';
+import type { ReportTrendDay, ReportSessionItem, ReportCheckpointItem, ReportCourseItem, ReportStudentAttendanceRow } from './auditPreviewRecords';
 
-const manilaDate = (date: Date) => {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Manila',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date);
-  const value = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
-  return `${value('year')}-${value('month')}-${value('day')}`;
+type Snapshot = {
+  summary: { studentsCheckedIn: number; timeIns: number; timeOuts: number; totalScans: number };
+  trend: { day: string; timeIns: number; timeOuts: number }[];
+  sessions: { eventId: string; eventName: string; date: string; eventStartDate: string; period: string; timeIns: number; timeOuts: number }[];
+  checkpoints: { name: string; inScans: number; outScans: number; total: number }[];
+  courses: ReportCourseItem[];
+  rows: { id: string; name: string; course: string; session: string; day: string; period: string; timeIn: string | null; timeOut: string | null; status: ReportStudentAttendanceRow['status'] }[];
+  rowTotal: number;
+  sessionsOptions: string[];
+  courseOptions: string[];
+  locationOptions: string[];
 };
 
-function formatShortDate(ymd: string) {
-  try {
-    return new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' }).format(
-      new Date(`${ymd}T00:00:00+08:00`)
-    );
-  } catch {
-    return ymd;
-  }
-}
-
-function formatManilaTime(iso: string) {
-  try {
-    return new Date(iso).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-      timeZone: 'Asia/Manila',
-    });
-  } catch {
-    return '-';
-  }
-}
-
-function getInitials(fullName: string) {
-  return (
-    fullName
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase() || '')
-      .join('') || 'ST'
-  );
-}
-
-function buildSessionLabels(records: AttendanceRecord[], events: EventRecord[]) {
-  const eventById = new Map(events.map((item) => [item.id, item]));
-  const firstDateByEvent = new Map<string, string>();
-  for (const record of records) {
-    const eventId = record.session?.event_id || '';
-    const date = record.session?.date;
-    if (date && (!firstDateByEvent.has(eventId) || date < firstDateByEvent.get(eventId)!)) firstDateByEvent.set(eventId, date);
-  }
-  const labels = new Map<string, { day: string; period: string; date: string }>();
-  for (const record of records) {
-    if (labels.has(record.session_id)) continue;
-    const date = record.session?.date || manilaDate(new Date(record.recorded_at));
-    const eventId = record.session?.event_id || '';
-    const firstDate = eventById.get(eventId)?.start_date?.slice(0, 10) || firstDateByEvent.get(eventId) || date;
-    const dayNumber = Math.max(1, Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${firstDate}T00:00:00Z`)) / 86400000) + 1);
-    const name = record.session?.name || '';
-    const startHour = record.session?.time_in_start ? Number(record.session.time_in_start.slice(0, 2)) : NaN;
-    const period = Number.isFinite(startHour)
-      ? startHour < 12 ? 'Morning' : startHour < 18 ? 'Afternoon' : 'Evening'
-      : /evening|night/i.test(name) ? 'Evening'
-      : /afternoon/i.test(name) ? 'Afternoon'
-      : /morning/i.test(name) ? 'Morning' : 'Unscheduled';
-    labels.set(record.session_id, { day: `Day ${dayNumber}`, period, date });
-  }
-  return labels;
-}
-
-function pairAttendanceRows(sourceRecords: AttendanceRecord[], sessionLabels: ReturnType<typeof buildSessionLabels>): ReportStudentAttendanceRow[] {
-  const pairMap = new Map<string, {
-    id: string; name: string; course: string; session: string; day: string; period: string;
-    timeIn: string; timeOut: string; hasIn: boolean; hasOut: boolean;
-  }>();
-  for (const record of sourceRecords) {
-    const key = `${record.student_id}::${record.session_id}`;
-    const row = pairMap.get(key) || {
-      id: key,
-      name: record.student?.name || record.student?.student_id || record.student_id.slice(0, 8),
-      course: record.student?.course || '—',
-      session: record.session?.name || record.session_id.slice(0, 8),
-      day: sessionLabels.get(record.session_id)?.day || 'Day 1',
-      period: sessionLabels.get(record.session_id)?.period || 'Unscheduled',
-      timeIn: '-', timeOut: '-', hasIn: false, hasOut: false,
-    };
-    if (record.type === 'time_in' && !row.hasIn) {
-      row.timeIn = formatManilaTime(record.recorded_at);
-      row.hasIn = true;
-    } else if (record.type === 'time_out' && !row.hasOut) {
-      row.timeOut = formatManilaTime(record.recorded_at);
-      row.hasOut = true;
-    }
-    pairMap.set(key, row);
-  }
-  return Array.from(pairMap.values()).map((row, index) => ({
-    id: row.id,
-    name: row.name,
-    initials: getInitials(row.name),
-    avatarBg: index % 2 === 0 ? 'bg-purple-200' : 'bg-blue-200',
-    avatarColor: index % 2 === 0 ? 'text-purple-800' : 'text-blue-800',
-    course: row.course,
-    session: row.session,
-    day: row.day,
-    period: row.period,
-    timeIn: row.timeIn,
-    timeOut: row.timeOut,
-    status: row.hasIn && row.hasOut ? 'Completed' : row.hasIn ? 'Missing Out' : 'Time Out Only',
-  }));
-}
-
-const previewToday = new Date();
-const initialEnd = manilaDate(previewToday);
-const initialStart = manilaDate(new Date(previewToday.getTime() - 6 * 24 * 60 * 60 * 1000));
+const manilaDate = (date: Date) => {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+  const value = (type: string) => parts.find(part => part.type === type)?.value ?? '';
+  return `${value('year')}-${value('month')}-${value('day')}`;
+};
+const formatShortDate = (ymd: string) => new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' }).format(new Date(`${ymd}T00:00:00+08:00`));
+const formatManilaTime = (iso: string | null) => iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' }) : '-';
+const getInitials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0].toUpperCase()).join('') || 'ST';
+const initialEnd = manilaDate(new Date());
+const initialStart = manilaDate(new Date(Date.now() - 6 * 86400000));
+const emptySummary = { studentsCheckedIn: 0, timeIns: 0, timeOuts: 0, totalScans: 0 };
 
 export function ReportsPage() {
   const [startDate, setStartDate] = useState(initialStart);
   const [endDate, setEndDate] = useState(initialEnd);
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [students, setStudents] = useState<StudentRecord[]>([]);
-  const [registeredLocations, setRegisteredLocations] = useState<LocationRecord[]>([]);
   const [events, setEvents] = useState<EventRecord[]>([]);
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const reportRequestId = useRef(0);
-
+  const requestId = useRef(0);
   const [session, setSession] = useState('all');
   const [event, setEvent] = useState('all');
   const [course, setCourse] = useState('all');
   const [type, setType] = useState('all');
   const [location, setLocation] = useState('all');
-
-  // Student Attendance Records search & selection
   const [search, setSearch] = useState('');
+  const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const pageSize = 25;
 
+  useEffect(() => { void adminService.getEvents().then(setEvents).catch(() => setError('Could not load events.')); }, []);
+  useEffect(() => { const timer = window.setTimeout(() => { setQuery(search.trim()); setPage(1); }, 250); return () => window.clearTimeout(timer); }, [search]);
+  useEffect(() => { setPage(1); setSelected([]); }, [startDate, endDate, event, session, course, type, location]);
+
+  const params = useMemo(() => ({
+    startDate, endDate, page, limit: pageSize,
+    ...(event !== 'all' ? { eventId: event } : {}),
+    ...(session !== 'all' ? { session } : {}),
+    ...(course !== 'all' ? { course } : {}),
+    ...(type !== 'all' ? { type } : {}),
+    ...(location !== 'all' ? { location } : {}),
+    ...(query ? { search: query } : {}),
+  }), [startDate, endDate, page, event, session, course, type, location, query]);
   const loadReportsData = useCallback(async () => {
-    const requestId = ++reportRequestId.current;
+    const id = ++requestId.current;
     setLoading(true);
     setError('');
     try {
-      const [firstAttendance, firstStudents, locRes, eventRes] = await Promise.all([
-        attendanceService.getRecentAttendance(1, 'all', startDate, endDate, 100),
-        studentService.getStudents(1, '', 'created_at', 'desc', 100),
-        adminService.getLocations().catch(() => []),
-        adminService.getEvents(),
-      ]);
-      const attendanceByPage = new Map([[1, firstAttendance.records]]);
-      const studentsByPage = new Map([[1, firstStudents.students]]);
-      const attendancePages = Math.ceil(firstAttendance.total / 100);
-      const studentPages = Math.ceil(firstStudents.total / 100);
-      for (let page = 2; page <= Math.max(attendancePages, studentPages); page += 4) {
-        const requests: Promise<void>[] = [];
-        for (let next = page; next < page + 4; next++) {
-          if (next <= attendancePages) requests.push(attendanceService.getRecentAttendance(next, 'all', startDate, endDate, 100).then((result) => { attendanceByPage.set(next, result.records); }));
-          if (next <= studentPages) requests.push(studentService.getStudents(next, '', 'created_at', 'desc', 100).then((result) => { studentsByPage.set(next, result.students); }));
-        }
-        await Promise.all(requests);
-      }
-      if (requestId !== reportRequestId.current) return;
-      setRecords([...attendanceByPage.entries()].sort(([a], [b]) => a - b).flatMap(([, rows]) => rows));
-      setStudents([...studentsByPage.entries()].sort(([a], [b]) => a - b).flatMap(([, rows]) => rows));
-      setRegisteredLocations(locRes);
-      setEvents(eventRes);
+      const result = await request.get<Snapshot>('/reports', { params });
+      if (id === requestId.current) { setSnapshot(result); setSelected([]); }
     } catch (err: any) {
-      if (requestId === reportRequestId.current) setError(err?.response?.data?.error?.message || 'Could not load report records. Try again.');
-    } finally {
-      if (requestId === reportRequestId.current) setLoading(false);
-    }
-  }, [startDate, endDate]);
+      if (id === requestId.current) setError(err?.response?.data?.error?.message || 'Could not load report records. Try again.');
+    } finally { if (id === requestId.current) setLoading(false); }
+  }, [params]);
+  useEffect(() => { void loadReportsData(); }, [loadReportsData]);
 
-  useEffect(() => {
-    void loadReportsData();
-  }, [loadReportsData]);
-
-  // Filter records by top-level dropdowns
-  const filteredRawRecords = useMemo(() => {
-    return records.filter((rec) => {
-      if (event !== 'all' && rec.session?.event_id !== event) return false;
-      if (session !== 'all' && (rec.session?.name || rec.session_id) !== session) return false;
-      if (course !== 'all' && (rec.student?.course || 'Unspecified') !== course) return false;
-      if (type !== 'all' && rec.type !== type) return false;
-      if (location !== 'all' && (rec.location?.name || rec.location_id) !== location) return false;
-      return true;
-    });
-  }, [records, event, session, course, type, location]);
-
-  const sessions = useMemo(() => {
-    return [...new Set(records.filter((r) => event === 'all' || r.session?.event_id === event).map((r) => r.session?.name).filter((n): n is string => Boolean(n)))].sort();
-  }, [records, event]);
-
-  const courses = useMemo(() => {
-    const fromRecords = records.map((r) => r.student?.course).filter((c): c is string => Boolean(c));
-    const fromStudents = students.map((s) => s.course).filter((c): c is string => Boolean(c));
-    return [...new Set([...fromRecords, ...fromStudents])].sort();
-  }, [records, students]);
-
-  const locations = useMemo(() => {
-    const fromRecords = records.map((r) => r.location?.name).filter((l): l is string => Boolean(l));
-    const fromRegistered = registeredLocations.map((l) => l.name);
-    return [...new Set([...fromRecords, ...fromRegistered])].sort();
-  }, [records, registeredLocations]);
-
-  // Card 1: Attendance Trend (derived from real records by date)
+  const sessions = snapshot?.sessionsOptions ?? [];
+  const courses = snapshot?.courseOptions ?? [];
+  const locations = snapshot?.locationOptions ?? [];
+  const reportSummary = snapshot?.summary ?? emptySummary;
   const trendData: ReportTrendDay[] = useMemo(() => {
-    const byDay = new Map<string, { timeIns: number; timeOuts: number }>();
-    for (const r of filteredRawRecords) {
-      const ymd = manilaDate(new Date(r.recorded_at));
-      const existing = byDay.get(ymd) || { timeIns: 0, timeOuts: 0 };
-      if (r.type === 'time_in') existing.timeIns += 1;
-      else existing.timeOuts += 1;
-      byDay.set(ymd, existing);
-    }
-    const entries = Array.from(byDay.entries()).sort(([a], [b]) => a.localeCompare(b));
-    const peak = Math.max(1, ...entries.map(([, v]) => v.timeIns + v.timeOuts));
-
-    return entries.map(([ymd, counts]) => ({
-      day: formatShortDate(ymd),
-      present: counts.timeIns,
-      absent: counts.timeOuts,
-      presentPct: counts.timeIns > 0 ? Math.max(8, Math.round((counts.timeIns / (peak * 1.15)) * 100)) : 0,
-      absentPct: counts.timeOuts > 0 ? Math.max(8, Math.round((counts.timeOuts / (peak * 1.15)) * 100)) : 0,
-    }));
-  }, [filteredRawRecords]);
-
-  const sessionLabels = useMemo(() => buildSessionLabels(records, events), [records, events]);
-
-  // Group all sessions on the same event day into scheduled periods.
+    const rows = snapshot?.trend ?? [];
+    const peak = Math.max(1, ...rows.map(row => row.timeIns + row.timeOuts));
+    return rows.map(row => ({ day: formatShortDate(row.day), present: row.timeIns, absent: row.timeOuts,
+      presentPct: row.timeIns ? Math.max(8, Math.round(row.timeIns / (peak * 1.15) * 100)) : 0,
+      absentPct: row.timeOuts ? Math.max(8, Math.round(row.timeOuts / (peak * 1.15) * 100)) : 0 }));
+  }, [snapshot]);
   const sessionBreakdown: ReportSessionItem[] = useMemo(() => {
-    const map = new Map<string, ReportSessionItem>();
-    const eventById = new Map(events.map((item) => [item.id, item]));
-    const multipleEvents = new Set(filteredRawRecords.map((record) => record.session?.event_id || '')).size > 1;
-    for (const r of filteredRawRecords) {
-      const label = sessionLabels.get(r.session_id);
-      if (!label) continue;
-      const eventId = r.session?.event_id || '';
-      const eventRecord = eventById.get(eventId);
-      const periodOrder = label.period === 'Morning' ? '1' : label.period === 'Afternoon' ? '2' : label.period === 'Evening' ? '3' : '4';
-      const id = `${eventId}::${label.date}::${periodOrder}`;
-      const eventPrefix = multipleEvents ? `${eventRecord?.name || 'Event'} · ` : '';
-      const cur = map.get(id) || { id, name: `${eventPrefix}${label.day} · ${label.period}`, timeIns: 0, timeOuts: 0 };
-      if (r.type === 'time_in') cur.timeIns += 1;
-      else cur.timeOuts += 1;
-      map.set(id, cur);
-    }
-    return [...map.values()].sort((a, b) => a.id.localeCompare(b.id));
-  }, [filteredRawRecords, events, sessionLabels]);
+    const multipleEvents = new Set((snapshot?.sessions ?? []).map(row => row.eventId)).size > 1;
+    return (snapshot?.sessions ?? []).map(row => ({ id: `${row.eventId}::${row.date}::${row.period}`,
+      name: `${multipleEvents ? `${row.eventName} · ` : ''}Day ${Math.max(1, Math.round((Date.parse(row.date) - Date.parse(row.eventStartDate)) / 86400000) + 1)} · ${row.period}`,
+      timeIns: row.timeIns, timeOuts: row.timeOuts }));
+  }, [snapshot]);
+  const checkpointList: ReportCheckpointItem[] = snapshot?.checkpoints ?? [];
+  const courseList: ReportCourseItem[] = snapshot?.courses ?? [];
+  const filteredStudents: ReportStudentAttendanceRow[] = useMemo(() => (snapshot?.rows ?? []).map((row, index) => ({
+    id: row.id, name: row.name, initials: getInitials(row.name),
+    avatarBg: index % 2 ? 'bg-purple-200' : 'bg-purple-100', avatarColor: 'text-purple-800',
+    course: row.course, session: row.session, day: row.day, period: row.period,
+    timeIn: formatManilaTime(row.timeIn), timeOut: formatManilaTime(row.timeOut), status: row.status,
+  })), [snapshot]);
+  const eventLabel = event === 'all' ? 'All events' : events.find(item => item.id === event)?.name || 'Selected event';
 
-  // Card 3: Checkpoints (derived from real records grouped by location)
-  const checkpointList: ReportCheckpointItem[] = useMemo(() => {
-    const map = new Map<string, { inScans: number; outScans: number }>();
-    for (const r of filteredRawRecords) {
-      const locName = r.location?.name || r.location_id.slice(0, 8);
-      const cur = map.get(locName) || { inScans: 0, outScans: 0 };
-      if (r.type === 'time_in') cur.inScans += 1;
-      else cur.outScans += 1;
-      map.set(locName, cur);
-    }
-    return Array.from(map.entries())
-      .map(([name, counts]) => ({
-        name,
-        inScans: counts.inScans,
-        outScans: counts.outScans,
-        total: counts.inScans + counts.outScans,
-      }))
-      .sort((a, b) => b.total - a.total);
-  }, [filteredRawRecords]);
-
-  // Pair from both scan types before applying the type filter to displayed rows.
-  const attendanceSourceRecords = useMemo(() => records.filter((record) => {
-    if (event !== 'all' && record.session?.event_id !== event) return false;
-    if (session !== 'all' && (record.session?.name || record.session_id) !== session) return false;
-    if (course !== 'all' && (record.student?.course || 'Unspecified') !== course) return false;
-    if (location !== 'all' && (record.location?.name || record.location_id) !== location) return false;
-    return true;
-  }), [records, event, session, course, location]);
-  const studentRecordsList = useMemo(() => pairAttendanceRows(attendanceSourceRecords, sessionLabels), [attendanceSourceRecords, sessionLabels]);
-
-  // Course Breakdown (computed from real records & student courses)
-  const courseList: ReportCourseItem[] = useMemo(() => {
-    const map = new Map<string, { expected: number; timeIn: number; timeOut: number }>();
-    for (const s of students) {
-      const c = s.course || 'Unspecified';
-      if (course !== 'all' && c !== course) continue;
-      const cur = map.get(c) || { expected: 0, timeIn: 0, timeOut: 0 };
-      cur.expected += 1;
-      map.set(c, cur);
-    }
-    for (const r of filteredRawRecords) {
-      const c = r.student?.course || 'Unspecified';
-      const cur = map.get(c) || { expected: 0, timeIn: 0, timeOut: 0 };
-      if (r.type === 'time_in') cur.timeIn += 1;
-      else cur.timeOut += 1;
-      map.set(c, cur);
-    }
-    return Array.from(map.entries()).map(([courseName, counts]) => ({
-      course: courseName,
-      expected: counts.expected,
-      timeIn: counts.timeIn,
-      timeOut: counts.timeOut,
-    }));
-  }, [students, filteredRawRecords, course]);
-
-  const reportSummary = useMemo(() => {
-    const timeIns = filteredRawRecords.filter((record) => record.type === 'time_in');
-    const timeOuts = filteredRawRecords.length - timeIns.length;
-    return {
-      studentsCheckedIn: new Set(timeIns.map((record) => record.student_id)).size,
-      timeIns: timeIns.length,
-      timeOuts,
-      totalScans: filteredRawRecords.length,
-    };
-  }, [filteredRawRecords]);
-
-  const eventLabel = event === 'all' ? 'All events' : events.find((item) => item.id === event)?.name || 'Selected event';
-
-  // Filtered Student Records
-  const filteredStudents = useMemo(() => {
-    return studentRecordsList.filter((row) => {
-      const matchesSearch =
-        search === '' ||
-        row.name.toLowerCase().includes(search.toLowerCase()) ||
-        row.course.toLowerCase().includes(search.toLowerCase()) ||
-        row.session.toLowerCase().includes(search.toLowerCase()) ||
-        row.day.toLowerCase().includes(search.toLowerCase()) ||
-        row.period.toLowerCase().includes(search.toLowerCase()) ||
-        row.status.toLowerCase().includes(search.toLowerCase());
-
-      const matchesSession = session === 'all' || row.session === session;
-      const matchesCourse = course === 'all' || row.course === course;
-      const matchesType = type === 'all' || (type === 'time_in' ? row.timeIn !== '-' : row.timeOut !== '-');
-
-      return matchesSearch && matchesSession && matchesCourse && matchesType;
-    });
-  }, [studentRecordsList, search, session, course, type]);
-
-  const exportRows = selected.length
-    ? filteredStudents.filter((row) => selected.includes(row.id))
-    : filteredStudents;
-
-  const handleExport = (format: ExportFormat) => {
-    void import('./reportExports')
-      .then(({ exportAttendance }) => exportAttendance(exportRows, format, endDate))
-      .catch(() => setError('Could not export the report. Try again.'));
+  const handleExport = async (format: ExportFormat) => {
+    try {
+      const rows: ReportStudentAttendanceRow[] = [];
+      if (selected.length) {
+        rows.push(...filteredStudents.filter(row => selected.includes(row.id)));
+      }
+      const totalPages = selected.length ? 0 : Math.ceil((snapshot?.rowTotal ?? 0) / 100);
+      for (let exportPage = 1; exportPage <= totalPages; exportPage++) {
+        const result = await request.get<Snapshot>('/reports', { params: { ...params, page: exportPage, limit: 100 } });
+        for (const row of result.rows) {
+          rows.push({ id: row.id, name: row.name, initials: getInitials(row.name), avatarBg: '', avatarColor: '', course: row.course, session: row.session, day: row.day, period: row.period, timeIn: formatManilaTime(row.timeIn), timeOut: formatManilaTime(row.timeOut), status: row.status });
+        }
+      }
+      const { exportAttendance } = await import('./reportExports');
+      exportAttendance(rows, format, endDate);
+    } catch { setError('Could not export the report. Try again.'); }
   };
-
   return (
     <div className="mx-auto w-full max-w-[1180px] space-y-6 text-[#24133F]">
       {/* Header */}
@@ -458,8 +208,8 @@ export function ReportsPage() {
 
         <ExportButton
           className="ml-auto"
-          onExport={handleExport}
-          disabled={!exportRows.length}
+          onExport={(format) => { void handleExport(format); }}
+          disabled={loading || !snapshot?.rowTotal}
         />
       </div>
 
@@ -786,6 +536,13 @@ export function ReportsPage() {
           )}
         </div>
       </section>
+      <div className="flex items-center justify-between text-xs text-[#756883]">
+        <span>{(snapshot?.rowTotal ?? 0).toLocaleString()} records · Page {page} of {Math.max(1, Math.ceil((snapshot?.rowTotal ?? 0) / pageSize))}</span>
+        <div className="flex gap-2">
+          <button type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)} className="rounded-xl border border-[#E5E0EB] px-4 py-2 disabled:opacity-40">Previous</button>
+          <button type="button" disabled={loading || page * pageSize >= (snapshot?.rowTotal ?? 0)} onClick={() => setPage(page + 1)} className="rounded-xl border border-[#E5E0EB] px-4 py-2 disabled:opacity-40">Next</button>
+        </div>
+      </div>
     </div>
   );
 }
