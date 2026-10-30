@@ -152,7 +152,7 @@ export function LoginView() {
               </div>
             </div>
 
-            {/* Remember me & Forgot Password */}
+            {/* Remember me and account assistance */}
             <div className="flex items-center justify-between text-xs pt-0.5">
               <Checkbox
                 checked={rememberMe}
@@ -164,7 +164,7 @@ export function LoginView() {
                 onClick={() => helpDialog.current?.showModal()}
                 className="font-bold text-[#7026B7] hover:underline cursor-pointer"
               >
-                Forgot Password?
+                Need help signing in?
               </button>
             </div>
 
@@ -178,17 +178,6 @@ export function LoginView() {
             </button>
           </form>
 
-          {/* New here? Create account */}
-          <p className="mt-6 text-center text-xs font-medium text-[#756883]">
-            New here?{' '}
-            <button
-              type="button"
-              onClick={() => helpDialog.current?.showModal()}
-              className="font-bold text-[#7026B7] hover:underline cursor-pointer"
-            >
-              Create account
-            </button>
-          </p>
         </div>
 
         {/* Footer Copyright */}
@@ -203,7 +192,7 @@ export function LoginView() {
       <dialog
         ref={helpDialog}
         aria-labelledby="password-help-title"
-        className="w-[min(360px,calc(100%-32px))] rounded-[28px] border border-[#E5E0EB] bg-white p-6 text-center text-[#24133F] shadow-2xl backdrop:bg-[#1A0B2E]/40 backdrop:backdrop-blur-sm"
+        className="fixed left-1/2 top-1/2 m-0 w-[min(400px,calc(100%-32px))] -translate-x-1/2 -translate-y-1/2 rounded-[28px] border border-[#E5E0EB] bg-white p-7 text-center text-[#24133F] backdrop:bg-[#1A0B2E]/40 backdrop:backdrop-blur-sm"
       >
         <img
           src={hawiQuestionImg}
@@ -211,10 +200,10 @@ export function LoginView() {
           className="mx-auto mb-3 h-28 w-28 object-contain"
         />
         <h2 id="password-help-title" className="text-xl font-extrabold text-[#24133F]">
-          Need Assistance?
+          Need help signing in?
         </h2>
         <p className="mt-2 text-xs text-[#756883] leading-relaxed">
-          Super Admin accounts are provisioned by institution administrators. Contact IT Services to request an account or reset your credentials.
+          Contact your department’s IT Services if you’ve forgotten your password or need access to a Super Admin account.
         </p>
         <button
           type="button"
