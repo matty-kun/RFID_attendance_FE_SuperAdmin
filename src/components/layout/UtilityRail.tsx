@@ -1,27 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, LogOut, Shield } from 'lucide-react';
+import { LogOut, Shield } from 'lucide-react';
 import { useAuth } from '../../features/auth';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 import hawiWavingImg from '../../assets/illustrations/Hawi Waving.png';
 
-type Panel = 'account' | 'notifications';
-
 export function UtilityRail() {
   const { user, logout } = useAuth();
-  const [panel, setPanel] = useState<Panel>('account');
   const [isOpen, setIsOpen] = useState(false);
   const [isSignOutConfirmOpen, setIsSignOutConfirmOpen] = useState(false);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLElement>(null);
 
-  const toggle = (nextPanel: Panel) => {
-    if (isOpen && panel === nextPanel) {
-      setIsOpen(false);
-    } else {
-      setPanel(nextPanel);
-      setIsOpen(true);
-    }
-  };
+  const toggle = () => setIsOpen(open => !open);
 
   // Close when clicking outside both the bubble and the rail
   useEffect(() => {
@@ -51,18 +41,6 @@ export function UtilityRail() {
     };
   }, [isOpen]);
 
-  useEffect(() => {
-    const onOpenUtility = (event: Event) => {
-      const targetPanel = (event as CustomEvent<string>).detail;
-      if (targetPanel === 'notifications' || targetPanel === 'account') {
-        setPanel(targetPanel);
-        setIsOpen(true);
-      }
-    };
-    window.addEventListener('presnt:open-utility', onOpenUtility);
-    return () => window.removeEventListener('presnt:open-utility', onOpenUtility);
-  }, []);
-
   const initials = user?.name ? user.name.slice(0, 2).toUpperCase() : 'SA';
 
   return (
@@ -73,22 +51,7 @@ export function UtilityRail() {
         aria-label="Quick actions"
         className="fixed bottom-8 left-12 z-40 hidden flex-col items-center gap-2.5 md:flex"
       >
-        {/* Notifications Button */}
-        <button
-          type="button"
-          onClick={() => toggle('notifications')}
-          aria-label="Notifications"
-          title="Notifications"
-          className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all cursor-pointer active:scale-90 active:translate-y-[1px] ${
-            isOpen && panel === 'notifications'
-              ? 'border-brand-600 bg-brand-50 text-brand-700 ring-2 ring-brand-300'
-              : 'border-slate-200 bg-white text-[#756883] hover:text-brand-700 hover:border-brand-300'
-          }`}
-        >
-          <Bell className="h-4 w-4" />
-        </button>
-
-        {/* Manage Admins Button (In line with notifications and profile) */}
+        {/* Manage Admins Button */}
         <button
           type="button"
           onClick={() => {
@@ -105,11 +68,11 @@ export function UtilityRail() {
         {/* Account Avatar Button */}
         <button
           type="button"
-          onClick={() => toggle('account')}
+          onClick={toggle}
           aria-label="Account profile"
           title={user?.name || 'Account'}
           className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-slate-200 transition-all cursor-pointer active:scale-90 active:translate-y-[1px] ${
-            isOpen && panel === 'account'
+            isOpen
               ? 'ring-2 ring-brand-600 ring-offset-2'
               : 'hover:ring-2 hover:ring-brand-300'
           } bg-[#DFE8F8] text-[11px] font-extrabold text-[#294B85]`}
@@ -122,19 +85,16 @@ export function UtilityRail() {
         </button>
       </aside>
 
-      {/* Floating Chat Bubble Popover */}
+      {/* Account popover */}
       {isOpen && (
         <div
           ref={bubbleRef}
           role="region"
           aria-label="Quick actions bubble"
-          className={`fixed left-[92px] z-50 w-[270px] rounded-2xl border border-slate-200/90 bg-white p-3 shadow-xl shadow-[#24133F]/10 animate-in fade-in zoom-in-95 duration-150 text-[#24133F] ${
-            panel === 'account' ? 'bottom-7' : 'bottom-[112px]'
-          }`}
+          className="fixed bottom-7 left-[92px] z-50 w-[270px] rounded-2xl border border-slate-200/90 bg-white p-3 shadow-xl shadow-[#24133F]/10 animate-in fade-in zoom-in-95 duration-150 text-[#24133F]"
         >
-          {panel === 'account' ? (
-            <div className="space-y-2">
-              {/* Header with Avatar, Name, Email */}
+          <div className="space-y-2">
+            {/* Header with Avatar, Name, Email */}
               <div className="flex items-center gap-2.5 min-w-0 pb-2.5 border-b border-slate-100">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#DFE8F8] text-[#294B85] font-extrabold text-xs">
                   {user?.avatar_url ? (
@@ -154,7 +114,7 @@ export function UtilityRail() {
                 </div>
               </div>
 
-              {/* Sign Out Action Row */}
+            {/* Sign Out Action Row */}
               <button
                 type="button"
                 onClick={() => setIsSignOutConfirmOpen(true)}
@@ -165,25 +125,7 @@ export function UtilityRail() {
                 </div>
                 <span>Sign out</span>
               </button>
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {/* Notifications Header */}
-              <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
-                  <Bell className="h-3.5 w-3.5" />
-                </div>
-                <span className="text-xs font-bold text-[#24133F]">Notifications</span>
-              </div>
-
-              <div className="py-3 px-2 text-center">
-                <p className="text-xs font-bold text-[#24133F]">No new notifications</p>
-                <p className="text-[11px] text-[#756883] mt-0.5">
-                  System logs and attendance alerts will appear here in real time.
-                </p>
-              </div>
-            </div>
-          )}
+          </div>
 
           {/* Pointer tail pointing left directly at the active trigger button */}
           <div className="absolute -left-1.5 bottom-3.5 h-3 w-3 rotate-45 border-b border-l border-slate-200/90 bg-white pointer-events-none" />

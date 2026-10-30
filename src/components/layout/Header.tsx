@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  Bell,
   CalendarDays,
   ChartNoAxesColumn,
   ClipboardList,
@@ -36,7 +35,6 @@ const commands = [
 
   { name: 'Inspect RFID Card', path: '/cards', icon: Radio, keywords: 'inspect tap lookup card rfid search who owner check unassigned', action: 'inspect-card' },
   { name: 'Manage Admins', path: '', icon: Shield, keywords: 'admins accounts officers permissions roles manage add admin drawer', action: 'manage-admins' },
-  { name: 'Notifications', path: '', icon: Bell, keywords: 'alerts updates bell', action: 'notifications' },
 ];
 
 const labelWidths: Record<string, number> = {
@@ -126,8 +124,6 @@ export function Header() {
       });
     } else if (command.action === 'manage-admins') {
       window.dispatchEvent(new CustomEvent('presnt:open-admins-drawer'));
-    } else if (command.action) {
-      window.dispatchEvent(new CustomEvent('presnt:open-utility', { detail: command.action }));
     } else if (command.path.includes('#')) {
       const [path, hash] = command.path.split('#');
       navigate(path);
@@ -186,7 +182,7 @@ export function Header() {
             if (event.key === 'ArrowDown') { event.preventDefault(); setSelectedIndex((index) => Math.min(index + 1, matchingPages.length - 1)); }
             if (event.key === 'ArrowUp') { event.preventDefault(); setSelectedIndex((index) => Math.max(index - 1, 0)); }
             if (event.key === 'Enter' && matchingPages.length) { event.preventDefault(); runCommand(matchingPages[selectedIndex] ?? matchingPages[0]); }
-          }} aria-label="Search commands" aria-controls="command-results" aria-activedescendant={matchingPages.length ? `command-result-${selectedIndex}` : undefined} role="combobox" aria-expanded="true" aria-autocomplete="list" placeholder="Search pages, charts, help, notifications..." className="min-w-0 flex-1 bg-transparent text-sm text-[#24133F] outline-none placeholder:text-[#9B89B0]" />
+          }} aria-label="Search commands" aria-controls="command-results" aria-activedescendant={matchingPages.length ? `command-result-${selectedIndex}` : undefined} role="combobox" aria-expanded="true" aria-autocomplete="list" placeholder="Search pages, charts, help..." className="min-w-0 flex-1 bg-transparent text-sm text-[#24133F] outline-none placeholder:text-[#9B89B0]" />
           <kbd className="rounded border border-[#E5E0EB] px-1.5 py-0.5 text-[10px] text-[#756883]">Esc</kbd>
         </div>
         <div id="command-results" role="listbox" aria-label="Commands" className="max-h-80 overflow-y-auto p-2">
