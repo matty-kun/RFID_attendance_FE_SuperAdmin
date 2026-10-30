@@ -10,7 +10,7 @@ import { RapidCardScanDrawer } from './RapidCardScanDrawer';
 import { BulkStudentImportModal } from './BulkStudentImportModal';
 import { RegisterActionsDropdown } from './RegisterActionsDropdown';
 import { StudentProfileDrawer } from './StudentProfileDrawer';
-import { CardInspectorDrawer } from './CardInspectorDrawer';
+import { studentService } from '../services/studentService';
 import type { StudentRecord } from '../models';
 import {
   Search,
@@ -74,12 +74,21 @@ export const StudentsView: React.FC = () => {
 
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<StudentRecord | null>(null);
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
-  const [isCardInspectorOpen, setIsCardInspectorOpen] = useState(false);
-
   useEffect(() => {
-    const onOpenInspector = () => setIsCardInspectorOpen(true);
-    window.addEventListener('presnt:open-card-inspector', onOpenInspector);
-    return () => window.removeEventListener('presnt:open-card-inspector', onOpenInspector);
+    const studentNumber = new URLSearchParams(window.location.search).get('profile');
+    if (!studentNumber) return;
+    let active = true;
+    void (async () => {
+      for (const archived of [false, true]) {
+        const result = await studentService.getStudents(1, studentNumber, 'created_at', 'desc', 25, archived);
+        const student = result.students.find(item => item.student_id === studentNumber);
+        if (student) {
+          if (active) { setStudentTab(archived ? 'archived' : 'active'); setSelectedStudentForProfile(student); setIsProfileDrawerOpen(true); }
+          break;
+        }
+      }
+    })().catch(() => {});
+    return () => { active = false; };
   }, []);
   const [courseFilter, setCourseFilter] = useState('all');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -163,14 +172,6 @@ export const StudentsView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={() => setIsCardInspectorOpen(true)}
-            leftIcon={<Radio className="h-4 w-4 text-[#7026B7]" />}
-          >
-            Inspect Card
-          </Button>
           <RegisterActionsDropdown
             onAddStudent={() => setIsAddDrawerOpen(true)}
             onRapidScan={() => setIsRapidScanOpen(true)}
@@ -575,19 +576,6 @@ export const StudentsView: React.FC = () => {
         onImport={handleBulkImport}
       />
 
-      {/* Slide-in Drawer: Card Inspector & Rapid Tap Lookup */}
-      <CardInspectorDrawer
-        isOpen={isCardInspectorOpen}
-        onClose={() => setIsCardInspectorOpen(false)}
-        students={students}
-        cardlessStudents={cardlessStudents}
-        onQuickPair={handleQuickPair}
-        onUnlinkCard={handleUnlinkCard}
-        onViewStudent={(student) => {
-          setSelectedStudentForProfile(student);
-          setIsProfileDrawerOpen(true);
-        }}
-      />
     </div>
   );
 };

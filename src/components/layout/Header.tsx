@@ -34,7 +34,7 @@ const commands = [
   { name: 'Attendance Sessions', path: '/sessions', icon: CalendarDays, keywords: 'schedule event session time in time out create', action: '' },
   { name: 'Attendance Records', path: '/audit-log', icon: ClipboardList, keywords: 'scans student time in time out history', action: '' },
 
-  { name: 'Inspect RFID Card', path: '/students', icon: Radio, keywords: 'inspect tap lookup card rfid search who owner check unassigned', action: 'inspect-card' },
+  { name: 'Inspect RFID Card', path: '/cards', icon: Radio, keywords: 'inspect tap lookup card rfid search who owner check unassigned', action: 'inspect-card' },
   { name: 'Manage Admins', path: '', icon: Shield, keywords: 'admins accounts officers permissions roles manage add admin drawer', action: 'manage-admins' },
   { name: 'Notifications', path: '', icon: Bell, keywords: 'alerts updates bell', action: 'notifications' },
 ];
@@ -120,7 +120,7 @@ export function Header() {
   const runCommand = (command: (typeof commands)[number]) => {
     closePalette(() => {
     if (command.action === 'inspect-card') {
-      navigate('/students');
+      navigate('/cards');
       requestAnimationFrame(() => {
         window.dispatchEvent(new CustomEvent('presnt:open-card-inspector'));
       });
