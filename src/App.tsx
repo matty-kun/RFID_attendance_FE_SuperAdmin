@@ -4,6 +4,7 @@ import { AuthProvider } from './features/auth';
 import { ToastProvider } from './context/ToastContext';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { SuperAdminLayout } from './components/layout/SuperAdminLayout';
+import { NetworkStatusBanner } from './components/common/NetworkStatusBanner';
 
 // Domain Page Routes
 import { LoginPage } from './pages/LoginPage';
@@ -25,33 +26,34 @@ export const App: React.FC = () => {
     <BrowserRouter>
       <AuthProvider>
         <ToastProvider>
+          <NetworkStatusBanner />
           <Routes>
-          {/* Public Authentication Route */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/change-password" element={<FirstLoginPasswordPage />} />
+            {/* Public Authentication Route */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/change-password" element={<FirstLoginPasswordPage />} />
 
-          {/* Protected Super Admin Tier (Mirrors Backend Domains) */}
-          <Route element={<ProtectedRoute />}>
-            <Route element={<SuperAdminLayout />}>
-              <Route path="/" element={<Navigate to="/overview" replace />} />
-              <Route path="/overview" element={<OverviewPage />} />
-              <Route path="/audit-log" element={<AuditLogPage />} />
-              <Route path="/events" element={<EventsPage />} />
-              <Route path="/sessions" element={<SessionsPage />} />
-              <Route path="/locations" element={<LocationsPage />} />
-              <Route path="/attendance" element={<AttendancePage />} />
-              <Route path="/reports" element={<ReportsPage />} />
-              <Route path="/scans" element={<Navigate to="/audit-log" replace />} />
-              <Route path="/students" element={<StudentsPage />} />
-              <Route path="/cards" element={<CardsPage />} />
-              <Route path="/admins" element={<AdminsPage />} />
-              <Route path="*" element={<NotFoundPage />} />
+            {/* Protected Super Admin Tier (Mirrors Backend Domains) */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<SuperAdminLayout />}>
+                <Route path="/" element={<Navigate to="/overview" replace />} />
+                <Route path="/overview" element={<OverviewPage />} />
+                <Route path="/audit-log" element={<AuditLogPage />} />
+                <Route path="/events" element={<EventsPage />} />
+                <Route path="/sessions" element={<SessionsPage />} />
+                <Route path="/locations" element={<LocationsPage />} />
+                <Route path="/attendance" element={<AttendancePage />} />
+                <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/scans" element={<Navigate to="/audit-log" replace />} />
+                <Route path="/students" element={<StudentsPage />} />
+                <Route path="/cards" element={<CardsPage />} />
+                <Route path="/admins" element={<AdminsPage />} />
+                <Route path="*" element={<NotFoundPage />} />
+              </Route>
             </Route>
-          </Route>
 
-          {/* Catch-all redirect */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Catch-all redirect */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
