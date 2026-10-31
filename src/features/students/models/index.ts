@@ -43,6 +43,7 @@ export interface UpdateStudentPayload {
   year_level?: number | null;
   rfid_uid?: string | null;
   avatar_url?: string | null;
+  password?: string;
 }
 
 export interface InventoryCard {

@@ -179,7 +179,7 @@ export function LoginView() {
                 onClick={() => helpDialog.current?.showModal()}
                 className="font-bold text-[#7026B7] hover:underline cursor-pointer"
               >
-                Need help signing in?
+                Forgot Password?
               </button>
             </div>
 
@@ -203,11 +203,16 @@ export function LoginView() {
         </div>
       </div>
 
-      {/* Help Dialog */}
+      {/* Forgot Password Help Dialog */}
       <dialog
         ref={helpDialog}
         aria-labelledby="password-help-title"
-        className="fixed left-1/2 top-1/2 m-0 w-[min(400px,calc(100%-32px))] -translate-x-1/2 -translate-y-1/2 rounded-[28px] border border-[#E5E0EB] bg-white p-7 text-center text-[#24133F] backdrop:bg-[#1A0B2E]/40 backdrop:backdrop-blur-sm"
+        onClick={(e) => {
+          if (e.target === helpDialog.current) {
+            helpDialog.current?.close();
+          }
+        }}
+        className="fixed left-1/2 top-1/2 m-0 w-[min(400px,calc(100%-32px))] -translate-x-1/2 -translate-y-1/2 rounded-[28px] border border-[#E5E0EB] bg-white p-7 text-center text-[#24133F] shadow-2xl backdrop:bg-[#1A0B2E]/60 backdrop:backdrop-blur-md"
       >
         <img
           src={hawiQuestionImg}
@@ -215,10 +220,10 @@ export function LoginView() {
           className="mx-auto mb-3 h-28 w-28 object-contain"
         />
         <h2 id="password-help-title" className="text-xl font-extrabold text-[#24133F]">
-          Need help signing in?
+          Forgot Password?
         </h2>
         <p className="mt-2 text-xs text-[#756883] leading-relaxed">
-          Contact your department’s IT Services if you’ve forgotten your password or need access to a Super Admin account.
+          Forgot your password? Please visit the CITE Office in person to request a password reset. Our authorized personnel will assist you in recovering access to your account.
         </p>
         <button
           type="button"

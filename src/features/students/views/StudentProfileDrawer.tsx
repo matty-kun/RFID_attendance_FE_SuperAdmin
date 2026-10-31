@@ -25,7 +25,9 @@ import {
   Camera,
   Zap,
   Trash2,
+  KeyRound,
 } from 'lucide-react';
+import { ResetPasswordModal } from '../../../components/common/ResetPasswordModal';
 import { DeleteStudentConfirmationModal } from './DeleteStudentConfirmationModal';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiBoxImg from '../../../assets/illustrations/Hawi Box.png';
@@ -42,6 +44,7 @@ export interface StudentProfileDrawerProps {
   onQuickPair: (studentId: string, cardUid: string) => Promise<{ success: boolean; message: string }> | any;
   onOpenRapidScan: () => void;
   onUpdateStudent?: (studentId: string, payload: { name: string; course: string; year_level: number }) => Promise<any>;
+  onResetPassword?: (studentId: string, password: string) => Promise<boolean | void>;
   isArchived?: boolean;
   onArchiveStudent?: (studentId: string) => Promise<boolean>;
   onRestoreStudent?: (studentId: string) => void;
@@ -80,6 +83,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   onUploadAvatar,
   onRemoveAvatar,
   onDeleteStudent,
+  onResetPassword,
 }) => {
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
   const [filterType, setFilterType] = useState<'all' | 'time_in' | 'time_out'>('all');
@@ -88,6 +92,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
 
   // Photo Upload & Centering/Crop State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -623,6 +628,23 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                 Archived Record
               </span>
             )}
+          </div>
+
+          {/* Student Account Bar & Password Reset */}
+          <div className="flex items-stretch gap-2">
+            <div className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-bold shadow-[0_4px_0_#D0C9D5]">
+              <span className="truncate text-slate-700">{currentStudent.email || `${currentStudent.student_id}@student.presnt.edu`}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsResetPasswordOpen(true)}
+              disabled={Boolean(isArchived)}
+              title={isArchived ? 'Restore student before resetting password' : 'Reset student password'}
+              className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-[#7026B7] px-4 py-3 text-xs font-bold text-white shadow-[0_4px_0_#451475] transition-colors hover:bg-[#621FA3] active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              <KeyRound className="h-4 w-4" />
+              Reset Password
+            </button>
           </div>
 
           {/* Archived Banner / Quick Restore Bar */}
@@ -1198,6 +1220,23 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             onClose();
           }
           return ok;
+        }}
+      />
+      <ResetPasswordModal
+        isOpen={isResetPasswordOpen && Boolean(currentStudent)}
+        onClose={() => setIsResetPasswordOpen(false)}
+        account={currentStudent ? {
+          id: currentStudent.id,
+          name: currentStudent.name,
+          email: currentStudent.email || `${currentStudent.student_id}@student.presnt.edu`,
+          identifier: currentStudent.student_id,
+          type: 'Student',
+          avatarUrl: currentStudent.avatar_url,
+        } : null}
+        onReset={async (id, password) => {
+          if (onResetPassword) {
+            return await onResetPassword(id, password);
+          }
         }}
       />
     </Drawer>

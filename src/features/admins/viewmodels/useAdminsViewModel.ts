@@ -31,6 +31,7 @@ export interface UseAdminsViewModelReturn {
   loadAdmins: () => Promise<void>;
   handleCreate: (e: React.FormEvent) => Promise<void>;
   handleUpdateAdmin: (adminId: string, payload: UpdateAdminPayload) => Promise<boolean>;
+  handleResetPassword: (adminId: string, newPassword: string) => Promise<boolean>;
   handleArchiveAdmin: (adminId: string) => Promise<boolean>;
   handleRestoreAdmin: (adminId: string) => Promise<boolean>;
   deletingAdmin: AdminRecord | null;
@@ -154,6 +155,29 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     }
   };
 
+  const handleResetPassword = async (adminId: string, newPassword: string): Promise<boolean> => {
+    setIsSubmitting(true);
+    setFormError(null);
+    try {
+      await adminManagementService.resetPassword(adminId, newPassword);
+      const target = admins.find((a) => a.id === adminId);
+      toast.success(
+        target
+          ? `Password for admin "${target.name}" reset successfully.`
+          : 'Administrator password reset successfully.'
+      );
+      await loadAdmins();
+      return true;
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to reset administrator password.';
+      setFormError(apiMsg);
+      toast.error(apiMsg);
+      throw err;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleArchiveAdmin = async (adminId: string): Promise<boolean> => {
     try {
       await adminManagementService.archiveAdmin(adminId);
@@ -249,6 +273,7 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     loadAdmins,
     handleCreate,
     handleUpdateAdmin,
+    handleResetPassword,
     handleArchiveAdmin,
     handleRestoreAdmin,
     deletingAdmin,

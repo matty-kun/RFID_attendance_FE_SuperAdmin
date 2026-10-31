@@ -66,6 +66,7 @@ export const StudentsView: React.FC = () => {
     handleQuickPair,
     handleUnlinkCard,
     handleUpdateStudent,
+    handleResetPassword,
     uploadStudentAvatar,
     removeStudentAvatar,
     loadStudents,
@@ -571,6 +572,7 @@ export const StudentsView: React.FC = () => {
         onUnlinkCard={handleUnlinkCard}
         onQuickPair={handleQuickPair}
         onUpdateStudent={handleUpdateStudent}
+        onResetPassword={handleResetPassword}
         onOpenRapidScan={() => setIsRapidScanOpen(true)}
         isArchived={activeProfileStudent ? archivedStudentIds.includes(activeProfileStudent.id) : false}
         onArchiveStudent={handleArchiveStudent}

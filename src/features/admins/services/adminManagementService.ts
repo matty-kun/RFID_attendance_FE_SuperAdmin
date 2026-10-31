@@ -16,6 +16,9 @@ export const adminManagementService = {
   async updateAdmin(adminId: string, payload: UpdateAdminPayload): Promise<AdminRecord> {
     return adminService.updateAdmin(adminId, payload);
   },
+  async resetPassword(adminId: string, password: string): Promise<AdminRecord> {
+    return adminService.updateAdmin(adminId, { password });
+  },
   async archiveAdmin(adminId: string): Promise<AdminRecord> { return adminService.archiveAdmin(adminId); },
   async restoreAdmin(adminId: string): Promise<AdminRecord> { return adminService.restoreAdmin(adminId); },
 
