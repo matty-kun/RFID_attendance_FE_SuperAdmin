@@ -257,6 +257,10 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     try {
       const created = await studentService.registerStudent(payload);
 
+      // Optimistic update so newly registered student & card reflect immediately
+      setStudents((prev) => [created, ...prev.filter((s) => s.id !== created.id)]);
+      setTotal((prev) => prev + 1);
+
       if (payload.rfid_uid) {
         setUnassignedPool((prev) =>
           prev.filter((c) => c.uid.toUpperCase() !== payload.rfid_uid?.toUpperCase())
@@ -300,6 +304,7 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
 
     try {
       await studentService.updateStudent(studentId, { rfid_uid: clean });
+      toast.success(`Card ${clean} successfully linked to ${targetStudent?.name || 'student'}!`);
       // Non-blocking background re-sync
       void loadStudents();
       return { success: true, message: `Card ${clean} successfully linked to student!` };

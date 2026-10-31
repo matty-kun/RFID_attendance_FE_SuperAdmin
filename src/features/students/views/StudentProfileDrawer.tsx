@@ -183,6 +183,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     try {
       const res = await onQuickPair(currentStudent.id, cleanUid);
       if (res?.success) {
+        setLocalStudent((prev) => prev ? { ...prev, rfid_uid: cleanUid } : prev);
         activeStudentRef.current = {
           ...currentStudent,
           rfid_uid: cleanUid,
@@ -226,7 +227,12 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   if (student) {
     activeStudentRef.current = student;
   }
-  const currentStudent = student || activeStudentRef.current;
+  const [localStudent, setLocalStudent] = useState<StudentRecord | null>(student);
+  useEffect(() => {
+    setLocalStudent(student);
+  }, [student]);
+
+  const currentStudent = localStudent || student || activeStudentRef.current;
 
   // Seamless Inline Name Editing
   const [isEditingName, setIsEditingName] = useState(false);
