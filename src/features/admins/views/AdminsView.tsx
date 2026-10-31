@@ -4,12 +4,13 @@ import { Button } from '../../../components/common/Button';
 import { Dropdown } from '../../../components/common/Dropdown';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
+import { EmptyState } from '../../../components/common/EmptyState';
+import { LoadingState } from '../../../components/common/LoadingState';
 import { DeleteAdminConfirmationModal } from './DeleteAdminConfirmationModal';
 import { AdminProfileDrawer } from './AdminProfileDrawer';
 import { Archive, ExternalLink, Plus, Search, Shield, Sparkles, UserCheck, Users } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import { useAuth } from '../../auth/context/AuthContext';
-import hawiFindingImg from '../../../assets/illustrations/Hawi Finding.png';
 
 export interface AdminsViewProps {
   isDrawer?: boolean;
@@ -124,11 +125,10 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
       {/* Admin List */}
       <div>
         {isLoading ? (
-          <div className="flex min-h-[360px] w-full flex-col items-center justify-center px-6 text-center" role="status" aria-live="polite">
-            <img src={hawiFindingImg} alt="" className="h-32 w-32 object-contain motion-safe:animate-bounce" />
-            <p className="mt-3 text-sm font-bold text-[#7026B7]">Hawi is finding admin accounts…</p>
-            <p className="mt-1 text-xs text-[#756883]">Loading the administrator list.</p>
-          </div>
+          <LoadingState
+            title="Hawi is finding admin accounts…"
+            description="Loading the administrator list."
+          />
         ) : visibleAdmins.length > 0 ? (
           <div className="max-h-[520px] space-y-1 overflow-y-auto">
             {visibleAdmins.map((admin) => (
@@ -172,13 +172,58 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center text-xs text-[#756883]">
-            {error
-              ? <button type="button" onClick={() => void loadAdmins()} className="font-bold text-[#7026B7] underline">Retry loading administrators</button>
-              : searchQuery || roleFilter !== 'all'
-              ? 'No administrators match these filters.'
-              : showArchived ? 'No archived administrators.' : 'No administrators available.'}
-          </div>
+          <EmptyState
+            variant={
+              error
+                ? 'error'
+                : searchQuery || roleFilter !== 'all'
+                ? 'no-search-results'
+                : 'empty-list'
+            }
+            title={
+              error
+                ? 'Unable to load administrators'
+                : searchQuery || roleFilter !== 'all'
+                ? 'No administrators match these filters'
+                : showArchived
+                ? 'No archived administrators'
+                : 'No administrators registered yet'
+            }
+            description={
+              error
+                ? 'Could not connect to the server. Please check your network and retry.'
+                : searchQuery || roleFilter !== 'all'
+                ? 'Try adjusting your search terms or clearing the role filter.'
+                : showArchived
+                ? 'Deactivated admin accounts will appear here safely archived.'
+                : 'Add system administrators to help manage RFID cards, attendance, and students.'
+            }
+            action={
+              error
+                ? {
+                    label: 'Retry Loading',
+                    variant: 'primary',
+                    onClick: () => void loadAdmins(),
+                  }
+                : searchQuery || roleFilter !== 'all'
+                ? {
+                    label: 'Reset Filters',
+                    variant: 'secondary',
+                    onClick: () => {
+                      setSearchQuery('');
+                      setRoleFilter('all');
+                      setPage(1);
+                    },
+                  }
+                : user?.role === 'super_admin'
+                ? {
+                    label: 'Add Administrator',
+                    variant: 'primary',
+                    onClick: () => setIsModalOpen(true),
+                  }
+                : undefined
+            }
+          />
         )}
       </div>
 

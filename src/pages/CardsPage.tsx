@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, Check, CircleAlert, CreditCard, ExternalLink, Filter, Hash, Loader2, Radio, RotateCcw, Search, ShieldAlert, UserRound, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Check, CircleAlert, CreditCard, ExternalLink, Filter, Hash, Radio, RotateCcw, Search, ShieldAlert, UserRound, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatYearLevel } from '../utils/formatters';
 import { request } from '../services/apiClient';
@@ -8,6 +8,7 @@ import { Modal } from '../components/common/Modal';
 import { Drawer } from '../components/common/Drawer';
 import { Dropdown } from '../components/common/Dropdown';
 import { EmptyState } from '../components/common/EmptyState';
+import { LoadingState } from '../components/common/LoadingState';
 import { useToast } from '../context';
 import hawiLooking from '../assets/illustrations/Hawi Finding.png';
 import hawiScanning from '../assets/illustrations/Hawi Tap Card.png';
@@ -149,7 +150,12 @@ export function CardsPage() {
       <Dropdown value={status} onChange={value => { setStatus(value as Status | 'all'); setPage(1); }} options={statuses} icon={<Filter className="h-4 w-4" />} buttonClassName="min-w-[150px]" />
     </div>
     <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-3">
-      {loading ? <div className="flex min-h-64 flex-col items-center justify-center text-center"><img src={hawiLooking} alt="" className="mb-3 h-28 w-28 object-contain" /><div className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin text-[#7026B7]" /><p className="text-sm font-bold text-[#24133F]">Loading cards…</p></div><p className="mt-1 text-xs text-[#756883]">Finding registered cards and their current holders.</p></div> : cards.length === 0 ? (
+      {loading ? (
+        <LoadingState
+          title="Loading cards…"
+          description="Finding registered cards and their current holders."
+        />
+      ) : cards.length === 0 ? (
         <EmptyState
           variant={
             status === 'damaged' || status === 'lost'

@@ -4,6 +4,8 @@ import { Button } from '../../../components/common/Button';
 import { Dropdown } from '../../../components/common/Dropdown';
 import { Modal } from '../../../components/common/Modal';
 import { ImageCropModal } from '../../../components/common/ImageCropModal';
+import { EmptyState } from '../../../components/common/EmptyState';
+import { LoadingState } from '../../../components/common/LoadingState';
 import { toast } from '../../../context';
 import {
   Copy,
@@ -26,7 +28,6 @@ import {
 } from 'lucide-react';
 import { DeleteStudentConfirmationModal } from './DeleteStudentConfirmationModal';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
-import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
 import hawiBoxImg from '../../../assets/illustrations/Hawi Box.png';
 import type { StudentRecord } from '../models';
 import { formatYearLevel } from '../../../utils/formatters';
@@ -1006,37 +1007,41 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   ))}
                 </div>
               ) : loadingScans ? (
-                <div className="flex items-center justify-center gap-2 rounded-2xl border border-[#E5E0EB] bg-white py-10 text-xs font-bold text-[#24133F]"><Loader2 className="h-4 w-4 animate-spin text-[#7026B7]" /> Loading scan history…</div>
-              ) : (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-[#E5E0EB] bg-white py-12 px-4 text-center">
-                  <img
-                    src={hawiQuestionImg}
-                    alt="No scan records"
-                    className="w-20 h-20 object-contain mb-2"
+                <div className="rounded-2xl border border-[#E5E0EB] bg-white">
+                  <LoadingState
+                    title="Loading scan history…"
+                    description="Fetching attendance scans for this student."
+                    compact
                   />
-                  <p className="text-xs font-bold text-[#24133F]">No scan logs found</p>
-                  <p className="text-[11px] text-[#756883] max-w-xs mt-0.5">
-                    {scanError
-                      ? 'Scan history is unavailable right now.'
-                      : selectedEventId !== 'all' || filterType !== 'all'
-                      ? 'No attendance records match the selected event or filter.'
-                      : currentStudent.rfid_uid
-                      ? 'This student has not checked into any event sessions yet.'
-                      : 'No attendance scans recorded for this student.'}
-                  </p>
-                  {(selectedEventId !== 'all' || filterType !== 'all') && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedEventId('all');
-                        setFilterType('all');
-                      }}
-                      className="mt-3 text-xs"
-                    >
-                      Reset Filters
-                    </Button>
-                  )}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-[#E5E0EB] bg-white">
+                  <EmptyState
+                    variant={selectedEventId !== 'all' || filterType !== 'all' ? 'no-search-results' : scanError ? 'error' : 'empty-list'}
+                    title={scanError ? 'Scan history unavailable' : selectedEventId !== 'all' || filterType !== 'all' ? 'No matching scan logs' : 'No attendance scans recorded'}
+                    description={
+                      scanError
+                        ? 'Scan history is unavailable right now. Check backend connection.'
+                        : selectedEventId !== 'all' || filterType !== 'all'
+                        ? 'No attendance records match the selected event or filter.'
+                        : currentStudent.rfid_uid
+                        ? 'This student has not checked into any event sessions yet.'
+                        : 'No attendance scans recorded for this student.'
+                    }
+                    action={
+                      (selectedEventId !== 'all' || filterType !== 'all')
+                        ? {
+                            label: 'Reset Filters',
+                            variant: 'secondary',
+                            onClick: () => {
+                              setSelectedEventId('all');
+                              setFilterType('all');
+                            },
+                          }
+                        : undefined
+                    }
+                    compact
+                  />
                 </div>
               )}
             </div>

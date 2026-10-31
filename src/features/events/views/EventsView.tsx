@@ -5,6 +5,8 @@ import { Badge } from '../../../components/common/Badge';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
 import { DeleteConfirmationModal } from '../../../components/common/DeleteConfirmationModal';
+import { EmptyState } from '../../../components/common/EmptyState';
+import { LoadingState } from '../../../components/common/LoadingState';
 import { Plus, RefreshCw, Search, Sparkles, Calendar, Trash2, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getEventStatus } from '../../../utils/status';
@@ -127,23 +129,56 @@ export const EventsView: React.FC = () => {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={6} className="py-10 text-center text-xs text-[#756883]">
-                  Loading campus events…
+                <td colSpan={6} className="py-6">
+                  <LoadingState
+                    title="Loading campus events…"
+                    description="Retrieving event schedules, dates, and active selection."
+                    compact
+                  />
                 </td>
               </tr>
             ) : error && events.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-10 text-center text-xs text-rose-600">
-                  Unable to load campus events.{' '}
-                  <button type="button" onClick={() => void loadEvents()} className="font-bold underline">
-                    Retry
-                  </button>
+                <td colSpan={6} className="py-6">
+                  <EmptyState
+                    variant="error"
+                    title="Unable to load campus events"
+                    description="Could not connect to the server. Please check your network and retry."
+                    action={{
+                      label: 'Retry Loading',
+                      variant: 'primary',
+                      onClick: () => void loadEvents(),
+                    }}
+                    compact
+                  />
                 </td>
               </tr>
             ) : filteredEvents.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-10 text-center text-xs text-[#756883]">
-                  {searchQuery ? 'No campus events match your search.' : 'No campus events registered yet. Click "Create Event" to add one.'}
+                <td colSpan={6} className="py-6">
+                  <EmptyState
+                    variant={searchQuery ? 'no-search-results' : 'empty-list'}
+                    title={searchQuery ? 'No campus events match your search' : 'No campus events registered yet'}
+                    description={
+                      searchQuery
+                        ? 'Try clearing your search terms to see all events.'
+                        : 'Create your first event to configure dates and attendance sessions.'
+                    }
+                    action={
+                      searchQuery
+                        ? {
+                            label: 'Clear Search',
+                            variant: 'secondary',
+                            onClick: () => setSearchQuery(''),
+                          }
+                        : {
+                            label: 'Create Event',
+                            variant: 'primary',
+                            onClick: () => setIsModalOpen(true),
+                          }
+                    }
+                    compact
+                  />
                 </td>
               </tr>
             ) : (
