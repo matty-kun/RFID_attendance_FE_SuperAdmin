@@ -4,6 +4,7 @@ import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { Dropdown } from '../components/common/Dropdown';
 import { Button } from '../components/common/Button';
 import { request } from '../services/apiClient';
+import { EmptyState } from '../components/common/EmptyState';
 import { adminService } from '../services/adminService';
 import type { AdminRecord } from '../types';
 import hawi from '../assets/illustrations/Hawi Finding.png';
@@ -245,10 +246,32 @@ export function AuditLogPage() {
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={4} className="py-12 text-center text-xs text-[#756883]">
-                  {search || startDate || endDate || actionFilter !== 'all' || userFilter !== 'all'
-                    ? 'No audit log entries match the selected filters or date range.'
-                    : 'No recent activity.'}
+                <td colSpan={4} className="p-0">
+                  <EmptyState
+                    variant={search || startDate || endDate || actionFilter !== 'all' || userFilter !== 'all' ? 'no-search-results' : 'empty-list'}
+                    title={search || startDate || endDate || actionFilter !== 'all' || userFilter !== 'all' ? 'No audit log entries found' : 'No audit activity yet'}
+                    description={
+                      search || startDate || endDate || actionFilter !== 'all' || userFilter !== 'all'
+                        ? 'No events match the selected filters, keyword, or date range.'
+                        : 'System events, scans, and administrative actions will be logged here.'
+                    }
+                    action={
+                      search || startDate || endDate || actionFilter !== 'all' || userFilter !== 'all'
+                        ? {
+                            label: 'Reset Filters',
+                            variant: 'secondary',
+                            onClick: () => {
+                              setSearch('');
+                              setStartDate('');
+                              setEndDate('');
+                              setActionFilter('all');
+                              setUserFilter('all');
+                              setPage(1);
+                            },
+                          }
+                        : undefined
+                    }
+                  />
                 </td>
               </tr>
             ) : (

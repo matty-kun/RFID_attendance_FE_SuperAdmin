@@ -1,4 +1,5 @@
 import React from 'react';
+import { EmptyState } from '../../../components/common/EmptyState';
 import { useAttendanceViewModel } from '../viewmodels';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
@@ -86,8 +87,30 @@ export const AttendanceListView: React.FC = () => {
             <TableBody>
               {filteredRecords.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-slate-400 text-xs font-semibold">
-                    {isLoading ? 'Loading attendance records…' : error ? 'Unable to show records.' : 'No attendance records found.'}
+                  <TableCell colSpan={6} className="p-0">
+                    <EmptyState
+                      variant={filterType !== 'all' || startDate || endDate ? 'no-search-results' : 'empty-list'}
+                      title={filterType !== 'all' || startDate || endDate ? 'No matching attendance scans' : 'No attendance records yet'}
+                      description={
+                        filterType !== 'all' || startDate || endDate
+                          ? 'No scan records match the selected type or date filters.'
+                          : 'Live card scans from checkpoints will appear here in real-time.'
+                      }
+                      action={
+                        filterType !== 'all' || startDate || endDate
+                          ? {
+                              label: 'Reset Filters',
+                              variant: 'secondary',
+                              onClick: () => {
+                                setFilterType('all');
+                                setStartDate('');
+                                setEndDate('');
+                                setPage(1);
+                              },
+                            }
+                          : undefined
+                      }
+                    />
                   </TableCell>
                 </TableRow>
               ) : (
