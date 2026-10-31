@@ -11,6 +11,7 @@ export const NetworkStatusBanner: React.FC = () => {
   const [wasOffline, setWasOffline] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [dismissedSlow, setDismissedSlow] = useState(false);
+  const [dismissedOffline, setDismissedOffline] = useState(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearHideTimer = () => {
@@ -25,6 +26,7 @@ export const NetworkStatusBanner: React.FC = () => {
     setWasOffline(false);
     setStatus('offline');
     setDismissedSlow(false);
+    setDismissedOffline(false);
   }, []);
 
   const handleOnline = useCallback(async () => {
@@ -59,6 +61,7 @@ export const NetworkStatusBanner: React.FC = () => {
       return 'online';
     });
     setDismissedSlow(false);
+    setDismissedOffline(false);
     setIsRetrying(false);
   }, [handleOffline]);
 
@@ -120,6 +123,7 @@ export const NetworkStatusBanner: React.FC = () => {
 
   if (status === 'online' && !wasOffline) return null;
   if (status === 'slow' && dismissedSlow) return null;
+  if (status === 'offline' && dismissedOffline) return null;
 
   return (
     <aside
@@ -146,16 +150,26 @@ export const NetworkStatusBanner: React.FC = () => {
               Showing cached records. Database edits & live card scan sync will resume when connection returns.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={checkConnection}
-            disabled={isRetrying}
-            style={{ backgroundColor: '#FAF8FC', borderColor: '#E5E0EB', color: '#24133F' }}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-semibold hover:bg-purple-50 hover:border-[#7026B7] active:scale-95 transition-all disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 text-[#756883] ${isRetrying ? 'animate-spin' : ''}`} />
-            <span>{isRetrying ? 'Checking...' : 'Retry'}</span>
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={checkConnection}
+              disabled={isRetrying}
+              style={{ backgroundColor: '#FAF8FC', borderColor: '#E5E0EB', color: '#24133F' }}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-semibold hover:bg-purple-50 hover:border-[#7026B7] active:scale-95 transition-all disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 text-[#756883] ${isRetrying ? 'animate-spin' : ''}`} />
+              <span>{isRetrying ? 'Checking...' : 'Retry'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDismissedOffline(true)}
+              className="rounded-lg p-1.5 text-[#756883] hover:bg-slate-100 hover:text-[#24133F] transition-colors"
+              title="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
 
