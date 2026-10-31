@@ -127,8 +127,14 @@ export const NetworkStatusBanner: React.FC = () => {
       className="fixed top-3 left-1/2 -translate-x-1/2 z-50 max-w-xl w-[92%] sm:w-auto animate-in fade-in slide-in-from-top-2 duration-200"
     >
       {status === 'offline' && (
-        <div className="flex items-center gap-3.5 rounded-2xl border border-[#FCA5A5]/60 bg-white/95 px-4 py-3 text-[#24133F] shadow-[0_8px_30px_rgba(36,19,63,0.12)] backdrop-blur-md">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FDE8EA] border border-[#FCA5A5]/40 text-[#EF3340]">
+        <div
+          style={{ backgroundColor: '#FFFFFF', borderColor: '#FCA5A5' }}
+          className="flex items-center gap-3.5 rounded-2xl border bg-white px-4 py-3 text-[#24133F] shadow-[0_8px_30px_rgba(36,19,63,0.12)]"
+        >
+          <div
+            style={{ backgroundColor: '#FDE8EA', borderColor: '#FCA5A5' }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-[#EF3340]"
+          >
             <WifiOff className="h-4 w-4 animate-pulse" />
           </div>
           <div className="flex-1 min-w-0 pr-2">
@@ -144,7 +150,8 @@ export const NetworkStatusBanner: React.FC = () => {
             type="button"
             onClick={checkConnection}
             disabled={isRetrying}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[#E5E0EB] bg-[#FAF8FC] px-3.5 py-1.5 text-xs font-semibold text-[#24133F] hover:bg-purple-50 hover:border-[#7026B7] active:scale-95 transition-all disabled:opacity-50"
+            style={{ backgroundColor: '#FAF8FC', borderColor: '#E5E0EB', color: '#24133F' }}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-semibold hover:bg-purple-50 hover:border-[#7026B7] active:scale-95 transition-all disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 text-[#756883] ${isRetrying ? 'animate-spin' : ''}`} />
             <span>{isRetrying ? 'Checking...' : 'Retry'}</span>
@@ -153,8 +160,14 @@ export const NetworkStatusBanner: React.FC = () => {
       )}
 
       {status === 'slow' && !dismissedSlow && (
-        <div className="flex items-center gap-3.5 rounded-2xl border border-[#FDE68A]/70 bg-white/95 px-4 py-3 text-[#24133F] shadow-[0_8px_30px_rgba(36,19,63,0.12)] backdrop-blur-md">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FFF3D8] border border-[#FDE68A]/40 text-[#F59E0B]">
+        <div
+          style={{ backgroundColor: '#FFFFFF', borderColor: '#FDE68A' }}
+          className="flex items-center gap-3.5 rounded-2xl border bg-white px-4 py-3 text-[#24133F] shadow-[0_8px_30px_rgba(36,19,63,0.12)]"
+        >
+          <div
+            style={{ backgroundColor: '#FFF3D8', borderColor: '#FDE68A' }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-[#F59E0B]"
+          >
             <Loader2 className="h-4 w-4 animate-spin" />
           </div>
           <div className="flex-1 min-w-0 pr-2">
@@ -175,8 +188,14 @@ export const NetworkStatusBanner: React.FC = () => {
       )}
 
       {status === 'online' && wasOffline && (
-        <div className="flex items-center gap-2.5 rounded-2xl border border-emerald-200 bg-white/95 px-4 py-2.5 text-[#24133F] shadow-[0_8px_30px_rgba(36,19,63,0.12)] backdrop-blur-md animate-in fade-in slide-in-from-top-1">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#E4F7EB] border border-emerald-200 text-[#17B556]">
+        <div
+          style={{ backgroundColor: '#FFFFFF', borderColor: '#A7F3D0' }}
+          className="flex items-center gap-2.5 rounded-2xl border bg-white px-4 py-2.5 text-[#24133F] shadow-[0_8px_30px_rgba(36,19,63,0.12)] animate-in fade-in slide-in-from-top-1"
+        >
+          <div
+            style={{ backgroundColor: '#E4F7EB', borderColor: '#A7F3D0' }}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-[#17B556]"
+          >
             <Wifi className="h-3.5 w-3.5" />
           </div>
           <p className="text-xs font-semibold text-[#24133F]">
