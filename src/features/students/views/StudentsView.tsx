@@ -5,6 +5,8 @@ import { formatYearLevel } from '../../../utils/formatters';
 import { Dropdown } from '../../../components/common/Dropdown';
 import { Checkbox } from '../../../components/common/Checkbox';
 import { Modal } from '../../../components/common/Modal';
+import { EmptyState } from '../../../components/common/EmptyState';
+import { LoadingState } from '../../../components/common/LoadingState';
 import { AddStudentDrawer } from './AddStudentDrawer';
 import { RapidCardScanDrawer } from './RapidCardScanDrawer';
 import { BulkStudentImportModal } from './BulkStudentImportModal';
@@ -16,7 +18,6 @@ import {
   Search,
   Radio,
   ArchiveRestore,
-  Loader2,
   GraduationCap,
   Users,
   UserCheck,
@@ -25,8 +26,6 @@ import {
   Link2Off,
   Trash2,
 } from 'lucide-react';
-import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
-import hawiFindingImg from '../../../assets/illustrations/Hawi Finding.png';
 import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
 import hawiBoxImg from '../../../assets/illustrations/Hawi Box.png';
 import hawiTrashCanImg from '../../../assets/illustrations/Hawi Trash Can.png';
@@ -441,34 +440,63 @@ export const StudentsView: React.FC = () => {
           </table>
 
           {!visibleStudents.length && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <img
-                src={isLoading ? hawiFindingImg : hawiQuestionImg}
-                alt={isLoading ? 'Loading students...' : 'No students found'}
-                className="w-24 h-24 object-contain mb-3"
+            isLoading ? (
+              <LoadingState
+                title="Loading students…"
+                description="Getting student roster and card assignment records…"
               />
-              <div className="flex items-center justify-center gap-2">
-                {isLoading && <Loader2 className="h-4 w-4 animate-spin text-brand-600" />}
-                <p className="text-sm font-bold text-slate-900">
-                  {isLoading
-                    ? 'Loading students…'
-                    : error
-                    ? 'Unable to load students.'
+            ) : (
+              <EmptyState
+                variant={
+                  error
+                    ? 'error'
+                    : searchQuery || courseFilter !== 'all'
+                    ? 'no-search-results'
+                    : 'empty-list'
+                }
+                title={
+                  error
+                    ? 'Unable to load students'
                     : studentTab === 'archived'
-                    ? 'No archived students.'
-                    : 'No active students found.'}
-                </p>
-              </div>
-              <p className="text-xs text-slate-500 max-w-xs mt-1">
-                {error
-                  ? 'Check your backend connection and try again.'
-                  : studentTab === 'archived'
-                  ? 'Students you archive will appear here safely preserved.'
-                  : searchQuery || courseFilter !== 'all'
-                  ? 'Try clearing or relaxing your search filters.'
-                  : 'Get started by adding a student or importing a bulk CSV roster.'}
-              </p>
-            </div>
+                    ? 'No archived students'
+                    : searchQuery || courseFilter !== 'all'
+                    ? 'No students match your search'
+                    : 'No active students found'
+                }
+                description={
+                  error
+                    ? 'Check your backend connection and try again.'
+                    : studentTab === 'archived'
+                    ? 'Students you archive will appear here safely preserved.'
+                    : searchQuery || courseFilter !== 'all'
+                    ? 'Try adjusting your search terms or clearing course filters.'
+                    : 'Get started by adding a student or importing a bulk CSV roster.'
+                }
+                action={
+                  error
+                    ? {
+                        label: 'Retry Loading',
+                        variant: 'primary',
+                        onClick: () => void loadStudents(),
+                      }
+                    : searchQuery || courseFilter !== 'all'
+                    ? {
+                        label: 'Clear Filters',
+                        variant: 'secondary',
+                        onClick: () => {
+                          setSearchQuery('');
+                          setCourseFilter('all');
+                          setPage(1);
+                        },
+                      }
+                    : {
+                        label: 'Add Student',
+                        variant: 'primary',
+                        onClick: () => setIsAddDrawerOpen(true),
+                      }
+                }
+              />
+            )
           )}
 
           <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-3 py-3 text-xs text-slate-500">

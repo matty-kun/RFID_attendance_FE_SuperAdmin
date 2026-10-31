@@ -4,8 +4,9 @@ import { Drawer } from '../../../components/common/Drawer';
 import { Modal } from '../../../components/common/Modal';
 import { Button } from '../../../components/common/Button';
 import { ImageCropModal } from '../../../components/common/ImageCropModal';
+import { EmptyState } from '../../../components/common/EmptyState';
+import { LoadingState } from '../../../components/common/LoadingState';
 import type { AdminCheckpointActivityPage, AdminCheckpointActivityRecord, AdminRecord, UpdateAdminPayload } from '../models';
-import hawiFindingImg from '../../../assets/illustrations/Hawi Finding.png';
 import hawiBoxImg from '../../../assets/illustrations/Hawi Box.png';
 
 interface AdminProfileDrawerProps {
@@ -258,8 +259,21 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
                   </div>
                 </div>
               ))}
-              {!activityLoading && !activityError && activityRecords.length === 0 && <p className="px-4 py-8 text-center text-xs text-[#756883]">No checkpoint assignments for this admin yet.</p>}
-              {activityLoading && activityRecords.length === 0 && <div className="flex min-h-44 w-full flex-col items-center justify-center px-4 py-5 text-center" role="status" aria-live="polite"><img src={hawiFindingImg} alt="" className="h-20 w-20 object-contain motion-safe:animate-bounce" /><p className="mt-2 text-xs font-semibold text-[#7026B7]">Hawi is finding assignments…</p><p className="mt-1 text-[11px] text-[#756883]">Loading this admin’s checkpoint history.</p></div>}
+              {!activityLoading && !activityError && activityRecords.length === 0 && (
+                <EmptyState
+                  compact
+                  variant="empty-list"
+                  title="No checkpoint assignments yet"
+                  description="This admin has not been assigned to any event checkpoints."
+                />
+              )}
+              {activityLoading && activityRecords.length === 0 && (
+                <LoadingState
+                  compact
+                  title="Hawi is finding assignments…"
+                  description="Loading this admin’s checkpoint history."
+                />
+              )}
               {activityError && <div className="px-4 py-5 text-center text-xs text-[#756883]">Could not load assignments. <button type="button" onClick={() => void loadMoreActivity()} className="font-bold text-[#7026B7] underline">Retry</button></div>}
             </div>
             {activityRecords.length > 0 && activityRecords.length < activityTotal && <button type="button" onClick={() => void loadMoreActivity()} disabled={activityLoading} className="mt-3 w-full rounded-xl border border-[#E5E0EB] bg-white px-4 py-2.5 text-xs font-bold text-[#7026B7] hover:bg-purple-50 disabled:opacity-50">{activityLoading ? 'Loading…' : 'Load more assignments'}</button>}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, Check, CircleAlert, CreditCard, ExternalLink, Filter, Hash, Loader2, Radio, RotateCcw, Search, ShieldAlert, UserRound, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Check, CircleAlert, CreditCard, ExternalLink, Filter, Hash, Radio, RotateCcw, Search, ShieldAlert, UserRound, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatYearLevel } from '../utils/formatters';
 import { request } from '../services/apiClient';
@@ -7,6 +7,8 @@ import { Button } from '../components/common/Button';
 import { Modal } from '../components/common/Modal';
 import { Drawer } from '../components/common/Drawer';
 import { Dropdown } from '../components/common/Dropdown';
+import { EmptyState } from '../components/common/EmptyState';
+import { LoadingState } from '../components/common/LoadingState';
 import { useToast } from '../context';
 import hawiLooking from '../assets/illustrations/Hawi Finding.png';
 import hawiScanning from '../assets/illustrations/Hawi Tap Card.png';
@@ -148,7 +150,53 @@ export function CardsPage() {
       <Dropdown value={status} onChange={value => { setStatus(value as Status | 'all'); setPage(1); }} options={statuses} icon={<Filter className="h-4 w-4" />} buttonClassName="min-w-[150px]" />
     </div>
     <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-3">
-      {loading ? <div className="flex min-h-64 flex-col items-center justify-center text-center"><img src={hawiLooking} alt="" className="mb-3 h-28 w-28 object-contain" /><div className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin text-[#7026B7]" /><p className="text-sm font-bold text-[#24133F]">Loading cards…</p></div><p className="mt-1 text-xs text-[#756883]">Finding registered cards and their current holders.</p></div> : cards.length === 0 ? <div className="py-16 text-center text-sm text-[#756883]">No cards match this view.</div> : <table className="w-full min-w-[720px] text-left text-xs"><thead><tr className="border-b border-[#E5E0EB] text-[#756883]"><th className="px-4 py-3 font-semibold">Card No.</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-4 py-3 font-semibold">Current holder</th><th className="px-4 py-3 font-semibold">Registered</th><th className="px-4 py-3 text-right font-semibold">Actions</th></tr></thead><tbody>{cards.map(card => <tr key={card.id} className="border-b border-[#F1EEF4] last:border-0"><td className="px-4 py-4"><p className="font-bold text-[#24133F]">{card.card_number}</p><p className="mt-0.5 font-mono text-[10px] text-[#756883]">UID {card.uid}</p></td><td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 font-bold capitalize ${statusStyle[card.status]}`}>{card.status}</span></td><td className="px-4 py-4">{card.holder ? <div className="flex items-center gap-2.5">{card.holder.avatar_url ? <img src={card.holder.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" /> : <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F2E9FC] text-[10px] font-bold text-[#7026B7]">{card.holder.student_name.split(' ').map(part => part[0]).slice(0, 2).join('')}</span>}<span><span className="block font-semibold">{card.holder.student_name}</span><span className="text-[#756883]">{card.holder.student_number}</span></span></div> : <span className="text-[#A59AAB]">No current holder</span>}</td><td className="px-4 py-4 text-[#756883]">{date(card.created_at)}</td><td className="px-4 py-4 text-right"><button onClick={() => void openDetail(card)} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold text-slate-700 shadow-2xs transition-all hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700">View History →</button></td></tr>)}</tbody></table>}
+      {loading ? (
+        <LoadingState
+          title="Loading cards…"
+          description="Finding registered cards and their current holders."
+        />
+      ) : cards.length === 0 ? (
+        <EmptyState
+          variant={
+            status === 'damaged' || status === 'lost'
+              ? 'damaged-cards'
+              : search || status !== 'all'
+              ? 'no-search-results'
+              : 'empty-cards'
+          }
+          title={
+            status === 'damaged'
+              ? 'No damaged cards found'
+              : status === 'lost'
+              ? 'No lost cards recorded'
+              : search || status !== 'all'
+              ? 'No cards match this filter'
+              : 'No RFID cards registered yet'
+          }
+          description={
+            search || status !== 'all'
+              ? 'Try clearing your search terms or switching to another status filter.'
+              : 'Add physical cards to your inventory so they can be assigned to students.'
+          }
+          action={
+            search || status !== 'all'
+              ? {
+                  label: 'Reset Filters',
+                  variant: 'secondary',
+                  onClick: () => {
+                    setSearch('');
+                    setStatus('all');
+                    setPage(1);
+                  },
+                }
+              : {
+                  label: 'Register First Card',
+                  variant: 'primary',
+                  onClick: () => setAction('register'),
+                }
+          }
+        />
+      ) : <table className="w-full min-w-[720px] text-left text-xs"><thead><tr className="border-b border-[#E5E0EB] text-[#756883]"><th className="px-4 py-3 font-semibold">Card No.</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-4 py-3 font-semibold">Current holder</th><th className="px-4 py-3 font-semibold">Registered</th><th className="px-4 py-3 text-right font-semibold">Actions</th></tr></thead><tbody>{cards.map(card => <tr key={card.id} className="border-b border-[#F1EEF4] last:border-0"><td className="px-4 py-4"><p className="font-bold text-[#24133F]">{card.card_number}</p><p className="mt-0.5 font-mono text-[10px] text-[#756883]">UID {card.uid}</p></td><td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 font-bold capitalize ${statusStyle[card.status]}`}>{card.status}</span></td><td className="px-4 py-4">{card.holder ? <div className="flex items-center gap-2.5">{card.holder.avatar_url ? <img src={card.holder.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" /> : <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F2E9FC] text-[10px] font-bold text-[#7026B7]">{card.holder.student_name.split(' ').map(part => part[0]).slice(0, 2).join('')}</span>}<span><span className="block font-semibold">{card.holder.student_name}</span><span className="text-[#756883]">{card.holder.student_number}</span></span></div> : <span className="text-[#A59AAB]">No current holder</span>}</td><td className="px-4 py-4 text-[#756883]">{date(card.created_at)}</td><td className="px-4 py-4 text-right"><button onClick={() => void openDetail(card)} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold text-slate-700 shadow-2xs transition-all hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700">View History →</button></td></tr>)}</tbody></table>}
     </div>
     {total > 25 && <div className="flex items-center justify-end gap-2 text-xs"><Button variant="secondary" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</Button><span>Page {page} of {Math.ceil(total / 25)}</span><Button variant="secondary" size="sm" disabled={page * 25 >= total} onClick={() => setPage(page + 1)}>Next</Button></div>}
     <Drawer isOpen={Boolean(selectedCard)} onClose={closeDetail} title={selectedCard?.card_number ?? 'Card history'} maxWidth="2xl" hideHeader noPadding>

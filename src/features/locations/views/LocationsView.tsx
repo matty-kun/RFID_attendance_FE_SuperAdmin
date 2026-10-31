@@ -4,9 +4,10 @@ import { Button } from '../../../components/common/Button';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
 import { DeleteConfirmationModal } from '../../../components/common/DeleteConfirmationModal';
+import { EmptyState } from '../../../components/common/EmptyState';
+import { LoadingState } from '../../../components/common/LoadingState';
 import type { LocationRecord } from '../models';
 import { MapPin, Pencil, Plus, Search, Trash2 } from 'lucide-react';
-import hawiLooking from '../../../assets/illustrations/Hawi Finding.png';
 
 export const LocationsView = () => {
   const {
@@ -114,32 +115,56 @@ export const LocationsView = () => {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={3} className="py-10 text-center text-xs text-[#756883]">
-                  <div role="status" className="flex flex-col items-center gap-2">
-                    <img src={hawiLooking} alt="" className="h-24 w-24 object-contain" />
-                    <span>Hawi is looking for checkpoints…</span>
-                  </div>
+                <td colSpan={3} className="py-6">
+                  <LoadingState
+                    title="Finding checkpoints…"
+                    description="Loading registered campus checkpoint locations."
+                    compact
+                  />
                 </td>
               </tr>
             ) : error && locations.length === 0 ? (
               <tr>
-                <td colSpan={3} className="py-10 text-center text-xs text-rose-600">
-                  Unable to load checkpoints.{' '}
-                  <button
-                    type="button"
-                    className="font-bold underline"
-                    onClick={() => void loadLocations()}
-                  >
-                    Retry
-                  </button>
+                <td colSpan={3} className="py-6">
+                  <EmptyState
+                    variant="error"
+                    title="Unable to load checkpoints"
+                    description="Could not connect to the server. Please check your connection."
+                    action={{
+                      label: 'Retry Loading',
+                      variant: 'primary',
+                      onClick: () => void loadLocations(),
+                    }}
+                    compact
+                  />
                 </td>
               </tr>
             ) : filteredLocations.length === 0 ? (
               <tr>
-                <td colSpan={3} className="py-10 text-center text-xs text-[#756883]">
-                  {searchQuery
-                    ? 'No checkpoints match your search.'
-                    : 'No checkpoints registered yet. Click "Add Location" to register one.'}
+                <td colSpan={3} className="py-6">
+                  <EmptyState
+                    variant={searchQuery ? 'no-search-results' : 'empty-list'}
+                    title={searchQuery ? 'No checkpoints match your search' : 'No checkpoints registered yet'}
+                    description={
+                      searchQuery
+                        ? 'Try clearing your search terms to see all checkpoints.'
+                        : 'Register scan checkpoints such as gates, gym entrances, and classrooms.'
+                    }
+                    action={
+                      searchQuery
+                        ? {
+                            label: 'Clear Search',
+                            variant: 'secondary',
+                            onClick: () => setSearchQuery(''),
+                          }
+                        : {
+                            label: 'Add Location',
+                            variant: 'primary',
+                            onClick: () => setIsModalOpen(true),
+                          }
+                    }
+                    compact
+                  />
                 </td>
               </tr>
             ) : (

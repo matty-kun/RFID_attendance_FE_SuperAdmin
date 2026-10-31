@@ -25,6 +25,8 @@ import { Button } from '../components/common/Button';
 import { Dropdown } from '../components/common/Dropdown';
 import { Drawer } from '../components/common/Drawer';
 import { DeleteConfirmationModal } from '../components/common/DeleteConfirmationModal';
+import { EmptyState } from '../components/common/EmptyState';
+import { LoadingState } from '../components/common/LoadingState';
 import { CreateEventModal } from '../features/events/views/CreateEventModal';
 import { EditTimeWindowDrawer } from '../features/events/views/EditTimeWindowDrawer';
 import {
@@ -35,7 +37,6 @@ import { adminService } from '../services/adminService';
 import { getEventStatus, getSessionStatus } from '../utils/status';
 import type { EventRecord, SessionRecord } from '../types';
 import hawiQuestionImg from '../assets/illustrations/Hawi Question.png';
-import hawiFindingImg from '../assets/illustrations/Hawi Finding.png';
 
 interface SessionItem {
   id: string;
@@ -902,17 +903,11 @@ export function AttendancePage() {
 
       {/* Event Accordion Container */}
       {loading && !eventData ? (
-        <div className="rounded-[24px] border border-[#E5E0EB] bg-white p-12 text-center flex flex-col items-center justify-center">
-          <img
-            src={hawiFindingImg}
-            alt="Loading attendance schedule…"
-            className="w-24 h-24 object-contain mb-3"
+        <div className="rounded-[24px] border border-[#E5E0EB] bg-white">
+          <LoadingState
+            title="Loading attendance schedule…"
+            description="Getting your events, sessions, and checkpoints ready…"
           />
-          <div className="flex items-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin text-[#7026B7]" />
-            <p className="text-sm font-bold text-[#24133F]">Loading attendance schedule…</p>
-          </div>
-          <p className="text-xs text-[#756883] mt-1">Getting your events, sessions, and checkpoints ready…</p>
         </div>
       ) : eventData ? (
         /* Event Days Content */
@@ -1204,26 +1199,35 @@ export function AttendancePage() {
           </div>
 
           {filteredEventsList.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-[#E5E0EB] bg-white p-12 text-center">
-              <img
-                src={hawiQuestionImg}
-                alt="No Event"
-                className="h-32 w-32 sm:h-40 sm:w-40 object-contain mx-auto mb-4"
+            <div className="rounded-[24px] border border-[#E5E0EB] bg-white">
+              <EmptyState
+                variant={search || statusFilter !== 'all' || academicYearFilter !== 'all' ? 'no-search-results' : 'custom'}
+                illustration={hawiQuestionImg}
+                title={search || statusFilter !== 'all' || academicYearFilter !== 'all' ? 'No events found' : 'No campus events registered yet'}
+                description={
+                  search || statusFilter !== 'all' || academicYearFilter !== 'all'
+                    ? 'No events match your current search or filter criteria. Try clearing search or filters.'
+                    : 'There are currently no campus events registered. Create a new event to configure schedules and attendance sessions.'
+                }
+                action={
+                  search || statusFilter !== 'all' || academicYearFilter !== 'all'
+                    ? {
+                        label: 'Clear Filters',
+                        variant: 'secondary',
+                        onClick: () => {
+                          setSearch('');
+                          setStatusFilter('all');
+                          setAcademicYearFilter('all');
+                        },
+                      }
+                    : {
+                        label: 'Create Event',
+                        variant: 'primary',
+                        icon: <Plus className="h-4 w-4" />,
+                        onClick: () => setIsCreateEventOpen(true),
+                      }
+                }
               />
-              <h3 className="text-base font-bold text-[#24133F]">No Events Found</h3>
-              <p className="mt-1 max-w-sm text-xs text-[#756883]">
-                {search || statusFilter !== 'all' || academicYearFilter !== 'all'
-                  ? 'No events match your current search or filter criteria. Try clearing search or filters.'
-                  : 'There are currently no campus events registered. Create a new event to configure schedules and attendance sessions.'}
-              </p>
-              <Button
-                variant="primary"
-                leftIcon={<Plus className="h-4 w-4" />}
-                onClick={() => setIsCreateEventOpen(true)}
-                className="mt-4"
-              >
-                Create Event
-              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3.5">

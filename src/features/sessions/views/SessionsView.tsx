@@ -6,6 +6,8 @@ import { Dropdown } from '../../../components/common/Dropdown';
 import { Badge } from '../../../components/common/Badge';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
+import { EmptyState } from '../../../components/common/EmptyState';
+import { LoadingState } from '../../../components/common/LoadingState';
 import { Clock, MapPin, Pencil, Plus, RefreshCw, Sparkles } from 'lucide-react';
 import { getEventStatus, getSessionStatus } from '../../../utils/status';
 import { SessionLocationsDialog } from './SessionLocationsDialog';
@@ -110,25 +112,52 @@ export const SessionsView: React.FC = () => {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={6} className="py-10 text-center text-xs text-[#756883]">
-                  Loading sessions…
+                <td colSpan={6} className="py-6">
+                  <LoadingState
+                    title="Loading sessions…"
+                    description="Retrieving session check-in and check-out time windows."
+                    compact
+                  />
                 </td>
               </tr>
             ) : error && sessions.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-10 text-center text-xs text-rose-600">
-                  Unable to load sessions.{' '}
-                  <button type="button" onClick={() => void loadData()} className="font-bold underline">
-                    Retry
-                  </button>
+                <td colSpan={6} className="py-6">
+                  <EmptyState
+                    variant="error"
+                    title="Unable to load sessions"
+                    description="Could not connect to the server. Please check your connection and retry."
+                    action={{
+                      label: 'Retry Loading',
+                      variant: 'primary',
+                      onClick: () => void loadData(),
+                    }}
+                    compact
+                  />
                 </td>
               </tr>
             ) : sessions.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-10 text-center text-xs text-[#756883]">
-                  {events.length === 0
-                    ? 'No campus events found. Create an event first before configuring sessions.'
-                    : 'No sessions found for this event. Click "Create Session" above to add one.'}
+                <td colSpan={6} className="py-6">
+                  <EmptyState
+                    variant="empty-list"
+                    title={events.length === 0 ? 'No campus events found' : 'No sessions created yet'}
+                    description={
+                      events.length === 0
+                        ? 'Create a campus event first before configuring attendance sessions.'
+                        : 'Configure time windows for students to scan in and out.'
+                    }
+                    action={
+                      events.length > 0
+                        ? {
+                            label: 'Create Session',
+                            variant: 'primary',
+                            onClick: startCreate,
+                          }
+                        : undefined
+                    }
+                    compact
+                  />
                 </td>
               </tr>
             ) : (

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Checkbox } from '../../../components/common/Checkbox';
 import { toast } from '../../../context';
+import { draftStorage } from '../../../utils/draftStorage';
 import { adminService } from '../../../services/adminService';
 import { EditTimeWindowDrawer } from './EditTimeWindowDrawer';
 import {
@@ -139,6 +140,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [calendarMonth, setCalendarMonth] = useState(() => Number(today.slice(5, 7)) - 1);
   const [calendarYear, setCalendarYear] = useState(() => Number(today.slice(0, 4)));
 
+
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     if (isOpen) {
@@ -220,6 +222,51 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const getDaySchedule = (dayNum: number): DaySchedule => {
     return daysSchedule[dayNum] || createDefaultDaySchedule();
+  };
+
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      const saved = draftStorage.get<{
+        eventName: string;
+        eventDescription: string;
+        startDate: string;
+        endDate: string;
+        currentStep: number;
+        daysSchedule: any;
+      }>('create_event');
+
+      if (saved && (saved.eventName || saved.eventDescription)) {
+        if (saved.eventName) setEventName(saved.eventName);
+        if (saved.eventDescription) setEventDescription(saved.eventDescription);
+        if (saved.startDate) setStartDate(saved.startDate);
+        if (saved.endDate) setEndDate(saved.endDate);
+        if (saved.currentStep) setCurrentStep(saved.currentStep);
+        if (saved.daysSchedule) setDaysSchedule(saved.daysSchedule);
+        setHasRestoredDraft(true);
+      }
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && (eventName || eventDescription)) {
+      draftStorage.save('create_event', {
+        eventName,
+        eventDescription,
+        startDate,
+        endDate,
+        currentStep,
+        daysSchedule,
+      });
+    }
+  }, [isOpen, eventName, eventDescription, startDate, endDate, currentStep, daysSchedule]);
+
+  const handleDiscardEventDraft = () => {
+    draftStorage.clear('create_event');
+    resetForm();
+    setHasRestoredDraft(false);
+    toast.info('Event draft discarded.');
   };
 
   const currentDaySchedule = getDaySchedule(selectedDayTab);
@@ -487,6 +534,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       }
 
       toast.success(`Event "${createdEvent.name}" published to the backend!`);
+      draftStorage.clear('create_event');
+      setHasRestoredDraft(false);
       onPublished?.(createdEvent);
       handleCloseModal();
     } catch (err: any) {
@@ -609,6 +658,18 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           {currentStep === 1 ? (
             /* STEP 1: EVENT DETAILS */
             <div className="space-y-4">
+              {hasRestoredDraft && (
+                <div className="flex items-center justify-between gap-2 rounded-2xl border border-purple-200 bg-purple-50/80 px-4 py-2.5 text-xs text-[#7026B7]">
+                  <span className="font-bold">✨ Restored unsaved event draft</span>
+                  <button
+                    type="button"
+                    onClick={handleDiscardEventDraft}
+                    className="text-[11px] font-bold text-[#CE2333] hover:underline"
+                  >
+                    Discard draft
+                  </button>
+                </div>
+              )}
               <div>
                 <p className="text-[11px] font-semibold text-[#756883]">Step 1 of 4</p>
                 <h3 className="text-lg font-bold text-[#24133F]">Event Details</h3>
