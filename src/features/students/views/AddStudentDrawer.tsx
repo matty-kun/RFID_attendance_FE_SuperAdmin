@@ -6,6 +6,7 @@ import { Eye, EyeOff, Sparkles, Trash2 } from 'lucide-react';
 import { draftStorage } from '../../../utils/draftStorage';
 import { soundManager } from '../../../utils/audioFeedback';
 import { toast } from '../../../context';
+import { cn } from '../../../utils/cn';
 import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
 import type { RegisterStudentPayload } from '../models';
 
@@ -31,6 +32,13 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
   const [yearLevel, setYearLevel] = useState(1);
   const [scannedUid, setScannedUid] = useState('');
   const [restoredDraft, setRestoredDraft] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{
+    studentId?: string;
+    name?: string;
+    email?: string;
+    temporaryPassword?: string;
+    scannedUid?: string;
+  }>({});
 
   const scannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -85,6 +93,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       }
       setTemporaryPassword('');
       setShowTemporaryPassword(false);
+      setFieldErrors({});
       const timer = setTimeout(() => scannerInputRef.current?.focus(), 150);
       return () => clearTimeout(timer);
     }
@@ -114,6 +123,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
     setYearLevel(1);
     setScannedUid('');
     setRestoredDraft(false);
+    setFieldErrors({});
     toast.info('Draft discarded.');
   };
 
@@ -124,17 +134,52 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       if (val) {
         soundManager.playSuccessBeep();
         toast.success(`RFID card detected: ${val}`);
+        setFieldErrors((prev) => ({ ...prev, scannedUid: undefined }));
       }
     }
   };
 
-  const validateCommonFields = () => {
-    if (!studentId.trim() || !name.trim() || !email.trim()) {
-      toast.error('Please fill in Student ID, Full Name, and Email Address.');
-      return false;
+  const validateForm = (requireCard: boolean): boolean => {
+    const errors: typeof fieldErrors = {};
+    const trimmedId = studentId.trim();
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedId) {
+      errors.studentId = 'Student ID is required (e.g. 2026-00045).';
+    } else if (trimmedId.length < 3) {
+      errors.studentId = 'Student ID must be at least 3 characters.';
     }
-    if (temporaryPassword.length < 12) {
-      toast.error('Temporary password must be at least 12 characters.');
+
+    if (!trimmedName) {
+      errors.name = 'Full legal name is required.';
+    } else if (trimmedName.length < 2) {
+      errors.name = 'Please enter at least 2 characters.';
+    }
+
+    if (!trimmedEmail) {
+      errors.email = 'Institutional email is required.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      errors.email = 'Please enter a valid email format (e.g. name@school.edu).';
+    }
+
+    if (!temporaryPassword) {
+      errors.temporaryPassword = 'Temporary password is required.';
+    } else if (temporaryPassword.length < 12) {
+      errors.temporaryPassword = 'Password must be at least 12 characters.';
+    }
+
+    if (requireCard && !scannedUid.trim()) {
+      errors.scannedUid = 'Tap card on scanner or click "Issue card later" below.';
+    }
+
+    setFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      toast.error('Please resolve highlighted form fields to proceed.');
+      if (errors.scannedUid) {
+        scannerInputRef.current?.focus();
+      }
       return false;
     }
     return true;
@@ -142,41 +187,81 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
 
   const handleRegisterWithCard = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!validateCommonFields()) return;
+    if (!validateForm(true)) return;
 
-    if (!scannedUid.trim()) {
-      toast.error('Tap card on scanner or click "Issue card later".');
-      scannerInputRef.current?.focus();
-      return;
+    try {
+      await onSubmit({
+        student_id: studentId.trim(),
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        temporary_password: temporaryPassword,
+        course,
+        year_level: yearLevel,
+        rfid_uid: scannedUid.trim(),
+      });
+      draftStorage.clear('add_student');
+      setRestoredDraft(false);
+      setFieldErrors({});
+    } catch (err: any) {
+      mapServerErrors(err);
     }
-
-    await onSubmit({
-      student_id: studentId.trim(),
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      temporary_password: temporaryPassword,
-      course,
-      year_level: yearLevel,
-      rfid_uid: scannedUid.trim(),
-    });
-    draftStorage.clear('add_student');
-    setRestoredDraft(false);
   };
 
   const handleRegisterWithoutCard = async () => {
-    if (!validateCommonFields()) return;
+    if (!validateForm(false)) return;
 
-    await onSubmit({
-      student_id: studentId.trim(),
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      temporary_password: temporaryPassword,
-      course,
-      year_level: yearLevel,
-      rfid_uid: undefined,
-    });
-    draftStorage.clear('add_student');
-    setRestoredDraft(false);
+    try {
+      await onSubmit({
+        student_id: studentId.trim(),
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        temporary_password: temporaryPassword,
+        course,
+        year_level: yearLevel,
+        rfid_uid: undefined,
+      });
+      draftStorage.clear('add_student');
+      setRestoredDraft(false);
+      setFieldErrors({});
+    } catch (err: any) {
+      mapServerErrors(err);
+    }
+  };
+
+  const mapServerErrors = (err: any) => {
+    const details = err?.response?.data?.error?.details;
+    const msg = (err?.response?.data?.error?.message || '').toLowerCase();
+    const serverErrors: typeof fieldErrors = {};
+
+    if (Array.isArray(details)) {
+      details.forEach((d: { field: string; message: string }) => {
+        if (d.field.includes('student_id') || d.field.includes('identifier')) {
+          serverErrors.studentId = d.message;
+        } else if (d.field.includes('name')) {
+          serverErrors.name = d.message;
+        } else if (d.field.includes('email')) {
+          serverErrors.email = d.message;
+        } else if (d.field.includes('password')) {
+          serverErrors.temporaryPassword = d.message;
+        } else if (d.field.includes('rfid') || d.field.includes('uid')) {
+          serverErrors.scannedUid = d.message;
+        }
+      });
+    }
+
+    if (msg.includes('student id') || msg.includes('student_id')) {
+      serverErrors.studentId = err?.response?.data?.error?.message;
+    } else if (msg.includes('email')) {
+      serverErrors.email = err?.response?.data?.error?.message;
+    } else if (msg.includes('rfid') || msg.includes('card') || msg.includes('uid')) {
+      serverErrors.scannedUid = err?.response?.data?.error?.message;
+    } else if (msg.includes('password')) {
+      serverErrors.temporaryPassword = err?.response?.data?.error?.message;
+    }
+
+    if (Object.keys(serverErrors).length > 0) {
+      setFieldErrors((prev) => ({ ...prev, ...serverErrors }));
+    }
   };
 
   const hasCardSelected = Boolean(scannedUid.trim());
@@ -232,7 +317,12 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
           </div>
         )}
         {/* TOP SECTION: RFID Card Binding Station */}
-        <div className="rounded-2xl border border-[#E5E0EB] bg-white p-4 space-y-3.5">
+        <div
+          className={cn(
+            'rounded-2xl border border-[#E5E0EB] bg-white p-4 space-y-3.5 transition-colors',
+            fieldErrors.scannedUid && 'border-rose-400 bg-rose-50/20'
+          )}
+        >
           <div className="flex items-center gap-3">
             <img
               src={hawiTapCardImg}
@@ -255,19 +345,29 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
               type="text"
               placeholder="Tap card on USB desktop scanner or type UID..."
               value={scannedUid}
-              onChange={(e) => setScannedUid(e.target.value)}
+              onChange={(e) => {
+                setScannedUid(e.target.value);
+                setFieldErrors((prev) => ({ ...prev, scannedUid: undefined }));
+              }}
               onKeyDown={handleScannerKeyDown}
-              className="w-full rounded-xl border border-[#D5CEDD] bg-[#FAF8FC] px-3.5 py-2.5 text-xs font-mono font-bold text-[#24133F] placeholder:text-[#A59AAB] focus:border-[#7026B7] focus:bg-white focus:outline-none"
-            />
-            <p className="text-[11px] text-[#756883]">
-              {scannedUid ? (
-                <span className="text-emerald-700 font-semibold">
-                  ✓ Card detected: {scannedUid}
-                </span>
-              ) : (
-                'Scanner captures card keystroke automatically on swipe.'
+              className={cn(
+                'w-full rounded-xl border border-[#D5CEDD] bg-[#FAF8FC] px-3.5 py-2.5 text-xs font-mono font-bold text-[#24133F] placeholder:text-[#A59AAB] focus:border-[#7026B7] focus:bg-white focus:outline-none transition-colors',
+                fieldErrors.scannedUid && 'border-rose-500 bg-rose-50/40 text-rose-900 focus:border-rose-500'
               )}
-            </p>
+            />
+            {fieldErrors.scannedUid ? (
+              <p className="text-[11px] font-medium text-rose-600">{fieldErrors.scannedUid}</p>
+            ) : (
+              <p className="text-[11px] text-[#756883]">
+                {scannedUid ? (
+                  <span className="text-emerald-700 font-semibold">
+                    ✓ Card detected: {scannedUid}
+                  </span>
+                ) : (
+                  'Scanner captures card keystroke automatically on swipe.'
+                )}
+              </p>
+            )}
           </div>
         </div>
 
@@ -281,7 +381,11 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
             label="Student ID"
             placeholder="e.g. 2026-00045"
             value={studentId}
-            onChange={(e) => setStudentId(e.target.value)}
+            onChange={(e) => {
+              setStudentId(e.target.value);
+              setFieldErrors((prev) => ({ ...prev, studentId: undefined }));
+            }}
+            error={fieldErrors.studentId}
             required
           />
 
@@ -289,7 +393,11 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
             label="Full Name"
             placeholder="e.g. Roberto Garcia"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              setFieldErrors((prev) => ({ ...prev, name: undefined }));
+            }}
+            error={fieldErrors.name}
             required
           />
 
@@ -298,7 +406,11 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
             type="email"
             placeholder="e.g. roberto@university.edu"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setFieldErrors((prev) => ({ ...prev, email: undefined }));
+            }}
+            error={fieldErrors.email}
             required
           />
 
@@ -307,7 +419,11 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
             type={showTemporaryPassword ? 'text' : 'password'}
             placeholder="Temporary password for first login"
             value={temporaryPassword}
-            onChange={(e) => setTemporaryPassword(e.target.value)}
+            onChange={(e) => {
+              setTemporaryPassword(e.target.value);
+              setFieldErrors((prev) => ({ ...prev, temporaryPassword: undefined }));
+            }}
+            error={fieldErrors.temporaryPassword}
             minLength={12}
             autoComplete="new-password"
             rightElement={
