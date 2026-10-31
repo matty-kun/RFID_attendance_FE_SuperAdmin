@@ -44,6 +44,7 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
     loadAdmins,
     handleCreate,
     handleUpdateAdmin,
+    handleResetPassword,
     handleArchiveAdmin,
     handleRestoreAdmin,
     deletingAdmin,
@@ -167,7 +168,9 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
                   </div>
                 </div>
 
-                <span className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#7026B7] px-4 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_#451475]"><ExternalLink className="h-4 w-4" />View Profile</span>
+                <div className="shrink-0">
+                  <span className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#7026B7] px-4 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_#451475]"><ExternalLink className="h-4 w-4" />View Profile</span>
+                </div>
               </button>
             ))}
           </div>
@@ -375,6 +378,7 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
         onClose={() => { if (!deletingAdmin) setSelectedAdminId(null); }}
         admin={selectedAdmin}
         onUpdate={handleUpdateAdmin}
+        onResetPassword={handleResetPassword}
         onArchive={handleArchiveAdmin}
         onRestore={async (adminId) => { const restored = await handleRestoreAdmin(adminId); if (restored) setSelectedAdminId(null); return restored; }}
         isSelf={user?.id === selectedAdmin?.id}

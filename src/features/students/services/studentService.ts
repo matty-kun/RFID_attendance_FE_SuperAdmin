@@ -9,6 +9,8 @@ export const studentService = {
     request.post<StudentRecord>('/students', payload),
   updateStudent: (id: string, payload: UpdateStudentPayload) =>
     request.patch<StudentRecord>(`/students/${id}`, payload),
+  resetPassword: (id: string, password: string) =>
+    request.patch<StudentRecord>(`/students/${id}`, { password }),
   archiveStudent: (id: string) => request.post<StudentRecord>(`/students/${id}/archive`, {}),
   restoreStudent: (id: string) => request.post<StudentRecord>(`/students/${id}/restore`, {}),
   uploadAvatar: (id: string, imageBase64: string) =>

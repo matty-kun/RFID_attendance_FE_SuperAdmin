@@ -74,6 +74,7 @@ export interface UseStudentsViewModelReturn {
   handleQuickPair: (studentId: string, cardUid: string) => Promise<{ success: boolean; message: string }>;
   handleUnlinkCard: (studentId: string, reason?: 'lost' | 'returned') => Promise<void>;
   handleUpdateStudent: (studentId: string, payload: UpdateStudentPayload) => Promise<StudentRecord>;
+  handleResetPassword: (studentId: string, newPassword: string) => Promise<boolean>;
   uploadStudentAvatar: (studentId: string, imageBase64: string) => Promise<string>;
   removeStudentAvatar: (studentId: string) => Promise<void>;
   loadStudents: () => Promise<void>;
@@ -550,6 +551,27 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     }
   };
 
+  const handleResetPassword = async (studentId: string, newPassword: string): Promise<boolean> => {
+    setIsSubmitting(true);
+    try {
+      await studentService.resetPassword(studentId, newPassword);
+      const student = students.find((s) => s.id === studentId);
+      toast.success(
+        student
+          ? `Password for student "${student.name}" reset successfully.`
+          : 'Student password reset successfully.'
+      );
+      await loadStudents();
+      return true;
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.message || 'Failed to reset student password.';
+      toast.error(msg);
+      throw err;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleUploadAvatar = async (studentId: string, imageBase64: string) => {
     setIsSubmitting(true);
     try {
@@ -626,6 +648,7 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     handleQuickPair,
     handleUnlinkCard,
     handleUpdateStudent,
+    handleResetPassword,
     uploadStudentAvatar: handleUploadAvatar,
     removeStudentAvatar: handleRemoveAvatar,
     loadStudents,

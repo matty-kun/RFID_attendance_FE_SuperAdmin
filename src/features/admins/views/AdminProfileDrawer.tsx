@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, CalendarDays, Camera, ChevronDown, Clock3, Eye, EyeOff, KeyRound, Loader2, Mail, MapPin, Pencil, Shield, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, CalendarDays, Camera, ChevronDown, Clock3, KeyRound, Loader2, Mail, MapPin, Pencil, Shield, Trash2, X } from 'lucide-react';
 import { Drawer } from '../../../components/common/Drawer';
 import { Modal } from '../../../components/common/Modal';
 import { Button } from '../../../components/common/Button';
 import { ImageCropModal } from '../../../components/common/ImageCropModal';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { LoadingState } from '../../../components/common/LoadingState';
+import { ResetPasswordModal } from '../../../components/common/ResetPasswordModal';
 import type { AdminCheckpointActivityPage, AdminCheckpointActivityRecord, AdminRecord, UpdateAdminPayload } from '../models';
 import hawiBoxImg from '../../../assets/illustrations/Hawi Box.png';
 
@@ -14,6 +15,7 @@ interface AdminProfileDrawerProps {
   onClose: () => void;
   admin: AdminRecord | null;
   onUpdate: (adminId: string, payload: UpdateAdminPayload) => Promise<boolean>;
+  onResetPassword?: (adminId: string, password: string) => Promise<boolean>;
   onArchive: (adminId: string) => Promise<boolean>;
   onRestore: (adminId: string) => Promise<boolean>;
   isSelf: boolean;
@@ -24,7 +26,7 @@ interface AdminProfileDrawerProps {
 }
 
 export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
-  isOpen, onClose, admin, onUpdate, onArchive, onRestore, isSelf, onDelete, onUploadAvatar, onRemoveAvatar, onLoadCheckpointActivity,
+  isOpen, onClose, admin, onUpdate, onResetPassword, onArchive, onRestore, isSelf, onDelete, onUploadAvatar, onRemoveAvatar, onLoadCheckpointActivity,
 }) => {
   const formatTime = (value: string | null) => {
     if (!value) return '—';
@@ -39,9 +41,7 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [isRoleOpen, setIsRoleOpen] = useState(false);
-  const [isPasswordOpen, setIsPasswordOpen] = useState(false);
-  const [passwordDraft, setPasswordDraft] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
@@ -59,9 +59,7 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
       setPhotoError(null);
       setIsEditingName(false);
       setIsRoleOpen(false);
-      setIsPasswordOpen(false);
-      setPasswordDraft('');
-      setShowPassword(false);
+      setIsResetPasswordOpen(false);
       setInlineError(null);
       setIsArchiveConfirmOpen(false);
     }
@@ -178,21 +176,10 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
     else setInlineError('Could not update role.');
   };
 
-  const savePassword = async () => {
-    if (!admin || isSaving) return;
-    if (passwordDraft.length < 12 || passwordDraft.length > 128) { setInlineError('Password must contain 12 to 128 characters.'); return; }
-    setIsSaving(true);
-    setInlineError(null);
-    const saved = await onUpdate(admin.id, { password: passwordDraft });
-    setIsSaving(false);
-    if (saved) { setPasswordDraft(''); setShowPassword(false); setIsPasswordOpen(false); }
-    else setInlineError('Could not reset password.');
-  };
-
   return <>
     <Drawer
       isOpen={isOpen}
-      onClose={() => { if (!isCropOpen && !isUploading && !isArchiveConfirmOpen) onClose(); }}
+      onClose={() => { if (!isCropOpen && !isUploading && !isArchiveConfirmOpen && !isResetPasswordOpen) onClose(); }}
       title={admin ? `${admin.name} profile` : 'Admin profile'}
       maxWidth="2xl"
       hideHeader
@@ -225,9 +212,17 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
 
           <div className="flex items-stretch gap-2">
             <div className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-bold shadow-[0_4px_0_#D0C9D5]"><Mail className="h-4 w-4 shrink-0 text-[#A59AAB]" /><span className="truncate">{admin.email}</span></div>
-            <button type="button" onClick={() => { setShowPassword(false); setIsPasswordOpen((open) => !open); }} disabled={Boolean(admin.archived_at)} title="Reset password" className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-[#7026B7] px-4 py-3 text-xs font-bold text-white shadow-[0_4px_0_#451475] transition-colors hover:bg-[#621FA3] disabled:opacity-50"><KeyRound className="h-4 w-4" />Password</button>
+            <button
+              type="button"
+              onClick={() => setIsResetPasswordOpen(true)}
+              disabled={Boolean(admin.archived_at)}
+              title={admin.archived_at ? 'Restore administrator before resetting password' : 'Reset password'}
+              className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-[#7026B7] px-4 py-3 text-xs font-bold text-white shadow-[0_4px_0_#451475] transition-colors hover:bg-[#621FA3] active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              <KeyRound className="h-4 w-4" />
+              Reset Password
+            </button>
           </div>
-          {isPasswordOpen && <form onSubmit={(event) => { event.preventDefault(); void savePassword(); }} className="flex items-center gap-2 rounded-2xl border border-slate-200 p-3"><input type={showPassword ? 'text' : 'password'} autoComplete="new-password" aria-label="New temporary password" placeholder="New password (12+ characters)" value={passwordDraft} onChange={(event) => setPasswordDraft(event.target.value)} className="min-w-0 flex-1 text-xs outline-none" /><button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'} title={showPassword ? 'Hide password' : 'Show password'} className="rounded-lg p-1.5 text-[#756883] hover:bg-purple-50 hover:text-[#7026B7]">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button><button type="submit" disabled={isSaving} className="rounded-xl bg-[#7026B7] px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Save</button></form>}
 
           <section aria-label="Administrator overview" className="pt-1">
             <p className="text-[11px] font-black uppercase tracking-wider text-[#A59AAB]">Overview</p>
@@ -292,6 +287,24 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
       </div>}
     </Modal>
     <ImageCropModal isOpen={isCropOpen} onClose={() => { setIsCropOpen(false); setRawImage(null); }} imageSrc={rawImage} onConfirmCrop={handleConfirmCrop} isSaving={isUploading} />
+    <ResetPasswordModal
+      isOpen={isResetPasswordOpen && Boolean(admin)}
+      onClose={() => setIsResetPasswordOpen(false)}
+      account={admin ? {
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        identifier: admin.role === 'super_admin' ? 'Super Admin' : 'Admin',
+        type: 'Admin',
+        avatarUrl: admin.avatar_url,
+      } : null}
+      onReset={async (id, password) => {
+        if (onResetPassword) {
+          return await onResetPassword(id, password);
+        }
+        return await onUpdate(id, { password });
+      }}
+    />
   </>;
 };
 
