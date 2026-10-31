@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { WifiOff, Wifi, Loader2, RefreshCw, X } from 'lucide-react';
+import { toast } from '../../context';
 
 export type NetworkCondition = 'online' | 'offline' | 'slow';
 
@@ -19,7 +20,34 @@ export const NetworkStatusBanner: React.FC = () => {
     }
   };
 
-  const handleOnline = useCallback(() => {
+  const handleOffline = useCallback(() => {
+    clearHideTimer();
+    setWasOffline(false);
+    setStatus('offline');
+    setDismissedSlow(false);
+  }, []);
+
+  const handleOnline = useCallback(async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      handleOffline();
+      return;
+    }
+
+    // Ping external endpoint to verify genuine internet connectivity (not local loopback)
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 2500);
+      await fetch('https://www.google.com/generate_204', {
+        mode: 'no-cors',
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+    } catch {
+      handleOffline();
+      return;
+    }
+
     clearHideTimer();
     setStatus((prev) => {
       if (prev === 'offline' || prev === 'slow') {
@@ -32,14 +60,7 @@ export const NetworkStatusBanner: React.FC = () => {
     });
     setDismissedSlow(false);
     setIsRetrying(false);
-  }, []);
-
-  const handleOffline = useCallback(() => {
-    clearHideTimer();
-    setWasOffline(false);
-    setStatus('offline');
-    setDismissedSlow(false);
-  }, []);
+  }, [handleOffline]);
 
   const handleSlow = useCallback(() => {
     setStatus((prev) => {
@@ -52,7 +73,7 @@ export const NetworkStatusBanner: React.FC = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    const onCustomOnline = () => handleOnline();
+    const onCustomOnline = () => void handleOnline();
     const onCustomOffline = () => handleOffline();
     const onCustomSlow = () => handleSlow();
 
@@ -73,19 +94,25 @@ export const NetworkStatusBanner: React.FC = () => {
   const checkConnection = async () => {
     setIsRetrying(true);
     try {
-      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
-      const rootUrl = apiBase.replace(/\/api\/v1\/?$/, '');
-      const res = await fetch(`${rootUrl}/health`, {
-        cache: 'no-store',
-        method: 'GET',
-      });
-      if (res.ok) {
-        handleOnline();
-      } else {
-        handleOffline();
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        throw new Error('Offline');
       }
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 2500);
+
+      // Verify external internet reachability
+      await fetch('https://www.google.com/generate_204', {
+        mode: 'no-cors',
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+
+      await handleOnline();
     } catch {
       handleOffline();
+      toast.error('Still offline. Please check your Wi-Fi or internet connection.');
     } finally {
       setIsRetrying(false);
     }
