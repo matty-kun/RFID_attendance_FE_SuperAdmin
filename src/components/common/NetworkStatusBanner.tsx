@@ -91,7 +91,6 @@ export const NetworkStatusBanner: React.FC = () => {
     }
   };
 
-  // If online and wasn't recently offline, or slow was dismissed, render nothing
   if (status === 'online' && !wasOffline) return null;
   if (status === 'slow' && dismissedSlow) return null;
 
@@ -101,16 +100,16 @@ export const NetworkStatusBanner: React.FC = () => {
       className="fixed top-3 left-1/2 -translate-x-1/2 z-50 max-w-xl w-[92%] sm:w-auto animate-in fade-in slide-in-from-top-2 duration-200"
     >
       {status === 'offline' && (
-        <div className="flex items-center gap-3 rounded-2xl border border-rose-500/40 bg-[#24133F] px-4 py-3 text-white shadow-2xl backdrop-blur-md">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-500/20 text-rose-400">
+        <div className="flex items-center gap-3.5 rounded-2xl border border-[#FCA5A5]/60 bg-white/95 px-4 py-3 text-[#24133F] shadow-[0_8px_30px_rgba(36,19,63,0.12)] backdrop-blur-md">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FDE8EA] border border-[#FCA5A5]/40 text-[#EF3340]">
             <WifiOff className="h-4 w-4 animate-pulse" />
           </div>
           <div className="flex-1 min-w-0 pr-2">
-            <p className="text-xs font-bold text-white flex items-center gap-1.5">
+            <p className="text-xs font-bold text-[#24133F] flex items-center gap-1.5">
               <span>You're currently offline</span>
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-rose-400"></span>
+              <span className="inline-block h-2 w-2 rounded-full bg-[#EF3340]"></span>
             </p>
-            <p className="text-[11px] text-purple-200/80 leading-snug">
+            <p className="text-[11px] text-[#756883] leading-snug mt-0.5">
               Showing cached records. Database edits & live card scan sync will resume when connection returns.
             </p>
           </div>
@@ -118,29 +117,29 @@ export const NetworkStatusBanner: React.FC = () => {
             type="button"
             onClick={checkConnection}
             disabled={isRetrying}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20 active:scale-95 transition-all disabled:opacity-50"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[#E5E0EB] bg-[#FAF8FC] px-3.5 py-1.5 text-xs font-semibold text-[#24133F] hover:bg-purple-50 hover:border-[#7026B7] active:scale-95 transition-all disabled:opacity-50"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 text-[#756883] ${isRetrying ? 'animate-spin' : ''}`} />
             <span>{isRetrying ? 'Checking...' : 'Retry'}</span>
           </button>
         </div>
       )}
 
       {status === 'slow' && !dismissedSlow && (
-        <div className="flex items-center gap-3 rounded-2xl border border-amber-500/40 bg-[#24133F] px-4 py-3 text-white shadow-2xl backdrop-blur-md">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
+        <div className="flex items-center gap-3.5 rounded-2xl border border-[#FDE68A]/70 bg-white/95 px-4 py-3 text-[#24133F] shadow-[0_8px_30px_rgba(36,19,63,0.12)] backdrop-blur-md">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FFF3D8] border border-[#FDE68A]/40 text-[#F59E0B]">
             <Loader2 className="h-4 w-4 animate-spin" />
           </div>
           <div className="flex-1 min-w-0 pr-2">
-            <p className="text-xs font-bold text-amber-300">Slow connection detected</p>
-            <p className="text-[11px] text-purple-200/80 leading-snug">
+            <p className="text-xs font-bold text-[#24133F]">Slow connection detected</p>
+            <p className="text-[11px] text-[#756883] leading-snug mt-0.5">
               Requests are taking longer than usual. Still loading latest data in background...
             </p>
           </div>
           <button
             type="button"
             onClick={() => setDismissedSlow(true)}
-            className="rounded-lg p-1 text-purple-300 hover:bg-white/10 hover:text-white transition-colors"
+            className="rounded-lg p-1.5 text-[#756883] hover:bg-slate-100 hover:text-[#24133F] transition-colors"
             title="Dismiss"
           >
             <X className="h-4 w-4" />
@@ -149,12 +148,12 @@ export const NetworkStatusBanner: React.FC = () => {
       )}
 
       {status === 'online' && wasOffline && (
-        <div className="flex items-center gap-2.5 rounded-2xl border border-emerald-500/40 bg-emerald-950/95 px-4 py-2.5 text-emerald-100 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-top-1">
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300">
+        <div className="flex items-center gap-2.5 rounded-2xl border border-emerald-200 bg-white/95 px-4 py-2.5 text-[#24133F] shadow-[0_8px_30px_rgba(36,19,63,0.12)] backdrop-blur-md animate-in fade-in slide-in-from-top-1">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#E4F7EB] border border-emerald-200 text-[#17B556]">
             <Wifi className="h-3.5 w-3.5" />
           </div>
-          <p className="text-xs font-semibold">
-            <span className="font-bold text-white">Back online!</span> Connection restored. Syncing latest data...
+          <p className="text-xs font-semibold text-[#24133F]">
+            <span className="font-bold text-[#17B556]">Back online!</span> Connection restored. Syncing latest data...
           </p>
         </div>
       )}
