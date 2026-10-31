@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Drawer } from '../../../components/common/Drawer';
 import { Dropdown } from '../../../components/common/Dropdown';
 import { Input } from '../../../components/common/Input';
+import { Eye, EyeOff } from 'lucide-react';
 import { soundManager } from '../../../utils/audioFeedback';
 import { toast } from '../../../context';
 import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
@@ -24,6 +25,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [temporaryPassword, setTemporaryPassword] = useState('');
+  const [showTemporaryPassword, setShowTemporaryPassword] = useState(false);
   const [course, setCourse] = useState('BS Information Technology');
   const [yearLevel, setYearLevel] = useState(1);
   const [scannedUid, setScannedUid] = useState('');
@@ -57,6 +59,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       setName('');
       setEmail('');
       setTemporaryPassword('');
+      setShowTemporaryPassword(false);
       setCourse('BS Information Technology');
       setYearLevel(1);
       setScannedUid('');
@@ -232,11 +235,23 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
 
           <Input
             label="Temporary Password (min 12 chars)"
-            type="password"
+            type={showTemporaryPassword ? 'text' : 'password'}
             placeholder="Temporary password for first login"
             value={temporaryPassword}
             onChange={(e) => setTemporaryPassword(e.target.value)}
             minLength={12}
+            autoComplete="new-password"
+            rightElement={
+              <button
+                type="button"
+                onClick={() => setShowTemporaryPassword((visible) => !visible)}
+                aria-label={showTemporaryPassword ? 'Hide temporary password' : 'Show temporary password'}
+                title={showTemporaryPassword ? 'Hide password' : 'Show password'}
+                className="rounded-lg p-1.5 text-[#756883] hover:bg-purple-50 hover:text-[#7026B7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7026B7]"
+              >
+                {showTemporaryPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
             required
           />
 
