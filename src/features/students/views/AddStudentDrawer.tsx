@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Drawer } from '../../../components/common/Drawer';
 import { Dropdown } from '../../../components/common/Dropdown';
 import { Input } from '../../../components/common/Input';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Sparkles, Trash2 } from 'lucide-react';
+import { draftStorage } from '../../../utils/draftStorage';
 import { soundManager } from '../../../utils/audioFeedback';
 import { toast } from '../../../context';
 import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
@@ -29,6 +30,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
   const [course, setCourse] = useState('BS Information Technology');
   const [yearLevel, setYearLevel] = useState(1);
   const [scannedUid, setScannedUid] = useState('');
+  const [restoredDraft, setRestoredDraft] = useState(false);
 
   const scannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,18 +57,65 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setStudentId('');
-      setName('');
-      setEmail('');
+      const saved = draftStorage.get<{
+        studentId: string;
+        name: string;
+        email: string;
+        course: string;
+        yearLevel: number;
+        scannedUid: string;
+      }>('add_student');
+
+      if (saved && (saved.studentId || saved.name || saved.email || saved.scannedUid)) {
+        setStudentId(saved.studentId || '');
+        setName(saved.name || '');
+        setEmail(saved.email || '');
+        setCourse(saved.course || 'BS Information Technology');
+        setYearLevel(saved.yearLevel || 1);
+        setScannedUid(saved.scannedUid || '');
+        setRestoredDraft(true);
+      } else {
+        setStudentId('');
+        setName('');
+        setEmail('');
+        setCourse('BS Information Technology');
+        setYearLevel(1);
+        setScannedUid('');
+        setRestoredDraft(false);
+      }
       setTemporaryPassword('');
       setShowTemporaryPassword(false);
-      setCourse('BS Information Technology');
-      setYearLevel(1);
-      setScannedUid('');
       const timer = setTimeout(() => scannerInputRef.current?.focus(), 150);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+
+  // Automatically preserve form draft across unexpected session timeouts
+  useEffect(() => {
+    if (isOpen && (studentId || name || email || scannedUid)) {
+      draftStorage.save('add_student', {
+        studentId,
+        name,
+        email,
+        course,
+        yearLevel,
+        scannedUid,
+      });
+    }
+  }, [isOpen, studentId, name, email, course, yearLevel, scannedUid]);
+
+  const handleDiscardDraft = () => {
+    draftStorage.clear('add_student');
+    setStudentId('');
+    setName('');
+    setEmail('');
+    setTemporaryPassword('');
+    setCourse('BS Information Technology');
+    setYearLevel(1);
+    setScannedUid('');
+    setRestoredDraft(false);
+    toast.info('Draft discarded.');
+  };
 
   const handleScannerKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -110,6 +159,8 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       year_level: yearLevel,
       rfid_uid: scannedUid.trim(),
     });
+    draftStorage.clear('add_student');
+    setRestoredDraft(false);
   };
 
   const handleRegisterWithoutCard = async () => {
@@ -124,6 +175,8 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       year_level: yearLevel,
       rfid_uid: undefined,
     });
+    draftStorage.clear('add_student');
+    setRestoredDraft(false);
   };
 
   const hasCardSelected = Boolean(scannedUid.trim());
@@ -162,6 +215,22 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       }
     >
       <form onSubmit={handleRegisterWithCard} className="space-y-5">
+        {restoredDraft && (
+          <div className="flex items-center justify-between gap-2 rounded-2xl border border-purple-200 bg-purple-50/80 px-3.5 py-2.5 text-xs text-[#7026B7]">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 shrink-0 text-[#7026B7]" />
+              <span className="font-bold">Restored unsaved draft</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#CE2333] hover:underline"
+            >
+              <Trash2 className="h-3 w-3" />
+              Discard
+            </button>
+          </div>
+        )}
         {/* TOP SECTION: RFID Card Binding Station */}
         <div className="rounded-2xl border border-[#E5E0EB] bg-white p-4 space-y-3.5">
           <div className="flex items-center gap-3">

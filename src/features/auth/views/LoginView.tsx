@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { AlertCircle, Eye, EyeOff, KeyRound, User } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, KeyRound, User, CheckCircle2 } from 'lucide-react';
 import { Checkbox } from '../../../components/common/Checkbox';
 import { useLoginViewModel } from '../viewmodels';
 import hawiPeekingImg from '../../../assets/illustrations/Hawi Peeking.png';
@@ -68,6 +68,21 @@ export function LoginView() {
               welcome! Enter your details to login to your account
             </p>
           </div>
+
+                    {sessionStorage.getItem('session_expired_notice') === 'true' && (
+            <div
+              role="status"
+              className="mb-5 flex items-start gap-2.5 rounded-2xl border border-purple-200 bg-purple-50/80 px-4 py-3 text-xs text-[#7026B7]"
+            >
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#7026B7]" />
+              <div className="leading-tight">
+                <span className="font-extrabold block text-xs">Session expired for security.</span>
+                <span className="block text-[11px] font-medium text-[#756883] mt-0.5">
+                  Your unsaved drafts were preserved. Sign in to resume where you left off.
+                </span>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div

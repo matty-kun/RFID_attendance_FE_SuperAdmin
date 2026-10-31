@@ -4,6 +4,7 @@ import { SuperAdminUser } from '../models';
 import { authService } from '../services';
 import { DEV_PREVIEW_TOKEN } from '../devPreview';
 import { WaveTransition, type WaveTransitionProps } from '../../../components/common/WaveTransition';
+import { SessionExpiredModal } from '../../../components/common/SessionExpiredModal';
 
 interface AuthContextType {
   user: SuperAdminUser | null;
@@ -69,7 +70,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(newToken);
       setUser(newUser);
       setIsLoading(false);
-      navigate(newUser.must_change_password ? '/change-password' : '/overview', { replace: true });
+      const returnUrl = sessionStorage.getItem('auth_return_url');
+      sessionStorage.removeItem('auth_return_url');
+      sessionStorage.removeItem('session_expired_notice');
+      navigate(newUser.must_change_password ? '/change-password' : (returnUrl || '/overview'), { replace: true });
 
       // Start wave exit phase (sweeping out to the right)
       setTransitionState({
@@ -137,6 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     >
       {children}
       {transitionState && <WaveTransition {...transitionState} />}
+      <SessionExpiredModal />
     </AuthContext.Provider>
   );
 };

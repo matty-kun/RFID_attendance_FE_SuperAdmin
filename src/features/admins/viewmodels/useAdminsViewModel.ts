@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { AdminRecord, AdminCheckpointActivityPage, UpdateAdminPayload } from '../models';
 import { adminManagementService } from '../services';
 import { toast } from '../../../context';
+import { draftStorage } from '../../../utils/draftStorage';
 import { useAuth } from '../../auth/context/AuthContext';
 
 export interface UseAdminsViewModelReturn {
@@ -83,6 +84,23 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
     return () => clearTimeout(timer);
   }, [loadAdmins]);
 
+  useEffect(() => {
+    if (isModalOpen) {
+      const saved = draftStorage.get<{ name: string; email: string; role: 'admin' | 'super_admin' }>('create_admin');
+      if (saved) {
+        setName(saved.name || '');
+        setEmail(saved.email || '');
+        if (saved.role) setRole(saved.role);
+      }
+    }
+  }, [isModalOpen]);
+
+  useEffect(() => {
+    if (isModalOpen && (name || email)) {
+      draftStorage.save('create_admin', { name, email, role });
+    }
+  }, [isModalOpen, name, email, role]);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim()) {
@@ -107,6 +125,7 @@ export const useAdminsViewModel = (): UseAdminsViewModelReturn => {
       setName('');
       setEmail('');
       setTemporaryPassword('');
+      draftStorage.clear('create_admin');
       await loadAdmins();
     } catch (err: any) {
       const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to register administrator.';

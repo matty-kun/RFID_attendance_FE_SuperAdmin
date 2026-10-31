@@ -31,10 +31,19 @@ api.interceptors.response.use(
   },
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('super_admin_token');
-      localStorage.removeItem('super_admin_user');
+      const currentPath = window.location.pathname + window.location.search;
       if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+        sessionStorage.setItem('auth_return_url', currentPath);
+        sessionStorage.setItem('session_expired_notice', 'true');
+
+        localStorage.removeItem('super_admin_token');
+        localStorage.removeItem('super_admin_user');
+
+        window.dispatchEvent(
+          new CustomEvent('presnt:session-expired', {
+            detail: { returnUrl: currentPath },
+          })
+        );
       }
     }
     return Promise.reject(error);
