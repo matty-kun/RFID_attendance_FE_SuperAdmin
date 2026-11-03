@@ -221,7 +221,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     }
     const clean = val.trim();
     // Auto-enter: automatically submit when reader finishes burst input (250ms debounce)
-    if (clean.length >= 4) {
+    if (clean.length >= 8 && /^\d+$/.test(clean)) {
       autoSubmitTimeoutRef.current = setTimeout(() => {
         void submitCardUid(clean);
       }, 250);
@@ -631,18 +631,20 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
           </div>
 
           {/* Student Account Bar & Password Reset */}
-          <div className="flex items-stretch gap-2">
-            <div className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-bold shadow-[0_4px_0_#D0C9D5]">
-              <span className="truncate text-slate-700">{currentStudent.email || `${currentStudent.student_id}@student.presnt.edu`}</span>
-            </div>
+          <div className="flex items-center justify-between gap-2">
+            {currentStudent.email ? (
+              <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+                <span className="truncate">{currentStudent.email}</span>
+              </div>
+            ) : null}
             <button
               type="button"
               onClick={() => setIsResetPasswordOpen(true)}
               disabled={Boolean(isArchived)}
-              title={isArchived ? 'Restore student before resetting password' : 'Reset student password'}
-              className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-[#7026B7] px-4 py-3 text-xs font-bold text-white shadow-[0_4px_0_#451475] transition-colors hover:bg-[#621FA3] active:scale-95 disabled:opacity-50 cursor-pointer"
+              title={isArchived ? 'Restore student before resetting password' : 'Reset student mobile app password'}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-2xs transition-all hover:bg-purple-50 hover:text-[#7026B7] hover:border-purple-200 active:scale-95 disabled:opacity-50 cursor-pointer ml-auto"
             >
-              <KeyRound className="h-4 w-4" />
+              <KeyRound className="h-3.5 w-3.5 text-[#7026B7]" />
               Reset Password
             </button>
           </div>
@@ -658,27 +660,110 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               </div>
             </div>
           ) : currentStudent.rfid_uid ? (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={handleCopyUid}
-                className="flex-1 font-mono text-xs justify-center"
-                leftIcon={copiedUid ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4 text-slate-400" />}
-                title="Click to copy Card UID"
-              >
-                Card UID: {currentStudent.rfid_uid}
-              </Button>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-3.5 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-[#7026B7]">
+                    <CreditCard className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-black text-[#24133F]">
+                        {(currentStudent as any).card_number ? (currentStudent as any).card_number : 'Card Assigned'}
+                      </p>
+                      <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                        Active
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCopyUid}
+                      className="mt-0.5 inline-flex items-center gap-1 font-mono text-[11px] text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+                      title="Click to copy UID"
+                    >
+                      <span>UID: {currentStudent.rfid_uid}</span>
+                      {copiedUid ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3 text-slate-400" />}
+                    </button>
+                  </div>
+                </div>
 
-              <Button
-                variant="danger"
-                size="md"
-                onClick={() => setIsUnlinking(true)}
-                leftIcon={<Unlink className="h-4 w-4" />}
-                title="Return RFID Card"
-              >
-                Return card
-              </Button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {!isScanningCard && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        setIsScanningCard(true);
+                        setTimeout(() => cardInputRef.current?.focus(), 80);
+                      }}
+                      leftIcon={<Radio className="h-3.5 w-3.5" />}
+                      title="Change / Update RFID Card"
+                    >
+                      Change Card
+                    </Button>
+                  )}
+
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => setIsUnlinking(true)}
+                    leftIcon={<Unlink className="h-3.5 w-3.5" />}
+                    title="Return RFID Card"
+                  >
+                    Return card
+                  </Button>
+                </div>
+              </div>
+
+              {/* Inline RFID Card Scanner / Manual Input to Update / Replace Card */}
+              {isScanningCard && (
+                <form
+                  onSubmit={handleInlineCardSubmit}
+                  className="pt-3 border-t border-slate-200 flex flex-col gap-2 animate-in fade-in duration-150"
+                >
+                  <p className="text-[11px] font-bold text-[#7026B7]">
+                    Tap replacement RFID card or enter Card Number (e.g. RFID-002) / UID:
+                  </p>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        ref={cardInputRef}
+                        type="text"
+                        value={inlineCardUid}
+                        onChange={(e) => handleCardInputChange(e.target.value)}
+                        placeholder="Tap card or enter Card No. / UID..."
+                        className="w-full rounded-xl border border-brand-300 bg-white px-3 py-1.5 text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        size="sm"
+                        disabled={!inlineCardUid.trim() || isPairingCard}
+                        isLoading={isPairingCard}
+                      >
+                        Update Card
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          if (autoSubmitTimeoutRef.current) {
+                            clearTimeout(autoSubmitTimeoutRef.current);
+                          }
+                          setIsScanningCard(false);
+                          setInlineCardUid('');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </form>
+              )}
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-3.5 transition-all">

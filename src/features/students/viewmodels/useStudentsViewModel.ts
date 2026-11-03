@@ -423,8 +423,16 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
       const targetStudent = students.find((s) => s.id === studentId);
       const oldUid = targetStudent?.rfid_uid;
 
-      if (oldUid) await request.post(`/cards/${encodeURIComponent(oldUid)}/actions`, { action: reason === 'lost' ? 'lost' : 'return' });
-      else await studentService.updateStudent(studentId, { rfid_uid: null });
+      if (oldUid) {
+        try {
+          await request.post(`/cards/${encodeURIComponent(oldUid)}/actions`, { action: reason === 'lost' ? 'lost' : 'return' });
+        } catch (actionErr) {
+          console.warn('Card action return failed, falling back to direct student card unlinking:', actionErr);
+          await studentService.updateStudent(studentId, { rfid_uid: null });
+        }
+      } else {
+        await studentService.updateStudent(studentId, { rfid_uid: null });
+      }
 
       if (oldUid) {
         if (reason === 'returned') {
