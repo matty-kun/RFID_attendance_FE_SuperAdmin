@@ -26,6 +26,7 @@ import {
   Zap,
   Trash2,
   KeyRound,
+  Mail,
 } from 'lucide-react';
 import { ResetPasswordModal } from '../../../components/common/ResetPasswordModal';
 import { DeleteStudentConfirmationModal } from './DeleteStudentConfirmationModal';
@@ -630,24 +631,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
             )}
           </div>
 
-          {/* Student Account Bar & Password Reset */}
-          <div className="flex items-center justify-between gap-2">
-            {currentStudent.email ? (
-              <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
-                <span className="truncate">{currentStudent.email}</span>
-              </div>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setIsResetPasswordOpen(true)}
-              disabled={Boolean(isArchived)}
-              title={isArchived ? 'Restore student before resetting password' : 'Reset student mobile app password'}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-2xs transition-all hover:bg-purple-50 hover:text-[#7026B7] hover:border-purple-200 active:scale-95 disabled:opacity-50 cursor-pointer ml-auto"
-            >
-              <KeyRound className="h-3.5 w-3.5 text-[#7026B7]" />
-              Reset Password
-            </button>
-          </div>
 
           {/* Archived Banner / Quick Restore Bar */}
           {isArchived ? (
@@ -991,6 +974,27 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Subtle Mobile App Account & Password */}
+            <div className="mt-2.5 flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/60 px-3.5 py-2.5 text-xs">
+              <div className="flex items-center gap-2 min-w-0 pr-2">
+                <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Account</span>
+                <span className="font-semibold text-slate-700 truncate text-xs">
+                  {currentStudent.email || `${currentStudent.student_id.toLowerCase()}@student.presnt.edu`}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsResetPasswordOpen(true)}
+                disabled={Boolean(isArchived)}
+                title={isArchived ? 'Restore student before resetting password' : 'Reset student mobile app password'}
+                className="inline-flex shrink-0 items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#7026B7] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <KeyRound className="h-3.5 w-3.5 text-[#7026B7]" />
+                <span>Reset Password</span>
+              </button>
+            </div>
           </div>
 
           {/* SCAN HISTORY SECTION */}
@@ -1124,6 +1128,8 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               ) : (
                 <div className="rounded-2xl border border-[#E5E0EB] bg-white">
                   <EmptyState
+                    hideIllustration
+                    icon={<Clock className="h-5 w-5 text-[#7026B7]" />}
                     variant={selectedEventId !== 'all' || filterType !== 'all' ? 'no-search-results' : scanError ? 'error' : 'empty-list'}
                     title={scanError ? 'Scan history unavailable' : selectedEventId !== 'all' || filterType !== 'all' ? 'No matching scan logs' : 'No attendance scans recorded'}
                     description={

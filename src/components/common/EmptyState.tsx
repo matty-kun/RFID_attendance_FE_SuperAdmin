@@ -17,6 +17,8 @@ export type EmptyStateVariant =
 export interface EmptyStateProps {
   variant?: EmptyStateVariant;
   illustration?: string;
+  icon?: React.ReactNode;
+  hideIllustration?: boolean;
   title?: string;
   description?: string;
   action?: {
@@ -69,6 +71,8 @@ const variantDefaults: Record<EmptyStateVariant, { image: string; title: string;
 export const EmptyState: React.FC<EmptyStateProps> = ({
   variant = 'no-search-results',
   illustration,
+  icon,
+  hideIllustration = false,
   title,
   description,
   action,
@@ -83,12 +87,18 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
   return (
     <div className={`flex flex-col items-center justify-center text-center ${compact ? 'py-8 px-4' : 'py-14 px-6'} ${className}`}>
-      <img
-        src={imageSrc}
-        alt=""
-        className={`${compact ? 'h-20 w-20' : 'h-28 w-28'} object-contain mb-3 select-none`}
-        loading="lazy"
-      />
+      {!hideIllustration ? (
+        <img
+          src={imageSrc}
+          alt=""
+          className={`${compact ? 'h-20 w-20' : 'h-28 w-28'} object-contain mb-3 select-none`}
+          loading="lazy"
+        />
+      ) : icon ? (
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-[#7026B7] mb-2.5">
+          {icon}
+        </div>
+      ) : null}
       <h3 className="text-sm font-bold text-[#24133F]">{displayTitle}</h3>
       {displayDesc ? (
         <p className="mt-1 max-w-sm text-xs text-[#756883] leading-relaxed">
