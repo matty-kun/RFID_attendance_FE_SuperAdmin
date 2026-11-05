@@ -314,7 +314,7 @@ export const StudentsView: React.FC = () => {
             {selectedStudents.length > 0 && (
               <>
                 {studentTab === 'active' && <button type="button" disabled={bulkBusy} onClick={() => setPendingBulkAction('archive')} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-[#7026B7] transition-colors hover:bg-purple-100 focus-visible:outline-2 focus-visible:outline-[#7026B7] disabled:opacity-40"><Archive className="h-3.5 w-3.5 shrink-0" /> Archive</button>}
-                <button type="button" disabled={bulkBusy} onClick={() => setPendingBulkAction('delete')} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-rose-500 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5 shrink-0" /> Delete</button>
+                <button type="button" disabled={bulkBusy || selectedWithCards.length > 0} onClick={() => setPendingBulkAction('delete')} title={selectedWithCards.length > 0 ? 'Students with linked cards cannot be deleted. Return cards first.' : 'Delete selected students'} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-rose-500 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5 shrink-0" /> Delete</button>
                 {studentTab === 'active' && <button type="button" disabled={!selectedWithCards.length || bulkBusy} onClick={() => setPendingBulkAction('unlink')} className="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-xs font-bold text-[#7026B7] transition-colors hover:bg-purple-100 focus-visible:outline-2 focus-visible:outline-[#7026B7] disabled:opacity-40"><Link2Off className="h-3.5 w-3.5 shrink-0" /> Return cards</button>}
                 <button type="button" disabled={bulkBusy} onClick={() => setSelectedStudentIds([])} className="inline-flex h-9 items-center rounded-lg px-2 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40">Clear</button>
               </>
@@ -551,7 +551,7 @@ export const StudentsView: React.FC = () => {
           </div>
           {pendingBulkAction === 'delete' && (
             <label className="block space-y-1.5 text-xs font-semibold text-slate-700">
-              <span>Type DELETE to confirm</span>
+              <span>Type <strong className="font-bold">"DELETE"</strong> to confirm</span>
               <input value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} disabled={bulkBusy} autoComplete="off" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100" />
             </label>
           )}

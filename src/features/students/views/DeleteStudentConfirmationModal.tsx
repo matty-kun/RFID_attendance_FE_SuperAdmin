@@ -20,6 +20,8 @@ export interface DeleteStudentConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
   student: StudentRecord | null;
+  attendanceCount?: number;
+  onArchiveInstead?: (studentId: string) => Promise<boolean>;
   onConfirmDelete: (studentId: string) => Promise<boolean>;
 }
 
@@ -27,10 +29,13 @@ export const DeleteStudentConfirmationModal: React.FC<DeleteStudentConfirmationM
   isOpen,
   onClose,
   student,
+  attendanceCount = 0,
+  onArchiveInstead,
   onConfirmDelete,
 }) => {
   const [confirmInput, setConfirmInput] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -152,37 +157,49 @@ export const DeleteStudentConfirmationModal: React.FC<DeleteStudentConfirmationM
           </div>
         </div>
 
-        {/* Intentional Confirmation Input */}
-        <div className="space-y-1.5 pt-0.5">
-          <div className="flex items-center justify-between text-xs">
-            <label className="font-semibold text-[#24133F]">
-              To confirm, type student ID <strong className="font-mono font-extrabold text-[#EF3340] bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 select-all">{student.student_id}</strong> below:
-            </label>
-            {isMatch && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 animate-in fade-in">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Matched
-              </span>
-            )}
+        {/* Intentional Confirmation Input or Block Notice */}
+        {attendanceCount > 0 ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-3.5 space-y-1.5 text-xs text-rose-950">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0" />
+              <p className="font-bold text-rose-800">Permanent deletion is blocked</p>
+            </div>
+            <p className="text-xs leading-relaxed text-rose-900">
+              Cannot permanently delete <strong>{student.name}</strong> ({student.student_id}) because they have <strong>{attendanceCount}</strong> recorded attendance log{attendanceCount === 1 ? '' : 's'}. Use Archive instead to preserve historical audit data.
+            </p>
           </div>
-          <Input
-            value={confirmInput}
-            onChange={(e) => setConfirmInput(e.target.value)}
-            placeholder={`Type ${student.student_id} to confirm`}
-            autoFocus
-            disabled={isDeleting}
-            className={`font-mono text-sm transition-all ${
-              isMatch
-                ? 'border-emerald-500 bg-emerald-50/20 text-slate-900 focus:border-emerald-600'
-                : 'border-slate-200'
-            }`}
-            rightElement={
-              isMatch ? (
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              ) : undefined
-            }
-          />
-        </div>
+        ) : (
+          <div className="space-y-1.5 pt-0.5">
+            <div className="flex items-center justify-between text-xs">
+              <label className="font-semibold text-[#24133F]">
+                To confirm, type student ID <strong className="font-mono font-extrabold text-[#EF3340] bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 select-all">{student.student_id}</strong> below:
+              </label>
+              {isMatch && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 animate-in fade-in">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Matched
+                </span>
+              )}
+            </div>
+            <Input
+              value={confirmInput}
+              onChange={(e) => setConfirmInput(e.target.value)}
+              placeholder={`Type ${student.student_id} to confirm`}
+              autoFocus
+              disabled={isDeleting}
+              className={`font-mono text-sm transition-all ${
+                isMatch
+                  ? 'border-emerald-500 bg-emerald-50/20 text-slate-900 focus:border-emerald-600'
+                  : 'border-slate-200'
+              }`}
+              rightElement={
+                isMatch ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                ) : undefined
+              }
+            />
+          </div>
+        )}
 
         {/* Action Buttons with 3D tactile feedback */}
         <div className="pt-3 border-t border-[#F1EEF4] flex items-center justify-end gap-2.5">
@@ -191,26 +208,48 @@ export const DeleteStudentConfirmationModal: React.FC<DeleteStudentConfirmationM
             variant="secondary"
             size="md"
             onClick={onClose}
-            disabled={isDeleting}
+            disabled={isDeleting || isArchiving}
           >
             Cancel
           </Button>
-          <Button
-            type="button"
-            variant="danger"
-            size="md"
-            onClick={handleDelete}
-            disabled={!isMatch || isDeleting}
-            leftIcon={
-              isDeleting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4" />
-              )
-            }
-          >
-            {isDeleting ? 'Deleting student...' : 'Delete Student'}
-          </Button>
+          {attendanceCount > 0 ? (
+            onArchiveInstead && (
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                isLoading={isArchiving}
+                disabled={isDeleting}
+                onClick={async () => {
+                  setIsArchiving(true);
+                  try {
+                    await onArchiveInstead(student.id);
+                  } finally {
+                    setIsArchiving(false);
+                  }
+                }}
+              >
+                Archive Student Instead
+              </Button>
+            )
+          ) : (
+            <Button
+              type="button"
+              variant="danger"
+              size="md"
+              onClick={handleDelete}
+              disabled={!isMatch || isDeleting}
+              leftIcon={
+                isDeleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )
+              }
+            >
+              {isDeleting ? 'Deleting student...' : 'Delete Student'}
+            </Button>
+          )}
         </div>
       </div>
     </Modal>
