@@ -270,67 +270,55 @@ export function CardsPage() {
       <label className="flex h-10 min-w-[230px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100 sm:max-w-[320px]"><Search className="h-4 w-4 text-[#756883]" /><input aria-label="Search card number or UID" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search card number or UID" className="w-full bg-transparent text-xs outline-none placeholder:text-[#A59AAB]" /></label>
       <Dropdown value={status} onChange={value => { setStatus(value as Status | 'all'); setPage(1); }} options={statuses} icon={<Filter className="h-4 w-4" />} buttonClassName="min-w-[150px]" />
     </div>
-    {selectedCardIds.length > 0 && (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-purple-200 bg-purple-50/80 px-4 py-2.5 shadow-2xs">
-        <div className="flex items-center gap-2">
-          <span className="font-black text-[#7026B7] text-xs">
-            {selectedCardIds.length} card{selectedCardIds.length === 1 ? '' : 's'} selected
-          </span>
-          {selectedWithHistory.length > 0 && (
-            <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
-              {selectedWithHistory.length} with history (cannot delete)
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {canBulkArchive && (
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={bulkBusy}
-              onClick={() => setPendingBulkAction('archive')}
-              leftIcon={<Archive className="h-3.5 w-3.5 text-[#7026B7]" />}
+    <div className="relative flex flex-col gap-2 2xl:block">
+      <aside aria-label="Bulk card actions" aria-live="polite" className="flex h-9 w-full shrink-0 gap-1 2xl:absolute 2xl:right-[calc(100%+16px)] 2xl:top-12 2xl:h-auto 2xl:w-32 2xl:flex-col">
+        {selectedCards.length > 0 && (
+          <>
+            {canBulkArchive && (
+              <button
+                type="button"
+                disabled={bulkBusy}
+                onClick={() => setPendingBulkAction('archive')}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-[#7026B7] transition-colors hover:bg-purple-100 focus-visible:outline-2 focus-visible:outline-[#7026B7] disabled:opacity-40 cursor-pointer"
+              >
+                <Archive className="h-3.5 w-3.5 shrink-0" /> Archive
+              </button>
+            )}
+            {canBulkRestore && (
+              <button
+                type="button"
+                disabled={bulkBusy}
+                onClick={() => setPendingBulkAction('unarchive')}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-[#7026B7] transition-colors hover:bg-purple-100 focus-visible:outline-2 focus-visible:outline-[#7026B7] disabled:opacity-40 cursor-pointer"
+              >
+                <ArchiveRestore className="h-3.5 w-3.5 shrink-0" /> Restore
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={bulkBusy || !canBulkDelete}
+              title={
+                !canBulkDelete
+                  ? 'Only cards with no holder or scan history can be deleted. Deselect issued cards or archive instead.'
+                  : 'Delete selected cards permanently'
+              }
+              onClick={() => setPendingBulkAction('delete')}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-rose-500 disabled:opacity-40 cursor-pointer"
             >
-              Archive
-            </Button>
-          )}
-          {canBulkRestore && (
-            <Button
-              size="sm"
-              variant="secondary"
+              <Trash2 className="h-3.5 w-3.5 shrink-0" /> Delete
+            </button>
+            <button
+              type="button"
               disabled={bulkBusy}
-              onClick={() => setPendingBulkAction('unarchive')}
-              leftIcon={<ArchiveRestore className="h-3.5 w-3.5 text-[#7026B7]" />}
+              onClick={() => setSelectedCardIds([])}
+              className="inline-flex h-9 items-center rounded-lg px-2 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 cursor-pointer"
             >
-              Restore
-            </Button>
-          )}
-          <Button
-            size="sm"
-            variant="danger"
-            disabled={bulkBusy || !canBulkDelete}
-            title={
-              !canBulkDelete
-                ? 'Only cards with no holder or scan history can be deleted. Deselect issued cards or archive instead.'
-                : 'Delete selected unassigned cards permanently'
-            }
-            onClick={() => setPendingBulkAction('delete')}
-            leftIcon={<Trash2 className="h-3.5 w-3.5" />}
-          >
-            Delete
-          </Button>
-          <button
-            type="button"
-            disabled={bulkBusy}
-            onClick={() => setSelectedCardIds([])}
-            className="ml-1 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-          >
-            Clear
-          </button>
-        </div>
-      </div>
-    )}
-    <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-3">
+              Clear
+            </button>
+          </>
+        )}
+      </aside>
+    <div className="w-full min-w-0 overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-3">
       {loading ? (
         <LoadingState
           title="Loading cards…"
@@ -380,15 +368,22 @@ export function CardsPage() {
       ) : <table className="w-full min-w-[720px] text-left text-xs">
             <thead>
               <tr className="border-b border-[#E5E0EB] text-[#756883]">
-                <th className="w-12 px-4 py-3">
-                  <Checkbox
-                    aria-label={`Select all cards on this page (${cards.length})`}
-                    checked={allVisibleSelected}
-                    disabled={!cards.length || bulkBusy}
-                    onChange={(e) => setSelectedCardIds(e.target.checked ? cards.map(c => c.id) : [])}
-                  />
+                <th className="px-4 py-3 font-semibold">
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      aria-label={`Select all cards on this page (${cards.length})`}
+                      checked={allVisibleSelected}
+                      disabled={!cards.length || bulkBusy}
+                      onChange={(e) => setSelectedCardIds(e.target.checked ? cards.map(c => c.id) : [])}
+                    />
+                    <span>Card No.</span>
+                    {selectedCards.length > 0 && (
+                      <span className="font-bold text-[#7026B7]">
+                        {selectedCards.length} selected
+                      </span>
+                    )}
+                  </div>
                 </th>
-                <th className="px-4 py-3 font-semibold">Card No.</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
                 <th className="px-4 py-3 font-semibold">Current holder</th>
                 <th className="px-4 py-3 font-semibold">Registered</th>
@@ -406,19 +401,27 @@ export function CardsPage() {
                       isSelected ? 'bg-purple-50/70 hover:bg-purple-50' : 'hover:bg-slate-50'
                     }`}
                   >
-                    <td className="w-12 px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        aria-label={`Select card ${card.card_number}`}
-                        checked={isSelected}
-                        disabled={bulkBusy}
-                        onChange={(e) =>
-                          setSelectedCardIds((prev) =>
-                            e.target.checked ? [...prev, card.id] : prev.filter((id) => id !== card.id)
-                          )
-                        }
-                      />
-                    </td>
-                    <td className="px-4 py-4"><p className="font-bold text-[#24133F] group-hover:text-[#7026B7] transition-colors">{card.card_number}</p><p className="mt-0.5 font-mono text-[10px] text-[#756883]">UID {card.uid}</p></td><td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 font-bold capitalize ${statusStyle[card.status]}`}>{card.status}</span></td><td className="px-4 py-4">{card.holder ? <div className="flex items-center gap-2.5">{card.holder.avatar_url ? <img src={card.holder.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover group-hover:scale-105 transition-transform" /> : <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F2E9FC] text-[10px] font-bold text-[#7026B7] group-hover:scale-105 transition-transform">{card.holder.student_name.split(' ').map(part => part[0]).slice(0, 2).join('')}</span>}<span><span className="block font-semibold group-hover:text-[#7026B7] transition-colors">{card.holder.student_name}</span><span className="text-[#756883]">{card.holder.student_number}</span></span></div> : <span className="text-[#A59AAB]">No current holder</span>}</td><td className="px-4 py-4 text-[#756883]">{date(card.created_at)}</td><td className="px-4 py-4 text-right"><button type="button" onClick={(e) => { e.stopPropagation(); void openDetail(card); }} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold text-slate-700 shadow-2xs transition-all hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 cursor-pointer">View History →</button></td></tr>); })}</tbody></table>}
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            aria-label={`Select card ${card.card_number}`}
+                            checked={isSelected}
+                            disabled={bulkBusy}
+                            onChange={(e) =>
+                              setSelectedCardIds((prev) =>
+                                e.target.checked ? [...prev, card.id] : prev.filter((id) => id !== card.id)
+                              )
+                            }
+                          />
+                        </span>
+                        <div>
+                          <p className="font-bold text-[#24133F] group-hover:text-[#7026B7] transition-colors">{card.card_number}</p>
+                          <p className="mt-0.5 font-mono text-[10px] text-[#756883]">UID {card.uid}</p>
+                        </div>
+                      </div>
+                    </td><td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 font-bold capitalize ${statusStyle[card.status]}`}>{card.status}</span></td><td className="px-4 py-4">{card.holder ? <div className="flex items-center gap-2.5">{card.holder.avatar_url ? <img src={card.holder.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover group-hover:scale-105 transition-transform" /> : <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F2E9FC] text-[10px] font-bold text-[#7026B7] group-hover:scale-105 transition-transform">{card.holder.student_name.split(' ').map(part => part[0]).slice(0, 2).join('')}</span>}<span><span className="block font-semibold group-hover:text-[#7026B7] transition-colors">{card.holder.student_name}</span><span className="text-[#756883]">{card.holder.student_number}</span></span></div> : <span className="text-[#A59AAB]">No current holder</span>}</td><td className="px-4 py-4 text-[#756883]">{date(card.created_at)}</td><td className="px-4 py-4 text-right"><button type="button" onClick={(e) => { e.stopPropagation(); void openDetail(card); }} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold text-slate-700 shadow-2xs transition-all hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 cursor-pointer">View History →</button></td></tr>); })}</tbody></table>}
+    </div>
     </div>
     {total > 25 && <div className="flex items-center justify-end gap-2 text-xs"><Button variant="secondary" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</Button><span>Page {page} of {Math.ceil(total / 25)}</span><Button variant="secondary" size="sm" disabled={page * 25 >= total} onClick={() => setPage(page + 1)}>Next</Button></div>}
     <Drawer isOpen={Boolean(selectedCard)} onClose={closeDetail} title={selectedCard?.card_number ?? 'Card history'} maxWidth="2xl" hideHeader noPadding>
