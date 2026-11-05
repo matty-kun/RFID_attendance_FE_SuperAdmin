@@ -505,41 +505,45 @@ export function OverviewPage() {
           </div>
 
           <div className="relative mt-4 h-48 w-full flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={courseData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={75}
-                  paddingAngle={3}
-                  dataKey="count"
-                >
-                  {courseData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COURSE_COLORS[index % COURSE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0];
-                      return (
-                        <div className="rounded-2xl border border-[#E5E0EB] bg-white px-3.5 py-2 text-xs shadow-lg shadow-purple-950/5">
-                          <p className="font-bold text-[#24133F]">{data.name}</p>
-                          <p className="mt-0.5 text-[11px] font-semibold text-[#7026B7]">{Number(data.value).toLocaleString()} students</p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            {/* Center Summary Label */}
-            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+            {/* Center Summary Label (Rendered behind the tooltip via z-0) */}
+            <div className="pointer-events-none absolute inset-0 z-0 flex flex-col items-center justify-center text-center">
               <span className="text-xl font-black text-[#24133F]">{number(totalCourseStudents)}</span>
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#756883]">Enrolled</span>
+            </div>
+
+            <div className="relative z-10 h-full w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={courseData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={75}
+                    paddingAngle={3}
+                    dataKey="count"
+                  >
+                    {courseData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COURSE_COLORS[index % COURSE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    wrapperStyle={{ zIndex: 100 }}
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0];
+                        return (
+                          <div className="rounded-2xl border border-[#E5E0EB] bg-white px-3.5 py-2 text-xs shadow-xl min-w-[140px]">
+                            <p className="font-bold text-[#24133F]">{data.name}</p>
+                            <p className="mt-0.5 text-[11px] font-semibold text-[#7026B7]">{Number(data.value).toLocaleString()} students</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </div>
 

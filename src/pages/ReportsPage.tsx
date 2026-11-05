@@ -465,46 +465,66 @@ export function ReportsPage() {
 
             {/* Course Donut Visualization */}
             {!loading && courseChartData.length > 0 && (
-              <div className="relative my-4 flex h-44 w-full items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={courseChartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={45}
-                      outerRadius={68}
-                      paddingAngle={3}
-                      dataKey="count"
-                    >
-                      {courseChartData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COURSE_COLORS[index % COURSE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0];
-                          const item = data.payload;
-                          return (
-                            <div className="rounded-2xl border border-[#E5E0EB] bg-white px-3.5 py-2 text-xs shadow-lg shadow-purple-950/5">
-                              <p className="font-bold text-[#24133F]">{item.name}</p>
-                              <div className="mt-1 space-y-0.5 text-[11px]">
-                                <p className="text-emerald-600 font-semibold">Time In: {item.timeIn}</p>
-                                <p className="text-rose-600 font-semibold">Time Out: {item.timeOut}</p>
-                                <p className="text-[#7026B7] font-bold">Roster: {item.expected}</p>
-                              </div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-                  <span className="text-lg font-black text-[#24133F]">{courseChartData.length}</span>
+              <div className="relative my-4 flex h-48 w-full items-center justify-center">
+                {/* Center Summary Label (Rendered behind the tooltip via z-0) */}
+                <div className="pointer-events-none absolute inset-0 z-0 flex flex-col items-center justify-center text-center">
+                  <span className="text-xl font-black text-[#24133F]">{courseChartData.length}</span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#756883]">Courses</span>
+                </div>
+
+                <div className="relative z-10 h-full w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={courseChartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={52}
+                        outerRadius={76}
+                        paddingAngle={3}
+                        dataKey="count"
+                      >
+                        {courseChartData.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={COURSE_COLORS[index % COURSE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        wrapperStyle={{ zIndex: 100 }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0];
+                            const item = data.payload as { name: string; count: number; timeIn: number; timeOut: number; expected: number };
+                            return (
+                              <div className="rounded-2xl border border-[#E5E0EB] bg-white px-3.5 py-2.5 text-xs shadow-xl min-w-[170px]">
+                                <p className="font-bold text-[#24133F] border-b border-slate-100 pb-1.5 truncate max-w-[220px]">{item.name}</p>
+                                <div className="mt-1.5 space-y-1 text-[11px]">
+                                  <div className="flex items-center justify-between gap-4 font-semibold text-emerald-600">
+                                    <span className="flex items-center gap-1.5">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                      Time In
+                                    </span>
+                                    <span className="font-bold text-slate-800">{item.timeIn}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-4 font-semibold text-rose-600">
+                                    <span className="flex items-center gap-1.5">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                                      Time Out
+                                    </span>
+                                    <span className="font-bold text-slate-800">{item.timeOut}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-4 font-bold text-[#7026B7] pt-1 border-t border-slate-100">
+                                    <span>Roster</span>
+                                    <span>{item.expected}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             )}
