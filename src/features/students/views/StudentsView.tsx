@@ -339,7 +339,6 @@ export const StudentsView: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <Checkbox aria-label={`Select all students on this page (${visibleStudents.length})`} checked={allVisibleSelected} disabled={!visibleStudents.length || bulkBusy} onChange={(event) => setSelectedStudentIds(event.target.checked ? visibleStudents.map((student) => student.id) : [])} />
                     <span>Student</span>
-                    {selectedStudents.length > 0 && <span className="font-bold text-[#7026B7]">{selectedStudents.length} selected</span>}
                   </div>
                 </th>
                 <th className="px-3 py-3">Course</th>

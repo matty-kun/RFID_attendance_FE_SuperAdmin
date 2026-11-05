@@ -565,11 +565,6 @@ export function CardsPage() {
                       onChange={(e) => setSelectedCardIds(e.target.checked ? cards.map(c => c.id) : [])}
                     />
                     <span>Card No.</span>
-                    {selectedCards.length > 0 && (
-                      <span className="font-bold text-[#7026B7]">
-                        {selectedCards.length} selected
-                      </span>
-                    )}
                   </div>
                 </th>
                 <th className="px-4 py-3 font-semibold">Status</th>
