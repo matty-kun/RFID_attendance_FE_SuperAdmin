@@ -5,6 +5,7 @@ import { formatYearLevel } from '../utils/formatters';
 import { request } from '../services/apiClient';
 import { Button } from '../components/common/Button';
 import { Modal } from '../components/common/Modal';
+import { Checkbox } from '../components/common/Checkbox';
 import { Drawer } from '../components/common/Drawer';
 import { Dropdown } from '../components/common/Dropdown';
 import { EmptyState } from '../components/common/EmptyState';
@@ -73,6 +74,74 @@ export function CardsPage() {
   const [inspecting, setInspecting] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeletingCard, setIsDeletingCard] = useState(false);
+  const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
+  const [pendingBulkAction, setPendingBulkAction] = useState<'archive' | 'unarchive' | 'delete' | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+
+  useEffect(() => {
+    setSelectedCardIds([]);
+  }, [page, status, search]);
+
+  const selectedCards = cards.filter(c => selectedCardIds.includes(c.id));
+  const allVisibleSelected = cards.length > 0 && cards.every(c => selectedCardIds.includes(c.id));
+  const selectedWithHistory = selectedCards.filter(c => c.status === 'issued' || c.holder !== null);
+  const canBulkDelete = selectedCards.length > 0 && selectedWithHistory.length === 0;
+  const canBulkArchive = selectedCards.some(c => c.status === 'available');
+  const canBulkRestore = selectedCards.some(c => c.status === 'archived');
+
+  const runBulkAction = async () => {
+    if (!pendingBulkAction || bulkBusy) return;
+    setBulkBusy(true);
+
+    try {
+      if (pendingBulkAction === 'archive') {
+        const eligible = selectedCards.filter(c => c.status === 'available');
+        let successCount = 0;
+        for (const card of eligible) {
+          try {
+            await request.post(`/cards/${encodeURIComponent(card.uid)}/actions`, { action: 'archive' });
+            successCount++;
+          } catch {
+            // continue
+          }
+        }
+        showToast(`Archived ${successCount} of ${eligible.length} selected cards.`, successCount > 0 ? 'success' : 'error');
+      } else if (pendingBulkAction === 'unarchive') {
+        const eligible = selectedCards.filter(c => c.status === 'archived');
+        let successCount = 0;
+        for (const card of eligible) {
+          try {
+            await request.post(`/cards/${encodeURIComponent(card.uid)}/actions`, { action: 'unarchive' });
+            successCount++;
+          } catch {
+            // continue
+          }
+        }
+        showToast(`Restored ${successCount} of ${eligible.length} selected cards.`, successCount > 0 ? 'success' : 'error');
+      } else if (pendingBulkAction === 'delete') {
+        const eligible = selectedCards.filter(c => c.status !== 'issued' && !c.holder);
+        let successCount = 0;
+        for (const card of eligible) {
+          try {
+            await request.delete(`/cards/${card.id}`);
+            successCount++;
+          } catch {
+            // continue
+          }
+        }
+        showToast(`Permanently deleted ${successCount} of ${eligible.length} selected cards.`, successCount > 0 ? 'success' : 'error');
+      }
+
+      setPendingBulkAction(null);
+      setDeleteConfirmation('');
+      setSelectedCardIds([]);
+      void load();
+      void loadSummary();
+    } finally {
+      setBulkBusy(false);
+    }
+  };
   useEffect(() => {
     const open = () => setInspectOpen(true);
     window.addEventListener('presnt:open-card-inspector', open);
@@ -201,6 +270,66 @@ export function CardsPage() {
       <label className="flex h-10 min-w-[230px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100 sm:max-w-[320px]"><Search className="h-4 w-4 text-[#756883]" /><input aria-label="Search card number or UID" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search card number or UID" className="w-full bg-transparent text-xs outline-none placeholder:text-[#A59AAB]" /></label>
       <Dropdown value={status} onChange={value => { setStatus(value as Status | 'all'); setPage(1); }} options={statuses} icon={<Filter className="h-4 w-4" />} buttonClassName="min-w-[150px]" />
     </div>
+    {selectedCardIds.length > 0 && (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-purple-200 bg-purple-50/80 px-4 py-2.5 shadow-2xs">
+        <div className="flex items-center gap-2">
+          <span className="font-black text-[#7026B7] text-xs">
+            {selectedCardIds.length} card{selectedCardIds.length === 1 ? '' : 's'} selected
+          </span>
+          {selectedWithHistory.length > 0 && (
+            <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+              {selectedWithHistory.length} with history (cannot delete)
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {canBulkArchive && (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={bulkBusy}
+              onClick={() => setPendingBulkAction('archive')}
+              leftIcon={<Archive className="h-3.5 w-3.5 text-[#7026B7]" />}
+            >
+              Archive
+            </Button>
+          )}
+          {canBulkRestore && (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={bulkBusy}
+              onClick={() => setPendingBulkAction('unarchive')}
+              leftIcon={<ArchiveRestore className="h-3.5 w-3.5 text-[#7026B7]" />}
+            >
+              Restore
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="danger"
+            disabled={bulkBusy || !canBulkDelete}
+            title={
+              !canBulkDelete
+                ? 'Only cards with no holder or scan history can be deleted. Deselect issued cards or archive instead.'
+                : 'Delete selected unassigned cards permanently'
+            }
+            onClick={() => setPendingBulkAction('delete')}
+            leftIcon={<Trash2 className="h-3.5 w-3.5" />}
+          >
+            Delete
+          </Button>
+          <button
+            type="button"
+            disabled={bulkBusy}
+            onClick={() => setSelectedCardIds([])}
+            className="ml-1 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+    )}
     <div className="overflow-x-auto rounded-2xl border border-[#E5E0EB] bg-white p-3">
       {loading ? (
         <LoadingState
@@ -248,7 +377,48 @@ export function CardsPage() {
                 }
           }
         />
-      ) : <table className="w-full min-w-[720px] text-left text-xs"><thead><tr className="border-b border-[#E5E0EB] text-[#756883]"><th className="px-4 py-3 font-semibold">Card No.</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-4 py-3 font-semibold">Current holder</th><th className="px-4 py-3 font-semibold">Registered</th><th className="px-4 py-3 text-right font-semibold">Actions</th></tr></thead><tbody>{cards.map(card => <tr key={card.id} onClick={() => void openDetail(card)} className="border-b border-[#F1EEF4] last:border-0 cursor-pointer transition-colors hover:bg-slate-50 group"><td className="px-4 py-4"><p className="font-bold text-[#24133F] group-hover:text-[#7026B7] transition-colors">{card.card_number}</p><p className="mt-0.5 font-mono text-[10px] text-[#756883]">UID {card.uid}</p></td><td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 font-bold capitalize ${statusStyle[card.status]}`}>{card.status}</span></td><td className="px-4 py-4">{card.holder ? <div className="flex items-center gap-2.5">{card.holder.avatar_url ? <img src={card.holder.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover group-hover:scale-105 transition-transform" /> : <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F2E9FC] text-[10px] font-bold text-[#7026B7] group-hover:scale-105 transition-transform">{card.holder.student_name.split(' ').map(part => part[0]).slice(0, 2).join('')}</span>}<span><span className="block font-semibold group-hover:text-[#7026B7] transition-colors">{card.holder.student_name}</span><span className="text-[#756883]">{card.holder.student_number}</span></span></div> : <span className="text-[#A59AAB]">No current holder</span>}</td><td className="px-4 py-4 text-[#756883]">{date(card.created_at)}</td><td className="px-4 py-4 text-right"><button type="button" onClick={(e) => { e.stopPropagation(); void openDetail(card); }} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold text-slate-700 shadow-2xs transition-all hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 cursor-pointer">View History →</button></td></tr>)}</tbody></table>}
+      ) : <table className="w-full min-w-[720px] text-left text-xs">
+            <thead>
+              <tr className="border-b border-[#E5E0EB] text-[#756883]">
+                <th className="w-12 px-4 py-3">
+                  <Checkbox
+                    aria-label={`Select all cards on this page (${cards.length})`}
+                    checked={allVisibleSelected}
+                    disabled={!cards.length || bulkBusy}
+                    onChange={(e) => setSelectedCardIds(e.target.checked ? cards.map(c => c.id) : [])}
+                  />
+                </th>
+                <th className="px-4 py-3 font-semibold">Card No.</th>
+                <th className="px-4 py-3 font-semibold">Status</th>
+                <th className="px-4 py-3 font-semibold">Current holder</th>
+                <th className="px-4 py-3 font-semibold">Registered</th>
+                <th className="px-4 py-3 text-right font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cards.map(card => {
+                const isSelected = selectedCardIds.includes(card.id);
+                return (
+                  <tr
+                    key={card.id}
+                    onClick={() => void openDetail(card)}
+                    className={`border-b border-[#F1EEF4] last:border-0 cursor-pointer transition-colors group ${
+                      isSelected ? 'bg-purple-50/70 hover:bg-purple-50' : 'hover:bg-slate-50'
+                    }`}
+                  >
+                    <td className="w-12 px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        aria-label={`Select card ${card.card_number}`}
+                        checked={isSelected}
+                        disabled={bulkBusy}
+                        onChange={(e) =>
+                          setSelectedCardIds((prev) =>
+                            e.target.checked ? [...prev, card.id] : prev.filter((id) => id !== card.id)
+                          )
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-4"><p className="font-bold text-[#24133F] group-hover:text-[#7026B7] transition-colors">{card.card_number}</p><p className="mt-0.5 font-mono text-[10px] text-[#756883]">UID {card.uid}</p></td><td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 font-bold capitalize ${statusStyle[card.status]}`}>{card.status}</span></td><td className="px-4 py-4">{card.holder ? <div className="flex items-center gap-2.5">{card.holder.avatar_url ? <img src={card.holder.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover group-hover:scale-105 transition-transform" /> : <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F2E9FC] text-[10px] font-bold text-[#7026B7] group-hover:scale-105 transition-transform">{card.holder.student_name.split(' ').map(part => part[0]).slice(0, 2).join('')}</span>}<span><span className="block font-semibold group-hover:text-[#7026B7] transition-colors">{card.holder.student_name}</span><span className="text-[#756883]">{card.holder.student_number}</span></span></div> : <span className="text-[#A59AAB]">No current holder</span>}</td><td className="px-4 py-4 text-[#756883]">{date(card.created_at)}</td><td className="px-4 py-4 text-right"><button type="button" onClick={(e) => { e.stopPropagation(); void openDetail(card); }} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold text-slate-700 shadow-2xs transition-all hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 cursor-pointer">View History →</button></td></tr>); })}</tbody></table>}
     </div>
     {total > 25 && <div className="flex items-center justify-end gap-2 text-xs"><Button variant="secondary" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</Button><span>Page {page} of {Math.ceil(total / 25)}</span><Button variant="secondary" size="sm" disabled={page * 25 >= total} onClick={() => setPage(page + 1)}>Next</Button></div>}
     <Drawer isOpen={Boolean(selectedCard)} onClose={closeDetail} title={selectedCard?.card_number ?? 'Card history'} maxWidth="2xl" hideHeader noPadding>
@@ -375,6 +545,90 @@ export function CardsPage() {
           </div>
         </div>
       )}
+    </Modal>
+    <Modal
+      isOpen={Boolean(pendingBulkAction)}
+      onClose={() => !bulkBusy && setPendingBulkAction(null)}
+      title={
+        pendingBulkAction === 'archive'
+          ? 'Archive Selected Cards'
+          : pendingBulkAction === 'unarchive'
+          ? 'Restore Selected Cards'
+          : 'Delete Selected Cards'
+      }
+      maxWidth="md"
+      zIndex={600}
+    >
+      <div className="space-y-4 p-6 text-xs text-[#24133F]">
+        <div className="flex justify-center">
+          <img
+            src={
+              pendingBulkAction === 'archive'
+                ? hawiBox
+                : pendingBulkAction === 'unarchive'
+                ? hawiCheck
+                : hawiTrash
+            }
+            alt=""
+            className="h-28 w-28 object-contain"
+          />
+        </div>
+        <div className="text-center space-y-1">
+          <p className="text-sm font-bold text-[#24133F]">
+            {pendingBulkAction === 'archive'
+              ? `Archive ${selectedCards.filter(c => c.status === 'available').length} card(s)?`
+              : pendingBulkAction === 'unarchive'
+              ? `Restore ${selectedCards.filter(c => c.status === 'archived').length} card(s)?`
+              : `Permanently delete ${selectedCards.length} card(s)?`}
+          </p>
+          <p className="text-xs text-[#756883] leading-relaxed">
+            {pendingBulkAction === 'archive'
+              ? 'Archived cards cannot be issued to students. Their historical audit logs remain preserved.'
+              : pendingBulkAction === 'unarchive'
+              ? 'These cards will be restored to available inventory and can be issued to students again.'
+              : 'These cards have no recorded holder or scan history and will be completely removed from inventory. This action cannot be undone.'}
+          </p>
+        </div>
+        {pendingBulkAction === 'delete' && (
+          <label className="block space-y-1.5 text-xs font-semibold text-slate-700">
+            <span>Type DELETE to confirm</span>
+            <input
+              value={deleteConfirmation}
+              onChange={(e) => setDeleteConfirmation(e.target.value)}
+              disabled={bulkBusy}
+              autoComplete="off"
+              placeholder="DELETE"
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100 font-mono uppercase"
+            />
+          </label>
+        )}
+        <div className="flex justify-end gap-2.5 border-t border-[#F1EEF4] pt-4">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={bulkBusy}
+            onClick={() => {
+              setPendingBulkAction(null);
+              setDeleteConfirmation('');
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant={pendingBulkAction === 'delete' ? 'danger' : 'primary'}
+            isLoading={bulkBusy}
+            disabled={pendingBulkAction === 'delete' && deleteConfirmation !== 'DELETE'}
+            onClick={() => void runBulkAction()}
+          >
+            {pendingBulkAction === 'archive'
+              ? 'Archive Cards'
+              : pendingBulkAction === 'unarchive'
+              ? 'Restore Cards'
+              : 'Delete Cards'}
+          </Button>
+        </div>
+      </div>
     </Modal>
     <Modal isOpen={inspectOpen} onClose={() => !inspecting && setInspectOpen(false)} title="Inspect RFID card" description="Tap a card to find its status, holder, and history." maxWidth="md">
       <div className="space-y-4 p-6 text-xs"><div className="flex justify-center"><img src={hawiScanning} alt="" className="h-28 w-28 object-contain" /></div><label className="block font-semibold">Scan card UID<div className="relative mt-2"><Radio className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#756883]" /><input autoFocus value={inspectUid} onChange={event => setInspectUid(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void inspectCard(); } }} placeholder="Tap or scan card now" className="h-10 w-full rounded-xl border border-[#E5E0EB] pl-9 pr-3 focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100" /></div></label><div className="flex justify-end gap-2 border-t border-[#F1EEF4] pt-4"><Button variant="secondary" onClick={() => setInspectOpen(false)} disabled={inspecting}>Cancel</Button><Button onClick={() => void inspectCard()} disabled={!inspectUid.trim()} isLoading={inspecting}>Inspect card</Button></div></div>
