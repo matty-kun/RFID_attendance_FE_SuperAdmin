@@ -192,10 +192,10 @@ export function OverviewPage() {
   return (
     <div className="space-y-6 pb-8">
       {/* Banner Carousel with Outside Arrows and Outside Top Dots */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {/* Top Pagination Dots (Outside, above the banner) */}
         {slides.length > 1 && (
-          <div className="flex justify-center items-center gap-2 pt-1">
+          <div className="flex justify-center items-center gap-2 pt-1 pb-1">
             {slides.map((slide, idx) => {
               const isActive = currentIndex === idx;
               return (
@@ -216,14 +216,14 @@ export function OverviewPage() {
           </div>
         )}
 
-        {/* Banner with Outside Left & Right Arrows */}
-        <div className="relative flex items-center gap-2 sm:gap-3">
+        {/* Banner with Outside Left & Right Arrows + Hawi popping out above and right */}
+        <div className="relative pt-6 sm:pt-8 flex items-center gap-2 sm:gap-3">
           {/* Left Arrow outside the banner */}
           {slides.length > 1 && (
             <button
               type="button"
               onClick={handlePrev}
-              className="shrink-0 flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-white hover:bg-purple-50 active:scale-90 text-[#7026B7] border border-[#E5E0EB] shadow-xs hover:border-[#7026B7]/40 transition-all duration-200 cursor-pointer"
+              className="shrink-0 flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-white hover:bg-purple-50 active:scale-90 text-[#7026B7] border border-[#E5E0EB] shadow-xs hover:border-[#7026B7]/40 transition-all duration-200 cursor-pointer z-20"
               aria-label="Previous event"
               title="Previous event (←)"
             >
@@ -231,22 +231,20 @@ export function OverviewPage() {
             </button>
           )}
 
-          {/* Purple Banner */}
-          <section className="relative flex-1 rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9 overflow-hidden shadow-xs">
-            {/* Hawi clipped background with lively animated pop */}
-            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]">
-              <img
-                key={`hawi-${currentIndex}`}
-                src={hawi}
-                alt="Hawi holding an RFID card"
-                className="animate-hawi-pop absolute bottom-0 right-1 z-0 h-[88%] w-auto max-w-[36%] object-contain object-bottom sm:right-8"
-              />
-            </div>
+          {/* Purple Banner (overflow-visible so Hawi breaks out of the frame!) */}
+          <section className="relative flex-1 rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9 shadow-xs overflow-visible">
+            {/* Hawi Mascot popping out of the top and right frame! */}
+            <img
+              key={`hawi-${currentIndex}`}
+              src={hawi}
+              alt="Hawi holding an RFID card"
+              className="animate-hawi-pop pointer-events-none absolute bottom-0 -right-2 sm:right-3 z-10 h-[calc(100%+32px)] sm:h-[calc(100%+46px)] w-auto max-w-[40%] object-contain object-bottom drop-shadow-lg"
+            />
 
             {/* Main Banner Text Area with Directional Slide-in Animation */}
             <div
               key={`banner-${currentIndex}`}
-              className={`relative z-10 max-w-[76%] sm:max-w-[70%] ${
+              className={`relative z-10 max-w-[72%] sm:max-w-[66%] ${
                 direction === 'right' ? 'animate-slide-in-right' : 'animate-slide-in-left'
               }`}
             >
@@ -287,7 +285,7 @@ export function OverviewPage() {
             <button
               type="button"
               onClick={handleNext}
-              className="shrink-0 flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-white hover:bg-purple-50 active:scale-90 text-[#7026B7] border border-[#E5E0EB] shadow-xs hover:border-[#7026B7]/40 transition-all duration-200 cursor-pointer"
+              className="shrink-0 flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-white hover:bg-purple-50 active:scale-90 text-[#7026B7] border border-[#E5E0EB] shadow-xs hover:border-[#7026B7]/40 transition-all duration-200 cursor-pointer z-20"
               aria-label="Next event"
               title="Next event (→)"
             >
