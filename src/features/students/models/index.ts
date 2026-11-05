@@ -31,7 +31,7 @@ export interface StudentRosterStats {
 export interface RegisterStudentPayload {
   student_id: string;
   name: string;
-  email: string;
+  email?: string;
   temporary_password: string;
   course?: string;
   year_level?: number;

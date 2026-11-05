@@ -1063,7 +1063,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                 <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Account</span>
                 <span className="font-semibold text-slate-700 truncate text-xs">
-                  {currentStudent.email || `${currentStudent.student_id.toLowerCase()}@student.presnt.edu`}
+                  {currentStudent.email || currentStudent.student_id}
                 </span>
               </div>
               <button
@@ -1408,7 +1408,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         account={currentStudent ? {
           id: currentStudent.id,
           name: currentStudent.name,
-          email: currentStudent.email || `${currentStudent.student_id}@student.presnt.edu`,
+          email: currentStudent.email || undefined,
           identifier: currentStudent.student_id,
           type: 'Student',
           avatarUrl: currentStudent.avatar_url,

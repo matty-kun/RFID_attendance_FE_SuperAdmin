@@ -26,7 +26,6 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
 }) => {
   const [studentId, setStudentId] = useState('');
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [temporaryPassword, setTemporaryPassword] = useState('');
   const [showTemporaryPassword, setShowTemporaryPassword] = useState(false);
   const [course, setCourse] = useState('BS Information Technology');
@@ -39,7 +38,6 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
   const [fieldErrors, setFieldErrors] = useState<{
     studentId?: string;
     name?: string;
-    email?: string;
     temporaryPassword?: string;
     scannedUid?: string;
   }>({});
@@ -120,16 +118,14 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       const saved = draftStorage.get<{
         studentId: string;
         name: string;
-        email: string;
         course: string;
         yearLevel: number;
         scannedUid: string;
       }>('add_student');
 
-      if (saved && (saved.studentId || saved.name || saved.email || saved.scannedUid)) {
+      if (saved && (saved.studentId || saved.name || saved.scannedUid)) {
         setStudentId(saved.studentId || '');
         setName(saved.name || '');
-        setEmail(saved.email || '');
         setCourse(saved.course || 'BS Information Technology');
         setYearLevel(saved.yearLevel || 1);
         setScannedUid(saved.scannedUid || '');
@@ -137,7 +133,6 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       } else {
         setStudentId('');
         setName('');
-        setEmail('');
         setCourse('BS Information Technology');
         setYearLevel(1);
         setScannedUid('');
@@ -153,23 +148,21 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
 
   // Automatically preserve form draft across unexpected session timeouts
   useEffect(() => {
-    if (isOpen && (studentId || name || email || scannedUid)) {
+    if (isOpen && (studentId || name || scannedUid)) {
       draftStorage.save('add_student', {
         studentId,
         name,
-        email,
         course,
         yearLevel,
         scannedUid,
       });
     }
-  }, [isOpen, studentId, name, email, course, yearLevel, scannedUid]);
+  }, [isOpen, studentId, name, course, yearLevel, scannedUid]);
 
   const handleDiscardDraft = () => {
     draftStorage.clear('add_student');
     setStudentId('');
     setName('');
-    setEmail('');
     setTemporaryPassword('');
     setCourse('BS Information Technology');
     setYearLevel(1);
@@ -198,7 +191,6 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
     const errors: typeof fieldErrors = {};
     const trimmedId = studentId.trim();
     const trimmedName = name.trim();
-    const trimmedEmail = email.trim();
 
     if (!trimmedId) {
       errors.studentId = 'Student ID is required (e.g. 2026-00045).';
@@ -212,9 +204,6 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       errors.name = 'Please enter at least 2 characters.';
     }
 
-    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      errors.email = 'Please enter a valid email format (e.g. name@school.edu).';
-    }
 
     if (!temporaryPassword) {
       errors.temporaryPassword = 'Temporary password is required.';
@@ -248,7 +237,6 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       await onSubmit({
         student_id: studentId.trim(),
         name: name.trim(),
-        email: (email.trim() || `${studentId.trim().toLowerCase().replace(/[^a-z0-9]/g, '')}@ndmc.edu.ph`).toLowerCase(),
         temporary_password: temporaryPassword,
         course,
         year_level: yearLevel,
@@ -270,7 +258,6 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       await onSubmit({
         student_id: studentId.trim(),
         name: name.trim(),
-        email: (email.trim() || `${studentId.trim().toLowerCase().replace(/[^a-z0-9]/g, '')}@ndmc.edu.ph`).toLowerCase(),
         temporary_password: temporaryPassword,
         course,
         year_level: yearLevel,
@@ -295,8 +282,6 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
           serverErrors.studentId = d.message;
         } else if (d.field.includes('name')) {
           serverErrors.name = d.message;
-        } else if (d.field.includes('email')) {
-          serverErrors.email = d.message;
         } else if (d.field.includes('password')) {
           serverErrors.temporaryPassword = d.message;
         } else if (d.field.includes('rfid') || d.field.includes('uid')) {
@@ -307,8 +292,6 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
 
     if (msg.includes('student id') || msg.includes('student_id')) {
       serverErrors.studentId = err?.response?.data?.error?.message;
-    } else if (msg.includes('email')) {
-      serverErrors.email = err?.response?.data?.error?.message;
     } else if (msg.includes('rfid') || msg.includes('card') || msg.includes('uid')) {
       serverErrors.scannedUid = err?.response?.data?.error?.message;
     } else if (msg.includes('password')) {
@@ -474,17 +457,6 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
             required
           />
 
-          <Input
-            label="Email Address (Optional)"
-            type="email"
-            placeholder="e.g. roberto@ndmc.edu.ph (Auto-generated if blank)"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setFieldErrors((prev) => ({ ...prev, email: undefined }));
-            }}
-            error={fieldErrors.email}
-          />
 
           <Input
             label="Temporary Password (min 12 chars)"
