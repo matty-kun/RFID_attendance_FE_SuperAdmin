@@ -16,7 +16,7 @@ type Snapshot = {
   sessions: { eventId: string; eventName: string; date: string; eventStartDate: string; period: string; timeIns: number; timeOuts: number }[];
   checkpoints: { name: string; inScans: number; outScans: number; total: number }[];
   courses: ReportCourseItem[];
-  rows: { id: string; name: string; course: string; session: string; day: string; period: string; timeIn: string | null; timeOut: string | null; status: ReportStudentAttendanceRow['status'] }[];
+  rows: { id: string; name: string; cardNumber?: string; course: string; session: string; day: string; period: string; timeIn: string | null; timeOut: string | null; status: ReportStudentAttendanceRow['status'] }[];
   rowTotal: number;
   sessionsOptions: string[];
   courseOptions: string[];
@@ -138,7 +138,7 @@ export function ReportsPage() {
       for (let exportPage = 1; exportPage <= totalPages; exportPage++) {
         const result = await request.get<Snapshot>('/reports', { params: { ...params, page: exportPage, limit: 100 } });
         for (const row of result.rows) {
-          rows.push({ id: row.id, name: row.name, initials: getInitials(row.name), avatarBg: '', avatarColor: '', course: row.course, session: row.session, day: row.day, period: row.period, timeIn: formatManilaTime(row.timeIn), timeOut: formatManilaTime(row.timeOut), status: row.status });
+          rows.push({ id: row.id, name: row.name, initials: getInitials(row.name), avatarBg: '', avatarColor: '', cardNumber: row.cardNumber || '—', course: row.course, session: row.session, day: row.day, period: row.period, timeIn: formatManilaTime(row.timeIn), timeOut: formatManilaTime(row.timeOut), status: row.status });
         }
       }
       const { exportAttendance } = await import('./reportExports');

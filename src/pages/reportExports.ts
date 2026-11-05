@@ -19,10 +19,11 @@ export interface ExportReportOptions {
   type?: string;
 }
 
-const headers = ['Student Name', 'Course', 'Session', 'Time In', 'Time Out', 'Status'];
+const headers = ['Student Name', 'Card No.', 'Course', 'Session', 'Time In', 'Time Out', 'Status'];
 
 const values = (row: ReportStudentAttendanceRow) => [
   row.name,
+  row.cardNumber || '—',
   row.course,
   formatReportSession(row.session, row.day, row.period),
   row.timeIn || '—',
@@ -195,13 +196,14 @@ export async function exportAttendance(
       },
     });
 
-    // Column definitions tuned for landscape page width
+    // Column definitions tuned for landscape page width (7 columns)
     sheet.columns = [
       { key: 'name', width: 28 },
+      { key: 'cardNumber', width: 16 },
       { key: 'course', width: 32 },
       { key: 'session', width: 24 },
-      { key: 'timeIn', width: 15 },
-      { key: 'timeOut', width: 15 },
+      { key: 'timeIn', width: 14 },
+      { key: 'timeOut', width: 14 },
       { key: 'status', width: 20 },
     ];
 
@@ -228,15 +230,16 @@ export async function exportAttendance(
       '',
       `PERIOD: ${periodLabel}`,
       '',
+      '',
       `RECORDS: ${rows.length} records`,
       '',
     ]);
     row4.height = 24;
     sheet.mergeCells(`A${curRowIdx}:B${curRowIdx}`);
-    sheet.mergeCells(`C${curRowIdx}:D${curRowIdx}`);
-    sheet.mergeCells(`E${curRowIdx}:F${curRowIdx}`);
+    sheet.mergeCells(`C${curRowIdx}:E${curRowIdx}`);
+    sheet.mergeCells(`F${curRowIdx}:G${curRowIdx}`);
 
-    for (let c = 1; c <= 6; c++) {
+    for (let c = 1; c <= 7; c++) {
       const cell = row4.getCell(c);
       cell.fill = {
         type: 'pattern',
@@ -247,7 +250,7 @@ export async function exportAttendance(
         top: { style: 'thin', color: { argb: 'FFE5E0EB' } },
         bottom: { style: 'thin', color: { argb: 'FFE5E0EB' } },
         left: c === 1 ? { style: 'thin', color: { argb: 'FFE5E0EB' } } : undefined,
-        right: c === 6 ? { style: 'thin', color: { argb: 'FFE5E0EB' } } : undefined,
+        right: c === 7 ? { style: 'thin', color: { argb: 'FFE5E0EB' } } : undefined,
       };
       cell.font = { name: 'Nunito Sans', size: 9, bold: true, color: { argb: 'FF24133F' } };
       cell.alignment = { vertical: 'middle', indent: 1 };
@@ -258,8 +261,8 @@ export async function exportAttendance(
     if (activeFiltersText) {
       const filterRow = sheet.addRow([`FILTERED BY: ${activeFiltersText}`]);
       filterRow.height = 20;
-      sheet.mergeCells(`A${curRowIdx}:F${curRowIdx}`);
-      for (let c = 1; c <= 6; c++) {
+      sheet.mergeCells(`A${curRowIdx}:G${curRowIdx}`);
+      for (let c = 1; c <= 7; c++) {
         const cell = filterRow.getCell(c);
         cell.fill = {
           type: 'pattern',
@@ -269,7 +272,7 @@ export async function exportAttendance(
         cell.border = {
           bottom: { style: 'thin', color: { argb: 'FFE5E0EB' } },
           left: c === 1 ? { style: 'thin', color: { argb: 'FFE5E0EB' } } : undefined,
-          right: c === 6 ? { style: 'thin', color: { argb: 'FFE5E0EB' } } : undefined,
+          right: c === 7 ? { style: 'thin', color: { argb: 'FFE5E0EB' } } : undefined,
         };
         cell.font = { name: 'Nunito Sans', size: 8.5, color: { argb: 'FF756883' } };
         cell.alignment = { vertical: 'middle', indent: 1 };
@@ -287,7 +290,7 @@ export async function exportAttendance(
     sheet.pageSetup.printTitlesRow = `${headerRowIndex}:${headerRowIndex}`;
     const headerRow = sheet.addRow(headers.map((h) => h.toUpperCase()));
     headerRow.height = 25;
-    for (let c = 1; c <= 6; c++) {
+    for (let c = 1; c <= 7; c++) {
       const cell = headerRow.getCell(c);
       cell.fill = {
         type: 'pattern',
@@ -297,8 +300,8 @@ export async function exportAttendance(
       cell.font = { name: 'Nunito Sans', size: 9, bold: true, color: { argb: 'FF4A3E56' } };
       cell.alignment = {
         vertical: 'middle',
-        horizontal: c >= 4 && c <= 6 ? 'center' : 'left',
-        indent: c < 4 ? 1 : 0,
+        horizontal: c === 2 || c >= 5 ? 'center' : 'left',
+        indent: c === 1 || c === 3 || c === 4 ? 1 : 0,
       };
       cell.border = {
         top: { style: 'thin', color: { argb: 'FFE5E0EB' } },
@@ -308,8 +311,8 @@ export async function exportAttendance(
 
     // Data Rows
     for (const row of rows) {
-      const [name, course, session, timeIn, timeOut, status] = values(row);
-      const dataRow = sheet.addRow([name, course, session, timeIn, timeOut, status]);
+      const [name, cardNumber, course, session, timeIn, timeOut, status] = values(row);
+      const dataRow = sheet.addRow([name, cardNumber, course, session, timeIn, timeOut, status]);
       dataRow.height = 22;
 
       // Student Name (Col 1)
@@ -317,18 +320,28 @@ export async function exportAttendance(
       nameCell.font = { name: 'Nunito Sans', size: 9.5, bold: true, color: { argb: 'FF24133F' } };
       nameCell.alignment = { vertical: 'middle', indent: 1 };
 
-      // Course (Col 2)
-      const courseCell = dataRow.getCell(2);
+      // Card Number (Col 2)
+      const cardCell = dataRow.getCell(2);
+      cardCell.font = {
+        name: 'Nunito Sans',
+        size: 9,
+        bold: cardNumber !== '—',
+        color: { argb: cardNumber === '—' ? 'FFA59AAB' : 'FF7026B7' },
+      };
+      cardCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+      // Course (Col 3)
+      const courseCell = dataRow.getCell(3);
       courseCell.font = { name: 'Nunito Sans', size: 9, color: { argb: 'FF5A4D6B' } };
       courseCell.alignment = { vertical: 'middle', indent: 1 };
 
-      // Session (Col 3)
-      const sessionCell = dataRow.getCell(3);
+      // Session (Col 4)
+      const sessionCell = dataRow.getCell(4);
       sessionCell.font = { name: 'Nunito Sans', size: 9, color: { argb: 'FF24133F' } };
       sessionCell.alignment = { vertical: 'middle', indent: 1 };
 
-      // Time In (Col 4)
-      const inCell = dataRow.getCell(4);
+      // Time In (Col 5)
+      const inCell = dataRow.getCell(5);
       inCell.font = {
         name: 'Nunito Sans',
         size: 9,
@@ -337,8 +350,8 @@ export async function exportAttendance(
       };
       inCell.alignment = { vertical: 'middle', horizontal: 'center' };
 
-      // Time Out (Col 5)
-      const outCell = dataRow.getCell(5);
+      // Time Out (Col 6)
+      const outCell = dataRow.getCell(6);
       outCell.font = {
         name: 'Nunito Sans',
         size: 9,
@@ -347,8 +360,8 @@ export async function exportAttendance(
       };
       outCell.alignment = { vertical: 'middle', horizontal: 'center' };
 
-      // Status Badge (Col 6)
-      const statusCell = dataRow.getCell(6);
+      // Status Badge (Col 7)
+      const statusCell = dataRow.getCell(7);
       statusCell.alignment = { vertical: 'middle', horizontal: 'center' };
       if (status === 'Completed') {
         statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F8EE' } };
@@ -362,7 +375,7 @@ export async function exportAttendance(
       }
 
       // Thin bottom row border
-      for (let c = 1; c <= 6; c++) {
+      for (let c = 1; c <= 7; c++) {
         dataRow.getCell(c).border = {
           bottom: { style: 'thin', color: { argb: 'FFF1EEF4' } },
         };
@@ -380,7 +393,7 @@ export async function exportAttendance(
     footerRow.getCell(1).font = { name: 'Nunito Sans', size: 8, color: { argb: 'FFA59AAB' } };
     footerRow.getCell(1).alignment = { vertical: 'middle', indent: 1 };
 
-    sheet.pageSetup.printArea = `A1:F${sheet.rowCount}`;
+    sheet.pageSetup.printArea = `A1:G${sheet.rowCount}`;
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
@@ -412,7 +425,7 @@ export async function exportAttendance(
     const pageHeight = 210;
     const margin = 14;
     const usableWidth = pageWidth - margin * 2; // 269mm
-    const widths = [60, 62, 55, 28, 28, 36];
+    const widths = [48, 25, 52, 47, 26, 26, 45];
     const xPositions = widths.reduce<number[]>(
       (positions, width) => [...positions, positions.at(-1)! + width],
       [margin],
@@ -527,11 +540,12 @@ export async function exportAttendance(
 
       const rowValues = values(row);
       const studentName = rowValues[0];
-      const course = rowValues[1];
-      const session = rowValues[2];
-      const timeIn = rowValues[3];
-      const timeOut = rowValues[4];
-      const status = rowValues[5];
+      const cardNo = rowValues[1];
+      const course = rowValues[2];
+      const session = rowValues[3];
+      const timeIn = rowValues[4];
+      const timeOut = rowValues[5];
+      const status = rowValues[6];
 
       // Student Name (bold)
       pdf.setFont(fontName, 'bold');
@@ -540,29 +554,35 @@ export async function exportAttendance(
       const nameText = pdf.splitTextToSize(studentName, widths[0] - 4)[0] || '';
       pdf.text(nameText, xPositions[0] + 2, y);
 
+      // Card Number (bold purple)
+      pdf.setFont(fontName, cardNo === '—' ? 'normal' : 'bold');
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(cardNo === '—' ? 165 : 112, cardNo === '—' ? 154 : 38, cardNo === '—' ? 171 : 183);
+      pdf.text(cardNo, xPositions[1] + 2, y);
+
       // Course (normal)
       pdf.setFont(fontName, 'normal');
       pdf.setFontSize(7.5);
       pdf.setTextColor(90, 77, 107);
-      const courseText = pdf.splitTextToSize(course, widths[1] - 4)[0] || '';
-      pdf.text(courseText, xPositions[1] + 2, y);
+      const courseText = pdf.splitTextToSize(course, widths[2] - 4)[0] || '';
+      pdf.text(courseText, xPositions[2] + 2, y);
 
       // Session (normal, clean)
-      const sessionText = pdf.splitTextToSize(session, widths[2] - 4)[0] || '';
-      pdf.text(sessionText, xPositions[2] + 2, y);
+      const sessionText = pdf.splitTextToSize(session, widths[3] - 4)[0] || '';
+      pdf.text(sessionText, xPositions[3] + 2, y);
 
       // Time In
       pdf.setFont(fontName, timeIn === '—' ? 'normal' : 'bold');
       pdf.setTextColor(timeIn === '—' ? 165 : 36, timeIn === '—' ? 154 : 19, timeIn === '—' ? 171 : 63);
-      pdf.text(timeIn, xPositions[3] + 2, y);
+      pdf.text(timeIn, xPositions[4] + 2, y);
 
       // Time Out
       pdf.setFont(fontName, timeOut === '—' ? 'normal' : 'bold');
       pdf.setTextColor(timeOut === '—' ? 165 : 36, timeOut === '—' ? 154 : 19, timeOut === '—' ? 171 : 63);
-      pdf.text(timeOut, xPositions[4] + 2, y);
+      pdf.text(timeOut, xPositions[5] + 2, y);
 
       // Status Badge
-      const badgeX = xPositions[5] + 2;
+      const badgeX = xPositions[6] + 2;
       const badgeY = y - 3.6;
       const badgeW = 24;
       const badgeH = 5;
@@ -650,7 +670,7 @@ export async function exportAttendance(
 
   // 3. WORD (DOCX) EXPORT (Apple-Grade Presnt Layout with Nunito Sans)
   const hawiDataUrl = await loadHawiDataUrl(hawiPeekingUrl);
-  const colWidths = [3400, 3800, 3000, 1500, 1500, 2100]; // total 15300 dxa (matches landscape page width)
+  const colWidths = [3000, 1800, 3400, 2800, 1300, 1300, 1700]; // total 15300 dxa (matches landscape page width)
   const cellMargins = { top: 120, bottom: 120, left: 160, right: 160 };
 
   // Header Row
@@ -670,7 +690,7 @@ export async function exportAttendance(
         width: { size: colWidths[i], type: WidthType.DXA },
         children: [
           new Paragraph({
-            alignment: i >= 3 ? AlignmentType.CENTER : AlignmentType.LEFT,
+            alignment: i === 1 || i >= 4 ? AlignmentType.CENTER : AlignmentType.LEFT,
             children: [
               new TextRun({
                 text: headerText.toUpperCase(),
@@ -688,7 +708,7 @@ export async function exportAttendance(
 
   // Data Rows
   const tableDataRows = rows.map((row) => {
-    const [name, course, session, timeIn, timeOut, status] = values(row);
+    const [name, cardNumber, course, session, timeIn, timeOut, status] = values(row);
 
     // Status colors
     let statusBg = 'FDE8EA';
@@ -730,11 +750,31 @@ export async function exportAttendance(
             }),
           ],
         }),
-        // Course
+        // Card No.
         new TableCell({
           borders: rowBorder,
           margins: cellMargins,
           width: { size: colWidths[1], type: WidthType.DXA },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: cardNumber,
+                  bold: cardNumber !== '—',
+                  color: cardNumber === '—' ? 'A59AAB' : '7026B7',
+                  size: 17,
+                  font: 'Nunito Sans',
+                }),
+              ],
+            }),
+          ],
+        }),
+        // Course
+        new TableCell({
+          borders: rowBorder,
+          margins: cellMargins,
+          width: { size: colWidths[2], type: WidthType.DXA },
           children: [
             new Paragraph({
               children: [
@@ -752,7 +792,7 @@ export async function exportAttendance(
         new TableCell({
           borders: rowBorder,
           margins: cellMargins,
-          width: { size: colWidths[2], type: WidthType.DXA },
+          width: { size: colWidths[3], type: WidthType.DXA },
           children: [
             new Paragraph({
               children: [
@@ -770,7 +810,7 @@ export async function exportAttendance(
         new TableCell({
           borders: rowBorder,
           margins: cellMargins,
-          width: { size: colWidths[3], type: WidthType.DXA },
+          width: { size: colWidths[4], type: WidthType.DXA },
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -790,7 +830,7 @@ export async function exportAttendance(
         new TableCell({
           borders: rowBorder,
           margins: cellMargins,
-          width: { size: colWidths[4], type: WidthType.DXA },
+          width: { size: colWidths[5], type: WidthType.DXA },
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -811,7 +851,7 @@ export async function exportAttendance(
           shading: { fill: statusBg, type: ShadingType.CLEAR },
           borders: rowBorder,
           margins: cellMargins,
-          width: { size: colWidths[5], type: WidthType.DXA },
+          width: { size: colWidths[6], type: WidthType.DXA },
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,

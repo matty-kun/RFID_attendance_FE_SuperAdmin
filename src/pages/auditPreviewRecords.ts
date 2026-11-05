@@ -32,6 +32,7 @@ export type AttendanceStatus = 'Completed' | 'Missing Out' | 'Time Out Only' | '
 export interface ReportStudentAttendanceRow {
   id: string;
   name: string;
+  cardNumber?: string;
   initials: string;
   avatarBg: string;
   avatarColor: string;
