@@ -63,6 +63,14 @@ const statusStyle: Record<Status, string> = {
 const date = (value: string) => new Date(value).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' });
 const message = (error: unknown) => (error as any)?.response?.data?.error?.message || 'Could not complete this action.';
 
+const getActionPreposition = (action: string) => {
+  const act = action.toLowerCase();
+  if (act === 'return') return 'from';
+  if (act === 'issue') return 'to';
+  if (act === 'lost') return 'by';
+  return 'for';
+};
+
 export function CardsPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const [total, setTotal] = useState(0);
@@ -744,47 +752,59 @@ export function CardsPage() {
             <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[#A59AAB]">Card activity</h3>
             <div className="divide-y divide-[#F1EEF4] rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden">
               {detail.events.length ? (
-                detail.events.map((event) => (
-                  <div key={event.id} className="p-3.5 sm:p-4 space-y-1.5">
-                    <div className="flex items-center justify-between gap-3">
-                      <b className="text-sm capitalize text-[#24133F]">{event.action.replace(/_/g, ' ')}</b>
-                      {event.student_name && (
-                        <div className="inline-flex items-center gap-1.5 text-xs text-slate-700 shrink-0 text-right">
-                          <UserRound className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <b className="font-bold text-[#24133F]">{event.student_name}</b>
-                          {event.student_number && (
-                            <span className="rounded-full bg-[#F7F1FD] px-2 py-0.5 text-[11px] font-bold text-[#7026B7]">
-                              @{event.student_number}
-                            </span>
+                detail.events.map((event) => {
+                  const prep = getActionPreposition(event.action);
+                  return (
+                    <div
+                      key={event.id}
+                      className="flex items-start justify-between gap-3 p-3.5 sm:p-4 hover:bg-[#FAF8FC]/60 transition-colors"
+                    >
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs sm:text-sm">
+                          <b className="font-bold capitalize text-[#24133F]">
+                            {event.action.replace(/_/g, ' ')}
+                          </b>
+                          {event.student_name && (
+                            <>
+                              <span className="text-xs text-slate-400 font-normal">{prep}</span>
+                              <b className="font-bold text-[#24133F]">{event.student_name}</b>
+                              {event.student_number && (
+                                <span className="rounded-full bg-[#F7F1FD] px-2 py-0.5 text-[11px] font-bold text-[#7026B7]">
+                                  @{event.student_number}
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
-                      )}
-                    </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-[#756883]">
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
-                        {event.actor?.name && (
-                          <span className="inline-flex items-center gap-1 shrink-0">
-                            <ShieldCheck className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                            <span>by {event.actor.name}</span>
-                          </span>
-                        )}
-
-                        {event.note && (
-                          <span className="inline-flex items-center gap-1 min-w-0">
-                            <FileText className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                            <span className="truncate">{event.note}</span>
-                          </span>
+                        {(event.actor?.name || event.note) && (
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-[#756883]">
+                            {event.actor?.name && (
+                              <span className="inline-flex items-center gap-1 shrink-0">
+                                <ShieldCheck className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                <span>by {event.actor.name}</span>
+                              </span>
+                            )}
+                            {event.actor?.name && event.note && (
+                              <span className="text-slate-300">·</span>
+                            )}
+                            {event.note && (
+                              <span className="inline-flex items-center gap-1 min-w-0">
+                                <FileText className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                <span className="truncate">{event.note}</span>
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
 
-                      <span className="inline-flex items-center gap-1 shrink-0 ml-auto text-right">
+                      <div className="inline-flex items-center gap-1 shrink-0 pt-0.5 text-right text-xs text-[#756883]">
                         <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                        <time>{date(event.created_at)}</time>
-                      </span>
+                        <time className="tabular-nums">{date(event.created_at)}</time>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <p className="p-4 text-xs text-[#756883]">No activity recorded for this card.</p>
               )}
