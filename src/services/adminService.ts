@@ -93,7 +93,10 @@ export const adminService = {
   uploadAdminAvatar: (adminId: string, image: string) =>
     request.post<{ avatar_url: string }>(`/admins/${encodeURIComponent(adminId)}/avatar`, { image }),
   removeAdminAvatar: (adminId: string) => request.delete<{ avatar_url: null }>(`/admins/${encodeURIComponent(adminId)}/avatar`),
-  getMetrics: () => request.get<DashboardMetrics>('/analytics/dashboard'),
+  getMetrics: (eventId?: string) =>
+    request.get<DashboardMetrics>('/analytics/dashboard', {
+      params: eventId && eventId !== 'all' ? { eventId } : {},
+    }),
 };
 
 export interface AdminPage { admins: AdminRecord[]; total: number; page: number; limit: number; }
