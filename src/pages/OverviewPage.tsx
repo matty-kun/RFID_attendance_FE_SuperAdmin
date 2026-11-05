@@ -424,17 +424,26 @@ export function OverviewPage() {
                   <XAxis dataKey="name" tickLine={false} axisLine={{ stroke: '#EDE8F1' }} tick={{ fill: '#756883', fontSize: 11, fontWeight: 600 }} />
                   <YAxis tickLine={false} axisLine={false} tick={{ fill: '#A59CAC', fontSize: 10 }} />
                   <Tooltip
+                    cursor={{ fill: 'rgba(112, 38, 183, 0.04)', rx: 8, ry: 8 }}
                     content={({ active, payload, label }) => {
                       if (active && payload && payload.length) {
                         const inVal = Number(payload[0]?.value ?? 0);
                         const outVal = Number(payload[1]?.value ?? 0);
                         return (
-                          <div className="rounded-2xl border border-purple-100 bg-[#24133F] px-3.5 py-2 text-white shadow-xl text-xs">
-                            <p className="font-extrabold text-[#D7B9FA]">{label}</p>
-                            <div className="mt-1 flex items-center gap-3 font-semibold">
-                              <span className="text-emerald-400">In: {inVal}</span>
-                              <span className="text-rose-400">Out: {outVal}</span>
-                              <span className="text-purple-200 font-bold">Total: {inVal + outVal}</span>
+                          <div className="rounded-2xl border border-[#E5E0EB] bg-white px-3.5 py-2.5 shadow-lg shadow-purple-950/5 text-xs">
+                            <p className="font-extrabold text-[#24133F]">{label}</p>
+                            <div className="mt-1 flex items-center gap-3 font-semibold text-[11px]">
+                              <span className="flex items-center gap-1 text-emerald-600">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                In: <strong className="font-bold text-slate-800">{inVal}</strong>
+                              </span>
+                              <span className="flex items-center gap-1 text-rose-600">
+                                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                                Out: <strong className="font-bold text-slate-800">{outVal}</strong>
+                              </span>
+                              <span className="flex items-center gap-1 text-[#7026B7]">
+                                Total: <strong className="font-extrabold text-[#7026B7]">{inVal + outVal}</strong>
+                              </span>
                             </div>
                           </div>
                         );
@@ -516,9 +525,9 @@ export function OverviewPage() {
                     if (active && payload && payload.length) {
                       const data = payload[0];
                       return (
-                        <div className="rounded-xl bg-[#24133F] px-3 py-1.5 text-xs text-white shadow-lg">
-                          <p className="font-bold">{data.name}</p>
-                          <p className="text-purple-200">{Number(data.value).toLocaleString()} students</p>
+                        <div className="rounded-2xl border border-[#E5E0EB] bg-white px-3.5 py-2 text-xs shadow-lg shadow-purple-950/5">
+                          <p className="font-bold text-[#24133F]">{data.name}</p>
+                          <p className="mt-0.5 text-[11px] font-semibold text-[#7026B7]">{Number(data.value).toLocaleString()} students</p>
                         </div>
                       );
                     }
@@ -571,16 +580,26 @@ export function OverviewPage() {
                 <XAxis dataKey="hour" tickLine={false} axisLine={{ stroke: '#EDE8F1' }} tick={{ fill: '#756883', fontSize: 10, fontWeight: 600 }} />
                 <YAxis tickLine={false} axisLine={false} tick={{ fill: '#A59CAC', fontSize: 10 }} />
                 <Tooltip
+                  cursor={{ fill: 'rgba(112, 38, 183, 0.04)', rx: 8, ry: 8 }}
                   content={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
                       const item = payload[0]?.payload as { hour: string; inScans: number; outScans: number; total: number };
                       return (
-                        <div className="rounded-2xl border border-purple-100 bg-[#24133F] px-3.5 py-2 text-white shadow-xl text-xs">
-                          <p className="font-extrabold text-[#D7B9FA]">{label}</p>
-                          <div className="mt-1 space-y-0.5">
-                            <p className="text-emerald-400 font-semibold">Time-In scans: {item.inScans}</p>
-                            <p className="text-rose-400 font-semibold">Time-Out scans: {item.outScans}</p>
-                            <p className="text-white font-bold pt-1 border-t border-white/20">Total: {item.total} scans</p>
+                        <div className="rounded-2xl border border-[#E5E0EB] bg-white px-3.5 py-2.5 shadow-lg shadow-purple-950/5 text-xs">
+                          <p className="font-extrabold text-[#24133F]">{label}</p>
+                          <div className="mt-1.5 space-y-1 text-[11px]">
+                            <div className="flex items-center justify-between gap-3 text-emerald-600 font-medium">
+                              <span>Time-In:</span>
+                              <span className="font-bold text-slate-800">{item.inScans}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3 text-rose-600 font-medium">
+                              <span>Time-Out:</span>
+                              <span className="font-bold text-slate-800">{item.outScans}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3 text-[#7026B7] font-bold pt-1 border-t border-[#EDE8F1]">
+                              <span>Total:</span>
+                              <span>{item.total} scans</span>
+                            </div>
                           </div>
                         </div>
                       );

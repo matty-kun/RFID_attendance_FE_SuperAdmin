@@ -319,17 +319,26 @@ export function ReportsPage() {
                   <XAxis dataKey="day" tickLine={false} axisLine={{ stroke: '#EDE8F1' }} tick={{ fill: '#756883', fontSize: 11, fontWeight: 600 }} />
                   <YAxis tickLine={false} axisLine={false} tick={{ fill: '#A59CAC', fontSize: 10 }} />
                   <Tooltip
+                    cursor={{ fill: 'rgba(112, 38, 183, 0.04)', rx: 8, ry: 8 }}
                     content={({ active, payload, label }) => {
                       if (active && payload && payload.length) {
                         const inVal = Number(payload[0]?.value ?? 0);
                         const outVal = Number(payload[1]?.value ?? 0);
                         return (
-                          <div className="rounded-2xl border border-purple-100 bg-[#24133F] px-3.5 py-2 text-white shadow-xl text-xs">
-                            <p className="font-extrabold text-[#D7B9FA]">{label}</p>
-                            <div className="mt-1 flex items-center gap-3 font-semibold">
-                              <span className="text-emerald-400">In: {inVal}</span>
-                              <span className="text-rose-400">Out: {outVal}</span>
-                              <span className="text-purple-200 font-bold">Total: {inVal + outVal}</span>
+                          <div className="rounded-2xl border border-[#E5E0EB] bg-white px-3.5 py-2.5 shadow-lg shadow-purple-950/5 text-xs">
+                            <p className="font-extrabold text-[#24133F]">{label}</p>
+                            <div className="mt-1 flex items-center gap-3 font-semibold text-[11px]">
+                              <span className="flex items-center gap-1 text-emerald-600">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                In: <strong className="font-bold text-slate-800">{inVal}</strong>
+                              </span>
+                              <span className="flex items-center gap-1 text-rose-600">
+                                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                                Out: <strong className="font-bold text-slate-800">{outVal}</strong>
+                              </span>
+                              <span className="flex items-center gap-1 text-[#7026B7]">
+                                Total: <strong className="font-extrabold text-[#7026B7]">{inVal + outVal}</strong>
+                              </span>
                             </div>
                           </div>
                         );
@@ -478,12 +487,12 @@ export function ReportsPage() {
                           const data = payload[0];
                           const item = data.payload;
                           return (
-                            <div className="rounded-xl bg-[#24133F] px-3 py-1.5 text-xs text-white shadow-lg">
-                              <p className="font-bold text-[#D7B9FA]">{item.name}</p>
+                            <div className="rounded-2xl border border-[#E5E0EB] bg-white px-3.5 py-2 text-xs shadow-lg shadow-purple-950/5">
+                              <p className="font-bold text-[#24133F]">{item.name}</p>
                               <div className="mt-1 space-y-0.5 text-[11px]">
-                                <p className="text-emerald-400">Time In: {item.timeIn}</p>
-                                <p className="text-rose-400">Time Out: {item.timeOut}</p>
-                                <p className="text-purple-200">Roster: {item.expected}</p>
+                                <p className="text-emerald-600 font-semibold">Time In: {item.timeIn}</p>
+                                <p className="text-rose-600 font-semibold">Time Out: {item.timeOut}</p>
+                                <p className="text-[#7026B7] font-bold">Roster: {item.expected}</p>
                               </div>
                             </div>
                           );
