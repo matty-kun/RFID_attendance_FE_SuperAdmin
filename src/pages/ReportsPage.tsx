@@ -273,38 +273,31 @@ export function ReportsPage() {
 
       <section aria-label="Attendance totals" className="rounded-3xl border border-[#E5E0EB] bg-white p-6 shadow-xs">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">Aggregate Performance</p>
-            <h2 className="text-xl font-black text-[#24133F]">Attendance Totals</h2>
-          </div>
+          <h2 className="text-xl font-black text-[#24133F]">Attendance Totals</h2>
           <span className="rounded-full bg-purple-50 border border-purple-200/80 px-3 py-1 text-xs font-bold text-[#7026B7]">
             {eventLabel} · {formatShortDate(startDate)}–{formatShortDate(endDate)}
           </span>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="rounded-2xl border border-[#EDE8F1] bg-[#FAF8FC] p-4 space-y-1">
-            <span className="text-xs font-semibold text-[#756883]">Students Checked In</span>
-            <p className="text-2xl font-black text-[#24133F]">{loading ? '—' : reportSummary.studentsCheckedIn.toLocaleString()}</p>
-            <p className="text-[10px] font-bold text-purple-700">Unique attendees</p>
+        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="rounded-2xl border border-[#EDE8F1] bg-[#FAF8FC] p-4">
+            <span className="text-xs font-semibold text-[#756883]">Checked In</span>
+            <p className="text-2xl font-black text-[#24133F] mt-1">{loading ? '—' : reportSummary.studentsCheckedIn.toLocaleString()}</p>
           </div>
 
-          <div className="rounded-2xl border border-[#EDE8F1] bg-[#FAF8FC] p-4 space-y-1">
-            <span className="text-xs font-semibold text-[#756883]">Time In Scans</span>
-            <p className="text-2xl font-black text-emerald-600">{loading ? '—' : reportSummary.timeIns.toLocaleString()}</p>
-            <p className="text-[10px] font-bold text-emerald-700">✦ Entry volume</p>
+          <div className="rounded-2xl border border-[#EDE8F1] bg-[#FAF8FC] p-4">
+            <span className="text-xs font-semibold text-emerald-700">✦ Time In</span>
+            <p className="text-2xl font-black text-emerald-600 mt-1">{loading ? '—' : reportSummary.timeIns.toLocaleString()}</p>
           </div>
 
-          <div className="rounded-2xl border border-[#EDE8F1] bg-[#FAF8FC] p-4 space-y-1">
-            <span className="text-xs font-semibold text-[#756883]">Time Out Scans</span>
-            <p className="text-2xl font-black text-rose-600">{loading ? '—' : reportSummary.timeOuts.toLocaleString()}</p>
-            <p className="text-[10px] font-bold text-rose-700">⬡ Exit volume</p>
+          <div className="rounded-2xl border border-[#EDE8F1] bg-[#FAF8FC] p-4">
+            <span className="text-xs font-semibold text-rose-700">⬡ Time Out</span>
+            <p className="text-2xl font-black text-rose-600 mt-1">{loading ? '—' : reportSummary.timeOuts.toLocaleString()}</p>
           </div>
 
-          <div className="rounded-2xl border border-[#EDE8F1] bg-[#FAF8FC] p-4 space-y-1">
-            <span className="text-xs font-semibold text-[#756883]">Total Recorded Scans</span>
-            <p className="text-2xl font-black text-[#7026B7]">{loading ? '—' : reportSummary.totalScans.toLocaleString()}</p>
-            <p className="text-[10px] font-bold text-[#7026B7]">Hardware taps</p>
+          <div className="rounded-2xl border border-[#EDE8F1] bg-[#FAF8FC] p-4">
+            <span className="text-xs font-semibold text-[#7026B7]">Total Scans</span>
+            <p className="text-2xl font-black text-[#7026B7] mt-1">{loading ? '—' : reportSummary.totalScans.toLocaleString()}</p>
           </div>
         </div>
       </section>
@@ -316,14 +309,12 @@ export function ReportsPage() {
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">Daily Volume</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <h2 className="text-xl font-black text-[#24133F]">Attendance Trend</h2>
-                  <span className="rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">
-                    ↑ Active Range
+                <h2 className="text-xl font-black text-[#24133F]">Attendance Trend</h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                    Daily Scans
                   </span>
                 </div>
-                <p className="text-xs text-[#756883] mt-1">Time In and Time Out scans per day</p>
               </div>
 
               {/* View Switcher: Stadium Bars vs Smooth Flow Curve (Image 4 bottom right!) */}
@@ -483,21 +474,13 @@ export function ReportsPage() {
             )}
           </div>
 
-          {/* Sub-Metrics Footer directly copying Image 4 */}
-          <div className="mt-4 pt-3 border-t border-[#EDE8F1] grid grid-cols-2 gap-4">
-            <div className="space-y-0.5">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
-                <span>✦</span> Time In Volume
-              </span>
-              <p className="text-lg font-extrabold text-[#24133F]">{reportSummary.timeIns.toLocaleString()}</p>
-              <p className="text-[10px] text-[#756883]">Recorded entries across period</p>
+          {/* Clean minimal footer */}
+          <div className="mt-4 pt-3 border-t border-[#EDE8F1] flex items-center justify-between text-xs font-semibold">
+            <div className="flex items-center gap-1.5 text-emerald-700">
+              <span>✦</span> Time In: <strong className="text-[#24133F]">{reportSummary.timeIns.toLocaleString()}</strong>
             </div>
-            <div className="space-y-0.5">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-rose-700">
-                <span>⬡</span> Time Out Volume
-              </span>
-              <p className="text-lg font-extrabold text-[#24133F]">{reportSummary.timeOuts.toLocaleString()}</p>
-              <p className="text-[10px] text-[#756883]">Recorded exits across period</p>
+            <div className="flex items-center gap-1.5 text-rose-700">
+              <span>⬡</span> Time Out: <strong className="text-[#24133F]">{reportSummary.timeOuts.toLocaleString()}</strong>
             </div>
           </div>
         </section>
@@ -552,15 +535,11 @@ export function ReportsPage() {
         <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-xs">
           <div>
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">Hardware Stations</p>
-                <h2 className="text-lg font-bold text-[#24133F]">Checkpoints Activity</h2>
-              </div>
+              <h2 className="text-lg font-black text-[#24133F]">Checkpoints</h2>
               <span className="rounded-full bg-purple-50 px-2.5 py-0.5 text-[11px] font-bold text-[#7026B7]">
-                {checkpointList.length} {checkpointList.length === 1 ? 'Station' : 'Stations'}
+                {checkpointList.length} stations
               </span>
             </div>
-            <p className="text-xs text-[#756883] mt-0.5">Scans distributed across checkpoint terminals</p>
 
             {/* Checkpoint Volume Bars (Image 4 bottom list style) */}
             <div className="mt-4 space-y-3">
@@ -659,8 +638,7 @@ export function ReportsPage() {
         {/* Course Breakdown */}
         <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6">
           <div>
-            <h2 className="text-lg font-bold text-[#24133F]">Course Breakdown</h2>
-            <p className="mt-0.5 text-xs text-[#756883]">Scan counts follow the selected filters. Active roster is the current student count per course.</p>
+            <h2 className="text-lg font-black text-[#24133F]">Course Breakdown</h2>
 
             {/* Course Donut Visualization */}
             {!loading && courseChartData.length > 0 && (

@@ -499,16 +499,14 @@ export function OverviewPage() {
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">Attendance Activity</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <h2 className="text-2xl font-black text-[#24133F]">{totalPeriodScans.toLocaleString()} Total Scans</h2>
-                  <span className="rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">
-                    ↑ Active Volume
+                <h2 className="text-xl font-black text-[#24133F]">Attendance Volume</h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-2xl font-black text-[#24133F]">{totalPeriodScans.toLocaleString()}</span>
+                  <span className="text-xs font-semibold text-[#756883]">scans</span>
+                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                    Active
                   </span>
                 </div>
-                <p className="text-xs text-[#756883] mt-1">
-                  {currentEvent ? `Scans recorded for ${currentEvent.name}` : 'Recorded tap volume across all checkpoints'}
-                </p>
               </div>
 
               {/* View Switcher: Stadium Bars vs Smooth Spline Curve (Image 4 bottom right!) */}
@@ -667,32 +665,30 @@ export function OverviewPage() {
             </div>
           </div>
 
-          {/* Sub-Metrics Footer directly copying Image 4 */}
-          <div className="mt-6 pt-4 border-t border-[#EDE8F1] grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <div className="space-y-0.5">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
-                <span>✦</span> Time-In Scans
-              </span>
-              <p className="text-xl font-extrabold text-[#24133F]">{totalTimeIns.toLocaleString()}</p>
-              <p className="text-[11px] font-semibold text-emerald-600">↑ {inPercentage}% of recorded volume</p>
+          {/* Clean minimal footer */}
+          <div className="mt-4 pt-3 border-t border-[#EDE8F1] flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-6">
+              <div>
+                <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+                  <span>✦</span> Time-In
+                </span>
+                <p className="text-lg font-black text-[#24133F] mt-0.5">{totalTimeIns.toLocaleString()} <span className="text-[11px] font-normal text-[#756883]">({inPercentage}%)</span></p>
+              </div>
+
+              <div>
+                <span className="flex items-center gap-1.5 text-xs font-bold text-rose-700">
+                  <span>⬡</span> Time-Out
+                </span>
+                <p className="text-lg font-black text-[#24133F] mt-0.5">{totalTimeOuts.toLocaleString()} <span className="text-[11px] font-normal text-[#756883]">({outPercentage}%)</span></p>
+              </div>
             </div>
 
-            <div className="space-y-0.5">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-rose-700">
-                <span>⬡</span> Time-Out Scans
-              </span>
-              <p className="text-xl font-extrabold text-[#24133F]">{totalTimeOuts.toLocaleString()}</p>
-              <p className="text-[11px] font-semibold text-rose-600">↓ {outPercentage}% exit rate</p>
-            </div>
-
-            <div className="col-span-2 sm:col-span-1 flex items-center justify-end">
-              <Link
-                to="/attendance"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-[#EDE8F1] bg-[#FAF8FC] px-3.5 py-2 text-xs font-bold text-[#7026B7] hover:bg-purple-100/50 transition-colors"
-              >
-                Full Scan Logs <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
+            <Link
+              to="/attendance"
+              className="inline-flex items-center gap-1 text-xs font-bold text-[#7026B7] hover:underline"
+            >
+              Full logs <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
         </div>
 
@@ -701,12 +697,10 @@ export function OverviewPage() {
           <div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">RFID Card Coverage</p>
-                <h2 className="text-lg font-bold text-[#24133F]">Student Readiness</h2>
+                <h2 className="text-lg font-black text-[#24133F]">Card Coverage</h2>
               </div>
               <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]"><CreditCard className="h-4 w-4" /></div>
             </div>
-            <p className="text-xs text-[#756883] mt-1">Ratio of active students issued smart cards</p>
 
             {/* Radial Arc Gauge Component */}
             <div className="mt-4">
@@ -719,23 +713,21 @@ export function OverviewPage() {
             </div>
           </div>
 
-          {/* Sub-Metrics Footer (Image 4 style) */}
-          <div className="mt-6 pt-4 border-t border-[#EDE8F1] grid grid-cols-2 gap-4">
-            <div className="space-y-0.5">
-              <span className="flex items-center gap-1.5 text-[11px] font-bold text-[#7026B7]">
-                <span>✦</span> Issued Cards
+          {/* Clean minimal gauge footer */}
+          <div className="mt-4 pt-3 border-t border-[#EDE8F1] flex items-center justify-between">
+            <div>
+              <span className="flex items-center gap-1 text-[11px] font-bold text-[#7026B7]">
+                <span>✦</span> Issued
               </span>
-              <p className="text-base font-extrabold text-[#24133F]">{number(roster?.with_cards)}</p>
-              <p className="text-[10px] text-[#756883]">{cardRate}% operational</p>
+              <p className="text-base font-black text-[#24133F]">{number(roster?.with_cards)}</p>
             </div>
-            <div className="space-y-0.5">
-              <span className="flex items-center gap-1.5 text-[11px] font-bold text-[#F59E0B]">
-                <span>⬡</span> Pending Cards
+            <div className="text-right">
+              <span className="flex items-center justify-end gap-1 text-[11px] font-bold text-[#F59E0B]">
+                <span>⬡</span> Pending
               </span>
-              <p className="text-base font-extrabold text-[#24133F]">
+              <p className="text-base font-black text-[#24133F]">
                 {number((roster?.active ?? 0) - (roster?.with_cards ?? 0))}
               </p>
-              <p className="text-[10px] text-[#756883]">{100 - cardRate}% unassigned</p>
             </div>
           </div>
         </div>
@@ -747,10 +739,7 @@ export function OverviewPage() {
         <div className="rounded-3xl border border-[#E5E0EB] bg-white p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">Enrollment Distribution</p>
-                <h2 className="text-lg font-bold text-[#24133F]">Students by Course</h2>
-              </div>
+              <h2 className="text-lg font-black text-[#24133F]">Students by Course</h2>
               <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]"><GraduationCap className="h-4 w-4" /></div>
             </div>
 
@@ -830,24 +819,17 @@ export function OverviewPage() {
         <div className="rounded-3xl border border-[#E5E0EB] bg-white p-6 shadow-xs lg:col-span-2 flex flex-col justify-between">
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex items-start gap-2.5">
-                <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7] shrink-0 mt-0.5">
+              <div className="flex items-center gap-2.5">
+                <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7] shrink-0">
                   <Clock className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">Congestion Matrix</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <h2 className="text-xl font-black text-[#24133F]">Peak Tap Hours Heatmap</h2>
-                    {peakHourItem && peakHourItem.total > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 border border-purple-200/80 px-2.5 py-0.5 text-[11px] font-bold text-[#7026B7]">
-                        <Flame className="h-3 w-3 text-[#7026B7]" />
-                        Rush Peak: {peakHourItem.hour} ({peakHourItem.total} scans)
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-[#756883] mt-1">
-                    Checkpoint scan density across operating hours (7:00 AM – 6:00 PM)
-                  </p>
+                  <h2 className="text-xl font-black text-[#24133F]">Peak Tap Hours</h2>
+                  {peakHourItem && peakHourItem.total > 0 && (
+                    <p className="text-xs font-bold text-[#7026B7] flex items-center gap-1 mt-0.5">
+                      <Flame className="h-3.5 w-3.5" /> Peak: {peakHourItem.hour} · {peakHourItem.total} scans
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -969,40 +951,18 @@ export function OverviewPage() {
             )}
           </div>
 
-          {/* Sub-Metrics Footer directly copying Image 4 */}
-          <div className="mt-6 pt-4 border-t border-[#EDE8F1] flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-6 text-xs">
-              <div>
-                <span className="flex items-center gap-1.5 font-bold text-[#7026B7]">
-                  <span>✦</span> Morning Rush
-                </span>
-                <p className="text-sm font-extrabold text-[#24133F] mt-0.5">8:00 AM – 9:30 AM</p>
-                <p className="text-[10px] text-[#756883]">Main entrance entry rush</p>
-              </div>
-
-              <div>
-                <span className="flex items-center gap-1.5 font-bold text-[#F59E0B]">
-                  <span>⬡</span> Afternoon Rush
-                </span>
-                <p className="text-sm font-extrabold text-[#24133F] mt-0.5">1:00 PM – 2:30 PM</p>
-                <p className="text-[10px] text-[#756883]">Post-lunch session influx</p>
-              </div>
+          {/* Clean minimal heat footer */}
+          <div className="mt-4 pt-3 border-t border-[#EDE8F1] flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-5 text-xs">
+              <span className="font-bold text-[#7026B7]">✦ Morning 8:00–9:30 AM</span>
+              <span className="font-bold text-[#F59E0B]">⬡ Afternoon 1:00–2:30 PM</span>
             </div>
 
-            {/* Heat Color Spectrum Legend */}
             <div className="flex items-center gap-2.5 text-[11px] font-semibold text-[#756883]">
-              <span className="flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-md bg-[#D1FAE5] border border-[#A7F3D0]" /> Low
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-md bg-[#FEF08A] border border-[#FDE047]" /> Normal
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-md bg-[#FDBA74] border border-[#FB923C]" /> Busy
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-md bg-[#7026B7]" /> Peak Rush
-              </span>
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#D1FAE5] border border-[#A7F3D0]" /> Low</span>
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#FEF08A] border border-[#FDE047]" /> Normal</span>
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#FDBA74] border border-[#FB923C]" /> Busy</span>
+              <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#7026B7]" /> Peak</span>
             </div>
           </div>
         </div>
@@ -1011,15 +971,11 @@ export function OverviewPage() {
       {/* Row 3: Checkpoint Activity (Styled like Image 4 item breakdown lists) */}
       <section className="rounded-3xl border border-[#E5E0EB] bg-white p-6 shadow-xs">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">Station Health</p>
-            <h2 className="text-lg font-bold text-[#24133F]">Checkpoint Distribution</h2>
-          </div>
+          <h2 className="text-lg font-black text-[#24133F]">Checkpoint Distribution</h2>
           <Link to="/locations" className="text-xs font-bold text-[#7026B7] hover:underline flex items-center gap-1">
             Manage Stations <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
-        <p className="text-xs text-[#756883] mt-0.5">Daily recorded scans across RFID hardware stations</p>
 
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {hasCheckpointActivity ? (
