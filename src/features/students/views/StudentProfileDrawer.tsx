@@ -560,15 +560,31 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                 </button>
               )}
 
-              <button
-                type="button"
-                onClick={() => setIsDeleteModalOpen(true)}
-                title="Delete Student Permanently"
-                aria-label="Delete Student Permanently"
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 hover:bg-rose-600 text-white border border-white/25 backdrop-blur-md shadow-xs active:scale-95 transition-all cursor-pointer"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              {(() => {
+                const hasCard = Boolean(currentStudent.rfid_uid);
+                const hasAttendance = scans.length > 0;
+                const cannotDelete = hasCard || hasAttendance || loadingScans;
+                const tooltip = loadingScans
+                  ? 'Checking attendance records...'
+                  : hasCard
+                  ? 'Return or unlink student’s RFID card before deleting.'
+                  : hasAttendance
+                  ? 'Students with attendance logs cannot be deleted to preserve the audit trail. Use Archive instead.'
+                  : 'Delete Student Permanently';
+
+                return (
+                  <button
+                    type="button"
+                    disabled={cannotDelete}
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    title={tooltip}
+                    aria-label={tooltip}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 hover:bg-rose-600 text-white border border-white/25 backdrop-blur-md shadow-xs active:scale-95 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white/20"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                );
+              })()}
 
               <button
                 type="button"
@@ -1369,6 +1385,13 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         student={currentStudent}
+        attendanceCount={scans.length}
+        onArchiveInstead={onArchiveStudent ? async (id) => {
+          setIsDeleteModalOpen(false);
+          const ok = await onArchiveStudent(id);
+          if (ok) onClose();
+          return ok;
+        } : undefined}
         onConfirmDelete={async (id) => {
           if (!onDeleteStudent) return false;
           const ok = await onDeleteStudent(id);
