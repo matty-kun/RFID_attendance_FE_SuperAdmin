@@ -74,6 +74,7 @@ export function CardsPage() {
   const [inspecting, setInspecting] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeletingCard, setIsDeletingCard] = useState(false);
+  const [singleDeleteConfirmation, setSingleDeleteConfirmation] = useState('');
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
   const [pendingBulkAction, setPendingBulkAction] = useState<'archive' | 'unarchive' | 'delete' | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -178,7 +179,7 @@ export function CardsPage() {
       if (detailRequest.current === requestId) { setDetailError(message(e)); showToast(message(e), 'error'); }
     }
   };
-  const closeDetail = () => { detailRequest.current += 1; setSelectedCard(null); setDetail(null); setIsDeleteModalOpen(false); };
+  const closeDetail = () => { detailRequest.current += 1; setSelectedCard(null); setDetail(null); setIsDeleteModalOpen(false); setSingleDeleteConfirmation(''); };
   const inspectCard = async () => {
     const scanned = inspectUid.trim();
     if (!scanned || inspecting) return;
@@ -203,12 +204,13 @@ export function CardsPage() {
     }
   };
   const handleDeleteCard = async () => {
-    if (!detail?.card || isDeletingCard) return;
+    if (!detail?.card || isDeletingCard || singleDeleteConfirmation !== 'DELETE') return;
     setIsDeletingCard(true);
     try {
       await request.delete(`/cards/${detail.card.id}`);
       showToast(`Card ${detail.card.card_number} deleted from inventory.`, 'success');
       setIsDeleteModalOpen(false);
+      setSingleDeleteConfirmation('');
       closeDetail();
       void load();
       void loadSummary();
@@ -482,7 +484,7 @@ export function CardsPage() {
                     <button
                       type="button"
                       disabled={hasHistory || isDeletingCard}
-                      onClick={() => setIsDeleteModalOpen(true)}
+                      onClick={() => { setSingleDeleteConfirmation(''); setIsDeleteModalOpen(true); }}
                       aria-label="Delete card"
                       title={
                         hasHistory
@@ -507,9 +509,14 @@ export function CardsPage() {
     </Drawer>
     <Modal
       isOpen={isDeleteModalOpen && Boolean(detail?.card)}
-      onClose={() => !isDeletingCard && setIsDeleteModalOpen(false)}
-      title="Delete RFID Card"
-      maxWidth="sm"
+      onClose={() => {
+        if (!isDeletingCard) {
+          setIsDeleteModalOpen(false);
+          setSingleDeleteConfirmation('');
+        }
+      }}
+      title="Delete Card"
+      maxWidth="md"
       zIndex={600}
     >
       {detail?.card && (
@@ -519,21 +526,32 @@ export function CardsPage() {
           </div>
           <div className="text-center space-y-1">
             <p className="text-sm font-bold text-[#24133F]">
-              Permanently delete <span className="font-mono text-[#7026B7]">{detail.card.card_number}</span>?
+              Permanently delete {detail.card.card_number}?
             </p>
             <p className="text-xs text-[#756883] leading-relaxed">
-              UID: <span className="font-mono font-bold text-slate-700">{detail.card.uid}</span>
-            </p>
-            <p className="text-xs text-rose-600 font-semibold mt-2">
-              This card has no holder or scan history and will be completely removed from your inventory. This action cannot be undone.
+              This card has no recorded holder or scan history and will be completely removed from inventory. This action cannot be undone.
             </p>
           </div>
+          <label className="block space-y-1.5 text-xs font-semibold text-slate-700">
+            <span>Type <strong className="font-bold">"DELETE"</strong> to confirm</span>
+            <input
+              value={singleDeleteConfirmation}
+              onChange={(e) => setSingleDeleteConfirmation(e.target.value)}
+              disabled={isDeletingCard}
+              autoComplete="off"
+              placeholder="DELETE"
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100 font-mono uppercase"
+            />
+          </label>
           <div className="flex justify-end gap-2.5 border-t border-[#F1EEF4] pt-4">
             <Button
               type="button"
               variant="secondary"
               disabled={isDeletingCard}
-              onClick={() => setIsDeleteModalOpen(false)}
+              onClick={() => {
+                setIsDeleteModalOpen(false);
+                setSingleDeleteConfirmation('');
+              }}
             >
               Cancel
             </Button>
@@ -541,6 +559,7 @@ export function CardsPage() {
               type="button"
               variant="danger"
               isLoading={isDeletingCard}
+              disabled={singleDeleteConfirmation !== 'DELETE'}
               onClick={() => void handleDeleteCard()}
             >
               Delete Card
@@ -594,7 +613,7 @@ export function CardsPage() {
         </div>
         {pendingBulkAction === 'delete' && (
           <label className="block space-y-1.5 text-xs font-semibold text-slate-700">
-            <span>Type DELETE to confirm</span>
+            <span>Type <strong className="font-bold">"DELETE"</strong> to confirm</span>
             <input
               value={deleteConfirmation}
               onChange={(e) => setDeleteConfirmation(e.target.value)}
