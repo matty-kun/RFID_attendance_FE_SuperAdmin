@@ -5,6 +5,7 @@ import { formatYearLevel } from '../utils/formatters';
 import { soundManager } from '../utils/audioFeedback';
 import { request } from '../services/apiClient';
 import { Button } from '../components/common/Button';
+import { CardRegisterActionsDropdown } from '../components/cards/CardRegisterActionsDropdown';
 import { Modal } from '../components/common/Modal';
 import { Checkbox } from '../components/common/Checkbox';
 import { Drawer } from '../components/common/Drawer';
@@ -364,7 +365,19 @@ export function CardsPage() {
   return <div className="mx-auto w-full max-w-[1120px] space-y-4 text-[#24133F]">
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div><h1 className="text-[22px] font-extrabold">RFID Cards</h1><p className="text-xs text-[#756883]">Track physical cards, current holders, and every handoff.</p></div>
-      <div className="flex gap-2"><Button variant="secondary" leftIcon={<Radio className="h-4 w-4" />} onClick={() => setInspectOpen(true)}>Inspect card</Button><Button leftIcon={<CreditCard className="h-4 w-4" />} onClick={() => void openAction('register')}>Register card</Button></div>
+      <div className="flex items-center gap-2">
+        <Button variant="secondary" leftIcon={<Radio className="h-4 w-4" />} onClick={() => setInspectOpen(true)}>Inspect card</Button>
+        <CardRegisterActionsDropdown
+          onRegisterSingle={() => {
+            setIsContinuousRegister(false);
+            void openAction('register');
+          }}
+          onRapidIntake={() => {
+            setIsContinuousRegister(true);
+            void openAction('register');
+          }}
+        />
+      </div>
     </div>
     <div className="grid grid-cols-1 overflow-hidden rounded-2xl border border-[#E5E0EB] bg-white sm:grid-cols-3" aria-label="Card inventory summary">
       <div className="px-5 py-4 sm:border-r sm:border-[#E5E0EB]"><p className="text-xs text-[#756883]">Available cards</p><p className="mt-1 text-2xl font-extrabold">{summary?.available ?? '—'}</p><p className="mt-0.5 text-xs text-[#A59AAB]">Ready to issue</p></div>
@@ -822,7 +835,7 @@ export function CardsPage() {
       isOpen={Boolean(action)}
       onClose={() => !busy && setAction(null)}
       title={
-        activeAction === 'register' ? 'Register RFID card' :
+        activeAction === 'register' ? (isContinuousRegister ? 'Rapid Card Intake' : 'Register RFID card') :
         activeAction === 'issue' ? 'Issue RFID card' :
         activeAction === 'return' ? 'Return RFID card' :
         activeAction === 'lost' ? 'Report lost card' :
@@ -832,7 +845,7 @@ export function CardsPage() {
         'Restore RFID card'
       }
       description={
-        activeAction === 'register' ? 'Scan the card, then enter its printed number.' :
+        activeAction === 'register' ? (isContinuousRegister ? 'Continuous batch intake mode. Tap card, type number, press Enter.' : 'Quick 1-card registration into inventory.') :
         activeAction === 'issue' ? 'Assign this physical card to an active student.' :
         activeAction === 'archive' ? 'Remove this card from circulation. Its history stays available.' :
         activeAction === 'unarchive' ? 'Make this card available to issue again.' :
