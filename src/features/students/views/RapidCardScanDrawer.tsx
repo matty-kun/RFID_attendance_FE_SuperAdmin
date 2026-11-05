@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { CheckCircle2, CreditCard } from 'lucide-react';
+import { CheckCircle2, CircleAlert } from 'lucide-react';
+import { Button } from '../../../components/common/Button';
 import { request } from '../../../services/apiClient';
 import { Drawer, getOpenDrawerCount } from '../../../components/common/Drawer';
 import { soundManager } from '../../../utils/audioFeedback';
@@ -43,6 +44,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
     uid: string;
   } | null>(null);
   const [pendingCardNumberInput, setPendingCardNumberInput] = useState('');
+  const [duplicateCardError, setDuplicateCardError] = useState('');
   const newCardInputRef = useRef<HTMLInputElement>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -102,45 +104,46 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
   const handleConfirmNewCard = async () => {
     if (!pendingNewCard || !pendingCardNumberInput.trim() || isProcessing) return;
     const { student, uid } = pendingNewCard;
-    const formattedNumber = pendingCardNumberInput.trim().toUpperCase();
+    if (duplicateCardError) return;
+    const cleanSuffix = pendingCardNumberInput.trim().replace(/^RFID-?/i, '').toUpperCase();
+    const formattedNumber = `RFID-${cleanSuffix}`;
 
     isProcessingRef.current = true;
     lastAssignedStudentIdRef.current = student.id;
     setIsProcessing(true);
 
-    soundManager.playSuccessBeep();
-    setAssignedCount((prev) => prev + 1);
-    setLastScanned({
-      uid,
-      studentName: student.name,
-      studentId: student.student_id,
-    });
-
-    if (successTimerRef.current) clearTimeout(successTimerRef.current);
-    successTimerRef.current = setTimeout(() => {
-      setLastScanned(null);
-    }, 1800);
-
-    setPendingNewCard(null);
-    setPendingCardNumberInput('');
-
     try {
       const res = await onCardScannedForStudent(student.id, uid, formattedNumber);
-      if (!res.success) {
+      if (res.success) {
+        soundManager.playSuccessBeep();
+        setAssignedCount((prev) => prev + 1);
+        setLastScanned({
+          uid,
+          studentName: student.name,
+          studentId: student.student_id,
+        });
+
+        if (successTimerRef.current) clearTimeout(successTimerRef.current);
+        successTimerRef.current = setTimeout(() => {
+          setLastScanned(null);
+        }, 1800);
+
+        setPendingNewCard(null);
+        setPendingCardNumberInput('');
+        setDuplicateCardError('');
+      } else {
         lastAssignedStudentIdRef.current = null;
         soundManager.playErrorBuzz();
-        setAssignedCount((prev) => Math.max(0, prev - 1));
-        setLastScanned(null);
+        setDuplicateCardError(res.message || `${formattedNumber} is already in use`);
       }
-    } catch {
+    } catch (err: any) {
       lastAssignedStudentIdRef.current = null;
       soundManager.playErrorBuzz();
-      setAssignedCount((prev) => Math.max(0, prev - 1));
-      setLastScanned(null);
+      setDuplicateCardError(err?.message || `${formattedNumber} is already in use`);
     } finally {
       isProcessingRef.current = false;
       setIsProcessing(false);
-      setTimeout(() => inputRef.current?.focus(), 100);
+      setTimeout(() => newCardInputRef.current?.focus(), 100);
     }
   };
 
@@ -337,74 +340,6 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
       }
     >
       <div className="space-y-4" onClick={handleContainerClick}>
-        {/* Modal-like prompt if new card detected */}
-        {pendingNewCard && (
-          <div className="rounded-2xl border-2 border-[#7026B7] bg-purple-50/70 p-4 sm:p-5 space-y-3.5 animate-in fade-in zoom-in-95 duration-150 shadow-md">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#7026B7] text-white">
-                <CreditCard className="h-5 w-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-extrabold text-[#24133F]">New Physical Card Scanned</h4>
-                <p className="text-[11px] font-mono text-purple-700 font-bold mt-0.5">UID: {pendingNewCard.uid}</p>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs text-[#24133F]">
-                Assigning to: <span className="font-extrabold text-[#7026B7]">{pendingNewCard.student.name}</span> ({pendingNewCard.student.student_id})
-              </p>
-              <label className="block text-[11px] font-bold text-[#7026B7] mt-2 mb-1">
-                Printed Card Number *
-              </label>
-              <input
-                ref={newCardInputRef}
-                type="text"
-                autoFocus
-                value={pendingCardNumberInput}
-                onChange={(e) => setPendingCardNumberInput(e.target.value.toUpperCase())}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    void handleConfirmNewCard();
-                  } else if (e.key === 'Escape') {
-                    setPendingNewCard(null);
-                    setPendingCardNumberInput('');
-                    inputRef.current?.focus();
-                  }
-                }}
-                placeholder="e.g. RFID-001"
-                className="w-full rounded-xl border border-purple-300 bg-white px-3.5 py-2.5 text-xs font-mono font-bold uppercase text-[#24133F] focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100"
-              />
-              <p className="text-[10px] text-[#756883] mt-1">
-                Enter the number printed on this card so it registers in the RFID Cards page.
-              </p>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-1 border-t border-purple-200/70">
-              <button
-                type="button"
-                onClick={() => {
-                  setPendingNewCard(null);
-                  setPendingCardNumberInput('');
-                  inputRef.current?.focus();
-                }}
-                className="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={!pendingCardNumberInput.trim() || isProcessing}
-                onClick={() => void handleConfirmNewCard()}
-                className="rounded-xl bg-[#7026B7] px-4 py-2 text-xs font-bold text-white hover:bg-[#621FA3] disabled:opacity-50 transition-colors cursor-pointer"
-              >
-                Register & Bind Card
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Operational Focus Workstation with Hawi Personality */}
         <div className="rounded-2xl border border-[#E5E0EB] bg-white p-4 sm:p-5 space-y-4">
           {currentStudent ? (
@@ -438,13 +373,106 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
                     {formatYearLevel(currentStudent.year_level)}
                   </p>
                   <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F4EFFB] text-[11px] font-bold text-[#7026B7]">
-                    <span>Tap card on USB reader to bind</span>
+                    <span>{pendingNewCard ? 'Enter printed card number below' : 'Tap card on USB reader to bind'}</span>
                   </div>
                 </div>
               </div>
 
+              {/* Register Card Form — Positioned directly below the names, matching register RFID card modal design */}
+              {pendingNewCard && (
+                <div className="rounded-2xl border-2 border-[#7026B7] bg-[#FAF8FC] p-4 sm:p-5 space-y-3.5 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between rounded-xl border border-[#E5E0EB] bg-white px-4 py-3">
+                    <span className="font-semibold text-xs text-[#756883]">Card scanned</span>
+                    <span className="font-mono text-xs font-bold text-[#24133F]">{pendingNewCard.uid}</span>
+                  </div>
+
+                  <label className="block text-xs font-semibold text-[#24133F]">
+                    <span>Printed Card No.</span>
+                    <div className="relative mt-1.5 flex items-center rounded-xl border border-[#E5E0EB] bg-white overflow-hidden transition-all focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100">
+                      <span className="flex items-center bg-[#F4EFFB] px-3.5 py-2.5 font-mono text-xs font-black text-[#7026B7] border-r border-[#E5E0EB] select-none">
+                        RFID-
+                      </span>
+                      <input
+                        ref={newCardInputRef}
+                        type="text"
+                        autoFocus
+                        value={pendingCardNumberInput}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const clean = raw.replace(/^RFID-?/i, '').replace(/[^A-Z0-9-]/gi, '').toUpperCase();
+                          setPendingCardNumberInput(clean);
+                          if (clean) {
+                            const candidate = `RFID-${clean}`;
+                            const localStudentConflict = (students || []).some(s => s.card_number?.toUpperCase() === candidate);
+                            if (localStudentConflict) {
+                              setDuplicateCardError(`${candidate} is already registered`);
+                              return;
+                            }
+                            void request.get<{ cards: any[] }>(`/cards?q=${encodeURIComponent(candidate)}`).then(res => {
+                              const match = (res.cards || []).some(c => c.card_number?.toUpperCase() === candidate);
+                              setDuplicateCardError(match ? `${candidate} is already registered` : '');
+                            }).catch(() => {});
+                          } else {
+                            setDuplicateCardError('');
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (!duplicateCardError) void handleConfirmNewCard();
+                          } else if (e.key === 'Escape') {
+                            setPendingNewCard(null);
+                            setPendingCardNumberInput('');
+                            setDuplicateCardError('');
+                            inputRef.current?.focus();
+                          }
+                        }}
+                        placeholder="001"
+                        maxLength={27}
+                        className="block h-10 w-full px-3 text-xs font-mono font-bold uppercase text-[#24133F] outline-none"
+                      />
+                    </div>
+                    {duplicateCardError ? (
+                      <span className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-rose-600">
+                        <CircleAlert className="h-3.5 w-3.5 shrink-0" />
+                        {duplicateCardError}
+                      </span>
+                    ) : (
+                      <span className="mt-1.5 block font-normal text-[11px] text-[#756883]">
+                        Enter the number printed on this card so it registers in the RFID Cards page.
+                      </span>
+                    )}
+                  </label>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5E0EB]">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setPendingNewCard(null);
+                        setPendingCardNumberInput('');
+                        inputRef.current?.focus();
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      disabled={!pendingCardNumberInput.trim() || Boolean(duplicateCardError) || isProcessing}
+                      isLoading={isProcessing}
+                      onClick={() => void handleConfirmNewCard()}
+                    >
+                      Register & Bind Card
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Queue preview: Next students in line */}
-              {upcomingStudents.length > 0 && (
+              {upcomingStudents.length > 0 && !pendingNewCard && (
                 <div className="pt-2.5 border-t border-[#F1EEF4]">
                   <p className="text-[11px] font-semibold text-[#756883] mb-1.5">Next in line:</p>
                   <div className="space-y-1">
@@ -477,6 +505,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
           )}
 
           {/* HID Keystroke Input Capture */}
+          {!pendingNewCard && (
           <div className="pt-2 border-t border-[#F1EEF4]">
             <div className="mb-1.5 flex items-center justify-between">
               <label htmlFor="usb-scanner-input" className="text-xs font-bold text-[#24133F]">
@@ -513,6 +542,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
     </Drawer>

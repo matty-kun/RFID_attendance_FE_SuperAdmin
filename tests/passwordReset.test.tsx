@@ -65,7 +65,7 @@ describe('ResetPasswordModal component', () => {
     expect(screen.getByText('Juan Dela Cruz')).toBeTruthy();
     expect(screen.getByText('juan@student.presnt.edu')).toBeTruthy();
     expect(screen.getByText('2026-00045')).toBeTruthy();
-    expect(screen.getByText('Selected Target Account')).toBeTruthy();
+    expect(screen.getByText('Selected Student')).toBeTruthy();
   });
 
   it('renders admin target account identity accurately', () => {

@@ -62,7 +62,7 @@ export const RegisterActionsDropdown: React.FC<RegisterActionsDropdownProps> = (
         </button>
 
         {/* Thin vertical separator */}
-        <div className="w-[1px] bg-white/25 my-2 self-stretch" />
+        <div className="w-[0.5px] bg-white/20 my-2.5 self-stretch" />
 
         {/* Right dropdown chevron trigger button */}
         <button
