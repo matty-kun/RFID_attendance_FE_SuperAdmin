@@ -184,24 +184,24 @@ export function OverviewPage() {
                         )}
 
                         {/* Side-by-side Pair of Bars */}
-                        <div className="w-full flex justify-center items-end gap-1 sm:gap-2 h-full">
+                        <div className="w-full flex justify-center items-end gap-1.5 sm:gap-2.5 h-full">
                           {/* Time In Bar (Green) */}
                           <div className="flex flex-col items-center justify-end h-full">
                             {day.timeIns > 0 ? (
                               <>
-                                <span className={`text-[10px] font-bold mb-1 tabular-nums transition-colors ${
+                                <span className={`text-[11px] font-bold mb-1.5 tabular-nums transition-colors ${
                                   isHovered ? 'text-emerald-700 scale-110 font-extrabold' : 'text-emerald-600'
                                 }`}>
                                   {day.timeIns}
                                 </span>
                                 <div
                                   style={{ height: `${inHeight}%` }}
-                                  className="w-3 sm:w-4.5 rounded-t-md bg-[#10B981] shadow-xs transition-all duration-300 hover:brightness-110"
+                                  className="w-5 sm:w-7 md:w-8 rounded-t-lg bg-[#10B981] shadow-xs transition-all duration-300 hover:brightness-110"
                                   title={`Time In: ${day.timeIns}`}
                                 />
                               </>
                             ) : (
-                              <div className="h-1 w-3 sm:w-4.5 rounded-full bg-slate-200" title="Time In: 0" />
+                              <div className="h-1.5 w-5 sm:w-7 md:w-8 rounded-full bg-slate-200" title="Time In: 0" />
                             )}
                           </div>
 
@@ -209,19 +209,19 @@ export function OverviewPage() {
                           <div className="flex flex-col items-center justify-end h-full">
                             {day.timeOuts > 0 ? (
                               <>
-                                <span className={`text-[10px] font-bold mb-1 tabular-nums transition-colors ${
+                                <span className={`text-[11px] font-bold mb-1.5 tabular-nums transition-colors ${
                                   isHovered ? 'text-rose-700 scale-110 font-extrabold' : 'text-rose-600'
                                 }`}>
                                   {day.timeOuts}
                                 </span>
                                 <div
                                   style={{ height: `${outHeight}%` }}
-                                  className="w-3 sm:w-4.5 rounded-t-md bg-[#EF4444] shadow-xs transition-all duration-300 hover:brightness-110"
+                                  className="w-5 sm:w-7 md:w-8 rounded-t-lg bg-[#EF4444] shadow-xs transition-all duration-300 hover:brightness-110"
                                   title={`Time Out: ${day.timeOuts}`}
                                 />
                               </>
                             ) : (
-                              <div className="h-1 w-3 sm:w-4.5 rounded-full bg-slate-200" title="Time Out: 0" />
+                              <div className="h-1.5 w-5 sm:w-7 md:w-8 rounded-full bg-slate-200" title="Time Out: 0" />
                             )}
                           </div>
                         </div>
