@@ -1,6 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Calendar, Check, ChevronDown, CreditCard, MapPin, ScanLine, Sparkles, Users } from 'lucide-react';
+import {
+  ArrowRight,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  MapPin,
+  ScanLine,
+  Users,
+} from 'lucide-react';
 import { adminService } from '../services/adminService';
 import { studentService } from '../features/students/services/studentService';
 import { toast } from '../context';
@@ -50,20 +59,25 @@ function formatEventDates(startDate?: string, endDate?: string): string {
   return `${sMonth} ${sDay}, ${sYear} – ${eMonth} ${eDay}, ${sYear}`;
 }
 
+type SlideItem =
+  | { type: 'overview'; id: 'all'; title: string; subtitle: string }
+  | { type: 'event'; id: string; event: EventRecord; title: string; subtitle: string };
+
 export function OverviewPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [roster, setRoster] = useState<StudentRosterStats | null>(null);
   const [events, setEvents] = useState<EventRecord[]>([]);
-  const [selectedEventId, setSelectedEventId] = useState<string>('all');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [showQuickSelect, setShowQuickSelect] = useState(false);
   const [, setLoading] = useState(true);
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const quickSelectRef = useRef<HTMLDivElement>(null);
 
+  // Close quick select on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
+      if (quickSelectRef.current && !quickSelectRef.current.contains(event.target as Node)) {
+        setShowQuickSelect(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -108,13 +122,70 @@ export function OverviewPage() {
     };
   }, []);
 
-  const handleSelectEvent = async (id: string) => {
-    setSelectedEventId(id);
-    setIsDropdownOpen(false);
-    await loadMetrics(id === 'all' ? undefined : id);
-  };
+  // Sort events smartly: ongoing first, then upcoming, then completed
+  const sortedEvents = useMemo(() => {
+    return [...events].sort((a, b) => {
+      const order: Record<string, number> = { ongoing: 0, upcoming: 1, completed: 2, cancelled: 3 };
+      const aOrder = order[a.status?.toLowerCase() || ''] ?? 4;
+      const bOrder = order[b.status?.toLowerCase() || ''] ?? 4;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return new Date(b.start_date || 0).getTime() - new Date(a.start_date || 0).getTime();
+    });
+  }, [events]);
 
-  const selectedEvent = events.find((e) => e.id === selectedEventId) || null;
+  // Slides: 0 = Overview across all events, 1..N = specific events
+  const slides = useMemo<SlideItem[]>(() => {
+    return [
+      {
+        type: 'overview',
+        id: 'all',
+        title: 'Overview',
+        subtitle: "Here's your overall attendance across all events.",
+      },
+      ...sortedEvents.map((evt) => ({
+        type: 'event' as const,
+        id: evt.id,
+        event: evt,
+        title: evt.name,
+        subtitle: `${formatEventDates(evt.start_date, evt.end_date)} · Notre Dame of Midsayap College`,
+      })),
+    ];
+  }, [sortedEvents]);
+
+  // Slide navigation
+  const goToSlide = useCallback(
+    (index: number) => {
+      if (slides.length === 0) return;
+      const safeIndex = (index + slides.length) % slides.length;
+      setCurrentIndex(safeIndex);
+      const slide = slides[safeIndex];
+      if (slide) {
+        void loadMetrics(slide.id === 'all' ? undefined : slide.id);
+      }
+    },
+    [slides, loadMetrics]
+  );
+
+  const handlePrev = () => goToSlide(currentIndex - 1);
+  const handleNext = () => goToSlide(currentIndex + 1);
+
+  // Keyboard navigation with Left & Right arrows
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) return;
+      if (e.key === 'ArrowLeft') {
+        goToSlide(currentIndex - 1);
+      } else if (e.key === 'ArrowRight') {
+        goToSlide(currentIndex + 1);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentIndex, goToSlide]);
+
+  const currentSlide = slides[currentIndex] || slides[0];
+  const isOverview = currentSlide?.type === 'overview';
+  const currentEvent = currentSlide?.type === 'event' ? currentSlide.event : null;
 
   const days = metrics?.attendanceByDay ?? [];
   const locations = metrics?.locationActivity ?? [];
@@ -131,7 +202,7 @@ export function OverviewPage() {
 
   return (
     <div className="space-y-6 pb-8">
-      {/* Overview Banner with Hawi and Interactive Event Dropdown */}
+      {/* Banner Carousel with Left & Right Arrows and Dynamic Overview Filter */}
       <section className="relative rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9">
         {/* Hawi clipped background */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]">
@@ -142,161 +213,139 @@ export function OverviewPage() {
           />
         </div>
 
-        <div className="relative z-10 max-w-[76%] sm:max-w-[72%]">
+        <div className="relative z-10 max-w-[76%] sm:max-w-[70%]">
+          {/* Header Row: Date / Status badge on left, Left/Right controls on right */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]">
-              {manilaDate()}
-            </p>
-
-            {/* Event Switcher Dropdown */}
-            <div className="relative" ref={dropdownRef}>
-              <button
-                type="button"
-                onClick={() => setIsDropdownOpen((prev) => !prev)}
-                className="inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/20 border border-white/25 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs backdrop-blur-md transition-all active:scale-[0.98] cursor-pointer"
-                aria-expanded={isDropdownOpen}
-              >
-                <Calendar className="h-3.5 w-3.5 text-[#D7B9FA]" />
-                <span className="max-w-[140px] sm:max-w-[200px] truncate">
-                  {selectedEvent ? selectedEvent.name : 'All Events (Overview)'}
-                </span>
-                <ChevronDown
-                  className={`h-3.5 w-3.5 text-white/80 transition-transform duration-200 ${
-                    isDropdownOpen ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-
-              {isDropdownOpen && (
-                <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-72 sm:w-80 rounded-2xl border border-slate-100 bg-white p-2 text-slate-800 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    Select View / Event
-                  </div>
-
-                  {/* Overview / All events option */}
-                  <button
-                    type="button"
-                    onClick={() => handleSelectEvent('all')}
-                    className={`w-full flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-xs transition cursor-pointer ${
-                      selectedEventId === 'all'
-                        ? 'bg-purple-50 text-[#7026B7] font-bold'
-                        : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className={`flex h-7 w-7 items-center justify-center rounded-lg ${
-                          selectedEventId === 'all'
-                            ? 'bg-[#7026B7] text-white'
-                            : 'bg-purple-100 text-[#7026B7]'
-                        }`}
-                      >
-                        <Sparkles className="h-3.5 w-3.5" />
-                      </div>
-                      <div>
-                        <div className="font-bold">All Events (Overview)</div>
-                        <div className="text-[10px] text-slate-500 font-normal">
-                          Overall attendance across all events
-                        </div>
-                      </div>
-                    </div>
-                    {selectedEventId === 'all' && (
-                      <Check className="h-4 w-4 text-[#7026B7] shrink-0" />
-                    )}
-                  </button>
-
-                  <div className="my-1.5 border-t border-slate-100" />
-
-                  {/* List of events */}
-                  <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
-                    {events.length === 0 ? (
-                      <div className="px-3 py-4 text-center text-xs text-slate-400">
-                        No events found
-                      </div>
-                    ) : (
-                      events.map((evt) => {
-                        const isSelected = selectedEventId === evt.id;
-                        const status = evt.status?.toLowerCase();
-                        return (
-                          <button
-                            key={evt.id}
-                            type="button"
-                            onClick={() => handleSelectEvent(evt.id)}
-                            className={`w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-left transition cursor-pointer ${
-                              isSelected
-                                ? 'bg-purple-50 text-[#7026B7]'
-                                : 'hover:bg-slate-50 text-slate-700'
-                            }`}
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`truncate text-xs ${
-                                    isSelected ? 'font-black text-[#7026B7]' : 'font-bold text-slate-900'
-                                  }`}
-                                >
-                                  {evt.name}
-                                </span>
-                                {status && (
-                                  <span
-                                    className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold capitalize border ${
-                                      status === 'ongoing'
-                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                        : status === 'completed'
-                                        ? 'bg-purple-50 text-purple-700 border-purple-200'
-                                        : 'bg-blue-50 text-blue-700 border-blue-200'
-                                    }`}
-                                  >
-                                    {status}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-[10px] text-slate-400 mt-0.5">
-                                {formatEventDates(evt.start_date, evt.end_date)}
-                              </div>
-                            </div>
-                            {isSelected && (
-                              <Check className="h-4 w-4 text-[#7026B7] shrink-0" />
-                            )}
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
+            <div>
+              {isOverview ? (
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]">
+                  {manilaDate()}
+                </p>
+              ) : (
+                <div className="flex items-center gap-2">
+                  {currentEvent?.status && (
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-extrabold capitalize border ${
+                        currentEvent.status === 'ongoing'
+                          ? 'bg-emerald-400/20 text-emerald-300 border-emerald-400/30'
+                          : currentEvent.status === 'completed'
+                          ? 'bg-purple-300/20 text-purple-200 border-purple-300/30'
+                          : 'bg-blue-400/20 text-blue-300 border-blue-400/30'
+                      }`}
+                    >
+                      {currentEvent.status}
+                    </span>
+                  )}
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]/80">
+                    {manilaDate()}
+                  </p>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Title & Subtitle based on selection */}
-          <div className="mt-4">
-            {selectedEvent ? (
-              <>
-                {selectedEvent.status && (
-                  <div className="mb-2">
-                    <span className="inline-flex items-center rounded-full bg-emerald-400/20 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-300 border border-emerald-400/30 capitalize">
-                      {selectedEvent.status}
+            {/* Slider Navigation Controls (Left & Right) */}
+            {slides.length > 1 && (
+              <div className="flex items-center gap-2" ref={quickSelectRef}>
+                {/* Counter / Jump Pill */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickSelect((prev) => !prev)}
+                    className="flex items-center gap-1.5 rounded-full bg-white/15 hover:bg-white/20 active:scale-95 px-3 py-1 text-xs font-bold text-white shadow-xs backdrop-blur-md border border-white/20 transition cursor-pointer"
+                    title="Click to jump to any event"
+                  >
+                    <span className="max-w-[110px] sm:max-w-[150px] truncate">
+                      {isOverview ? 'Overview' : currentEvent?.name}
                     </span>
-                  </div>
-                )}
-                <h1 className="text-2xl font-extrabold leading-tight sm:text-4xl text-white">
-                  {selectedEvent.name}
-                </h1>
-                <p className="mt-2 max-w-lg text-sm leading-relaxed text-[#EEE1FA]">
-                  {formatEventDates(selectedEvent.start_date, selectedEvent.end_date)} · Notre Dame of Midsayap College
-                </p>
-              </>
-            ) : (
-              <>
-                <h1 className="text-2xl font-extrabold leading-tight sm:text-4xl text-white">
-                  Overview
-                </h1>
-                <p className="mt-2 max-w-lg text-sm leading-relaxed text-[#EEE1FA]">
-                  Here's your overall attendance across all events.
-                </p>
-              </>
+                    <span className="text-white/40">·</span>
+                    <span className="text-[#D7B9FA] font-medium tabular-nums">
+                      {currentIndex + 1}/{slides.length}
+                    </span>
+                  </button>
+
+                  {/* Popover jump menu when there are many events */}
+                  {showQuickSelect && (
+                    <div className="absolute right-0 mt-2 w-72 rounded-2xl border border-slate-100 bg-white p-2 text-slate-800 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        Jump to Event
+                      </div>
+                      <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
+                        {slides.map((s, idx) => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => {
+                              goToSlide(idx);
+                              setShowQuickSelect(false);
+                            }}
+                            className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition cursor-pointer ${
+                              currentIndex === idx
+                                ? 'bg-purple-50 text-[#7026B7] font-bold'
+                                : 'hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <span className="truncate">{s.title}</span>
+                            {currentIndex === idx && (
+                              <Check className="h-3.5 w-3.5 text-[#7026B7] shrink-0" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Left & Right Arrow Buttons */}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={handlePrev}
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 hover:bg-white/25 active:scale-90 text-white backdrop-blur-md border border-white/20 transition cursor-pointer shadow-xs"
+                    aria-label="Previous event"
+                    title="Previous event (←)"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 hover:bg-white/25 active:scale-90 text-white backdrop-blur-md border border-white/20 transition cursor-pointer shadow-xs"
+                    aria-label="Next event"
+                    title="Next event (→)"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
             )}
           </div>
+
+          {/* Banner Title & Subtitle */}
+          <div className="mt-4 min-h-[70px]">
+            <h1 className="text-2xl font-extrabold leading-tight sm:text-4xl text-white transition-all">
+              {currentSlide?.title}
+            </h1>
+            <p className="mt-2 max-w-lg text-sm leading-relaxed text-[#EEE1FA]">
+              {currentSlide?.subtitle}
+            </p>
+          </div>
+
+          {/* Pagination Dots (when <= 8 items) */}
+          {slides.length > 1 && slides.length <= 8 && (
+            <div className="mt-4 flex items-center gap-1.5">
+              {slides.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => goToSlide(idx)}
+                  className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                    currentIndex === idx ? 'w-6 bg-white' : 'w-1.5 bg-white/30 hover:bg-white/50'
+                  }`}
+                  aria-label={`Go to slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -347,7 +396,7 @@ export function OverviewPage() {
                 </span>
               </div>
               <p className="text-xs text-[#756883] mt-0.5">
-                {selectedEvent ? `Daily scans for ${selectedEvent.name}` : 'Total daily scans recorded by date'}
+                {currentEvent ? `Daily scans for ${currentEvent.name}` : 'Total daily scans recorded by date'}
               </p>
             </div>
 
