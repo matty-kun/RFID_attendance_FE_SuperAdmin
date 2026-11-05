@@ -453,9 +453,15 @@ export function CardsPage() {
       <Dropdown value={status} onChange={value => { setStatus(value as Status | 'all'); setPage(1); }} options={statuses} icon={<Filter className="h-4 w-4" />} buttonClassName="min-w-[150px]" />
     </div>
     <div className="relative flex flex-col gap-2 2xl:block">
-      <aside aria-label="Bulk card actions" aria-live="polite" className="flex h-9 w-full shrink-0 gap-1 2xl:absolute 2xl:right-[calc(100%+16px)] 2xl:top-12 2xl:h-auto 2xl:w-32 2xl:flex-col">
+      <aside aria-label="Bulk card actions" aria-live="polite" className={`flex shrink-0 items-center gap-1 ${selectedCards.length > 0 ? 'min-h-9' : 'h-0'} 2xl:absolute 2xl:right-[calc(100%+16px)] 2xl:top-12 2xl:h-auto 2xl:w-32 2xl:flex-col 2xl:items-stretch 2xl:gap-1`}>
         {selectedCards.length > 0 && (
           <>
+            <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-bold text-[#7026B7] 2xl:px-1 2xl:pb-1">
+              <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#F2E9FC] px-1.5 text-[11px] font-black text-[#7026B7]">
+                {selectedCards.length}
+              </span>
+              <span className="text-xs font-bold text-[#7026B7]">selected</span>
+            </div>
             {canBulkArchive && (
               <button
                 type="button"
