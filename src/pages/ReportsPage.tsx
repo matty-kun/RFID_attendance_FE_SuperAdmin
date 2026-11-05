@@ -8,6 +8,7 @@ import { request } from '../services/apiClient';
 import { adminService } from '../services/adminService';
 import type { EventRecord } from '../types';
 import type { ReportTrendDay, ReportSessionItem, ReportCheckpointItem, ReportCourseItem, ReportStudentAttendanceRow } from './auditPreviewRecords';
+import { formatReportSession, formatReportStatus } from './auditPreviewRecords';
 
 type Snapshot = {
   summary: { studentsCheckedIn: number; timeIns: number; timeOuts: number; totalScans: number };
@@ -120,7 +121,7 @@ export function ReportsPage() {
         }
       }
       const { exportAttendance } = await import('./reportExports');
-      exportAttendance(rows, format, endDate);
+      exportAttendance(rows, format, { startDate: params.startDate, endDate: params.endDate || endDate, eventName: eventLabel, systemName: 'PresNTC' });
     } catch { setError('Could not export the report. Try again.'); }
   };
   return (
@@ -470,8 +471,6 @@ export function ReportsPage() {
                 <th className="py-3 font-medium">Name</th>
                 <th className="py-3 font-medium">Course</th>
                 <th className="py-3 font-medium">Session</th>
-                <th className="py-3 font-medium">Day</th>
-                <th className="py-3 font-medium">Period</th>
                 <th className="py-3 font-medium">Time In</th>
                 <th className="py-3 font-medium">Time Out</th>
                 <th className="py-3 font-medium">Status</th>
@@ -502,23 +501,26 @@ export function ReportsPage() {
                     </div>
                   </td>
                   <td className="py-3 text-[#24133F]">{record.course}</td>
-                  <td className="py-3 text-[#24133F]">{record.session}</td>
-                  <td className="py-3 text-[#24133F]">{record.day}</td>
-                  <td className="py-3 text-[#24133F]">{record.period}</td>
-                  <td className="py-3 text-[#24133F]">{record.timeIn}</td>
-                  <td className="py-3 text-[#24133F]">{record.timeOut}</td>
+                  <td className="py-3 text-[#24133F]">{formatReportSession(record.session, record.day, record.period)}</td>
+                  <td className="py-3 text-[#24133F]">{record.timeIn || <span className="text-slate-300 font-mono">—</span>}</td>
+                  <td className="py-3 text-[#24133F]">{record.timeOut || <span className="text-slate-300 font-mono">—</span>}</td>
                   <td className="py-3">
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold text-white ${
-                        record.status === 'Completed'
-                          ? 'bg-[#10B981]'
-                          : record.status === 'Missing Out'
-                          ? 'bg-[#F59E0B]'
-                          : 'bg-[#EF4444]'
-                      }`}
-                    >
-                      {record.status}
-                    </span>
+                    {(() => {
+                      const status = formatReportStatus(record.status);
+                      return (
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                            status === 'Completed'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : status === 'No Time-Out'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-rose-50 text-rose-700 border-rose-200'
+                          }`}
+                        >
+                          {status}
+                        </span>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}
