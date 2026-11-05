@@ -257,7 +257,7 @@ export function CardsPage() {
     const localMatch = cards.some(c => c.card_number.toUpperCase() === candidate && c.id !== excludeId);
     if (localMatch) return false;
     try {
-      const res = await request.get<{ cards: Card[] }>(`/cards?search=${encodeURIComponent(candidate)}`);
+      const res = await request.get<{ cards: Card[] }>(`/cards?q=${encodeURIComponent(candidate)}`);
       const remoteMatch = (res.cards || []).some(c => c.card_number.toUpperCase() === candidate && c.id !== excludeId);
       return !remoteMatch;
     } catch {

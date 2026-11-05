@@ -112,39 +112,38 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
     lastAssignedStudentIdRef.current = student.id;
     setIsProcessing(true);
 
-    soundManager.playSuccessBeep();
-    setAssignedCount((prev) => prev + 1);
-    setLastScanned({
-      uid,
-      studentName: student.name,
-      studentId: student.student_id,
-    });
-
-    if (successTimerRef.current) clearTimeout(successTimerRef.current);
-    successTimerRef.current = setTimeout(() => {
-      setLastScanned(null);
-    }, 1800);
-
-    setPendingNewCard(null);
-    setPendingCardNumberInput('');
-
     try {
       const res = await onCardScannedForStudent(student.id, uid, formattedNumber);
-      if (!res.success) {
+      if (res.success) {
+        soundManager.playSuccessBeep();
+        setAssignedCount((prev) => prev + 1);
+        setLastScanned({
+          uid,
+          studentName: student.name,
+          studentId: student.student_id,
+        });
+
+        if (successTimerRef.current) clearTimeout(successTimerRef.current);
+        successTimerRef.current = setTimeout(() => {
+          setLastScanned(null);
+        }, 1800);
+
+        setPendingNewCard(null);
+        setPendingCardNumberInput('');
+        setDuplicateCardError('');
+      } else {
         lastAssignedStudentIdRef.current = null;
         soundManager.playErrorBuzz();
-        setAssignedCount((prev) => Math.max(0, prev - 1));
-        setLastScanned(null);
+        setDuplicateCardError(res.message || `${formattedNumber} is already in use`);
       }
-    } catch {
+    } catch (err: any) {
       lastAssignedStudentIdRef.current = null;
       soundManager.playErrorBuzz();
-      setAssignedCount((prev) => Math.max(0, prev - 1));
-      setLastScanned(null);
+      setDuplicateCardError(err?.message || `${formattedNumber} is already in use`);
     } finally {
       isProcessingRef.current = false;
       setIsProcessing(false);
-      setTimeout(() => inputRef.current?.focus(), 100);
+      setTimeout(() => newCardInputRef.current?.focus(), 100);
     }
   };
 
@@ -404,7 +403,12 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
                           setPendingCardNumberInput(clean);
                           if (clean) {
                             const candidate = `RFID-${clean}`;
-                            void request.get<{ cards: any[] }>(`/cards?search=${encodeURIComponent(candidate)}`).then(res => {
+                            const localStudentConflict = (students || []).some(s => s.card_number?.toUpperCase() === candidate);
+                            if (localStudentConflict) {
+                              setDuplicateCardError(`${candidate} is already registered`);
+                              return;
+                            }
+                            void request.get<{ cards: any[] }>(`/cards?q=${encodeURIComponent(candidate)}`).then(res => {
                               const match = (res.cards || []).some(c => c.card_number?.toUpperCase() === candidate);
                               setDuplicateCardError(match ? `${candidate} is already registered` : '');
                             }).catch(() => {});
