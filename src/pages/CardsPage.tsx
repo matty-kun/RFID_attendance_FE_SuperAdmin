@@ -279,7 +279,7 @@ export function CardsPage() {
     if (next === 'issue') {
       setLoadingStudents(true);
       try {
-        const result = await request.get<{ students: Student[] }>('/students?limit=250&archived=false');
+        const result = await request.get<{ students: Student[] }>('/students/roster');
         setStudents(result.students.filter(student => !student.rfid_uid));
       } catch (e) {
         showToast(message(e), 'error');

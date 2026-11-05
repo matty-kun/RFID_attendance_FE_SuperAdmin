@@ -212,9 +212,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       errors.name = 'Please enter at least 2 characters.';
     }
 
-    if (!trimmedEmail) {
-      errors.email = 'Institutional email is required.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       errors.email = 'Please enter a valid email format (e.g. name@school.edu).';
     }
 
@@ -250,7 +248,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       await onSubmit({
         student_id: studentId.trim(),
         name: name.trim(),
-        email: email.trim().toLowerCase(),
+        email: (email.trim() || `${studentId.trim().toLowerCase().replace(/[^a-z0-9]/g, '')}@ndmc.edu.ph`).toLowerCase(),
         temporary_password: temporaryPassword,
         course,
         year_level: yearLevel,
@@ -272,7 +270,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
       await onSubmit({
         student_id: studentId.trim(),
         name: name.trim(),
-        email: email.trim().toLowerCase(),
+        email: (email.trim() || `${studentId.trim().toLowerCase().replace(/[^a-z0-9]/g, '')}@ndmc.edu.ph`).toLowerCase(),
         temporary_password: temporaryPassword,
         course,
         year_level: yearLevel,
@@ -477,16 +475,15 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
           />
 
           <Input
-            label="Email Address"
+            label="Email Address (Optional)"
             type="email"
-            placeholder="e.g. roberto@university.edu"
+            placeholder="e.g. roberto@ndmc.edu.ph (Auto-generated if blank)"
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
               setFieldErrors((prev) => ({ ...prev, email: undefined }));
             }}
             error={fieldErrors.email}
-            required
           />
 
           <Input
