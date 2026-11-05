@@ -13,6 +13,10 @@ export interface ExportReportOptions {
   endDate?: string;
   eventName?: string;
   systemName?: string;
+  course?: string;
+  session?: string;
+  location?: string;
+  type?: string;
 }
 
 const headers = ['Student Name', 'Course', 'Session', 'Time In', 'Time Out', 'Status'];
@@ -56,6 +60,48 @@ async function loadHawiDataUrl(url: string): Promise<string | null> {
   } catch (err) {
     console.warn('Could not load Hawi mascot asset:', err);
     return null;
+  }
+}
+let cachedSemiBoldBase64: string | null = null;
+let cachedBoldBase64: string | null = null;
+
+async function loadFontAsBase64(url: string): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return new Promise<string | null>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          const base64 = reader.result.split(',')[1] || null;
+          resolve(base64);
+        } else {
+          resolve(null);
+        }
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (err) {
+    console.warn('Could not load font asset from', url, err);
+    return null;
+  }
+}
+
+async function loadNunitoFonts(): Promise<{ regular: string | null; bold: string | null }> {
+  try {
+    const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL ? import.meta.env.BASE_URL : '/').replace(/\/$/, '');
+    if (!cachedSemiBoldBase64) {
+      cachedSemiBoldBase64 = await loadFontAsBase64(`${base}/fonts/NunitoSans_600SemiBold.ttf`);
+    }
+    if (!cachedBoldBase64) {
+      cachedBoldBase64 = await loadFontAsBase64(`${base}/fonts/NunitoSans_700Bold.ttf`);
+    }
+    return { regular: cachedSemiBoldBase64, bold: cachedBoldBase64 };
+  } catch {
+    return { regular: null, bold: null };
   }
 }
 
@@ -116,6 +162,13 @@ export async function exportAttendance(
   const periodLabel = formatPeriod(startDate, endDate);
   const filename = `attendance-report-${endDate || 'all'}`;
 
+  const activeFilterParts: string[] = [];
+  if (options.course && options.course !== 'all') activeFilterParts.push(`Course: ${options.course}`);
+  if (options.session && options.session !== 'all') activeFilterParts.push(`Session: ${options.session}`);
+  if (options.location && options.location !== 'all') activeFilterParts.push(`Location: ${options.location}`);
+  if (options.type && options.type !== 'all') activeFilterParts.push(`Type: ${options.type}`);
+  const activeFiltersText = activeFilterParts.join('  ·  ');
+
   // 1. EXCEL EXPORT
   if (format === 'xlsx') {
     const sheet = XLSX.utils.aoa_to_sheet([headers, ...rows.map((row) => values(row).map(safeCell))]);
@@ -126,10 +179,24 @@ export async function exportAttendance(
     return;
   }
 
-  // 2. PDF EXPORT (Apple-Grade Presnt Layout)
+  // 2. PDF EXPORT (Apple-Grade Presnt Layout with Nunito Sans)
   if (format === 'pdf') {
-    const hawiDataUrl = await loadHawiDataUrl(hawiPeekingUrl);
+    const [hawiDataUrl, fonts] = await Promise.all([
+      loadHawiDataUrl(hawiPeekingUrl),
+      loadNunitoFonts(),
+    ]);
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const fontName = fonts.regular && fonts.bold ? 'NunitoSans' : 'helvetica';
+    if (fonts.regular && fonts.bold) {
+      try {
+        pdf.addFileToVFS('NunitoSans-SemiBold.ttf', fonts.regular);
+        pdf.addFont('NunitoSans-SemiBold.ttf', 'NunitoSans', 'normal');
+        pdf.addFileToVFS('NunitoSans-Bold.ttf', fonts.bold);
+        pdf.addFont('NunitoSans-Bold.ttf', 'NunitoSans', 'bold');
+      } catch (fontErr) {
+        console.warn('Could not register NunitoSans font in jsPDF:', fontErr);
+      }
+    }
     const pageWidth = 297;
     const pageHeight = 210;
     const margin = 14;
@@ -147,16 +214,24 @@ export async function exportAttendance(
         pdf.rect(margin, 10, usableWidth, 1.2, 'F');
 
         // Brand Title: Presnt
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFont(fontName, 'bold');
         pdf.setFontSize(15);
         pdf.setTextColor(112, 38, 183);
         pdf.text(systemName, margin, 18.5);
 
         // Document Title
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFont(fontName, 'bold');
         pdf.setFontSize(14);
         pdf.setTextColor(36, 19, 63);
         pdf.text('Student Attendance Records', margin, 26);
+
+        if (activeFiltersText) {
+          pdf.setFont(fontName, 'normal');
+          pdf.setFontSize(7.5);
+          pdf.setTextColor(117, 104, 131);
+          const filterTruncated = pdf.splitTextToSize(`Filtered by: ${activeFiltersText}`, usableWidth - 75)[0] || '';
+          pdf.text(filterTruncated, margin + 70, 26);
+        }
 
         // Info Card
         pdf.setFillColor(250, 248, 252);
@@ -165,33 +240,33 @@ export async function exportAttendance(
 
         pdf.setFontSize(7.5);
         // Event
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFont(fontName, 'bold');
         pdf.setTextColor(112, 38, 183);
         pdf.text('EVENT:', margin + 4, 35);
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFont(fontName, 'bold');
         pdf.setTextColor(36, 19, 63);
         pdf.text(eventName, margin + 17, 35);
 
         // Period (Formatted with month names)
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFont(fontName, 'bold');
         pdf.setTextColor(117, 104, 131);
         pdf.text('PERIOD:', margin + 90, 35);
-        pdf.setFont('helvetica', 'normal');
+        pdf.setFont(fontName, 'normal');
         pdf.setTextColor(36, 19, 63);
         pdf.text(periodLabel, margin + 104, 35);
 
         // Records Count
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFont(fontName, 'bold');
         pdf.setTextColor(117, 104, 131);
         pdf.text('RECORDS:', margin + 190, 35);
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFont(fontName, 'bold');
         pdf.setTextColor(36, 19, 63);
         pdf.text(`${rows.length} records`, margin + 207, 35);
 
         // Table Header
         pdf.setFillColor(244, 239, 251);
         pdf.roundedRect(margin, 42, usableWidth, 7.5, 1.2, 1.2, 'F');
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFont(fontName, 'bold');
         pdf.setFontSize(7.5);
         pdf.setTextColor(74, 62, 86);
         headers.forEach((header, index) => {
@@ -199,24 +274,26 @@ export async function exportAttendance(
         });
       } else {
         // Subsequent pages compact header
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFont(fontName, 'bold');
         pdf.setFontSize(8.5);
         pdf.setTextColor(112, 38, 183);
         pdf.text(systemName, margin, 12);
 
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFont(fontName, 'bold');
         pdf.setTextColor(36, 19, 63);
         pdf.text('Student Attendance Records', margin + 15, 12);
 
-        pdf.setFont('helvetica', 'normal');
+        pdf.setFont(fontName, 'normal');
         pdf.setFontSize(7.5);
         pdf.setTextColor(117, 104, 131);
-        pdf.text(`·  ${eventName}  ·  ${periodLabel}`, margin + 63, 12);
+        const subHeaderMeta = [eventName, periodLabel, activeFiltersText].filter(Boolean).join('  ·  ');
+        const subHeaderTruncated = pdf.splitTextToSize(`·  ${subHeaderMeta}`, usableWidth - 75)[0] || '';
+        pdf.text(subHeaderTruncated, margin + 63, 12);
 
         // Table Header
         pdf.setFillColor(244, 239, 251);
         pdf.roundedRect(margin, 16, usableWidth, 7.5, 1.2, 1.2, 'F');
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFont(fontName, 'bold');
         pdf.setFontSize(7.5);
         pdf.setTextColor(74, 62, 86);
         headers.forEach((header, index) => {
@@ -246,14 +323,14 @@ export async function exportAttendance(
       const status = rowValues[5];
 
       // Student Name (bold)
-      pdf.setFont('helvetica', 'bold');
+      pdf.setFont(fontName, 'bold');
       pdf.setFontSize(8);
       pdf.setTextColor(36, 19, 63);
       const nameText = pdf.splitTextToSize(studentName, widths[0] - 4)[0] || '';
       pdf.text(nameText, xPositions[0] + 2, y);
 
       // Course (normal)
-      pdf.setFont('helvetica', 'normal');
+      pdf.setFont(fontName, 'normal');
       pdf.setFontSize(7.5);
       pdf.setTextColor(90, 77, 107);
       const courseText = pdf.splitTextToSize(course, widths[1] - 4)[0] || '';
@@ -264,12 +341,12 @@ export async function exportAttendance(
       pdf.text(sessionText, xPositions[2] + 2, y);
 
       // Time In
-      pdf.setFont('helvetica', timeIn === '—' ? 'normal' : 'bold');
+      pdf.setFont(fontName, timeIn === '—' ? 'normal' : 'bold');
       pdf.setTextColor(timeIn === '—' ? 165 : 36, timeIn === '—' ? 154 : 19, timeIn === '—' ? 171 : 63);
       pdf.text(timeIn, xPositions[3] + 2, y);
 
       // Time Out
-      pdf.setFont('helvetica', timeOut === '—' ? 'normal' : 'bold');
+      pdf.setFont(fontName, timeOut === '—' ? 'normal' : 'bold');
       pdf.setTextColor(timeOut === '—' ? 165 : 36, timeOut === '—' ? 154 : 19, timeOut === '—' ? 171 : 63);
       pdf.text(timeOut, xPositions[4] + 2, y);
 
@@ -282,21 +359,21 @@ export async function exportAttendance(
       if (status === 'Completed') {
         pdf.setFillColor(232, 248, 238);
         pdf.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.2, 1.2, 'F');
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFont(fontName, 'bold');
         pdf.setFontSize(7);
         pdf.setTextColor(14, 131, 69);
         pdf.text('Completed', badgeX + 4.5, y - 0.2);
       } else if (status === 'No Time-Out') {
         pdf.setFillColor(254, 243, 214);
         pdf.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.2, 1.2, 'F');
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFont(fontName, 'bold');
         pdf.setFontSize(7);
         pdf.setTextColor(180, 83, 9);
         pdf.text('No Time-Out', badgeX + 3.5, y - 0.2);
       } else {
         pdf.setFillColor(253, 232, 234);
         pdf.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.2, 1.2, 'F');
-        pdf.setFont('helvetica', 'bold');
+        pdf.setFont(fontName, 'bold');
         pdf.setFontSize(7);
         pdf.setTextColor(190, 18, 60);
         pdf.text('No Time-In', badgeX + 4, y - 0.2);
@@ -324,11 +401,11 @@ export async function exportAttendance(
       pdf.line(margin, pageHeight - 11, pageWidth - margin, pageHeight - 11);
 
       // Footer metadata
-      pdf.setFont('helvetica', 'normal');
+      pdf.setFont(fontName, 'normal');
       pdf.setFontSize(7.5);
       pdf.setTextColor(165, 154, 171);
       pdf.text(
-        `Presnt · Exported on ${exportTimeStr} · Confidential`,
+        `Presnt · Exported on ${exportTimeStr}`,
         margin,
         pageHeight - 6.5,
       );
@@ -368,7 +445,7 @@ export async function exportAttendance(
           new TableCell({
             children: [
               new Paragraph({
-                children: [new TextRun({ text: value, bold: rowIndex === 0 })],
+                children: [new TextRun({ text: value, bold: rowIndex === 0, font: 'Nunito Sans' })],
               }),
             ],
           }),
@@ -386,7 +463,12 @@ export async function exportAttendance(
             heading: HeadingLevel.HEADING_1,
           }),
           new Paragraph({
-            text: `Event: ${eventName}  |  Period: ${periodLabel}  |  ${rows.length} records`,
+            children: [
+              new TextRun({
+                text: `Event: ${eventName}  |  Period: ${periodLabel}${activeFiltersText ? `  |  Filtered: ${activeFiltersText}` : ''}  |  ${rows.length} records`,
+                font: 'Nunito Sans',
+              }),
+            ],
           }),
           new Table({
             rows: tableRows,

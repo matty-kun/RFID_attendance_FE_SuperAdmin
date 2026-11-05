@@ -142,7 +142,16 @@ export function ReportsPage() {
         }
       }
       const { exportAttendance } = await import('./reportExports');
-      await exportAttendance(rows, format, { startDate: params.startDate, endDate: params.endDate || endDate, eventName: eventLabel, systemName: 'Presnt' });
+      await exportAttendance(rows, format, {
+        startDate: params.startDate,
+        endDate: params.endDate || endDate,
+        eventName: eventLabel,
+        systemName: 'Presnt',
+        course: course !== 'all' ? course : undefined,
+        session: session !== 'all' ? session : undefined,
+        location: location !== 'all' ? location : undefined,
+        type: type !== 'all' ? type : undefined,
+      });
     } catch (err) {
       console.error('Export failed:', err);
     }
