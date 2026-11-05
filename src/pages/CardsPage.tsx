@@ -79,6 +79,10 @@ export function CardsPage() {
   const [pendingBulkAction, setPendingBulkAction] = useState<'archive' | 'unarchive' | 'delete' | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const isSingleDeleteConfirmed =
+    singleDeleteConfirmation.trim().replace(/^"|"$/g, '').toUpperCase() === 'DELETE';
+  const isBulkDeleteConfirmed =
+    deleteConfirmation.trim().replace(/^"|"$/g, '').toUpperCase() === 'DELETE';
 
   useEffect(() => {
     setSelectedCardIds([]);
@@ -121,6 +125,7 @@ export function CardsPage() {
         }
         showToast(`Restored ${successCount} of ${eligible.length} selected cards.`, successCount > 0 ? 'success' : 'error');
       } else if (pendingBulkAction === 'delete') {
+        if (!isBulkDeleteConfirmed) return;
         const eligible = selectedCards.filter(c => c.status !== 'issued' && !c.holder);
         let successCount = 0;
         for (const card of eligible) {
@@ -204,7 +209,7 @@ export function CardsPage() {
     }
   };
   const handleDeleteCard = async () => {
-    if (!detail?.card || isDeletingCard || singleDeleteConfirmation !== 'DELETE') return;
+    if (!detail?.card || isDeletingCard || !isSingleDeleteConfirmed) return;
     setIsDeletingCard(true);
     try {
       await request.delete(`/cards/${detail.card.id}`);
@@ -536,11 +541,11 @@ export function CardsPage() {
             <span>Type <strong className="font-bold">"DELETE"</strong> to confirm</span>
             <input
               value={singleDeleteConfirmation}
-              onChange={(e) => setSingleDeleteConfirmation(e.target.value)}
+              onChange={(e) => setSingleDeleteConfirmation(e.target.value.toUpperCase())}
               disabled={isDeletingCard}
               autoComplete="off"
               placeholder="DELETE"
-              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100 font-mono uppercase"
+              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs font-sans font-bold tracking-wider text-slate-800 outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100 placeholder:text-slate-400 placeholder:font-normal placeholder:tracking-normal"
             />
           </label>
           <div className="flex justify-end gap-2.5 border-t border-[#F1EEF4] pt-4">
@@ -559,7 +564,7 @@ export function CardsPage() {
               type="button"
               variant="danger"
               isLoading={isDeletingCard}
-              disabled={singleDeleteConfirmation !== 'DELETE'}
+              disabled={!isSingleDeleteConfirmed}
               onClick={() => void handleDeleteCard()}
             >
               Delete Card
@@ -616,11 +621,11 @@ export function CardsPage() {
             <span>Type <strong className="font-bold">"DELETE"</strong> to confirm</span>
             <input
               value={deleteConfirmation}
-              onChange={(e) => setDeleteConfirmation(e.target.value)}
+              onChange={(e) => setDeleteConfirmation(e.target.value.toUpperCase())}
               disabled={bulkBusy}
               autoComplete="off"
               placeholder="DELETE"
-              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100 font-mono uppercase"
+              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs font-sans font-bold tracking-wider text-slate-800 outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100 placeholder:text-slate-400 placeholder:font-normal placeholder:tracking-normal"
             />
           </label>
         )}
@@ -640,7 +645,7 @@ export function CardsPage() {
             type="button"
             variant={pendingBulkAction === 'delete' ? 'danger' : 'primary'}
             isLoading={bulkBusy}
-            disabled={pendingBulkAction === 'delete' && deleteConfirmation !== 'DELETE'}
+            disabled={pendingBulkAction === 'delete' && !isBulkDeleteConfirmed}
             onClick={() => void runBulkAction()}
           >
             {pendingBulkAction === 'archive'

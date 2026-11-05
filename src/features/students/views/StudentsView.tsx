@@ -95,6 +95,8 @@ export const StudentsView: React.FC = () => {
   const [pendingBulkAction, setPendingBulkAction] = useState<BulkStudentAction | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const isBulkDeleteConfirmed =
+    deleteConfirmation.trim().replace(/^"|"$/g, '').toUpperCase() === 'DELETE';
   const [bulkFailures, setBulkFailures] = useState<{ id: string; name: string; message: string }[]>([]);
 
   useEffect(() => {
@@ -131,7 +133,7 @@ export const StudentsView: React.FC = () => {
   const runBulkAction = async () => {
     if (!pendingBulkAction || bulkBusy) return;
     const ids = pendingBulkAction === 'unlink' ? selectedWithCards.map((student) => student.id) : selectedStudents.map((student) => student.id);
-    if (!ids.length || (pendingBulkAction === 'delete' && deleteConfirmation !== 'DELETE')) return;
+    if (!ids.length || (pendingBulkAction === 'delete' && !isBulkDeleteConfirmed)) return;
     setBulkBusy(true);
     try {
       const result = await handleBulkStudentAction(ids, pendingBulkAction);
@@ -552,12 +554,19 @@ export const StudentsView: React.FC = () => {
           {pendingBulkAction === 'delete' && (
             <label className="block space-y-1.5 text-xs font-semibold text-slate-700">
               <span>Type <strong className="font-bold">"DELETE"</strong> to confirm</span>
-              <input value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} disabled={bulkBusy} autoComplete="off" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100" />
+              <input
+                value={deleteConfirmation}
+                onChange={(event) => setDeleteConfirmation(event.target.value.toUpperCase())}
+                disabled={bulkBusy}
+                autoComplete="off"
+                placeholder="DELETE"
+                className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs font-sans font-bold tracking-wider text-slate-800 outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100 placeholder:text-slate-400 placeholder:font-normal placeholder:tracking-normal"
+              />
             </label>
           )}
           <div className="flex justify-end gap-2.5 border-t border-[#F1EEF4] pt-4 pb-1">
             <Button type="button" variant="secondary" size="md" disabled={bulkBusy} onClick={() => { setPendingBulkAction(null); setDeleteConfirmation(''); }}>Cancel</Button>
-            <Button type="button" variant={pendingBulkAction === 'delete' ? 'danger' : 'primary'} size="md" isLoading={bulkBusy} disabled={pendingBulkAction === 'delete' && deleteConfirmation !== 'DELETE'} onClick={() => void runBulkAction()} leftIcon={pendingBulkAction === 'unlink' ? <Link2Off className="h-4 w-4" /> : pendingBulkAction === 'archive' ? <Archive className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}>
+            <Button type="button" variant={pendingBulkAction === 'delete' ? 'danger' : 'primary'} size="md" isLoading={bulkBusy} disabled={pendingBulkAction === 'delete' && !isBulkDeleteConfirmed} onClick={() => void runBulkAction()} leftIcon={pendingBulkAction === 'unlink' ? <Link2Off className="h-4 w-4" /> : pendingBulkAction === 'archive' ? <Archive className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}>
               {pendingBulkAction === 'unlink' ? 'Return cards' : pendingBulkAction === 'archive' ? 'Archive students' : 'Delete students'}
             </Button>
           </div>
