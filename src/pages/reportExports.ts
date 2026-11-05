@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
-import { Document, HeadingLevel, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType } from 'docx';
+import { AlignmentType, BorderStyle, Document, Footer, ImageRun, Packer, PageNumber, PageOrientation, Paragraph, ShadingType, Table, TableCell, TableRow, TextRun, WidthType } from 'docx';
 import {
   type ReportStudentAttendanceRow,
   formatReportSession,
@@ -648,43 +648,343 @@ export async function exportAttendance(
     return;
   }
 
-  // 3. WORD (DOCX) EXPORT
-  const tableRows = [headers, ...rows.map(values)].map((cells, rowIndex) =>
-    new TableRow({
-      children: cells.map(
-        (value) =>
-          new TableCell({
-            children: [
-              new Paragraph({
-                children: [new TextRun({ text: value, bold: rowIndex === 0, font: 'Nunito Sans' })],
-              }),
-            ],
-          }),
-      ),
-    }),
-  );
+  // 3. WORD (DOCX) EXPORT (Apple-Grade Presnt Layout with Nunito Sans)
+  const hawiDataUrl = await loadHawiDataUrl(hawiPeekingUrl);
+  const colWidths = [3400, 3800, 3000, 1500, 1500, 2100]; // total 15300 dxa (matches landscape page width)
+  const cellMargins = { top: 120, bottom: 120, left: 160, right: 160 };
 
-  const document = new Document({
-    sections: [
-      {
-        properties: { page: { size: { orientation: 'landscape' } } },
+  // Header Row
+  const tableHeaderRow = new TableRow({
+    tableHeader: true,
+    cantSplit: true,
+    children: headers.map((headerText, i) =>
+      new TableCell({
+        shading: { fill: 'F4EFFB', type: ShadingType.CLEAR },
+        borders: {
+          top: { style: BorderStyle.SINGLE, size: 4, color: 'E5E0EB' },
+          bottom: { style: BorderStyle.SINGLE, size: 12, color: 'D8B4ED' },
+          left: { style: BorderStyle.NONE },
+          right: { style: BorderStyle.NONE },
+        },
+        margins: cellMargins,
+        width: { size: colWidths[i], type: WidthType.DXA },
         children: [
           new Paragraph({
-            text: `${systemName} · Student Attendance Records`,
-            heading: HeadingLevel.HEADING_1,
-          }),
-          new Paragraph({
+            alignment: i >= 3 ? AlignmentType.CENTER : AlignmentType.LEFT,
             children: [
               new TextRun({
-                text: `Event: ${eventName}  |  Period: ${periodLabel}${activeFiltersText ? `  |  Filtered: ${activeFiltersText}` : ''}  |  ${rows.length} records`,
+                text: headerText.toUpperCase(),
+                bold: true,
+                color: '4A3E56',
+                size: 18,
                 font: 'Nunito Sans',
               }),
             ],
           }),
-          new Table({
-            rows: tableRows,
-            width: { size: 100, type: WidthType.PERCENTAGE },
+        ],
+      })
+    ),
+  });
+
+  // Data Rows
+  const tableDataRows = rows.map((row) => {
+    const [name, course, session, timeIn, timeOut, status] = values(row);
+
+    // Status colors
+    let statusBg = 'FDE8EA';
+    let statusColor = 'BE123C';
+    if (status === 'Completed') {
+      statusBg = 'E8F8EE';
+      statusColor = '0E8345';
+    } else if (status === 'No Time-Out') {
+      statusBg = 'FEF3D6';
+      statusColor = 'B45309';
+    }
+
+    const rowBorder = {
+      bottom: { style: BorderStyle.SINGLE, size: 4, color: 'F1EEF4' },
+      top: { style: BorderStyle.NONE },
+      left: { style: BorderStyle.NONE },
+      right: { style: BorderStyle.NONE },
+    };
+
+    return new TableRow({
+      cantSplit: true,
+      children: [
+        // Name
+        new TableCell({
+          borders: rowBorder,
+          margins: cellMargins,
+          width: { size: colWidths[0], type: WidthType.DXA },
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: name,
+                  bold: true,
+                  color: '24133F',
+                  size: 19,
+                  font: 'Nunito Sans',
+                }),
+              ],
+            }),
+          ],
+        }),
+        // Course
+        new TableCell({
+          borders: rowBorder,
+          margins: cellMargins,
+          width: { size: colWidths[1], type: WidthType.DXA },
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: course,
+                  color: '5A4D6B',
+                  size: 18,
+                  font: 'Nunito Sans',
+                }),
+              ],
+            }),
+          ],
+        }),
+        // Session
+        new TableCell({
+          borders: rowBorder,
+          margins: cellMargins,
+          width: { size: colWidths[2], type: WidthType.DXA },
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: session,
+                  color: '24133F',
+                  size: 18,
+                  font: 'Nunito Sans',
+                }),
+              ],
+            }),
+          ],
+        }),
+        // Time In
+        new TableCell({
+          borders: rowBorder,
+          margins: cellMargins,
+          width: { size: colWidths[3], type: WidthType.DXA },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: timeIn,
+                  bold: timeIn !== '—',
+                  color: timeIn === '—' ? 'A59AAB' : '24133F',
+                  size: 18,
+                  font: 'Nunito Sans',
+                }),
+              ],
+            }),
+          ],
+        }),
+        // Time Out
+        new TableCell({
+          borders: rowBorder,
+          margins: cellMargins,
+          width: { size: colWidths[4], type: WidthType.DXA },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: timeOut,
+                  bold: timeOut !== '—',
+                  color: timeOut === '—' ? 'A59AAB' : '24133F',
+                  size: 18,
+                  font: 'Nunito Sans',
+                }),
+              ],
+            }),
+          ],
+        }),
+        // Status Badge
+        new TableCell({
+          shading: { fill: statusBg, type: ShadingType.CLEAR },
+          borders: rowBorder,
+          margins: cellMargins,
+          width: { size: colWidths[5], type: WidthType.DXA },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: status,
+                  bold: true,
+                  color: statusColor,
+                  size: 17,
+                  font: 'Nunito Sans',
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+  });
+
+  const mainTable = new Table({
+    rows: [tableHeaderRow, ...tableDataRows],
+    width: { size: 15300, type: WidthType.DXA },
+    columnWidths: colWidths,
+  });
+
+  // Info Card Table
+  const infoCardTable = new Table({
+    width: { size: 15300, type: WidthType.DXA },
+    columnWidths: [15300],
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            shading: { fill: 'FAF8FC', type: ShadingType.CLEAR },
+            borders: {
+              top: { style: BorderStyle.SINGLE, size: 6, color: 'E5E0EB' },
+              bottom: { style: BorderStyle.SINGLE, size: 6, color: 'E5E0EB' },
+              left: { style: BorderStyle.SINGLE, size: 6, color: 'E5E0EB' },
+              right: { style: BorderStyle.SINGLE, size: 6, color: 'E5E0EB' },
+            },
+            margins: { top: 140, bottom: 140, left: 200, right: 200 },
+            children: [
+              new Paragraph({
+                children: [
+                  new TextRun({ text: 'EVENT:  ', bold: true, color: '7026B7', size: 18, font: 'Nunito Sans' }),
+                  new TextRun({ text: `${eventName}        `, bold: true, color: '24133F', size: 18, font: 'Nunito Sans' }),
+                  new TextRun({ text: 'PERIOD:  ', bold: true, color: '756883', size: 18, font: 'Nunito Sans' }),
+                  new TextRun({ text: `${periodLabel}        `, color: '24133F', size: 18, font: 'Nunito Sans' }),
+                  new TextRun({ text: 'RECORDS:  ', bold: true, color: '756883', size: 18, font: 'Nunito Sans' }),
+                  new TextRun({ text: `${rows.length} records`, bold: true, color: '24133F', size: 18, font: 'Nunito Sans' }),
+                ],
+              }),
+              ...(activeFiltersText
+                ? [
+                    new Paragraph({
+                      spacing: { before: 80 },
+                      children: [
+                        new TextRun({
+                          text: `FILTERED BY: ${activeFiltersText}`,
+                          color: '756883',
+                          size: 16,
+                          font: 'Nunito Sans',
+                        }),
+                      ],
+                    }),
+                  ]
+                : []),
+            ],
           }),
+        ],
+      }),
+    ],
+  });
+
+  const exportTimeStr = new Date().toLocaleString('en-PH', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+
+  // Footer paragraphs with page numbers and Hawi mascot
+  const footerChildren: Paragraph[] = [
+    new Paragraph({
+      alignment: AlignmentType.RIGHT,
+      border: {
+        top: { style: BorderStyle.SINGLE, size: 4, color: 'E5E0EB' },
+      },
+      spacing: { before: 120 },
+      children: [
+        new TextRun({
+          text: `Presnt · Exported on ${exportTimeStr}              Page `,
+          color: 'A59AAB',
+          size: 16,
+          font: 'Nunito Sans',
+        }),
+        new TextRun({
+          children: [PageNumber.CURRENT],
+          color: 'A59AAB',
+          size: 16,
+          font: 'Nunito Sans',
+        }),
+        new TextRun({
+          text: ' of ',
+          color: 'A59AAB',
+          size: 16,
+          font: 'Nunito Sans',
+        }),
+        new TextRun({
+          children: [PageNumber.TOTAL_PAGES],
+          color: 'A59AAB',
+          size: 16,
+          font: 'Nunito Sans',
+        }),
+        ...(hawiDataUrl
+          ? [
+              new TextRun({ text: '    ' }),
+              new ImageRun({
+                data: hawiDataUrl,
+                type: 'png',
+                transformation: { width: 44, height: 48 },
+              }),
+            ]
+          : []),
+      ],
+    }),
+  ];
+
+  const document = new Document({
+    sections: [
+      {
+        properties: {
+          page: {
+            size: { orientation: PageOrientation.LANDSCAPE },
+            margin: { top: 720, bottom: 720, left: 720, right: 720 },
+          },
+        },
+        footers: {
+          default: new Footer({
+            children: footerChildren,
+          }),
+        },
+        children: [
+          // Brand Name: Presnt
+          new Paragraph({
+            spacing: { after: 60 },
+            children: [
+              new TextRun({
+                text: systemName,
+                bold: true,
+                color: '7026B7',
+                size: 32,
+                font: 'Nunito Sans',
+              }),
+            ],
+          }),
+          // Title: Student Attendance Records
+          new Paragraph({
+            spacing: { after: 140 },
+            children: [
+              new TextRun({
+                text: 'Student Attendance Records',
+                bold: true,
+                color: '24133F',
+                size: 26,
+                font: 'Nunito Sans',
+              }),
+            ],
+          }),
+          // Info Card
+          infoCardTable,
+          // Spacing
+          new Paragraph({ spacing: { after: 160 }, children: [] }),
+          // Main Table
+          mainTable,
         ],
       },
     ],
