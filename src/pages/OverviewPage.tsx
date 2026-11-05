@@ -233,12 +233,11 @@ export function OverviewPage() {
 
           {/* Purple Banner (overflow-visible so Hawi breaks out of the frame!) */}
           <section className="relative flex-1 rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9 shadow-xs overflow-visible">
-            {/* Hawi Mascot popping out of the top and right frame! */}
+            {/* Hawi Mascot positioned out of the top and right frame */}
             <img
-              key={`hawi-${currentIndex}`}
               src={hawi}
               alt="Hawi holding an RFID card"
-              className="animate-hawi-pop pointer-events-none absolute bottom-0 -right-2 sm:right-3 z-10 h-[calc(100%+32px)] sm:h-[calc(100%+46px)] w-auto max-w-[40%] object-contain object-bottom drop-shadow-lg"
+              className="pointer-events-none absolute bottom-0 -right-2 sm:right-3 z-10 h-[calc(100%+32px)] sm:h-[calc(100%+46px)] w-auto max-w-[40%] object-contain object-bottom drop-shadow-lg"
             />
 
             {/* Main Banner Text Area with Directional Slide-in Animation */}
