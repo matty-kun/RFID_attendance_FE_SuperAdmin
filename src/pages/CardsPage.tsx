@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, Check, CircleAlert, CreditCard, ExternalLink, Filter, Hash, Pencil, Radio, RotateCcw, Search, ShieldAlert, UserRound, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Check, CircleAlert, CreditCard, ExternalLink, Filter, Hash, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, UserRound, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatYearLevel } from '../utils/formatters';
 import { request } from '../services/apiClient';
@@ -133,8 +133,9 @@ export function CardsPage() {
   const handleSaveCardNumber = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const clean = editCardNumber.trim().toUpperCase();
-    if (!clean || !detail) return;
-    if (clean === detail.card.card_number) {
+    if (!detail) return;
+    if (!clean || clean === detail.card.card_number) {
+      setEditCardNumber(detail.card.card_number);
       setIsEditingCardNumber(false);
       return;
     }
@@ -148,6 +149,8 @@ export function CardsPage() {
       setIsEditingCardNumber(false);
       showToast(`Printed card number updated to ${clean}!`, 'success');
     } catch (err: any) {
+      setEditCardNumber(detail.card.card_number);
+      setIsEditingCardNumber(false);
       showToast(err?.response?.data?.error?.message || err?.message || 'Failed to update card number.', 'error');
     } finally {
       setSavingCardNumber(false);
@@ -229,51 +232,48 @@ export function CardsPage() {
     </div>
     {total > 25 && <div className="flex items-center justify-end gap-2 text-xs"><Button variant="secondary" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</Button><span>Page {page} of {Math.ceil(total / 25)}</span><Button variant="secondary" size="sm" disabled={page * 25 >= total} onClick={() => setPage(page + 1)}>Next</Button></div>}
     <Drawer isOpen={Boolean(selectedCard)} onClose={closeDetail} title={selectedCard?.card_number ?? 'Card history'} maxWidth="2xl" hideHeader noPadding>
-      {detail && <div className="min-h-full bg-white text-xs text-[#24133F]"><div className="bg-gradient-to-b from-[#9333EA] via-[#C084FC] via-[#F3E8FF] to-white px-7 pb-10 pt-6"><div className="flex items-start justify-between">{isEditingCardNumber ? (
-            <form onSubmit={handleSaveCardNumber} className="flex items-center gap-1.5 bg-black/30 backdrop-blur-md rounded-xl p-1.5 border border-white/40">
-              <input
-                type="text"
-                autoFocus
-                value={editCardNumber}
-                onChange={(e) => setEditCardNumber(e.target.value.toUpperCase())}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') setIsEditingCardNumber(false);
-                }}
-                placeholder="e.g. RFID-001"
-                className="px-2.5 py-1 text-base font-black uppercase text-white bg-white/10 rounded-lg outline-none border border-white/30 focus:border-white font-mono min-w-[140px]"
-              />
-              <button
-                type="submit"
-                disabled={savingCardNumber || !editCardNumber.trim()}
-                title="Save card number"
-                className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-colors cursor-pointer disabled:opacity-50"
-              >
-                <Check className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsEditingCardNumber(false)}
-                title="Cancel"
-                className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </form>
-          ) : (
+      {detail && <div className="min-h-full bg-white text-xs text-[#24133F]"><div className="bg-gradient-to-b from-[#9333EA] via-[#C084FC] via-[#F3E8FF] to-white px-7 pb-10 pt-6"><div className="flex items-start justify-between">
+          {!isEditingCardNumber ? (
             <div
-              className="group flex items-center gap-2 cursor-pointer"
+              role="button"
+              tabIndex={0}
               onClick={() => {
-                setIsEditingCardNumber(true);
                 setEditCardNumber(detail.card.card_number);
+                setIsEditingCardNumber(true);
               }}
+              className="group flex items-center gap-2 rounded-xl py-0.5 px-2 -ml-2 transition-all hover:bg-white/20 cursor-pointer"
               title="Click to edit printed card number"
             >
-              <h2 className="text-2xl font-black text-white group-hover:underline underline-offset-4 decoration-white/60">
+              <h2 className="text-2xl font-black text-white tracking-tight truncate max-w-[340px] drop-shadow-sm font-mono">
                 {detail.card.card_number}
               </h2>
-              <span className="rounded-xl border border-white/30 bg-white/20 p-1.5 text-white/90 group-hover:bg-white/30 group-hover:text-white transition-all">
-                <Pencil className="h-3.5 w-3.5" />
-              </span>
+              <Pencil className="h-4 w-4 text-white/70 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 flex-1 max-w-[340px]">
+              <input
+                type="text"
+                value={editCardNumber}
+                onChange={(e) => setEditCardNumber(e.target.value.toUpperCase())}
+                onBlur={() => void handleSaveCardNumber()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleSaveCardNumber();
+                  if (e.key === 'Escape') {
+                    setEditCardNumber(detail.card.card_number);
+                    setIsEditingCardNumber(false);
+                  }
+                }}
+                disabled={savingCardNumber}
+                autoFocus
+                placeholder="e.g. RFID-001"
+                className="text-2xl font-black uppercase text-white tracking-tight bg-transparent border-b-2 border-white outline-none px-0 py-0 w-full placeholder:text-white/60 font-mono"
+              />
+              {savingCardNumber && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white shrink-0">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                  Saving…
+                </span>
+              )}
             </div>
           )}<div className="flex gap-2"><button type="button" disabled={!['available', 'archived'].includes(detail.card.status)} onClick={() => void openAction(detail.card.status === 'archived' ? 'unarchive' : 'archive', detail.card)} aria-label={detail.card.status === 'archived' ? 'Restore archived card' : 'Archive card'} title={detail.card.status === 'issued' ? 'Return the card before archiving' : detail.card.status === 'archived' ? 'Restore archived card' : detail.card.status === 'available' ? 'Archive card' : 'Restore the card before archiving'} className="rounded-2xl border border-white/30 bg-white/20 p-2.5 text-white hover:bg-white/30 disabled:cursor-not-allowed disabled:opacity-50">{detail.card.status === 'archived' ? <ArchiveRestore className="h-5 w-5" /> : <Archive className="h-5 w-5" />}</button><button type="button" onClick={closeDetail} aria-label="Close card history" className="rounded-2xl border border-white/30 bg-white/20 p-2.5 text-white hover:bg-white/30"><X className="h-5 w-5" /></button></div></div><div className="mt-2 flex justify-center"><div className="relative h-72 w-72 sm:h-80 sm:w-80"><img src={hawiCard} alt="" className="h-full w-full object-contain" /><span className="absolute left-[32%] top-[72%] -rotate-1 whitespace-nowrap font-sans text-sm font-black tracking-wide text-[#24133F] sm:text-base">{detail.card.card_number.replace(/^RFID-/, '')}</span></div></div></div><div className="space-y-6 px-7 pb-10">
         <div className="border-b border-[#F1EEF4] pb-5"><p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#A59AAB]">Card UID</p><div className="flex items-center justify-between gap-3"><p className="font-mono text-sm font-bold">{detail.card.uid}</p><span className={`rounded-full px-3 py-1 font-bold capitalize ${statusStyle[detail.card.status]}`}>{detail.card.status}</span></div><div className="mt-4 flex flex-wrap gap-2 [&>button]:flex-1 [&>button]:justify-center [&>button]:whitespace-nowrap">{detail.card.status === 'available' && <Button size="sm" leftIcon={<CreditCard className="h-4 w-4" />} onClick={() => void openAction('issue', detail.card)}>Issue card</Button>}{detail.card.status === 'issued' && <Button size="sm" variant="success" leftIcon={<RotateCcw className="h-4 w-4" />} onClick={() => void openAction('return', detail.card)}>Return card</Button>}{['available', 'issued'].includes(detail.card.status) && <><Button size="sm" variant="danger" leftIcon={<ShieldAlert className="h-4 w-4" />} onClick={() => void openAction('lost', detail.card)}>Report lost</Button><Button size="sm" variant="secondary" leftIcon={<CircleAlert className="h-4 w-4" />} onClick={() => void openAction('damaged', detail.card)}>Mark damaged</Button></>}{['lost', 'damaged'].includes(detail.card.status) && <Button size="sm" variant="secondary" leftIcon={<ArchiveRestore className="h-4 w-4" />} onClick={() => void openAction('restore', detail.card)}>Restore to available</Button>}</div></div>

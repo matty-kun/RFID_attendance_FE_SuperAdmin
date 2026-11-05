@@ -681,48 +681,43 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       {isEditingCardNum ? (
-                        <form onSubmit={handleSaveStudentCardNumber} className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5">
                           <input
                             type="text"
                             autoFocus
                             value={editCardNumInput}
                             onChange={(e) => setEditCardNumInput(e.target.value.toUpperCase())}
+                            onBlur={() => void handleSaveStudentCardNumber()}
                             onKeyDown={(e) => {
-                              if (e.key === 'Escape') setIsEditingCardNum(false);
+                              if (e.key === 'Enter') void handleSaveStudentCardNumber();
+                              if (e.key === 'Escape') {
+                                setEditCardNumInput((currentStudent as any).card_number || '');
+                                setIsEditingCardNum(false);
+                              }
                             }}
+                            disabled={isSavingCardNum}
                             placeholder="e.g. RFID-001"
-                            className="rounded-lg border border-purple-300 bg-white px-2 py-0.5 text-xs font-mono font-bold uppercase text-[#24133F] outline-none focus:border-[#7026B7] focus:ring-2 focus:ring-purple-100"
+                            className="text-xs font-black uppercase text-[#24133F] tracking-tight bg-transparent border-b-2 border-[#7026B7] outline-none px-0 py-0 font-mono w-28"
                           />
-                          <button
-                            type="submit"
-                            disabled={isSavingCardNum || !editCardNumInput.trim()}
-                            className="p-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer disabled:opacity-50"
-                            title="Save card number"
-                          >
-                            <Check className="h-3 w-3" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIsEditingCardNum(false)}
-                            className="p-1 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 cursor-pointer"
-                            title="Cancel"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </form>
+                          {isSavingCardNum && (
+                            <Loader2 className="w-3 h-3 animate-spin text-[#7026B7] shrink-0" />
+                          )}
+                        </div>
                       ) : (
                         <div
-                          className="group flex items-center gap-1.5 cursor-pointer"
+                          role="button"
+                          tabIndex={0}
                           onClick={() => {
                             setIsEditingCardNum(true);
                             setEditCardNumInput((currentStudent as any).card_number || '');
                           }}
+                          className="group flex items-center gap-1.5 rounded-lg py-0.5 px-1.5 -ml-1.5 transition-all hover:bg-purple-100/70 cursor-pointer"
                           title="Click to edit printed card number"
                         >
-                          <p className="text-xs font-black text-[#24133F] group-hover:text-[#7026B7] transition-colors">
+                          <p className="text-xs font-black text-[#24133F] group-hover:text-[#7026B7] transition-colors font-mono">
                             {(currentStudent as any).card_number ? (currentStudent as any).card_number : 'Card Assigned'}
                           </p>
-                          <Pencil className="h-3 w-3 text-slate-400 group-hover:text-[#7026B7] transition-colors" />
+                          <Pencil className="h-3 w-3 text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                         </div>
                       )}
                       <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
