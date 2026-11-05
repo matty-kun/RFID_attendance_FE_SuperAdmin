@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Archive, ArchiveRestore, Check, CheckCircle2, CircleAlert, CreditCard, ExternalLink, Filter, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, Trash2, UserRound, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { formatYearLevel } from '../utils/formatters';
 import { soundManager } from '../utils/audioFeedback';
 import { request } from '../services/apiClient';
 import { Button } from '../components/common/Button';
 import { CardRegisterActionsDropdown } from '../components/cards/CardRegisterActionsDropdown';
+import { StudentProfileDrawer } from '../features/students/views/StudentProfileDrawer';
+import { studentService } from '../features/students/services/studentService';
+import type { StudentRecord } from '../features/students/models';
 import { Modal } from '../components/common/Modal';
 import { Checkbox } from '../components/common/Checkbox';
 import { Drawer } from '../components/common/Drawer';
@@ -51,7 +53,6 @@ const date = (value: string) => new Date(value).toLocaleString('en-PH', { dateSt
 const message = (error: unknown) => (error as any)?.response?.data?.error?.message || 'Could not complete this action.';
 
 export function CardsPage() {
-  const navigate = useNavigate();
   const [cards, setCards] = useState<Card[]>([]);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState<CardSummary | null>(null);
@@ -94,6 +95,50 @@ export function CardsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeletingCard, setIsDeletingCard] = useState(false);
   const [singleDeleteConfirmation, setSingleDeleteConfirmation] = useState('');
+  const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<StudentRecord | null>(null);
+  const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
+
+  const handleViewStudentProfile = async (a: Assignment) => {
+    try {
+      const res = await studentService.getStudents(1, a.student_number, 'created_at', 'desc', 10, false);
+      let matched = res.students.find(s => s.id === a.student_id || s.student_id === a.student_number);
+      if (!matched) {
+        const archivedRes = await studentService.getStudents(1, a.student_number, 'created_at', 'desc', 10, true);
+        matched = archivedRes.students.find(s => s.id === a.student_id || s.student_id === a.student_number);
+      }
+      if (matched) {
+        setSelectedStudentForProfile(matched);
+      } else {
+        setSelectedStudentForProfile({
+          id: a.student_id || '',
+          student_id: a.student_number,
+          name: a.student_name,
+          course: a.course || '',
+          year_level: a.year_level || 1,
+          rfid_uid: a.ended_at ? null : detail?.card.uid || null,
+          card_number: a.ended_at ? null : detail?.card.card_number || null,
+          avatar_url: a.avatar_url || null,
+          created_at: a.issued_at,
+          updated_at: a.issued_at,
+        });
+      }
+      setIsProfileDrawerOpen(true);
+    } catch {
+      setSelectedStudentForProfile({
+        id: a.student_id || '',
+        student_id: a.student_number,
+        name: a.student_name,
+        course: a.course || '',
+        year_level: a.year_level || 1,
+        rfid_uid: a.ended_at ? null : detail?.card.uid || null,
+        card_number: a.ended_at ? null : detail?.card.card_number || null,
+        avatar_url: a.avatar_url || null,
+        created_at: a.issued_at,
+        updated_at: a.issued_at,
+      });
+      setIsProfileDrawerOpen(true);
+    }
+  };
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
   const [pendingBulkAction, setPendingBulkAction] = useState<'archive' | 'unarchive' | 'delete' | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -644,7 +689,7 @@ export function CardsPage() {
                 </button>
               </div></div><div className="mt-2 flex justify-center"><div className="relative h-72 w-72 sm:h-80 sm:w-80"><img src={hawiCard} alt="" className="h-full w-full object-contain" /><span className="absolute left-[32%] top-[72%] -rotate-1 whitespace-nowrap font-sans text-sm font-black tracking-wide text-[#24133F] sm:text-base">{detail.card.card_number.replace(/^RFID-/, '')}</span></div></div></div><div className="space-y-6 px-7 pb-10">
         <div className="border-b border-[#F1EEF4] pb-5"><p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#A59AAB]">Card UID</p><div className="flex items-center justify-between gap-3"><p className="font-mono text-sm font-bold">{detail.card.uid}</p><span className={`rounded-full px-3 py-1 font-bold capitalize ${statusStyle[detail.card.status]}`}>{detail.card.status}</span></div><div className="mt-4 flex flex-wrap gap-2 [&>button]:flex-1 [&>button]:justify-center [&>button]:whitespace-nowrap">{detail.card.status === 'available' && <Button size="sm" leftIcon={<CreditCard className="h-4 w-4" />} onClick={() => void openAction('issue', detail.card)}>Issue card</Button>}{detail.card.status === 'issued' && <Button size="sm" variant="success" leftIcon={<RotateCcw className="h-4 w-4" />} onClick={() => void openAction('return', detail.card)}>Return card</Button>}{['available', 'issued'].includes(detail.card.status) && <><Button size="sm" variant="danger" leftIcon={<ShieldAlert className="h-4 w-4" />} onClick={() => void openAction('lost', detail.card)}>Report lost</Button><Button size="sm" variant="secondary" leftIcon={<CircleAlert className="h-4 w-4" />} onClick={() => void openAction('damaged', detail.card)}>Mark damaged</Button></>}{['lost', 'damaged'].includes(detail.card.status) && <Button size="sm" variant="secondary" leftIcon={<ArchiveRestore className="h-4 w-4" />} onClick={() => void openAction('restore', detail.card)}>Restore to available</Button>}</div></div>
-        {(detail.assignments.length > 0 || detailReady) && <section><h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[#A59AAB]">{detailReady ? `Holder history · ${detail.assignments.length}` : 'Current holder'}</h3><div className="space-y-3">{detail.assignments.length ? detail.assignments.map(a => { const scans = detail.recent_scans.filter(scan => scan.student_id === a.student_id && scan.recorded_at >= a.issued_at && (!a.ended_at || scan.recorded_at <= a.ended_at)); return <div key={a.id} className="overflow-hidden rounded-2xl border border-[#E5E0EB]"><div className="flex flex-wrap items-center gap-3 p-4">{a.avatar_url ? <img src={a.avatar_url} alt="" className="h-14 w-14 shrink-0 rounded-full object-cover" /> : <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#F2E9FC]"><UserRound className="h-5 w-5 text-[#7026B7]" /></span>}<div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><b className="text-base">{a.student_name}</b><span className="rounded-full bg-[#F7F1FD] px-2 py-0.5 font-bold text-[#7026B7]">@{a.student_number}</span>{!a.ended_at && <span className="rounded-full bg-[#E7F8EE] px-2 py-0.5 font-bold text-[#087A3A]">Current</span>}</div>{a.course && <p className="mt-0.5 text-[#756883]">{a.course}{a.year_level ? ` · ${formatYearLevel(a.year_level)}` : ''}</p>}<p className="mt-1 text-[#756883]">Issued {date(a.issued_at)}{a.ended_at ? ` · ${a.end_reason} ${date(a.ended_at)}` : ''}</p></div>{a.student_id && <Button size="sm" leftIcon={<ExternalLink className="h-3.5 w-3.5" />} onClick={() => navigate(`/students?profile=${encodeURIComponent(a.student_number)}`)}>View Profile</Button>}</div>{detailReady && <div className="border-t border-[#F1EEF4] bg-[#FAF8FC] px-4 py-3"><p className="mb-2 font-bold text-[#756883]">Scans with this card</p>{scans.length ? <div className="space-y-2">{scans.map(scan => <div key={scan.id} className="flex justify-between gap-3"><span className="font-semibold">{scan.type === 'time_in' ? 'Time in' : 'Time out'}</span><time className="text-[#756883]">{date(scan.recorded_at)}</time></div>)}</div> : <p className="text-[#756883]">No scans recorded while this student held the card.</p>}</div>}</div>; }) : <p className="rounded-2xl border border-[#E5E0EB] p-4 text-[#756883]">No holder yet.</p>}</div></section>}
+        {(detail.assignments.length > 0 || detailReady) && <section><h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[#A59AAB]">{detailReady ? `Holder history · ${detail.assignments.length}` : 'Current holder'}</h3><div className="space-y-3">{detail.assignments.length ? detail.assignments.map(a => { const scans = detail.recent_scans.filter(scan => scan.student_id === a.student_id && scan.recorded_at >= a.issued_at && (!a.ended_at || scan.recorded_at <= a.ended_at)); return <div key={a.id} className="overflow-hidden rounded-2xl border border-[#E5E0EB]"><div className="flex flex-wrap items-center gap-3 p-4">{a.avatar_url ? <img src={a.avatar_url} alt="" className="h-14 w-14 shrink-0 rounded-full object-cover" /> : <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#F2E9FC]"><UserRound className="h-5 w-5 text-[#7026B7]" /></span>}<div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><b className="text-base">{a.student_name}</b><span className="rounded-full bg-[#F7F1FD] px-2 py-0.5 font-bold text-[#7026B7]">@{a.student_number}</span>{!a.ended_at && <span className="rounded-full bg-[#E7F8EE] px-2 py-0.5 font-bold text-[#087A3A]">Current</span>}</div>{a.course && <p className="mt-0.5 text-[#756883]">{a.course}{a.year_level ? ` · ${formatYearLevel(a.year_level)}` : ''}</p>}<p className="mt-1 text-[#756883]">Issued {date(a.issued_at)}{a.ended_at ? ` · ${a.end_reason} ${date(a.ended_at)}` : ''}</p></div>{a.student_id && <Button size="sm" leftIcon={<ExternalLink className="h-3.5 w-3.5" />} onClick={() => void handleViewStudentProfile(a)}>View Profile</Button>}</div>{detailReady && <div className="border-t border-[#F1EEF4] bg-[#FAF8FC] px-4 py-3"><p className="mb-2 font-bold text-[#756883]">Scans with this card</p>{scans.length ? <div className="space-y-2">{scans.map(scan => <div key={scan.id} className="flex justify-between gap-3"><span className="font-semibold">{scan.type === 'time_in' ? 'Time in' : 'Time out'}</span><time className="text-[#756883]">{date(scan.recorded_at)}</time></div>)}</div> : <p className="text-[#756883]">No scans recorded while this student held the card.</p>}</div>}</div>; }) : <p className="rounded-2xl border border-[#E5E0EB] p-4 text-[#756883]">No holder yet.</p>}</div></section>}
         {detailError && selectedCard && <Button size="sm" onClick={() => void openDetail(selectedCard)}>Retry history</Button>}
         {detailReady && <section><h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[#A59AAB]">Card activity</h3><div className="divide-y divide-[#F1EEF4] rounded-2xl border border-[#E5E0EB]">{detail.events.map(event => <div key={event.id} className="p-4"><b className="text-sm capitalize">{event.action}</b>{event.student_name && ` · ${event.student_name} (${event.student_number})`}<p className="mt-1 text-[#756883]">{date(event.created_at)}{event.actor?.name && ` · ${event.actor.name}`}{event.note && ` · ${event.note}`}</p></div>)}</div></section>}
       </div></div>}
@@ -1255,5 +1300,59 @@ export function CardsPage() {
         </div>
       </div>
     </Modal>
+    <StudentProfileDrawer
+      isOpen={isProfileDrawerOpen}
+      onClose={() => setIsProfileDrawerOpen(false)}
+      student={selectedStudentForProfile}
+      onUnlinkCard={async (_studentId, reason) => {
+        try {
+          if (selectedStudentForProfile?.rfid_uid) {
+            await request.post(`/cards/${encodeURIComponent(selectedStudentForProfile.rfid_uid)}/actions`, {
+              action: reason === 'lost' ? 'lost' : 'return',
+              note: reason === 'lost' ? 'Unlinked and reported lost from profile' : 'Unlinked from profile',
+            });
+            showToast('Card unlinked from student.', 'success');
+            setIsProfileDrawerOpen(false);
+            if (selectedCard) void openDetail(selectedCard);
+            void load(false);
+            void loadSummary();
+          }
+        } catch (e) {
+          showToast(message(e), 'error');
+        }
+      }}
+      onQuickPair={async (studentId, cardUid) => {
+        try {
+          await request.post(`/cards/${encodeURIComponent(cardUid)}/actions`, {
+            action: 'issue',
+            student_id: studentId,
+          });
+          showToast('Card paired with student.', 'success');
+          if (selectedCard) void openDetail(selectedCard);
+          void load(false);
+          void loadSummary();
+          return { success: true, message: 'Card linked successfully.' };
+        } catch (e) {
+          const err = message(e);
+          showToast(err, 'error');
+          return { success: false, message: err };
+        }
+      }}
+      onOpenRapidScan={() => {
+        setIsProfileDrawerOpen(false);
+      }}
+      onUpdateStudent={async (studentId, payload) => {
+        await studentService.updateStudent(studentId, payload);
+        showToast('Student profile updated.', 'success');
+        if (selectedStudentForProfile) {
+          setSelectedStudentForProfile(prev => prev ? { ...prev, ...payload } : null);
+        }
+        if (selectedCard) void openDetail(selectedCard);
+      }}
+      onResetPassword={async (studentId, password) => {
+        await request.post(`/students/${studentId}/password`, { password });
+        showToast('Password reset successfully.', 'success');
+      }}
+    />
   </div>;
 }

@@ -30,7 +30,6 @@ const commands = [
   { name: 'Locations', path: '/locations', icon: MapPin, keywords: 'locations checkpoints page', action: '' },
   { name: 'Attendance by Day', path: '/overview#attendance-chart', icon: ChartNoAxesColumn, keywords: 'daily scans time in time out chart analytics', action: '' },
   { name: 'Checkpoint Activity', path: '/overview#locations-chart', icon: MapPin, keywords: 'locations activity today scans checkpoint chart', action: '' },
-  { name: 'Attendance Sessions', path: '/sessions', icon: CalendarDays, keywords: 'schedule event session time in time out create', action: '' },
   { name: 'Attendance Records', path: '/audit-log', icon: ClipboardList, keywords: 'scans student time in time out history', action: '' },
 
   { name: 'Inspect RFID Card', path: '/cards', icon: Radio, keywords: 'inspect tap lookup card rfid search who owner check unassigned', action: 'inspect-card' },

@@ -9,7 +9,6 @@ import { NetworkStatusBanner } from './components/common/NetworkStatusBanner';
 // Domain Page Routes
 import { LoginPage } from './pages/LoginPage';
 import { EventsPage } from './pages/EventsPage';
-import { SessionsPage } from './pages/SessionsPage';
 import { LocationsPage } from './pages/LocationsPage';
 import { AttendancePage } from './pages/AttendancePage';
 import { StudentsPage } from './pages/StudentsPage';
@@ -39,7 +38,6 @@ export const App: React.FC = () => {
                 <Route path="/overview" element={<OverviewPage />} />
                 <Route path="/audit-log" element={<AuditLogPage />} />
                 <Route path="/events" element={<EventsPage />} />
-                <Route path="/sessions" element={<SessionsPage />} />
                 <Route path="/locations" element={<LocationsPage />} />
                 <Route path="/attendance" element={<AttendancePage />} />
                 <Route path="/reports" element={<ReportsPage />} />
