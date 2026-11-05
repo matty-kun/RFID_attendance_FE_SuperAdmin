@@ -26,7 +26,15 @@ type Card = { id: string; uid: string; card_number: string; status: Status; crea
 type CardSummary = { available: number; issued: number; lost_or_damaged: number };
 type Event = { id: string; action: string; student_name: string | null; student_number: string | null; created_at: string; note: string | null; actor?: { name: string } | null };
 type Detail = { card: Card; assignments: Assignment[]; events: Event[]; recent_scans: { id: string; type: string; recorded_at: string; student_id: string | null }[] };
-type Student = { id: string; name: string; student_id: string; rfid_uid: string | null };
+type Student = {
+  id: string;
+  name: string;
+  student_id: string;
+  rfid_uid: string | null;
+  course?: string | null;
+  year_level?: number | null;
+  avatar_url?: string | null;
+};
 type Action = 'register' | 'issue' | 'return' | 'lost' | 'damaged' | 'restore' | 'archive' | 'unarchive';
 
 const statuses: { value: Status | 'all'; label: string }[] = [
@@ -63,6 +71,8 @@ export function CardsPage() {
   const [registerStep, setRegisterStep] = useState<1 | 2>(1);
   const cardNumberRef = useRef<HTMLInputElement>(null);
   const [studentId, setStudentId] = useState('');
+  const [studentSearch, setStudentSearch] = useState('');
+  const [loadingStudents, setLoadingStudents] = useState(false);
   const [note, setNote] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
   const [busy, setBusy] = useState(false);
@@ -200,12 +210,23 @@ export function CardsPage() {
     finally { setInspecting(false); }
   };
   const openAction = async (next: Action, card?: Card) => {
-    setAction(next); setUid(card?.uid ?? ''); setCardNumber(card?.card_number ?? ''); setRegisterStep(1); setStudentId(''); setNote('');
+    setAction(next);
+    setUid(card?.uid ?? '');
+    setCardNumber(card?.card_number ?? '');
+    setRegisterStep(1);
+    setStudentId('');
+    setStudentSearch('');
+    setNote('');
     if (next === 'issue') {
+      setLoadingStudents(true);
       try {
-        const result = await request.get<{ students: Student[] }>('/students?limit=100&archived=false');
+        const result = await request.get<{ students: Student[] }>('/students?limit=250&archived=false');
         setStudents(result.students.filter(student => !student.rfid_uid));
-      } catch (e) { showToast(message(e), 'error'); }
+      } catch (e) {
+        showToast(message(e), 'error');
+      } finally {
+        setLoadingStudents(false);
+      }
     }
   };
   const handleDeleteCard = async () => {
@@ -263,6 +284,17 @@ export function CardsPage() {
     } catch (e) { showToast(message(e), 'error'); }
     finally { setBusy(false); }
   };
+
+  const selectedStudent = students.find(s => s.id === studentId);
+  const filteredStudents = students.filter(s => {
+    if (!studentSearch.trim()) return true;
+    const q = studentSearch.toLowerCase();
+    return (
+      s.name.toLowerCase().includes(q) ||
+      s.student_id.toLowerCase().includes(q) ||
+      Boolean(s.course && s.course.toLowerCase().includes(q))
+    );
+  });
 
   return <div className="mx-auto w-full max-w-[1120px] space-y-4 text-[#24133F]">
     <div className="flex flex-wrap items-end justify-between gap-3">
@@ -697,10 +729,101 @@ export function CardsPage() {
     <Modal isOpen={inspectOpen} onClose={() => !inspecting && setInspectOpen(false)} title="Inspect RFID card" description="Tap a card to find its status, holder, and history." maxWidth="md">
       <div className="space-y-4 p-6 text-xs"><div className="flex justify-center"><img src={hawiScanning} alt="" className="h-28 w-28 object-contain" /></div><label className="block font-semibold">Scan card UID<div className="relative mt-2"><Radio className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#756883]" /><input autoFocus value={inspectUid} onChange={event => setInspectUid(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void inspectCard(); } }} placeholder="Tap or scan card now" className="h-10 w-full rounded-xl border border-[#E5E0EB] pl-9 pr-3 focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100" /></div></label><div className="flex justify-end gap-2 border-t border-[#F1EEF4] pt-4"><Button variant="secondary" onClick={() => setInspectOpen(false)} disabled={inspecting}>Cancel</Button><Button onClick={() => void inspectCard()} disabled={!inspectUid.trim()} isLoading={inspecting}>Inspect card</Button></div></div>
     </Modal>
-    <Modal isOpen={Boolean(action)} onClose={() => !busy && setAction(null)} title={action === 'register' ? 'Register RFID card' : action === 'issue' ? 'Issue RFID card' : action === 'return' ? 'Return RFID card' : action === 'lost' ? 'Report lost card' : action === 'damaged' ? 'Mark damaged card' : action === 'archive' ? 'Archive RFID card' : action === 'unarchive' ? 'Restore archived card' : 'Restore RFID card'} description={action === 'register' ? 'Scan the card, then enter its printed number.' : action === 'archive' ? 'Remove this card from circulation. Its history stays available.' : action === 'unarchive' ? 'Make this card available to issue again.' : 'Card history stays available for auditing.'} maxWidth="md">
-      <div className="space-y-4 p-6 text-xs">{action === 'register' && <div className="relative mb-5 flex items-start justify-between px-8" aria-label={`Step ${registerStep} of 2`}><div className="absolute left-[25%] right-[25%] top-4 h-[2px] bg-[#E5E0EB]" /><div className={`absolute left-[25%] top-4 h-[2px] bg-[#A855F7] transition-all ${registerStep === 2 ? 'w-1/2' : 'w-0'}`} />{(['Scan card', 'Card number'] as const).map((title, index) => <div key={title} className="relative z-10 flex w-24 flex-col items-center gap-2 text-center"><span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${registerStep === index + 1 ? 'bg-[#A855F7] text-white ring-4 ring-[#A855F7]/25' : registerStep > index + 1 ? 'bg-[#A855F7] text-white' : 'bg-[#F3E8FF] text-[#A855F7]'}`}>{registerStep > index + 1 ? <Check className="h-4 w-4" /> : index + 1}</span><span className={registerStep === index + 1 ? 'font-bold text-[#24133F]' : 'text-[#756883]'}>{title}</span></div>)}</div>}
-        <div className="flex justify-center"><img src={lastAction.current === 'damaged' ? hawiBrokenCard : lastAction.current === 'lost' ? hawiCrying : lastAction.current === 'archive' ? hawiBox : lastAction.current === 'restore' || lastAction.current === 'unarchive' ? hawiCheck : lastAction.current === 'return' || lastAction.current === 'issue' || lastAction.current === 'register' ? hawiScanning : hawiLooking} alt="" className="h-24 w-24 object-contain" /></div>
-        {(action !== 'register' || registerStep === 1) && <label className="block font-semibold">{action === 'register' ? 'Scan card UID' : 'Card UID'}<div className="relative mt-1"><Radio className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#7026B7]" /><input value={uid} onChange={e => setUid(e.target.value)} onKeyDown={e => { if (action === 'register' && e.key === 'Enter') { e.preventDefault(); if (uid.trim()) { setRegisterStep(2); requestAnimationFrame(() => cardNumberRef.current?.focus()); } } }} disabled={action !== 'register'} autoFocus={action === 'register'} placeholder={action === 'register' ? 'Tap or scan card now' : undefined} className="block h-10 w-full rounded-xl border border-[#E5E0EB] py-0 pl-9 pr-3 focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100 disabled:bg-[#F7F6F9]" /></div></label>}
+    <Modal
+      isOpen={Boolean(action)}
+      onClose={() => !busy && setAction(null)}
+      title={
+        action === 'register' ? 'Register RFID card' :
+        action === 'issue' ? 'Issue RFID card' :
+        action === 'return' ? 'Return RFID card' :
+        action === 'lost' ? 'Report lost card' :
+        action === 'damaged' ? 'Mark damaged card' :
+        action === 'archive' ? 'Archive RFID card' :
+        action === 'unarchive' ? 'Restore archived card' :
+        'Restore RFID card'
+      }
+      description={
+        action === 'register' ? 'Scan the card, then enter its printed number.' :
+        action === 'issue' ? 'Assign this physical card to an active student.' :
+        action === 'archive' ? 'Remove this card from circulation. Its history stays available.' :
+        action === 'unarchive' ? 'Make this card available to issue again.' :
+        'Card history stays available for auditing.'
+      }
+      maxWidth={action === 'issue' ? 'lg' : 'md'}
+    >
+      <div className="space-y-4 p-6 text-xs">
+        {action === 'register' && (
+          <div className="relative mb-5 flex items-start justify-between px-8" aria-label={`Step ${registerStep} of 2`}>
+            <div className="absolute left-[25%] right-[25%] top-4 h-[2px] bg-[#E5E0EB]" />
+            <div className={`absolute left-[25%] top-4 h-[2px] bg-[#A855F7] transition-all ${registerStep === 2 ? 'w-1/2' : 'w-0'}`} />
+            {(['Scan card', 'Card number'] as const).map((title, index) => (
+              <div key={title} className="relative z-10 flex w-24 flex-col items-center gap-2 text-center">
+                <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${registerStep === index + 1 ? 'bg-[#A855F7] text-white ring-4 ring-[#A855F7]/25' : registerStep > index + 1 ? 'bg-[#A855F7] text-white' : 'bg-[#F3E8FF] text-[#A855F7]'}`}>
+                  {registerStep > index + 1 ? <Check className="h-4 w-4" /> : index + 1}
+                </span>
+                <span className={registerStep === index + 1 ? 'font-bold text-[#24133F]' : 'text-[#756883]'}>{title}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {action !== 'issue' && (
+          <div className="flex justify-center">
+            <img
+              src={
+                lastAction.current === 'damaged' ? hawiBrokenCard :
+                lastAction.current === 'lost' ? hawiCrying :
+                lastAction.current === 'archive' ? hawiBox :
+                lastAction.current === 'restore' || lastAction.current === 'unarchive' ? hawiCheck :
+                lastAction.current === 'return' || lastAction.current === 'register' ? hawiScanning :
+                hawiLooking
+              }
+              alt=""
+              className="h-24 w-24 object-contain"
+            />
+          </div>
+        )}
+
+        {(action !== 'register' && action !== 'issue') && (
+          <label className="block font-semibold">
+            Card UID
+            <div className="relative mt-1">
+              <Radio className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#7026B7]" />
+              <input
+                value={uid}
+                onChange={e => setUid(e.target.value)}
+                disabled
+                className="block h-10 w-full rounded-xl border border-[#E5E0EB] py-0 pl-9 pr-3 focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100 disabled:bg-[#F7F6F9]"
+              />
+            </div>
+          </label>
+        )}
+
+        {action === 'register' && registerStep === 1 && (
+          <label className="block font-semibold">
+            Scan card UID
+            <div className="relative mt-1">
+              <Radio className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#7026B7]" />
+              <input
+                value={uid}
+                onChange={e => setUid(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (uid.trim()) {
+                      setRegisterStep(2);
+                      requestAnimationFrame(() => cardNumberRef.current?.focus());
+                    }
+                  }
+                }}
+                autoFocus
+                placeholder="Tap or scan card now"
+                className="block h-10 w-full rounded-xl border border-[#E5E0EB] py-0 pl-9 pr-3 focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100 disabled:bg-[#F7F6F9]"
+              />
+            </div>
+          </label>
+        )}
+
         {action === 'register' && registerStep === 2 && (
           <>
             <div className="flex items-center justify-between rounded-2xl border border-[#E5E0EB] bg-[#FAF8FC] px-4 py-3">
@@ -730,9 +853,228 @@ export function CardsPage() {
             </label>
           </>
         )}
-        {action === 'issue' && <label className="block font-semibold">Student<select value={studentId} onChange={e => setStudentId(e.target.value)} className="mt-1 block h-10 w-full rounded-xl border border-[#E5E0EB] px-3 focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100"><option value="">Choose student</option>{students.map(s => <option key={s.id} value={s.id}>{s.name} · {s.student_id}</option>)}</select></label>}
-        {action !== 'issue' && action !== 'register' && action !== 'archive' && action !== 'unarchive' && <label className="block font-semibold">Note (optional)<input value={note} onChange={e => setNote(e.target.value)} maxLength={500} placeholder="Reason or handoff detail" className="mt-1 block h-10 w-full rounded-xl border border-[#E5E0EB] px-3 focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100" /></label>}
-        <div className={`flex gap-2 border-t border-[#F1EEF4] pt-4 ${action === 'register' ? 'justify-between' : 'justify-end'}`}><Button variant="secondary" onClick={() => action === 'register' && registerStep === 2 ? setRegisterStep(1) : setAction(null)} disabled={busy} leftIcon={action === 'register' ? undefined : <X className="h-4 w-4" />}>{action === 'register' && registerStep === 2 ? 'Back' : 'Cancel'}</Button><Button variant={action === 'lost' ? 'danger' : 'primary'} onClick={() => { if (action === 'register' && registerStep === 1) { setRegisterStep(2); requestAnimationFrame(() => cardNumberRef.current?.focus()); } else void submit(); }} isLoading={busy} disabled={!uid.trim() || action === 'register' && registerStep === 2 && !cardNumber.trim() || action === 'issue' && !studentId}>{action === 'register' ? registerStep === 1 ? 'Next →' : 'Register card' : action === 'issue' ? 'Issue card' : action === 'return' ? 'Confirm return' : action === 'lost' ? 'Report lost' : action === 'damaged' ? 'Mark damaged' : action === 'archive' ? 'Archive card' : action === 'unarchive' ? 'Restore card' : 'Restore card'}</Button></div>
+
+        {action === 'issue' && (
+          <div className="space-y-4">
+            {/* Card Summary Banner */}
+            <div className="flex items-center justify-between rounded-2xl border border-[#E5E0EB] bg-[#FAF8FC] p-3.5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#7026B7] text-white shadow-xs">
+                  <CreditCard className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="font-mono text-sm font-black text-[#24133F] tracking-tight">
+                    {cardNumber || 'RFID Card'}
+                  </h4>
+                  <p className="font-mono text-[11px] font-semibold text-[#756883] mt-0.5">
+                    UID: <span className="font-bold text-[#7026B7]">{uid}</span>
+                  </p>
+                </div>
+              </div>
+              <span className="rounded-full bg-[#E7F8EE] px-3 py-1 font-bold text-[#087A3A] text-xs">
+                Available
+              </span>
+            </div>
+
+            {/* Target Student Picker */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-[#24133F]">Assign to Student *</label>
+                {selectedStudent && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStudentId('');
+                      setStudentSearch('');
+                    }}
+                    className="text-[11px] font-bold text-[#7026B7] hover:underline cursor-pointer"
+                  >
+                    Change student
+                  </button>
+                )}
+              </div>
+
+              {selectedStudent ? (
+                <div className="rounded-2xl border-2 border-[#7026B7] bg-purple-50/40 p-3.5 flex items-center justify-between transition-all">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {selectedStudent.avatar_url ? (
+                      <img
+                        src={selectedStudent.avatar_url}
+                        alt=""
+                        className="h-10 w-10 rounded-full object-cover shrink-0 ring-2 ring-purple-200"
+                      />
+                    ) : (
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#7026B7] text-white text-xs font-bold">
+                        {selectedStudent.name.split(' ').map(p => p[0]).slice(0, 2).join('')}
+                      </span>
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-extrabold text-[#24133F] truncate">
+                          {selectedStudent.name}
+                        </h4>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[#E7F8EE] px-2 py-0.5 text-[10px] font-bold text-[#087A3A] shrink-0">
+                          <CheckCircle2 className="h-3 w-3" /> Selected
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#756883] font-medium mt-0.5 truncate">
+                        <span className="font-mono font-bold text-[#24133F]">{selectedStudent.student_id}</span>
+                        {selectedStudent.course && ` · ${selectedStudent.course}`}
+                        {selectedStudent.year_level ? ` · ${formatYearLevel(selectedStudent.year_level)}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStudentId('');
+                      setStudentSearch('');
+                    }}
+                    className="text-xs font-bold text-[#7026B7] hover:text-purple-900 bg-white border border-purple-200 hover:border-purple-300 px-3 py-1.5 rounded-xl shadow-2xs transition-colors shrink-0 ml-2 cursor-pointer"
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="relative flex items-center rounded-xl border border-[#E5E0EB] bg-white px-3 focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100 transition-all">
+                    <Search className="h-4 w-4 text-[#756883] shrink-0" />
+                    <input
+                      type="text"
+                      autoFocus
+                      value={studentSearch}
+                      onChange={e => setStudentSearch(e.target.value)}
+                      placeholder="Search by student name, ID, or course..."
+                      className="h-10 w-full bg-transparent px-2 text-xs font-medium text-[#24133F] outline-none placeholder:text-[#A59AAB]"
+                    />
+                    {studentSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setStudentSearch('')}
+                        className="text-xs text-[#A59AAB] hover:text-[#24133F] p-1 cursor-pointer"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-52 overflow-y-auto rounded-xl border border-[#E5E0EB] bg-white divide-y divide-[#F1EEF4] shadow-2xs">
+                    {loadingStudents ? (
+                      <div className="flex items-center justify-center gap-2 p-5 text-xs text-[#756883]">
+                        <Loader2 className="h-4 w-4 animate-spin text-[#7026B7]" />
+                        <span>Loading eligible students...</span>
+                      </div>
+                    ) : filteredStudents.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-[#756883]">
+                        <p className="font-semibold text-[#24133F]">No students found</p>
+                        <p className="mt-1 text-[11px] text-[#A59AAB]">
+                          {studentSearch ? `No unassigned students match "${studentSearch}"` : 'All registered students already have an active RFID card.'}
+                        </p>
+                      </div>
+                    ) : (
+                      filteredStudents.map(s => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => {
+                            setStudentId(s.id);
+                          }}
+                          className="w-full flex items-center justify-between p-2.5 text-left transition-colors hover:bg-purple-50/60 focus-visible:bg-purple-50 focus-visible:outline-none group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {s.avatar_url ? (
+                              <img src={s.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover shrink-0" />
+                            ) : (
+                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F2E9FC] text-[10px] font-bold text-[#7026B7] group-hover:scale-105 transition-transform">
+                                {s.name.split(' ').map(p => p[0]).slice(0, 2).join('')}
+                              </span>
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-[#24133F] truncate group-hover:text-[#7026B7] transition-colors">
+                                {s.name}
+                              </p>
+                              <p className="text-[11px] text-[#756883] font-medium truncate mt-0.5">
+                                <span className="font-mono text-[#24133F] font-bold">{s.student_id}</span>
+                                {s.course && ` · ${s.course}`}
+                                {s.year_level ? ` · ${formatYearLevel(s.year_level)}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="text-[11px] font-bold text-[#7026B7] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2">
+                            Assign →
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Optional Note */}
+            <label className="block text-xs font-semibold text-[#24133F]">
+              <span>Handoff Note (optional)</span>
+              <input
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                maxLength={500}
+                placeholder="Reason or handoff detail (e.g. Initial issuance)"
+                className="mt-1.5 block h-10 w-full rounded-xl border border-[#E5E0EB] px-3 text-xs focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100 placeholder:text-[#A59AAB]"
+              />
+            </label>
+          </div>
+        )}
+
+        {action !== 'issue' && action !== 'register' && action !== 'archive' && action !== 'unarchive' && (
+          <label className="block font-semibold">
+            Note (optional)
+            <input
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              maxLength={500}
+              placeholder="Reason or handoff detail"
+              className="mt-1 block h-10 w-full rounded-xl border border-[#E5E0EB] px-3 focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100"
+            />
+          </label>
+        )}
+
+        <div className={`flex gap-2 border-t border-[#F1EEF4] pt-4 ${action === 'register' ? 'justify-between' : 'justify-end'}`}>
+          <Button
+            variant="secondary"
+            onClick={() => action === 'register' && registerStep === 2 ? setRegisterStep(1) : setAction(null)}
+            disabled={busy}
+            leftIcon={action === 'register' ? undefined : <X className="h-4 w-4" />}
+          >
+            {action === 'register' && registerStep === 2 ? 'Back' : 'Cancel'}
+          </Button>
+          <Button
+            variant={action === 'lost' ? 'danger' : 'primary'}
+            onClick={() => {
+              if (action === 'register' && registerStep === 1) {
+                setRegisterStep(2);
+                requestAnimationFrame(() => cardNumberRef.current?.focus());
+              } else void submit();
+            }}
+            isLoading={busy}
+            disabled={!uid.trim() || (action === 'register' && registerStep === 2 && !cardNumber.trim()) || (action === 'issue' && !studentId)}
+          >
+            {action === 'register'
+              ? registerStep === 1 ? 'Next →' : 'Register card'
+              : action === 'issue'
+              ? selectedStudent ? `Issue to ${selectedStudent.name.split(' ')[0]}` : 'Issue card'
+              : action === 'return'
+              ? 'Confirm return'
+              : action === 'lost'
+              ? 'Report lost'
+              : action === 'damaged'
+              ? 'Mark damaged'
+              : action === 'archive'
+              ? 'Archive card'
+              : action === 'unarchive'
+              ? 'Restore card'
+              : 'Restore card'}
+          </Button>
+        </div>
       </div>
     </Modal>
   </div>;
