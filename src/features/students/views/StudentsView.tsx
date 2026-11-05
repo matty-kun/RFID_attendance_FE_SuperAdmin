@@ -212,15 +212,9 @@ export const StudentsView: React.FC = () => {
             <span className="text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
               {isLoading && students.length === 0 ? '—' : studentStats.without_cards.toLocaleString()}
             </span>
-            {studentStats.without_cards > 0 ? (
-              <span className="text-[11px] font-semibold text-amber-700">
-                Needs card
-              </span>
-            ) : (
-              <span className="text-[11px] font-semibold text-emerald-700">
-                All set
-              </span>
-            )}
+            <span className="text-[11px] font-semibold text-amber-700">
+              {studentStats.active > 0 ? `${Math.round((studentStats.without_cards / studentStats.active) * 100)}%` : '0%'}
+            </span>
           </div>
           <p className="text-[11px] text-slate-400 mt-0.5">
             {studentStats.without_cards === 0 ? 'Every student has a card' : 'Needs an RFID card to tap in'}

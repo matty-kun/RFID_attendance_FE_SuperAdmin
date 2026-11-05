@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -11,9 +11,10 @@ export const api = axios.create({
   timeout: 10000,
 });
 
-// Extend internal config for slow-request timers
+// Extend internal config for slow-request timers and retry flag
 interface TimedRequestConfig extends InternalAxiosRequestConfig {
   _slowTimer?: ReturnType<typeof setTimeout>;
+  _retry?: boolean;
 }
 
 // Request interceptor: inject token & monitor slow connection
@@ -36,6 +37,43 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Mutex and queue for concurrent requests during silent refresh
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+}> = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else if (token) {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+const triggerSessionExpired = () => {
+  if (typeof window === 'undefined') return;
+  const currentPath = window.location.pathname + window.location.search;
+  if (window.location.pathname !== '/login') {
+    sessionStorage.setItem('auth_return_url', currentPath);
+    sessionStorage.setItem('session_expired_notice', 'true');
+
+    localStorage.removeItem('super_admin_token');
+    localStorage.removeItem('super_admin_refresh_token');
+    localStorage.removeItem('super_admin_user');
+
+    window.dispatchEvent(
+      new CustomEvent('presnt:session-expired', {
+        detail: { returnUrl: currentPath },
+      })
+    );
+  }
+};
+
 // Response interceptor to handle unauthorized/forbidden & network state
 api.interceptors.response.use(
   (response) => {
@@ -50,7 +88,7 @@ api.interceptors.response.use(
     // Backend envelopes responses with { success, data }
     return response.data?.data !== undefined ? response.data.data : response.data;
   },
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     const config = error.config as TimedRequestConfig | undefined;
     if (config?._slowTimer) {
       clearTimeout(config._slowTimer);
@@ -64,22 +102,80 @@ api.interceptors.response.use(
       window.dispatchEvent(new CustomEvent('presnt:network-offline'));
     }
 
-    if (error.response?.status === 401) {
-      const currentPath = window.location.pathname + window.location.search;
-      if (window.location.pathname !== '/login') {
-        sessionStorage.setItem('auth_return_url', currentPath);
-        sessionStorage.setItem('session_expired_notice', 'true');
+    const originalRequest = config;
+    const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') || originalRequest?.url?.includes('/auth/refresh');
 
-        localStorage.removeItem('super_admin_token');
-        localStorage.removeItem('super_admin_user');
+    // Silent Token Refresh: Intercept 401 and refresh automatically if refresh token exists
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthEndpoint) {
+      const storedRefreshToken = localStorage.getItem('super_admin_refresh_token');
 
-        window.dispatchEvent(
-          new CustomEvent('presnt:session-expired', {
-            detail: { returnUrl: currentPath },
+      if (!storedRefreshToken) {
+        triggerSessionExpired();
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        return new Promise<string>((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((newToken) => {
+            if (originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            }
+            return api(originalRequest);
           })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const refreshResponse = await axios.post(
+          `${API_BASE_URL}/auth/refresh`,
+          { refreshToken: storedRefreshToken },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Client-Type': 'web',
+            },
+          }
         );
+
+        const data = refreshResponse.data?.data || refreshResponse.data;
+        const newAccessToken = data?.token || data?.access_token;
+        const newRefreshToken = data?.refreshToken || data?.refresh_token;
+
+        if (!newAccessToken) {
+          throw new Error('No access token returned from refresh endpoint.');
+        }
+
+        localStorage.setItem('super_admin_token', newAccessToken);
+        if (newRefreshToken) {
+          localStorage.setItem('super_admin_refresh_token', newRefreshToken);
+        }
+
+        processQueue(null, newAccessToken);
+
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        }
+        return api(originalRequest);
+      } catch (refreshErr) {
+        processQueue(refreshErr, null);
+        triggerSessionExpired();
+        return Promise.reject(refreshErr);
+      } finally {
+        isRefreshing = false;
       }
     }
+
+    if (error.response?.status === 401 && (!originalRequest || originalRequest._retry || isAuthEndpoint)) {
+      if (!originalRequest?.url?.includes('/auth/login')) {
+        triggerSessionExpired();
+      }
+    }
+
     return Promise.reject(error);
   }
 );
