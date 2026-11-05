@@ -38,8 +38,8 @@ export function OverviewPage() {
   const days = data?.metrics.attendanceByDay ?? [];
   const locations = data?.metrics.locationActivity ?? [];
   const totalPeriodScans = days.reduce((sum, d) => sum + d.timeIns + d.timeOuts, 0);
-  const maxDayTotal = Math.max(1, ...days.map((d) => d.timeIns + d.timeOuts));
-  const yAxisMax = Math.max(4, Math.ceil(maxDayTotal * 1.2));
+  const maxSingleMetric = Math.max(1, ...days.map((d) => Math.max(d.timeIns, d.timeOuts)));
+  const yAxisMax = Math.max(4, Math.ceil(maxSingleMetric * 1.25));
   const yAxisMid = Math.round(yAxisMax / 2);
   const locationPeak = Math.max(1, ...locations.map((location) => location.scansToday));
   const hasCheckpointActivity = locations.some((location) => location.scansToday > 0);
@@ -107,15 +107,15 @@ export function OverviewPage() {
             </div>
 
             <div className="flex items-center gap-4">
-              {/* Legend */}
+              {/* Legend: Green for Time-In, Red for Time-Out */}
               <div className="flex items-center gap-3 text-[11px] font-semibold text-[#756883]">
                 <div className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-xs bg-[#7026B7]" />
-                  <span>Time-In</span>
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#10B981]" />
+                  <span className="font-bold text-emerald-700">Time-In</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-xs bg-[#C084FC]" />
-                  <span>Time-Out</span>
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#EF4444]" />
+                  <span className="font-bold text-rose-700">Time-Out</span>
                 </div>
               </div>
 
@@ -142,14 +142,12 @@ export function OverviewPage() {
                 <div className="w-full border-b border-slate-200" />
               </div>
 
-              {/* Bars Row */}
               {hasAttendance ? (
                 <div className="relative z-10 flex-1 flex items-end gap-2 sm:gap-4 pb-6">
                   {days.map((day, idx) => {
+                    const inHeight = day.timeIns > 0 ? Math.min(100, Math.round((day.timeIns / yAxisMax) * 100)) : 0;
+                    const outHeight = day.timeOuts > 0 ? Math.min(100, Math.round((day.timeOuts / yAxisMax) * 100)) : 0;
                     const total = day.timeIns + day.timeOuts;
-                    const heightPct = total > 0 ? Math.min(100, Math.round((total / yAxisMax) * 100)) : 0;
-                    const inPct = total > 0 ? (day.timeIns / total) * 100 : 0;
-                    const outPct = total > 0 ? (day.timeOuts / total) * 100 : 0;
                     const isHovered = hoveredDay === idx;
                     const isToday = day.date === today?.date;
 
@@ -159,56 +157,73 @@ export function OverviewPage() {
                         onMouseEnter={() => setHoveredDay(idx)}
                         onMouseLeave={() => setHoveredDay(null)}
                         className={`relative flex-1 flex flex-col items-center justify-end h-full rounded-xl transition-all cursor-pointer py-1 ${
-                          isHovered ? 'bg-purple-50/60' : ''
+                          isHovered ? 'bg-purple-50/50' : ''
                         }`}
                       >
                         {/* Floating Tooltip */}
                         {isHovered && (
-                          <div className="absolute -top-11 z-30 flex flex-col items-center pointer-events-none animate-in fade-in zoom-in-95 duration-100">
-                            <div className="rounded-xl bg-[#24133F] px-2.5 py-1 text-center text-white shadow-xl text-[11px] whitespace-nowrap">
-                              <span className="font-extrabold">{total} {total === 1 ? 'scan' : 'scans'}</span>
-                              <span className="text-purple-300 ml-1">({day.timeIns} In · {day.timeOuts} Out)</span>
+                          <div className="absolute -top-14 z-30 flex flex-col items-center pointer-events-none animate-in fade-in zoom-in-95 duration-100">
+                            <div className="rounded-xl bg-[#24133F] px-3 py-1.5 text-center text-white shadow-xl text-[11px] whitespace-nowrap">
+                              <span className="font-extrabold text-xs">
+                                {formatDay(day.date)} <span className="font-normal text-purple-300 text-[10px]">({total} {total === 1 ? 'scan' : 'scans'})</span>
+                              </span>
+                              <div className="flex items-center justify-center gap-2 mt-0.5 text-[11px]">
+                                <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                                  In: {day.timeIns}
+                                </span>
+                                <span className="text-slate-400">·</span>
+                                <span className="flex items-center gap-1 text-rose-400 font-bold">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+                                  Out: {day.timeOuts}
+                                </span>
+                              </div>
                             </div>
                             <div className="h-1.5 w-1.5 -rotate-45 bg-[#24133F] -mt-0.5" />
                           </div>
                         )}
 
-                        {/* Bar Value Count on top */}
-                        <span
-                          className={`text-[11px] font-bold mb-1 tabular-nums transition-colors ${
-                            total > 0
-                              ? isHovered
-                                ? 'text-[#7026B7] scale-110'
-                                : 'text-[#24133F]'
-                              : 'text-slate-300'
-                          }`}
-                        >
-                          {total > 0 ? total : '0'}
-                        </span>
+                        {/* Side-by-side Pair of Bars */}
+                        <div className="w-full flex justify-center items-end gap-1 sm:gap-2 h-full">
+                          {/* Time In Bar (Green) */}
+                          <div className="flex flex-col items-center justify-end h-full">
+                            {day.timeIns > 0 ? (
+                              <>
+                                <span className={`text-[10px] font-bold mb-1 tabular-nums transition-colors ${
+                                  isHovered ? 'text-emerald-700 scale-110 font-extrabold' : 'text-emerald-600'
+                                }`}>
+                                  {day.timeIns}
+                                </span>
+                                <div
+                                  style={{ height: `${inHeight}%` }}
+                                  className="w-3 sm:w-4.5 rounded-t-md bg-[#10B981] shadow-xs transition-all duration-300 hover:brightness-110"
+                                  title={`Time In: ${day.timeIns}`}
+                                />
+                              </>
+                            ) : (
+                              <div className="h-1 w-3 sm:w-4.5 rounded-full bg-slate-200" title="Time In: 0" />
+                            )}
+                          </div>
 
-                        {/* Stacked Bar or Baseline Dot */}
-                        <div className="w-full flex justify-center items-end" style={{ height: '100%' }}>
-                          {total > 0 ? (
-                            <div
-                              style={{ height: `${heightPct}%` }}
-                              className="w-full max-w-[28px] sm:max-w-[36px] rounded-t-xl overflow-hidden flex flex-col-reverse shadow-xs transition-all duration-300"
-                            >
-                              {/* Time-In (bottom, darker brand purple) */}
-                              <div
-                                style={{ height: `${inPct}%` }}
-                                className="w-full bg-[#7026B7]"
-                                title={`Time In: ${day.timeIns}`}
-                              />
-                              {/* Time-Out (top, lighter lavender/violet) */}
-                              <div
-                                style={{ height: `${outPct}%` }}
-                                className="w-full bg-[#C084FC]"
-                                title={`Time Out: ${day.timeOuts}`}
-                              />
-                            </div>
-                          ) : (
-                            <div className="h-1 w-5 sm:w-6 rounded-full bg-slate-200" title="0 scans" />
-                          )}
+                          {/* Time Out Bar (Red) */}
+                          <div className="flex flex-col items-center justify-end h-full">
+                            {day.timeOuts > 0 ? (
+                              <>
+                                <span className={`text-[10px] font-bold mb-1 tabular-nums transition-colors ${
+                                  isHovered ? 'text-rose-700 scale-110 font-extrabold' : 'text-rose-600'
+                                }`}>
+                                  {day.timeOuts}
+                                </span>
+                                <div
+                                  style={{ height: `${outHeight}%` }}
+                                  className="w-3 sm:w-4.5 rounded-t-md bg-[#EF4444] shadow-xs transition-all duration-300 hover:brightness-110"
+                                  title={`Time Out: ${day.timeOuts}`}
+                                />
+                              </>
+                            ) : (
+                              <div className="h-1 w-3 sm:w-4.5 rounded-full bg-slate-200" title="Time Out: 0" />
+                            )}
+                          </div>
                         </div>
 
                         {/* Date Label under baseline */}
