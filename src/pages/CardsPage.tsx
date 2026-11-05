@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Archive, ArchiveRestore, Check, CheckCircle2, CircleAlert, CreditCard, ExternalLink, Filter, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, Trash2, UserRound, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatYearLevel } from '../utils/formatters';
+import { soundManager } from '../utils/audioFeedback';
 import { request } from '../services/apiClient';
 import { Button } from '../components/common/Button';
 import { Modal } from '../components/common/Modal';
@@ -83,6 +84,10 @@ export function CardsPage() {
   const [savingCardNumber, setSavingCardNumber] = useState(false);
   const [editCardNumberError, setEditCardNumberError] = useState('');
   const [registerCardNumberError, setRegisterCardNumberError] = useState('');
+  const [isContinuousRegister, setIsContinuousRegister] = useState(true);
+  const [sessionRegisteredCount, setSessionRegisteredCount] = useState(0);
+  const [lastRegisteredCard, setLastRegisteredCard] = useState<string | null>(null);
+  const registerUidInputRef = useRef<HTMLInputElement>(null);
   const [inspectUid, setInspectUid] = useState('');
   const [inspecting, setInspecting] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -220,6 +225,11 @@ export function CardsPage() {
     setStudentId('');
     setStudentSearch('');
     setNote('');
+    if (next === 'register') {
+      setSessionRegisteredCount(0);
+      setLastRegisteredCard(null);
+      setRegisterCardNumberError('');
+    }
     if (next === 'issue') {
       setLoadingStudents(true);
       try {
@@ -304,10 +314,40 @@ export function CardsPage() {
     if (!action || !uid.trim() || (action === 'register' && !cardNumber.trim())) return;
     setBusy(true);
     try {
-      await request.post(`/cards/${encodeURIComponent(uid.trim())}/actions`, { action, student_id: action === 'issue' ? studentId : undefined, note: note.trim() || undefined, card_number: action === 'register' ? cardNumber.trim() : undefined });
-      setAction(null); closeDetail(); showToast(action === 'register' ? 'RFID card registered.' : 'Card updated.', 'success'); await Promise.all([load(false), loadSummary()]);
-    } catch (e) { showToast(message(e), 'error'); }
-    finally { setBusy(false); }
+      await request.post(`/cards/${encodeURIComponent(uid.trim())}/actions`, {
+        action,
+        student_id: action === 'issue' ? studentId : undefined,
+        note: note.trim() || undefined,
+        card_number: action === 'register' ? cardNumber.trim() : undefined
+      });
+
+      if (action === 'register' && isContinuousRegister) {
+        soundManager.playSuccessBeep();
+        const savedNumber = cardNumber.trim();
+        setLastRegisteredCard(savedNumber);
+        setSessionRegisteredCount(prev => prev + 1);
+        showToast(`Card ${savedNumber} registered successfully!`, 'success');
+        setUid('');
+        setCardNumber('');
+        setRegisterCardNumberError('');
+        setRegisterStep(1);
+        void load(false);
+        void loadSummary();
+        requestAnimationFrame(() => {
+          registerUidInputRef.current?.focus();
+        });
+      } else {
+        setAction(null);
+        closeDetail();
+        showToast(action === 'register' ? 'RFID card registered.' : 'Card updated.', 'success');
+        await Promise.all([load(false), loadSummary()]);
+      }
+    } catch (e) {
+      soundManager.playErrorBuzz();
+      showToast(message(e), 'error');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const selectedStudent = students.find(s => s.id === studentId);
@@ -875,12 +915,41 @@ export function CardsPage() {
           </div>
         )}
 
+        {activeAction === 'register' && (
+          <div className="flex items-center justify-between rounded-xl bg-purple-50/70 border border-purple-200/70 px-3.5 py-2.5">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isContinuousRegister}
+                onChange={e => setIsContinuousRegister(e.target.checked)}
+                className="h-4 w-4 rounded accent-[#7026B7]"
+              />
+              <span className="text-xs font-bold text-[#24133F]">
+                Continuous batch mode (keep open for next card)
+              </span>
+            </label>
+            {sessionRegisteredCount > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#E7F8EE] px-2.5 py-0.5 text-[11px] font-bold text-[#087A3A]">
+                <CheckCircle2 className="h-3.5 w-3.5" /> {sessionRegisteredCount} registered
+              </span>
+            )}
+          </div>
+        )}
+
+        {lastRegisteredCard && activeAction === 'register' && registerStep === 1 && (
+          <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3.5 py-2 text-xs font-bold text-emerald-800 animate-in fade-in slide-in-from-top-1">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span>Card {lastRegisteredCard} registered! Tap next card on reader.</span>
+          </div>
+        )}
+
         {activeAction === 'register' && registerStep === 1 && (
-          <label className="block font-semibold">
-            Scan card UID
-            <div className="relative mt-1">
+          <label className="block font-semibold text-[#24133F]">
+            <span>1. Tap physical card on USB reader</span>
+            <div className="relative mt-1.5">
               <Radio className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#7026B7]" />
               <input
+                ref={registerUidInputRef}
                 value={uid}
                 onChange={e => setUid(e.target.value)}
                 onKeyDown={e => {
@@ -893,10 +962,13 @@ export function CardsPage() {
                   }
                 }}
                 autoFocus
-                placeholder="Tap or scan card now"
-                className="block h-10 w-full rounded-xl border border-[#E5E0EB] py-0 pl-9 pr-3 focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100 disabled:bg-[#F7F6F9]"
+                placeholder="Waiting for card tap..."
+                className="block h-10 w-full rounded-xl border border-[#E5E0EB] py-0 pl-9 pr-3 font-mono font-bold text-[#24133F] focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100 disabled:bg-[#F7F6F9]"
               />
             </div>
+            <span className="mt-1 block text-[11px] font-normal text-[#756883]">
+              The reader automatically captures the UID and advances to the printed number.
+            </span>
           </label>
         )}
 
@@ -907,7 +979,7 @@ export function CardsPage() {
               <span className="font-mono font-bold text-[#24133F]">{uid.trim()}</span>
             </div>
             <label className="block font-semibold text-[#24133F]">
-              <span>Printed Card No.</span>
+              <span>2. Printed Card No. (look at card)</span>
               <div className="relative mt-1.5 flex items-center rounded-xl border border-[#E5E0EB] bg-white overflow-hidden transition-all focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100">
                 <span className="flex items-center bg-[#F4EFFB] px-3.5 py-2.5 font-mono text-xs font-black text-[#7026B7] border-r border-[#E5E0EB] select-none">
                   RFID-
@@ -1139,11 +1211,22 @@ export function CardsPage() {
         <div className={`flex gap-2 border-t border-[#F1EEF4] pt-4 ${activeAction === 'register' ? 'justify-between' : 'justify-end'}`}>
           <Button
             variant="secondary"
-            onClick={() => activeAction === 'register' && registerStep === 2 ? setRegisterStep(1) : setAction(null)}
+            onClick={() => {
+              if (activeAction === 'register' && registerStep === 2) {
+                setRegisterStep(1);
+                requestAnimationFrame(() => registerUidInputRef.current?.focus());
+              } else {
+                setAction(null);
+              }
+            }}
             disabled={busy}
             leftIcon={activeAction === 'register' ? undefined : <X className="h-4 w-4" />}
           >
-            {activeAction === 'register' && registerStep === 2 ? 'Back' : 'Cancel'}
+            {activeAction === 'register' && registerStep === 2
+              ? 'Back'
+              : activeAction === 'register' && sessionRegisteredCount > 0
+              ? 'Done (Close)'
+              : 'Cancel'}
           </Button>
           <Button
             variant={activeAction === 'lost' || activeAction === 'damaged' ? 'danger' : activeAction === 'return' ? 'success' : 'primary'}
@@ -1157,7 +1240,7 @@ export function CardsPage() {
             disabled={!uid.trim() || (activeAction === 'register' && registerStep === 2 && (!cardNumber.trim() || Boolean(registerCardNumberError))) || (activeAction === 'issue' && !studentId)}
           >
             {activeAction === 'register'
-              ? registerStep === 1 ? 'Next →' : 'Register card'
+              ? registerStep === 1 ? 'Next →' : (isContinuousRegister ? 'Register & Next (Enter)' : 'Register card')
               : activeAction === 'issue'
               ? selectedStudent ? `Issue to ${selectedStudent.name.split(' ')[0]}` : 'Issue card'
               : activeAction === 'return'
