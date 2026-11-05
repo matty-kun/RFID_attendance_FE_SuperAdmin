@@ -188,7 +188,49 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
       {admin && <div className="flex min-h-full select-none flex-col bg-white text-[#24133F]">
         <div className="relative flex flex-col justify-between bg-gradient-to-b from-[#9333EA] via-[#A855F7] via-[#C084FC]/80 via-[#F3E8FF] to-white px-6 pb-10 pt-5">
           <div className="z-20 flex items-center justify-between gap-3">
-            {isEditingName ? <input autoFocus aria-label="Administrator name" value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} onBlur={() => void saveName()} onKeyDown={(event) => { if (event.key === 'Enter') void saveName(); if (event.key === 'Escape') setIsEditingName(false); }} disabled={isSaving} className="min-w-0 max-w-[340px] flex-1 border-b-2 border-white bg-transparent text-2xl font-black tracking-tight text-white outline-none" /> : <button type="button" onClick={() => { if (!admin.archived_at) { setNameDraft(admin.name); setIsEditingName(true); } }} title="Click to edit name" disabled={Boolean(admin.archived_at)} className="group flex min-w-0 items-center gap-2 rounded-xl px-1 py-0.5 text-left transition-colors hover:bg-white/20 disabled:cursor-default"><h2 className="max-w-[340px] truncate text-2xl font-black tracking-tight text-white drop-shadow-sm">{admin.name}</h2>{!admin.archived_at && <Pencil className="h-4 w-4 shrink-0 text-white/70 opacity-0 transition-opacity group-hover:opacity-100" />}</button>}
+            {isEditingName ? (
+              <div className="flex items-center gap-2 flex-1 max-w-[340px]">
+                <input
+                  autoFocus
+                  aria-label="Administrator name"
+                  value={nameDraft}
+                  onChange={(event) => setNameDraft(event.target.value)}
+                  onBlur={() => void saveName()}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') void saveName();
+                    if (event.key === 'Escape') setIsEditingName(false);
+                  }}
+                  disabled={isSaving}
+                  className="min-w-0 flex-1 border-b-2 border-white bg-transparent text-2xl font-black tracking-tight text-white outline-none"
+                />
+                {isSaving && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white shrink-0">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                    Saving…
+                  </span>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!admin.archived_at) {
+                    setNameDraft(admin.name);
+                    setIsEditingName(true);
+                  }
+                }}
+                title="Click to edit name"
+                disabled={Boolean(admin.archived_at)}
+                className="group flex min-w-0 items-center gap-2 rounded-xl px-2.5 py-1 -ml-2 text-left transition-all hover:bg-white/20 disabled:cursor-default cursor-pointer"
+              >
+                <h2 className="max-w-[340px] truncate text-2xl font-black tracking-tight text-white drop-shadow-sm">
+                  {admin.name}
+                </h2>
+                {!admin.archived_at && (
+                  <Pencil className="h-4 w-4 shrink-0 text-white/70 opacity-0 transition-opacity group-hover:opacity-100" />
+                )}
+              </button>
+            )}
             <div className="flex shrink-0 items-center gap-2">
               <button type="button" onClick={() => admin.archived_at ? void onRestore(admin.id) : setIsArchiveConfirmOpen(true)} disabled={isSelf || isSaving} title={isSelf ? 'You cannot archive your own account' : admin.archived_at ? 'Restore administrator' : 'Archive administrator'} aria-label={admin.archived_at ? 'Restore administrator' : 'Archive administrator'} className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/50 bg-white/30 text-white shadow-xs backdrop-blur-md transition-all hover:bg-white/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60">{admin.archived_at ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</button>
               <button type="button" onClick={() => onDelete(admin)} disabled={isSelf || isSaving} title={isSelf ? 'You cannot delete your own account' : 'Delete administrator'} aria-label="Delete administrator" className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/50 bg-white/30 text-white shadow-xs backdrop-blur-md transition-all hover:bg-white/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"><Trash2 className="h-4 w-4" /></button>
@@ -208,27 +250,75 @@ export const AdminProfileDrawer: React.FC<AdminProfileDrawerProps> = ({
         <div className="relative z-20 flex-1 space-y-4 bg-white p-5 pt-1 pb-8">
           {photoError && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">{photoError}</p>}
           {inlineError && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">{inlineError}</p>}
-          <p className="text-sm font-bold text-[#756883]">Administrator account</p>
-
-          <div className="flex items-stretch gap-2">
-            <div className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-bold shadow-[0_4px_0_#D0C9D5]"><Mail className="h-4 w-4 shrink-0 text-[#A59AAB]" /><span className="truncate">{admin.email}</span></div>
-            <button
-              type="button"
-              onClick={() => setIsResetPasswordOpen(true)}
-              disabled={Boolean(admin.archived_at)}
-              title={admin.archived_at ? 'Restore administrator before resetting password' : 'Reset password'}
-              className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-[#7026B7] px-4 py-3 text-xs font-bold text-white shadow-[0_4px_0_#451475] transition-colors hover:bg-[#621FA3] active:scale-95 disabled:opacity-50 cursor-pointer"
-            >
-              <KeyRound className="h-4 w-4" />
-              Reset Password
-            </button>
-          </div>
+          {admin.archived_at && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3.5 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-extrabold text-amber-900">Administrator is Archived</p>
+                <p className="text-[11px] text-amber-700/90 mt-0.5">
+                  This administrator is currently inactive and cannot sign in. Click Restore in the top bar to reactivate.
+                </p>
+              </div>
+            </div>
+          )}
 
           <section aria-label="Administrator overview" className="pt-1">
             <p className="text-[11px] font-black uppercase tracking-wider text-[#A59AAB]">Overview</p>
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-              <div className="relative rounded-2xl border border-slate-200 bg-white p-3 shadow-2xs"><p className="text-[10px] font-bold uppercase text-slate-500">Role</p><button type="button" onClick={() => setIsRoleOpen((open) => !open)} disabled={Boolean(admin.archived_at) || isSelf} className="mt-0.5 flex w-full items-center gap-1 text-left font-bold text-slate-900 disabled:cursor-default"><Shield className="h-3.5 w-3.5 text-[#7026B7]" />{admin.role === 'super_admin' ? 'Super Admin' : 'Admin'}{!admin.archived_at && !isSelf && <ChevronDown className="ml-auto h-4 w-4 text-slate-400" />}</button>{isRoleOpen && <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-lg">{(['admin', 'super_admin'] as const).map((role) => <button key={role} type="button" onClick={() => void saveRole(role)} className="block w-full rounded-lg px-3 py-2 text-left font-semibold hover:bg-purple-50">{role === 'super_admin' ? 'Super Admin' : 'Admin'}</button>)}</div>}</div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-2xs"><p className="text-[10px] font-bold uppercase text-slate-500">Registered</p><p className="mt-0.5 flex items-center gap-1 font-bold text-slate-900"><CalendarDays className="h-3.5 w-3.5 text-[#7026B7]" />{new Date(admin.created_at).toLocaleDateString()}</p></div>
+              <div className="relative rounded-2xl border border-slate-200 bg-white p-3 shadow-2xs">
+                <p className="text-[10px] font-bold uppercase text-slate-500">Role</p>
+                <button
+                  type="button"
+                  onClick={() => setIsRoleOpen((open) => !open)}
+                  disabled={Boolean(admin.archived_at) || isSelf}
+                  className="mt-0.5 flex w-full items-center gap-1.5 text-left font-bold text-slate-900 disabled:cursor-default"
+                >
+                  <Shield className="h-3.5 w-3.5 text-[#7026B7]" />
+                  <span>{admin.role === 'super_admin' ? 'Super Admin' : 'Admin'}</span>
+                  {!admin.archived_at && !isSelf && <ChevronDown className="ml-auto h-4 w-4 text-slate-400" />}
+                </button>
+                {isRoleOpen && (
+                  <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+                    {(['admin', 'super_admin'] as const).map((role) => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => void saveRole(role)}
+                        className="block w-full rounded-lg px-3 py-2 text-left font-semibold hover:bg-purple-50"
+                      >
+                        {role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-2xs">
+                <p className="text-[10px] font-bold uppercase text-slate-500">Registered</p>
+                <p className="mt-0.5 flex items-center gap-1.5 font-bold text-slate-900">
+                  <CalendarDays className="h-3.5 w-3.5 text-[#7026B7]" />
+                  <span>{new Date(admin.created_at).toLocaleDateString()}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Subtle Administrator Account & Password below Overview */}
+            <div className="mt-2.5 flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/60 px-3.5 py-2.5 text-xs">
+              <div className="flex items-center gap-2 min-w-0 pr-2">
+                <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Account</span>
+                <span className="font-semibold text-slate-700 truncate text-xs">
+                  {admin.email}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsResetPasswordOpen(true)}
+                disabled={Boolean(admin.archived_at)}
+                title={admin.archived_at ? 'Restore administrator before resetting password' : 'Reset password'}
+                className="inline-flex shrink-0 items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#7026B7] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <KeyRound className="h-3.5 w-3.5 text-[#7026B7]" />
+                <span>Reset Password</span>
+              </button>
             </div>
           </section>
 
