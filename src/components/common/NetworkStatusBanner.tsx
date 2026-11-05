@@ -128,7 +128,7 @@ export const NetworkStatusBanner: React.FC = () => {
   return (
     <aside
       aria-label="Network status banner"
-      className="fixed top-3 left-1/2 -translate-x-1/2 z-50 max-w-xl w-[92%] sm:w-auto animate-in fade-in slide-in-from-top-2 duration-200"
+      className="fixed bottom-6 right-6 z-50 max-w-md w-[calc(100%-48px)] sm:w-auto animate-in fade-in slide-in-from-bottom-3 duration-200"
     >
       {status === 'offline' && (
         <div
@@ -204,7 +204,7 @@ export const NetworkStatusBanner: React.FC = () => {
       {status === 'online' && wasOffline && (
         <div
           style={{ backgroundColor: '#FFFFFF', borderColor: '#A7F3D0' }}
-          className="flex items-center gap-2.5 rounded-2xl border bg-white px-4 py-2.5 text-[#24133F] shadow-[0_8px_30px_rgba(36,19,63,0.12)] animate-in fade-in slide-in-from-top-1"
+          className="flex items-center gap-2.5 rounded-2xl border bg-white px-4 py-2.5 text-[#24133F] shadow-[0_8px_30px_rgba(36,19,63,0.12)] animate-in fade-in slide-in-from-bottom-2"
         >
           <div
             style={{ backgroundColor: '#E4F7EB', borderColor: '#A7F3D0' }}
