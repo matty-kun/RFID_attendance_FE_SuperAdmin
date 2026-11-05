@@ -80,6 +80,8 @@ export function CardsPage() {
   const [isEditingCardNumber, setIsEditingCardNumber] = useState(false);
   const [editCardNumber, setEditCardNumber] = useState('');
   const [savingCardNumber, setSavingCardNumber] = useState(false);
+  const [editCardNumberError, setEditCardNumberError] = useState('');
+  const [registerCardNumberError, setRegisterCardNumberError] = useState('');
   const [inspectUid, setInspectUid] = useState('');
   const [inspecting, setInspecting] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -247,6 +249,21 @@ export function CardsPage() {
     }
   };
 
+  const checkCardNumberAvailable = useCallback(async (suffix: string, excludeId?: string): Promise<boolean> => {
+    const cleanSuffix = suffix.trim().replace(/^RFID-?/i, '').toUpperCase();
+    if (!cleanSuffix) return true;
+    const candidate = `RFID-${cleanSuffix}`;
+    const localMatch = cards.some(c => c.card_number.toUpperCase() === candidate && c.id !== excludeId);
+    if (localMatch) return false;
+    try {
+      const res = await request.get<{ cards: Card[] }>(`/cards?search=${encodeURIComponent(candidate)}`);
+      const remoteMatch = (res.cards || []).some(c => c.card_number.toUpperCase() === candidate && c.id !== excludeId);
+      return !remoteMatch;
+    } catch {
+      return true;
+    }
+  }, [cards]);
+
   const handleSaveCardNumber = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!detail) return;
@@ -254,22 +271,29 @@ export function CardsPage() {
     const clean = `RFID-${cleanSuffix}`;
     if (!cleanSuffix || clean === detail.card.card_number) {
       setEditCardNumber(detail.card.card_number.replace(/^RFID-/i, ''));
+      setEditCardNumberError('');
       setIsEditingCardNumber(false);
       return;
     }
     setSavingCardNumber(true);
     try {
+      const isAvailable = await checkCardNumberAvailable(cleanSuffix, detail.card.id);
+      if (!isAvailable) {
+        setEditCardNumberError(`Card number ${clean} is already in use.`);
+        setSavingCardNumber(false);
+        return;
+      }
       const res = await request.patch<{ card: Card }>(`/cards/${detail.card.id}`, { card_number: clean });
       const updatedCard = res.card;
       setDetail(prev => prev ? { ...prev, card: { ...prev.card, card_number: updatedCard.card_number } } : null);
       setSelectedCard(prev => prev ? { ...prev, card_number: updatedCard.card_number } : null);
       setCards(prev => prev.map(c => c.id === detail.card.id ? { ...c, card_number: updatedCard.card_number } : c));
+      setEditCardNumberError('');
       setIsEditingCardNumber(false);
       showToast(`Printed card number updated to ${clean}!`, 'success');
     } catch (err: any) {
-      setEditCardNumber(detail.card.card_number.replace(/^RFID-/i, ''));
-      setIsEditingCardNumber(false);
-      showToast(err?.response?.data?.error?.message || err?.message || 'Failed to update card number.', 'error');
+      const errMsg = err?.response?.data?.error?.message || err?.message || 'Failed to update card number.';
+      setEditCardNumberError(errMsg);
     } finally {
       setSavingCardNumber(false);
     }
@@ -472,6 +496,7 @@ export function CardsPage() {
               tabIndex={0}
               onClick={() => {
                 setEditCardNumber(detail.card.card_number.replace(/^RFID-/i, ''));
+                setEditCardNumberError('');
                 setIsEditingCardNumber(true);
               }}
               className="group flex items-center gap-2 rounded-xl py-0.5 px-2 -ml-2 transition-all hover:bg-white/20 cursor-pointer"
@@ -483,31 +508,54 @@ export function CardsPage() {
               <Pencil className="h-4 w-4 text-white/70 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
             </div>
           ) : (
-            <div className="flex items-center gap-1 text-2xl font-black text-white tracking-tight font-mono flex-1 max-w-[340px]">
-              <span className="select-none opacity-90">RFID-</span>
-              <input
-                type="text"
-                value={editCardNumber}
-                onChange={(e) => setEditCardNumber(e.target.value.replace(/^RFID-?/i, '').replace(/[^A-Z0-9-]/gi, '').toUpperCase())}
-                onBlur={() => void handleSaveCardNumber()}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') void handleSaveCardNumber();
-                  if (e.key === 'Escape') {
-                    setEditCardNumber(detail.card.card_number.replace(/^RFID-/i, ''));
-                    setIsEditingCardNumber(false);
-                  }
-                }}
-                disabled={savingCardNumber}
-                autoFocus
-                placeholder="001"
-                maxLength={27}
-                className="text-2xl font-black uppercase text-white tracking-tight bg-transparent border-b-2 border-white outline-none px-0 py-0 w-32 placeholder:text-white/60 font-mono"
-              />
-              {savingCardNumber && (
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white shrink-0 ml-1">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-                  Saving…
-                </span>
+            <div className="flex flex-col gap-1 flex-1 max-w-[360px]">
+              <div className="flex items-center gap-1 text-2xl font-black text-white tracking-tight font-mono">
+                <span className="select-none opacity-90">RFID-</span>
+                <input
+                  type="text"
+                  value={editCardNumber}
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/^RFID-?/i, '').replace(/[^A-Z0-9-]/gi, '').toUpperCase();
+                    setEditCardNumber(clean);
+                    if (clean && `RFID-${clean}` !== detail.card.card_number) {
+                      void checkCardNumberAvailable(clean, detail.card.id).then(avail => {
+                        setEditCardNumberError(avail ? '' : `RFID-${clean} already exists`);
+                      });
+                    } else {
+                      setEditCardNumberError('');
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!editCardNumberError) {
+                      void handleSaveCardNumber();
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void handleSaveCardNumber();
+                    if (e.key === 'Escape') {
+                      setEditCardNumber(detail.card.card_number.replace(/^RFID-/i, ''));
+                      setEditCardNumberError('');
+                      setIsEditingCardNumber(false);
+                    }
+                  }}
+                  disabled={savingCardNumber}
+                  autoFocus
+                  placeholder="001"
+                  maxLength={27}
+                  className={`text-2xl font-black uppercase text-white tracking-tight bg-transparent border-b-2 outline-none px-0 py-0 w-32 placeholder:text-white/60 font-mono ${editCardNumberError ? 'border-rose-300 text-rose-100' : 'border-white'}`}
+                />
+                {savingCardNumber && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white shrink-0 ml-1">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                    Saving…
+                  </span>
+                )}
+              </div>
+              {editCardNumberError && (
+                <p className="text-[11px] font-bold text-rose-200 bg-rose-950/70 backdrop-blur-md px-2 py-0.5 rounded-md inline-flex items-center gap-1 animate-in fade-in slide-in-from-top-1">
+                  <CircleAlert className="w-3.5 h-3.5 text-rose-300 shrink-0" />
+                  {editCardNumberError}
+                </p>
               )}
             </div>
           )}<div className="flex gap-2">
@@ -842,14 +890,28 @@ export function CardsPage() {
                   onChange={e => {
                     const clean = e.target.value.replace(/^RFID-?/i, '').replace(/[^A-Z0-9-]/gi, '').toUpperCase();
                     setCardNumber(clean ? `RFID-${clean}` : '');
+                    if (clean) {
+                      void checkCardNumberAvailable(clean).then(avail => {
+                        setRegisterCardNumberError(avail ? '' : `RFID-${clean} already exists`);
+                      });
+                    } else {
+                      setRegisterCardNumberError('');
+                    }
                   }}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (!busy) void submit(); } }}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (!busy && !registerCardNumberError) void submit(); } }}
                   placeholder="001"
                   maxLength={27}
                   className="block h-10 w-full px-3 text-xs font-mono font-bold uppercase text-[#24133F] outline-none"
                 />
               </div>
-              <span className="mt-1.5 block font-normal text-[#756883]">Enter the number printed on this card.</span>
+              {registerCardNumberError ? (
+                <span className="mt-1.5 flex items-center gap-1 text-xs font-bold text-rose-600">
+                  <CircleAlert className="h-3.5 w-3.5 shrink-0" />
+                  {registerCardNumberError}
+                </span>
+              ) : (
+                <span className="mt-1.5 block font-normal text-[#756883]">Enter the number printed on this card.</span>
+              )}
             </label>
           </>
         )}
@@ -1056,7 +1118,7 @@ export function CardsPage() {
               } else void submit();
             }}
             isLoading={busy}
-            disabled={!uid.trim() || (action === 'register' && registerStep === 2 && !cardNumber.trim()) || (action === 'issue' && !studentId)}
+            disabled={!uid.trim() || (action === 'register' && registerStep === 2 && (!cardNumber.trim() || Boolean(registerCardNumberError))) || (action === 'issue' && !studentId)}
           >
             {action === 'register'
               ? registerStep === 1 ? 'Next →' : 'Register card'

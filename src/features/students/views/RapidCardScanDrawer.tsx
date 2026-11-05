@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, CircleAlert } from 'lucide-react';
 import { Button } from '../../../components/common/Button';
 import { request } from '../../../services/apiClient';
 import { Drawer, getOpenDrawerCount } from '../../../components/common/Drawer';
@@ -44,6 +44,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
     uid: string;
   } | null>(null);
   const [pendingCardNumberInput, setPendingCardNumberInput] = useState('');
+  const [duplicateCardError, setDuplicateCardError] = useState('');
   const newCardInputRef = useRef<HTMLInputElement>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -103,6 +104,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
   const handleConfirmNewCard = async () => {
     if (!pendingNewCard || !pendingCardNumberInput.trim() || isProcessing) return;
     const { student, uid } = pendingNewCard;
+    if (duplicateCardError) return;
     const cleanSuffix = pendingCardNumberInput.trim().replace(/^RFID-?/i, '').toUpperCase();
     const formattedNumber = `RFID-${cleanSuffix}`;
 
@@ -400,14 +402,24 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
                           const raw = e.target.value;
                           const clean = raw.replace(/^RFID-?/i, '').replace(/[^A-Z0-9-]/gi, '').toUpperCase();
                           setPendingCardNumberInput(clean);
+                          if (clean) {
+                            const candidate = `RFID-${clean}`;
+                            void request.get<{ cards: any[] }>(`/cards?search=${encodeURIComponent(candidate)}`).then(res => {
+                              const match = (res.cards || []).some(c => c.card_number?.toUpperCase() === candidate);
+                              setDuplicateCardError(match ? `${candidate} is already registered` : '');
+                            }).catch(() => {});
+                          } else {
+                            setDuplicateCardError('');
+                          }
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
-                            void handleConfirmNewCard();
+                            if (!duplicateCardError) void handleConfirmNewCard();
                           } else if (e.key === 'Escape') {
                             setPendingNewCard(null);
                             setPendingCardNumberInput('');
+                            setDuplicateCardError('');
                             inputRef.current?.focus();
                           }
                         }}
@@ -416,9 +428,16 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
                         className="block h-10 w-full px-3 text-xs font-mono font-bold uppercase text-[#24133F] outline-none"
                       />
                     </div>
-                    <span className="mt-1.5 block font-normal text-[11px] text-[#756883]">
-                      Enter the number printed on this card so it registers in the RFID Cards page.
-                    </span>
+                    {duplicateCardError ? (
+                      <span className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-rose-600">
+                        <CircleAlert className="h-3.5 w-3.5 shrink-0" />
+                        {duplicateCardError}
+                      </span>
+                    ) : (
+                      <span className="mt-1.5 block font-normal text-[11px] text-[#756883]">
+                        Enter the number printed on this card so it registers in the RFID Cards page.
+                      </span>
+                    )}
                   </label>
 
                   <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5E0EB]">
@@ -438,7 +457,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
                       type="button"
                       variant="primary"
                       size="sm"
-                      disabled={!pendingCardNumberInput.trim() || isProcessing}
+                      disabled={!pendingCardNumberInput.trim() || Boolean(duplicateCardError) || isProcessing}
                       isLoading={isProcessing}
                       onClick={() => void handleConfirmNewCard()}
                     >

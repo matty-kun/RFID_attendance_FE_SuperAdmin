@@ -7,14 +7,27 @@ import { cn } from '../../utils/cn';
 let openDrawerStack: string[] = [];
 const stackListeners = new Set<() => void>();
 
+function syncBodyScrollLock() {
+  if (typeof document === 'undefined') return;
+  if (openDrawerStack.length > 0) {
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+  } else {
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+  }
+}
+
 function pushDrawerToStack(id: string) {
   openDrawerStack = openDrawerStack.filter((item) => item !== id);
   openDrawerStack.push(id);
+  syncBodyScrollLock();
   stackListeners.forEach((fn) => fn());
 }
 
 function removeDrawerFromStack(id: string) {
   openDrawerStack = openDrawerStack.filter((item) => item !== id);
+  syncBodyScrollLock();
   stackListeners.forEach((fn) => fn());
 }
 
