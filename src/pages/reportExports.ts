@@ -176,16 +176,33 @@ export async function exportAttendance(
 
     const sheet = workbook.addWorksheet('Student Attendance', {
       views: [{ showGridLines: true }],
+      pageSetup: {
+        orientation: 'landscape',
+        paperSize: 9, // A4
+        fitToPage: true,
+        fitToWidth: 1,
+        fitToHeight: 0,
+        horizontalCentered: true,
+        showGridLines: true,
+        margins: {
+          left: 0.4,
+          right: 0.4,
+          top: 0.4,
+          bottom: 0.4,
+          header: 0.2,
+          footer: 0.2,
+        },
+      },
     });
 
-    // Column definitions matching PDF proportions
+    // Column definitions tuned for landscape page width
     sheet.columns = [
-      { key: 'name', width: 32 },
-      { key: 'course', width: 36 },
-      { key: 'session', width: 28 },
-      { key: 'timeIn', width: 16 },
-      { key: 'timeOut', width: 16 },
-      { key: 'status', width: 22 },
+      { key: 'name', width: 28 },
+      { key: 'course', width: 32 },
+      { key: 'session', width: 24 },
+      { key: 'timeIn', width: 15 },
+      { key: 'timeOut', width: 15 },
+      { key: 'status', width: 20 },
     ];
 
     // Row 1: Top Brand Title (Presnt)
@@ -266,6 +283,8 @@ export async function exportAttendance(
     curRowIdx++;
 
     // Table Header Row
+    const headerRowIndex = curRowIdx;
+    sheet.pageSetup.printTitlesRow = `${headerRowIndex}:${headerRowIndex}`;
     const headerRow = sheet.addRow(headers.map((h) => h.toUpperCase()));
     headerRow.height = 25;
     for (let c = 1; c <= 6; c++) {
@@ -360,6 +379,8 @@ export async function exportAttendance(
     footerRow.height = 18;
     footerRow.getCell(1).font = { name: 'Nunito Sans', size: 8, color: { argb: 'FFA59AAB' } };
     footerRow.getCell(1).alignment = { vertical: 'middle', indent: 1 };
+
+    sheet.pageSetup.printArea = `A1:F${sheet.rowCount}`;
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
