@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, Check, CheckCircle2, CircleAlert, CreditCard, ExternalLink, Filter, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, Trash2, UserRound, X } from 'lucide-react';
+import { Activity, Archive, ArchiveRestore, Check, CheckCircle2, CircleAlert, CreditCard, ExternalLink, Filter, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, Trash2, UserRound, X } from 'lucide-react';
 import { formatYearLevel } from '../utils/formatters';
 import { soundManager } from '../utils/audioFeedback';
 import { request } from '../services/apiClient';
@@ -62,6 +62,61 @@ const statusStyle: Record<Status, string> = {
 };
 const date = (value: string) => new Date(value).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' });
 const message = (error: unknown) => (error as any)?.response?.data?.error?.message || 'Could not complete this action.';
+
+const getCardEventIcon = (action: string) => {
+  switch (action.toLowerCase()) {
+    case 'register':
+      return {
+        icon: <CreditCard className="h-4 w-4 text-[#7026B7]" />,
+        bg: 'bg-[#F2E9FC] border border-[#E9DCFA]',
+      };
+    case 'issue':
+      return {
+        icon: <CreditCard className="h-4 w-4 text-[#7026B7]" />,
+        bg: 'bg-[#F2E9FC] border border-[#E9DCFA]',
+      };
+    case 'return':
+      return {
+        icon: <RotateCcw className="h-4 w-4 text-[#087A3A]" />,
+        bg: 'bg-[#E7F8EE] border border-[#C5F0D6]',
+      };
+    case 'lost':
+      return {
+        icon: <ShieldAlert className="h-4 w-4 text-[#B42318]" />,
+        bg: 'bg-[#FEE4E2] border border-[#FECDCA]',
+      };
+    case 'damaged':
+      return {
+        icon: <CircleAlert className="h-4 w-4 text-[#B54708]" />,
+        bg: 'bg-[#FEF0C7] border border-[#FEDF89]',
+      };
+    case 'restore':
+      return {
+        icon: <ArchiveRestore className="h-4 w-4 text-[#026AA2]" />,
+        bg: 'bg-[#E0F2FE] border border-[#B9E6FE]',
+      };
+    case 'archive':
+      return {
+        icon: <Archive className="h-4 w-4 text-slate-600" />,
+        bg: 'bg-slate-100 border border-slate-200',
+      };
+    case 'unarchive':
+      return {
+        icon: <ArchiveRestore className="h-4 w-4 text-[#026AA2]" />,
+        bg: 'bg-[#E0F2FE] border border-[#B9E6FE]',
+      };
+    case 'update_card_number':
+      return {
+        icon: <Pencil className="h-4 w-4 text-[#7026B7]" />,
+        bg: 'bg-[#F2E9FC] border border-[#E9DCFA]',
+      };
+    default:
+      return {
+        icon: <Activity className="h-4 w-4 text-[#7026B7]" />,
+        bg: 'bg-[#F2E9FC] border border-[#E9DCFA]',
+      };
+  }
+};
 
 export function CardsPage() {
   const [cards, setCards] = useState<Card[]>([]);
@@ -739,7 +794,48 @@ export function CardsPage() {
                 </div>
               )}</div>; }) : <p className="rounded-2xl border border-[#E5E0EB] p-4 text-[#756883]">No holder yet.</p>}</div></section>}
         {detailError && selectedCard && <Button size="sm" onClick={() => void openDetail(selectedCard)}>Retry history</Button>}
-        {detailReady && <section><h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[#A59AAB]">Card activity</h3><div className="divide-y divide-[#F1EEF4] rounded-2xl border border-[#E5E0EB]">{detail.events.map(event => <div key={event.id} className="p-4"><b className="text-sm capitalize">{event.action}</b>{event.student_name && ` · ${event.student_name} (${event.student_number})`}<p className="mt-1 text-[#756883]">{date(event.created_at)}{event.actor?.name && ` · ${event.actor.name}`}{event.note && ` · ${event.note}`}</p></div>)}</div></section>}
+        {detailReady && (
+          <section>
+            <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[#A59AAB]">Card activity</h3>
+            <div className="divide-y divide-[#F1EEF4] rounded-2xl border border-[#E5E0EB] bg-white overflow-hidden">
+              {detail.events.length ? (
+                detail.events.map((event) => {
+                  const { icon, bg } = getCardEventIcon(event.action);
+                  return (
+                    <div key={event.id} className="flex items-start gap-3 p-3.5 sm:p-4">
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-2xs ${bg}`}>
+                        {icon}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs sm:text-sm">
+                          <b className="capitalize text-[#24133F]">{event.action.replace(/_/g, ' ')}</b>
+                          {event.student_name && (
+                            <>
+                              <span className="text-[#A59AAB]">·</span>
+                              <span className="font-semibold text-slate-700 truncate">{event.student_name}</span>
+                              {event.student_number && (
+                                <span className="rounded-full bg-[#F7F1FD] px-2 py-0.5 text-[11px] font-bold text-[#7026B7]">
+                                  @{event.student_number}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs text-[#756883] leading-relaxed">
+                          <time>{date(event.created_at)}</time>
+                          {event.actor?.name && ` · by ${event.actor.name}`}
+                          {event.note && ` · "${event.note}"`}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="p-4 text-xs text-[#756883]">No activity recorded for this card.</p>
+              )}
+            </div>
+          </section>
+        )}
       </div></div>}
     </Drawer>
     <Modal
