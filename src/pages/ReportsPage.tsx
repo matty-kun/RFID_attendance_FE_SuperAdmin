@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, ArrowRightLeft, BarChart3, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
+import { ArrowRightLeft, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -271,91 +271,82 @@ export function ReportsPage() {
         />
       </div>
 
-      <section aria-label="Attendance totals" className="rounded-3xl border border-[#E5E0EB] bg-white p-6 shadow-xs">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-xl font-black text-[#24133F]">Attendance Totals</h2>
-          <span className="rounded-full bg-purple-50 border border-purple-200/80 px-3 py-1 text-xs font-bold text-[#7026B7]">
+      <section aria-label="Attendance totals" className="rounded-2xl border border-[#E5E0EB] bg-white p-4 shadow-2xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#EDE8F1]">
+          <h2 className="text-base font-extrabold text-[#24133F]">Attendance Totals</h2>
+          <span className="text-xs font-semibold text-[#756883]">
             {eventLabel} · {formatShortDate(startDate)}–{formatShortDate(endDate)}
           </span>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="rounded-2xl border border-[#EDE8F1] bg-[#FAF8FC] p-4">
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-[#EDE8F1] bg-[#FAF8FC] p-3">
             <span className="text-xs font-semibold text-[#756883]">Checked In</span>
-            <p className="text-2xl font-black text-[#24133F] mt-1">{loading ? '—' : reportSummary.studentsCheckedIn.toLocaleString()}</p>
+            <p className="text-2xl font-black text-[#24133F] mt-0.5">{loading ? '—' : reportSummary.studentsCheckedIn.toLocaleString()}</p>
           </div>
 
-          <div className="rounded-2xl border border-[#EDE8F1] bg-[#FAF8FC] p-4">
-            <span className="text-xs font-semibold text-emerald-700">✦ Time In</span>
-            <p className="text-2xl font-black text-emerald-600 mt-1">{loading ? '—' : reportSummary.timeIns.toLocaleString()}</p>
+          <div className="rounded-xl border border-[#EDE8F1] bg-[#FAF8FC] p-3">
+            <span className="text-xs font-semibold text-emerald-700">Time In</span>
+            <p className="text-2xl font-black text-emerald-600 mt-0.5">{loading ? '—' : reportSummary.timeIns.toLocaleString()}</p>
           </div>
 
-          <div className="rounded-2xl border border-[#EDE8F1] bg-[#FAF8FC] p-4">
-            <span className="text-xs font-semibold text-rose-700">⬡ Time Out</span>
-            <p className="text-2xl font-black text-rose-600 mt-1">{loading ? '—' : reportSummary.timeOuts.toLocaleString()}</p>
+          <div className="rounded-xl border border-[#EDE8F1] bg-[#FAF8FC] p-3">
+            <span className="text-xs font-semibold text-rose-700">Time Out</span>
+            <p className="text-2xl font-black text-rose-600 mt-0.5">{loading ? '—' : reportSummary.timeOuts.toLocaleString()}</p>
           </div>
 
-          <div className="rounded-2xl border border-[#EDE8F1] bg-[#FAF8FC] p-4">
+          <div className="rounded-xl border border-[#EDE8F1] bg-[#FAF8FC] p-3">
             <span className="text-xs font-semibold text-[#7026B7]">Total Scans</span>
-            <p className="text-2xl font-black text-[#7026B7] mt-1">{loading ? '—' : reportSummary.totalScans.toLocaleString()}</p>
+            <p className="text-2xl font-black text-[#7026B7] mt-0.5">{loading ? '—' : reportSummary.totalScans.toLocaleString()}</p>
           </div>
         </div>
       </section>
 
       {/* Row 1: Attendance Trend (Card 1) & Session Breakdown (Card 2) */}
       <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
-        {/* Card 1: Attendance Trend (Image 4 bottom-right & Image 3 style) */}
-        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-xs">
+        {/* Card 1: Attendance Trend */}
+        <section className="flex flex-col justify-between rounded-2xl border border-[#E5E0EB] bg-white p-5 shadow-2xs">
           <div>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-black text-[#24133F]">Attendance Trend</h2>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                    Daily Scans
-                  </span>
-                </div>
-              </div>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-base font-extrabold text-[#24133F]">Attendance Trend</h2>
 
-              {/* View Switcher: Stadium Bars vs Smooth Flow Curve (Image 4 bottom right!) */}
-              <div className="flex items-center rounded-xl bg-[#FAF8FC] p-1 border border-[#EDE8F1] text-xs font-bold">
+              {/* View Switcher */}
+              <div className="flex items-center rounded-lg bg-[#FAF8FC] p-0.5 border border-[#EDE8F1] text-[11px] font-bold">
                 <button
                   type="button"
                   onClick={() => setTrendView('bars')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                     trendView === 'bars'
-                      ? 'bg-white text-[#7026B7] shadow-xs'
+                      ? 'bg-white text-[#7026B7] shadow-2xs'
                       : 'text-[#756883] hover:text-[#24133F]'
                   }`}
                 >
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  <span>Bars</span>
+                  Bars
                 </button>
                 <button
                   type="button"
                   onClick={() => setTrendView('wave')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                     trendView === 'wave'
-                      ? 'bg-white text-[#7026B7] shadow-xs'
+                      ? 'bg-white text-[#7026B7] shadow-2xs'
                       : 'text-[#756883] hover:text-[#24133F]'
                   }`}
                 >
-                  <Activity className="h-3.5 w-3.5" />
-                  <span>Flow</span>
+                  Flow
                 </button>
               </div>
             </div>
 
             {loading ? (
-              <div className="my-6 flex h-56 items-center justify-center text-xs text-[#756883]">
+              <div className="my-4 flex h-44 items-center justify-center text-xs text-[#756883]">
                 Loading attendance trend…
               </div>
             ) : trendData.length === 0 ? (
-              <div className="my-6 flex h-56 items-center justify-center text-center text-xs text-[#756883]">
+              <div className="my-4 flex h-44 items-center justify-center text-center text-xs text-[#756883]">
                 No attendance records available.
               </div>
             ) : (
-              <div className="my-4 h-56 w-full">
+              <div className="mt-3 h-44 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   {trendView === 'bars' ? (
                     /* Stadium Bars with Background Tracks (Image 3 style) */
@@ -474,19 +465,20 @@ export function ReportsPage() {
             )}
           </div>
 
-          {/* Clean minimal footer */}
-          <div className="mt-4 pt-3 border-t border-[#EDE8F1] flex items-center justify-between text-xs font-semibold">
-            <div className="flex items-center gap-1.5 text-emerald-700">
-              <span>✦</span> Time In: <strong className="text-[#24133F]">{reportSummary.timeIns.toLocaleString()}</strong>
-            </div>
-            <div className="flex items-center gap-1.5 text-rose-700">
-              <span>⬡</span> Time Out: <strong className="text-[#24133F]">{reportSummary.timeOuts.toLocaleString()}</strong>
-            </div>
+          <div className="mt-3 pt-2.5 border-t border-[#EDE8F1] flex items-center justify-between text-xs font-medium">
+            <span className="flex items-center gap-1.5 text-emerald-700">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              Time In: <strong className="text-[#24133F]">{reportSummary.timeIns.toLocaleString()}</strong>
+            </span>
+            <span className="flex items-center gap-1.5 text-rose-700">
+              <span className="h-2 w-2 rounded-full bg-rose-500" />
+              Time Out: <strong className="text-[#24133F]">{reportSummary.timeOuts.toLocaleString()}</strong>
+            </span>
           </div>
         </section>
 
         {/* Card 2: Session Breakdown */}
-        <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white p-6">
+        <section className="flex flex-col rounded-2xl border border-[#E5E0EB] bg-white p-6">
           <div>
             <h2 className="text-lg font-bold text-[#24133F]">Session Breakdown</h2>
             <p className="text-xs text-[#756883] mt-0.5">Recorded scans by event day and session period</p>
@@ -531,72 +523,17 @@ export function ReportsPage() {
 
       {/* Checkpoints and Course Breakdown */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Checkpoints (Image 4 breakdown style) */}
-        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-xs">
+        {/* Checkpoints */}
+        <section className="flex flex-col justify-between rounded-2xl border border-[#E5E0EB] bg-white p-5 shadow-2xs">
           <div>
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-black text-[#24133F]">Checkpoints</h2>
-              <span className="rounded-full bg-purple-50 px-2.5 py-0.5 text-[11px] font-bold text-[#7026B7]">
+              <h2 className="text-base font-extrabold text-[#24133F]">Checkpoints</h2>
+              <span className="text-xs font-semibold text-[#756883]">
                 {checkpointList.length} stations
               </span>
             </div>
 
-            {/* Checkpoint Volume Bars (Image 4 bottom list style) */}
-            <div className="mt-4 space-y-3">
-              {checkpointList.slice(0, 3).map((cp, idx) => {
-                const maxScan = Math.max(1, ...checkpointList.map(c => c.total));
-                const pct = Math.round((cp.total / maxScan) * 100);
-                return (
-                  <div key={cp.name} className="rounded-xl border border-[#EDE8F1] bg-[#FAF8FC] p-3 space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-[#24133F] flex items-center gap-2">
-                        <span className="h-5 w-5 rounded-md bg-purple-100/70 text-[#7026B7] flex items-center justify-center text-[10px] font-extrabold">
-                          #{idx + 1}
-                        </span>
-                        {cp.name}
-                      </span>
-                      <span className="font-bold text-[#7026B7] tabular-nums">{cp.total.toLocaleString()} scans</span>
-                    </div>
-                    <div className="h-1.5 w-full rounded-full bg-white">
-                      <div style={{ width: `${Math.max(6, pct)}%` }} className="h-1.5 rounded-full bg-[#7026B7] transition-all duration-500" />
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] text-[#756883]">
-                      <span className="text-emerald-600 font-semibold">In: {cp.inScans}</span>
-                      <span className="text-rose-600 font-semibold">Out: {cp.outScans}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Course Summary List (Photo 4 bottom list style) */}
-            {!loading && courseChartData.length > 0 && (
-              <div className="mt-2 space-y-2 pb-4 border-b border-[#EDE8F1]">
-                {courseChartData.slice(0, 3).map((c, idx) => {
-                  const maxCount = Math.max(1, ...courseChartData.map(item => item.count));
-                  const pct = Math.round((c.count / maxCount) * 100);
-                  return (
-                    <div key={c.name} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-2 font-semibold text-[#24133F] truncate max-w-[200px]">
-                          <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: COURSE_COLORS[idx % COURSE_COLORS.length] }} />
-                          {c.name}
-                        </span>
-                        <span className="font-bold text-[#756883] tabular-nums">{c.count} scans ({c.expected} roster)</span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-[#FAF8FC]">
-                        <div
-                          style={{ width: `${Math.max(6, pct)}%`, backgroundColor: COURSE_COLORS[idx % COURSE_COLORS.length] }}
-                          className="h-1.5 rounded-full transition-all duration-500"
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className="mt-4 overflow-x-auto">
+            <div className="mt-3 overflow-x-auto">
               <table className="w-full min-w-[400px] text-left text-xs">
                 <thead>
                   <tr className="text-[#756883] font-medium border-b border-[#EDE8F1]">
@@ -636,17 +573,16 @@ export function ReportsPage() {
         </section>
 
         {/* Course Breakdown */}
-        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6">
+        <section className="flex flex-col justify-between rounded-2xl border border-[#E5E0EB] bg-white p-5 shadow-2xs">
           <div>
-            <h2 className="text-lg font-black text-[#24133F]">Course Breakdown</h2>
+            <h2 className="text-base font-extrabold text-[#24133F]">Course Breakdown</h2>
 
-            {/* Course Donut Visualization */}
+            {/* Compact Course Donut Visualization */}
             {!loading && courseChartData.length > 0 && (
-              <div className="relative my-4 flex h-48 w-full items-center justify-center">
-                {/* Center Summary Label (Rendered behind the tooltip via z-0) */}
+              <div className="relative my-2 flex h-36 w-full items-center justify-center">
                 <div className="pointer-events-none absolute inset-0 z-0 flex flex-col items-center justify-center text-center">
-                  <span className="text-xl font-black text-[#24133F]">{courseChartData.length}</span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#756883]">Courses</span>
+                  <span className="text-lg font-black text-[#24133F]">{courseChartData.length}</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#756883]">Courses</span>
                 </div>
 
                 <div className="relative z-10 h-full w-full">
@@ -656,8 +592,8 @@ export function ReportsPage() {
                         data={courseChartData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={52}
-                        outerRadius={76}
+                        innerRadius={44}
+                        outerRadius={62}
                         paddingAngle={3}
                         dataKey="count"
                       >
@@ -672,27 +608,12 @@ export function ReportsPage() {
                             const data = payload[0];
                             const item = data.payload as { name: string; count: number; timeIn: number; timeOut: number; expected: number };
                             return (
-                              <div className="rounded-2xl border border-[#E5E0EB] bg-white px-3.5 py-2.5 text-xs shadow-xl min-w-[170px]">
-                                <p className="font-bold text-[#24133F] border-b border-slate-100 pb-1.5 truncate max-w-[220px]">{item.name}</p>
-                                <div className="mt-1.5 space-y-1 text-[11px]">
-                                  <div className="flex items-center justify-between gap-4 font-semibold text-emerald-600">
-                                    <span className="flex items-center gap-1.5">
-                                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                                      Time In
-                                    </span>
-                                    <span className="font-bold text-slate-800">{item.timeIn}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between gap-4 font-semibold text-rose-600">
-                                    <span className="flex items-center gap-1.5">
-                                      <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                                      Time Out
-                                    </span>
-                                    <span className="font-bold text-slate-800">{item.timeOut}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between gap-4 font-bold text-[#7026B7] pt-1 border-t border-slate-100">
-                                    <span>Roster</span>
-                                    <span>{item.expected}</span>
-                                  </div>
+                              <div className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 text-xs shadow-md">
+                                <p className="font-bold text-[#24133F] pb-1 border-b border-slate-100">{item.name}</p>
+                                <div className="mt-1 flex items-center gap-3 text-[11px]">
+                                  <span className="text-emerald-600 font-semibold">In: {item.timeIn}</span>
+                                  <span className="text-rose-600 font-semibold">Out: {item.timeOut}</span>
+                                  <span className="text-[#7026B7] font-bold">Roster: {item.expected}</span>
                                 </div>
                               </div>
                             );
@@ -706,7 +627,7 @@ export function ReportsPage() {
               </div>
             )}
 
-            <div className="mt-4 overflow-x-auto">
+            <div className="mt-3 overflow-x-auto">
               <table className="w-full min-w-[400px] text-left text-xs">
                 <thead>
                   <tr className="text-[#756883] font-medium">
@@ -747,7 +668,7 @@ export function ReportsPage() {
       </div>
 
       {/* Student Attendance Records */}
-      <section className="rounded-[24px] border border-[#E5E0EB] bg-white p-6">
+      <section className="rounded-2xl border border-[#E5E0EB] bg-white p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-[#24133F]">Student Attendance Records</h2>
