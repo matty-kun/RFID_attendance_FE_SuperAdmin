@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, Check, CircleAlert, CreditCard, ExternalLink, Filter, Hash, Radio, RotateCcw, Search, ShieldAlert, UserRound, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Check, CircleAlert, CreditCard, ExternalLink, Filter, Hash, Pencil, Radio, RotateCcw, Search, ShieldAlert, UserRound, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatYearLevel } from '../utils/formatters';
 import { request } from '../services/apiClient';
@@ -65,6 +65,9 @@ export function CardsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [busy, setBusy] = useState(false);
   const [inspectOpen, setInspectOpen] = useState(false);
+  const [isEditingCardNumber, setIsEditingCardNumber] = useState(false);
+  const [editCardNumber, setEditCardNumber] = useState('');
+  const [savingCardNumber, setSavingCardNumber] = useState(false);
   const [inspectUid, setInspectUid] = useState('');
   const [inspecting, setInspecting] = useState(false);
   useEffect(() => {
@@ -90,6 +93,8 @@ export function CardsPage() {
 
   const openDetail = async (card: Card) => {
     const requestId = ++detailRequest.current;
+    setIsEditingCardNumber(false);
+    setEditCardNumber('');
     setSelectedCard(card);
     setDetail({ card, assignments: card.holder ? [card.holder] : [], events: [], recent_scans: [] });
     setDetailReady(false);
@@ -125,6 +130,30 @@ export function CardsPage() {
       } catch (e) { showToast(message(e), 'error'); }
     }
   };
+  const handleSaveCardNumber = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const clean = editCardNumber.trim().toUpperCase();
+    if (!clean || !detail) return;
+    if (clean === detail.card.card_number) {
+      setIsEditingCardNumber(false);
+      return;
+    }
+    setSavingCardNumber(true);
+    try {
+      const res = await request.patch<{ card: Card }>(`/cards/${detail.card.id}`, { card_number: clean });
+      const updatedCard = res.card;
+      setDetail(prev => prev ? { ...prev, card: { ...prev.card, card_number: updatedCard.card_number } } : null);
+      setSelectedCard(prev => prev ? { ...prev, card_number: updatedCard.card_number } : null);
+      setCards(prev => prev.map(c => c.id === detail.card.id ? { ...c, card_number: updatedCard.card_number } : c));
+      setIsEditingCardNumber(false);
+      showToast(`Printed card number updated to ${clean}!`, 'success');
+    } catch (err: any) {
+      showToast(err?.response?.data?.error?.message || err?.message || 'Failed to update card number.', 'error');
+    } finally {
+      setSavingCardNumber(false);
+    }
+  };
+
   const submit = async () => {
     if (!action || !uid.trim() || (action === 'register' && !cardNumber.trim())) return;
     setBusy(true);
@@ -200,7 +229,53 @@ export function CardsPage() {
     </div>
     {total > 25 && <div className="flex items-center justify-end gap-2 text-xs"><Button variant="secondary" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</Button><span>Page {page} of {Math.ceil(total / 25)}</span><Button variant="secondary" size="sm" disabled={page * 25 >= total} onClick={() => setPage(page + 1)}>Next</Button></div>}
     <Drawer isOpen={Boolean(selectedCard)} onClose={closeDetail} title={selectedCard?.card_number ?? 'Card history'} maxWidth="2xl" hideHeader noPadding>
-      {detail && <div className="min-h-full bg-white text-xs text-[#24133F]"><div className="bg-gradient-to-b from-[#9333EA] via-[#C084FC] via-[#F3E8FF] to-white px-7 pb-10 pt-6"><div className="flex items-start justify-between"><h2 className="text-2xl font-black text-white">{detail.card.card_number}</h2><div className="flex gap-2"><button type="button" disabled={!['available', 'archived'].includes(detail.card.status)} onClick={() => void openAction(detail.card.status === 'archived' ? 'unarchive' : 'archive', detail.card)} aria-label={detail.card.status === 'archived' ? 'Restore archived card' : 'Archive card'} title={detail.card.status === 'issued' ? 'Return the card before archiving' : detail.card.status === 'archived' ? 'Restore archived card' : detail.card.status === 'available' ? 'Archive card' : 'Restore the card before archiving'} className="rounded-2xl border border-white/30 bg-white/20 p-2.5 text-white hover:bg-white/30 disabled:cursor-not-allowed disabled:opacity-50">{detail.card.status === 'archived' ? <ArchiveRestore className="h-5 w-5" /> : <Archive className="h-5 w-5" />}</button><button type="button" onClick={closeDetail} aria-label="Close card history" className="rounded-2xl border border-white/30 bg-white/20 p-2.5 text-white hover:bg-white/30"><X className="h-5 w-5" /></button></div></div><div className="mt-2 flex justify-center"><div className="relative h-72 w-72 sm:h-80 sm:w-80"><img src={hawiCard} alt="" className="h-full w-full object-contain" /><span className="absolute left-[32%] top-[72%] -rotate-1 whitespace-nowrap font-sans text-sm font-black tracking-wide text-[#24133F] sm:text-base">{detail.card.card_number.replace(/^RFID-/, '')}</span></div></div></div><div className="space-y-6 px-7 pb-10">
+      {detail && <div className="min-h-full bg-white text-xs text-[#24133F]"><div className="bg-gradient-to-b from-[#9333EA] via-[#C084FC] via-[#F3E8FF] to-white px-7 pb-10 pt-6"><div className="flex items-start justify-between">{isEditingCardNumber ? (
+            <form onSubmit={handleSaveCardNumber} className="flex items-center gap-1.5 bg-black/30 backdrop-blur-md rounded-xl p-1.5 border border-white/40">
+              <input
+                type="text"
+                autoFocus
+                value={editCardNumber}
+                onChange={(e) => setEditCardNumber(e.target.value.toUpperCase())}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setIsEditingCardNumber(false);
+                }}
+                placeholder="e.g. RFID-001"
+                className="px-2.5 py-1 text-base font-black uppercase text-white bg-white/10 rounded-lg outline-none border border-white/30 focus:border-white font-mono min-w-[140px]"
+              />
+              <button
+                type="submit"
+                disabled={savingCardNumber || !editCardNumber.trim()}
+                title="Save card number"
+                className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <Check className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEditingCardNumber(false)}
+                title="Cancel"
+                className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </form>
+          ) : (
+            <div
+              className="group flex items-center gap-2 cursor-pointer"
+              onClick={() => {
+                setIsEditingCardNumber(true);
+                setEditCardNumber(detail.card.card_number);
+              }}
+              title="Click to edit printed card number"
+            >
+              <h2 className="text-2xl font-black text-white group-hover:underline underline-offset-4 decoration-white/60">
+                {detail.card.card_number}
+              </h2>
+              <span className="rounded-xl border border-white/30 bg-white/20 p-1.5 text-white/90 group-hover:bg-white/30 group-hover:text-white transition-all">
+                <Pencil className="h-3.5 w-3.5" />
+              </span>
+            </div>
+          )}<div className="flex gap-2"><button type="button" disabled={!['available', 'archived'].includes(detail.card.status)} onClick={() => void openAction(detail.card.status === 'archived' ? 'unarchive' : 'archive', detail.card)} aria-label={detail.card.status === 'archived' ? 'Restore archived card' : 'Archive card'} title={detail.card.status === 'issued' ? 'Return the card before archiving' : detail.card.status === 'archived' ? 'Restore archived card' : detail.card.status === 'available' ? 'Archive card' : 'Restore the card before archiving'} className="rounded-2xl border border-white/30 bg-white/20 p-2.5 text-white hover:bg-white/30 disabled:cursor-not-allowed disabled:opacity-50">{detail.card.status === 'archived' ? <ArchiveRestore className="h-5 w-5" /> : <Archive className="h-5 w-5" />}</button><button type="button" onClick={closeDetail} aria-label="Close card history" className="rounded-2xl border border-white/30 bg-white/20 p-2.5 text-white hover:bg-white/30"><X className="h-5 w-5" /></button></div></div><div className="mt-2 flex justify-center"><div className="relative h-72 w-72 sm:h-80 sm:w-80"><img src={hawiCard} alt="" className="h-full w-full object-contain" /><span className="absolute left-[32%] top-[72%] -rotate-1 whitespace-nowrap font-sans text-sm font-black tracking-wide text-[#24133F] sm:text-base">{detail.card.card_number.replace(/^RFID-/, '')}</span></div></div></div><div className="space-y-6 px-7 pb-10">
         <div className="border-b border-[#F1EEF4] pb-5"><p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#A59AAB]">Card UID</p><div className="flex items-center justify-between gap-3"><p className="font-mono text-sm font-bold">{detail.card.uid}</p><span className={`rounded-full px-3 py-1 font-bold capitalize ${statusStyle[detail.card.status]}`}>{detail.card.status}</span></div><div className="mt-4 flex flex-wrap gap-2 [&>button]:flex-1 [&>button]:justify-center [&>button]:whitespace-nowrap">{detail.card.status === 'available' && <Button size="sm" leftIcon={<CreditCard className="h-4 w-4" />} onClick={() => void openAction('issue', detail.card)}>Issue card</Button>}{detail.card.status === 'issued' && <Button size="sm" variant="success" leftIcon={<RotateCcw className="h-4 w-4" />} onClick={() => void openAction('return', detail.card)}>Return card</Button>}{['available', 'issued'].includes(detail.card.status) && <><Button size="sm" variant="danger" leftIcon={<ShieldAlert className="h-4 w-4" />} onClick={() => void openAction('lost', detail.card)}>Report lost</Button><Button size="sm" variant="secondary" leftIcon={<CircleAlert className="h-4 w-4" />} onClick={() => void openAction('damaged', detail.card)}>Mark damaged</Button></>}{['lost', 'damaged'].includes(detail.card.status) && <Button size="sm" variant="secondary" leftIcon={<ArchiveRestore className="h-4 w-4" />} onClick={() => void openAction('restore', detail.card)}>Restore to available</Button>}</div></div>
         {(detail.assignments.length > 0 || detailReady) && <section><h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[#A59AAB]">{detailReady ? `Holder history · ${detail.assignments.length}` : 'Current holder'}</h3><div className="space-y-3">{detail.assignments.length ? detail.assignments.map(a => { const scans = detail.recent_scans.filter(scan => scan.student_id === a.student_id && scan.recorded_at >= a.issued_at && (!a.ended_at || scan.recorded_at <= a.ended_at)); return <div key={a.id} className="overflow-hidden rounded-2xl border border-[#E5E0EB]"><div className="flex flex-wrap items-center gap-3 p-4">{a.avatar_url ? <img src={a.avatar_url} alt="" className="h-14 w-14 shrink-0 rounded-full object-cover" /> : <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#F2E9FC]"><UserRound className="h-5 w-5 text-[#7026B7]" /></span>}<div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><b className="text-base">{a.student_name}</b><span className="rounded-full bg-[#F7F1FD] px-2 py-0.5 font-bold text-[#7026B7]">@{a.student_number}</span>{!a.ended_at && <span className="rounded-full bg-[#E7F8EE] px-2 py-0.5 font-bold text-[#087A3A]">Current</span>}</div>{a.course && <p className="mt-0.5 text-[#756883]">{a.course}{a.year_level ? ` · ${formatYearLevel(a.year_level)}` : ''}</p>}<p className="mt-1 text-[#756883]">Issued {date(a.issued_at)}{a.ended_at ? ` · ${a.end_reason} ${date(a.ended_at)}` : ''}</p></div>{a.student_id && <Button size="sm" leftIcon={<ExternalLink className="h-3.5 w-3.5" />} onClick={() => navigate(`/students?profile=${encodeURIComponent(a.student_number)}`)}>View Profile</Button>}</div>{detailReady && <div className="border-t border-[#F1EEF4] bg-[#FAF8FC] px-4 py-3"><p className="mb-2 font-bold text-[#756883]">Scans with this card</p>{scans.length ? <div className="space-y-2">{scans.map(scan => <div key={scan.id} className="flex justify-between gap-3"><span className="font-semibold">{scan.type === 'time_in' ? 'Time in' : 'Time out'}</span><time className="text-[#756883]">{date(scan.recorded_at)}</time></div>)}</div> : <p className="text-[#756883]">No scans recorded while this student held the card.</p>}</div>}</div>; }) : <p className="rounded-2xl border border-[#E5E0EB] p-4 text-[#756883]">No holder yet.</p>}</div></section>}
         {detailError && selectedCard && <Button size="sm" onClick={() => void openDetail(selectedCard)}>Retry history</Button>}

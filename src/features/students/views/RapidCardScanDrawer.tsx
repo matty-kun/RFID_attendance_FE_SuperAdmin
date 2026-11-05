@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, CreditCard } from 'lucide-react';
+import { request } from '../../../services/apiClient';
 import { Drawer, getOpenDrawerCount } from '../../../components/common/Drawer';
 import { soundManager } from '../../../utils/audioFeedback';
 import { toast } from '../../../context';
@@ -16,7 +17,8 @@ export interface RapidCardScanDrawerProps {
   cardlessStudents: StudentRecord[];
   onCardScannedForStudent: (
     studentId: string,
-    uid: string
+    uid: string,
+    cardNumber?: string
   ) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string };
 }
 
@@ -36,6 +38,12 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
     studentName: string;
     studentId: string;
   } | null>(null);
+  const [pendingNewCard, setPendingNewCard] = useState<{
+    student: StudentRecord;
+    uid: string;
+  } | null>(null);
+  const [pendingCardNumberInput, setPendingCardNumberInput] = useState('');
+  const newCardInputRef = useRef<HTMLInputElement>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const isProcessingRef = useRef(false);
@@ -89,6 +97,52 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
     window.addEventListener('keydown', handleWindowKeyDown);
     return () => window.removeEventListener('keydown', handleWindowKeyDown);
   }, [isOpen]);
+
+
+  const handleConfirmNewCard = async () => {
+    if (!pendingNewCard || !pendingCardNumberInput.trim() || isProcessing) return;
+    const { student, uid } = pendingNewCard;
+    const formattedNumber = pendingCardNumberInput.trim().toUpperCase();
+
+    isProcessingRef.current = true;
+    lastAssignedStudentIdRef.current = student.id;
+    setIsProcessing(true);
+
+    soundManager.playSuccessBeep();
+    setAssignedCount((prev) => prev + 1);
+    setLastScanned({
+      uid,
+      studentName: student.name,
+      studentId: student.student_id,
+    });
+
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    successTimerRef.current = setTimeout(() => {
+      setLastScanned(null);
+    }, 1800);
+
+    setPendingNewCard(null);
+    setPendingCardNumberInput('');
+
+    try {
+      const res = await onCardScannedForStudent(student.id, uid, formattedNumber);
+      if (!res.success) {
+        lastAssignedStudentIdRef.current = null;
+        soundManager.playErrorBuzz();
+        setAssignedCount((prev) => Math.max(0, prev - 1));
+        setLastScanned(null);
+      }
+    } catch {
+      lastAssignedStudentIdRef.current = null;
+      soundManager.playErrorBuzz();
+      setAssignedCount((prev) => Math.max(0, prev - 1));
+      setLastScanned(null);
+    } finally {
+      isProcessingRef.current = false;
+      setIsProcessing(false);
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  };
 
   const handleContainerClick = () => {
     inputRef.current?.focus();
@@ -146,45 +200,81 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
 
       isProcessingRef.current = true;
       activeScanUidRef.current = clean;
-      lastAssignedStudentIdRef.current = targetStudent.id;
       setIsProcessing(true);
       setInputValue('');
 
-      // ⚡ INSTANT FEEDBACK (0ms):
-      // Play success chime immediately upon physical card tap!
-      soundManager.playSuccessBeep();
-      setAssignedCount((prev) => prev + 1);
-      setLastScanned({
-        uid: clean,
-        studentName: targetStudent.name,
-        studentId: targetStudent.student_id,
-      });
-
-      // Auto-clear success banner after 1.8s so it doesn't linger
-      if (successTimerRef.current) clearTimeout(successTimerRef.current);
-      successTimerRef.current = setTimeout(() => {
-        setLastScanned(null);
-      }, 1800);
-
-      // Background card linking with optimistic update
+      // Check card registration status in inventory
+      let cardLookup: { id: string; uid: string; card_number: string; status: string } | null = null;
       try {
-        const res = await onCardScannedForStudent(targetStudent.id, clean);
-        if (!res.success) {
+        const res = await request.get<{ card: { id: string; uid: string; card_number: string; status: string } | null }>(
+          `/cards/lookup/${encodeURIComponent(clean)}`
+        );
+        cardLookup = res?.card ?? null;
+      } catch {
+        // Continue
+      }
+
+      if (cardLookup) {
+        if (cardLookup.status === 'issued') {
+          soundManager.playErrorBuzz();
+          toast.error(`Card ${cardLookup.card_number} is already issued to another student!`);
+          isProcessingRef.current = false;
+          activeScanUidRef.current = null;
+          setIsProcessing(false);
+          inputRef.current?.focus();
+          return;
+        }
+        if (cardLookup.status === 'lost' || cardLookup.status === 'damaged') {
+          soundManager.playErrorBuzz();
+          toast.error(`Card ${cardLookup.card_number} is marked as ${cardLookup.status}!`);
+          isProcessingRef.current = false;
+          activeScanUidRef.current = null;
+          setIsProcessing(false);
+          inputRef.current?.focus();
+          return;
+        }
+
+        // Available card in inventory: link directly!
+        lastAssignedStudentIdRef.current = targetStudent.id;
+        soundManager.playSuccessBeep();
+        setAssignedCount((prev) => prev + 1);
+        setLastScanned({
+          uid: clean,
+          studentName: targetStudent.name,
+          studentId: targetStudent.student_id,
+        });
+
+        if (successTimerRef.current) clearTimeout(successTimerRef.current);
+        successTimerRef.current = setTimeout(() => {
+          setLastScanned(null);
+        }, 1800);
+
+        try {
+          const res = await onCardScannedForStudent(targetStudent.id, clean, cardLookup.card_number);
+          if (!res.success) {
+            lastAssignedStudentIdRef.current = null;
+            soundManager.playErrorBuzz();
+            setAssignedCount((prev) => Math.max(0, prev - 1));
+            setLastScanned(null);
+          }
+        } catch {
           lastAssignedStudentIdRef.current = null;
           soundManager.playErrorBuzz();
           setAssignedCount((prev) => Math.max(0, prev - 1));
           setLastScanned(null);
+        } finally {
+          isProcessingRef.current = false;
+          activeScanUidRef.current = null;
+          setIsProcessing(false);
+          inputRef.current?.focus();
         }
-      } catch {
-        lastAssignedStudentIdRef.current = null;
-        soundManager.playErrorBuzz();
-        setAssignedCount((prev) => Math.max(0, prev - 1));
-        setLastScanned(null);
-      } finally {
+      } else {
+        // Brand new card: prompt for printed card number so it gets registered in rfid_cards
+        setPendingNewCard({ student: targetStudent, uid: clean });
+        setPendingCardNumberInput('');
         isProcessingRef.current = false;
-        activeScanUidRef.current = null;
         setIsProcessing(false);
-        inputRef.current?.focus();
+        setTimeout(() => newCardInputRef.current?.focus(), 80);
       }
     },
     [currentStudent, students, onCardScannedForStudent]
@@ -247,6 +337,74 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
       }
     >
       <div className="space-y-4" onClick={handleContainerClick}>
+        {/* Modal-like prompt if new card detected */}
+        {pendingNewCard && (
+          <div className="rounded-2xl border-2 border-[#7026B7] bg-purple-50/70 p-4 sm:p-5 space-y-3.5 animate-in fade-in zoom-in-95 duration-150 shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#7026B7] text-white">
+                <CreditCard className="h-5 w-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-extrabold text-[#24133F]">New Physical Card Scanned</h4>
+                <p className="text-[11px] font-mono text-purple-700 font-bold mt-0.5">UID: {pendingNewCard.uid}</p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs text-[#24133F]">
+                Assigning to: <span className="font-extrabold text-[#7026B7]">{pendingNewCard.student.name}</span> ({pendingNewCard.student.student_id})
+              </p>
+              <label className="block text-[11px] font-bold text-[#7026B7] mt-2 mb-1">
+                Printed Card Number *
+              </label>
+              <input
+                ref={newCardInputRef}
+                type="text"
+                autoFocus
+                value={pendingCardNumberInput}
+                onChange={(e) => setPendingCardNumberInput(e.target.value.toUpperCase())}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void handleConfirmNewCard();
+                  } else if (e.key === 'Escape') {
+                    setPendingNewCard(null);
+                    setPendingCardNumberInput('');
+                    inputRef.current?.focus();
+                  }
+                }}
+                placeholder="e.g. RFID-001"
+                className="w-full rounded-xl border border-purple-300 bg-white px-3.5 py-2.5 text-xs font-mono font-bold uppercase text-[#24133F] focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100"
+              />
+              <p className="text-[10px] text-[#756883] mt-1">
+                Enter the number printed on this card so it registers in the RFID Cards page.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1 border-t border-purple-200/70">
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingNewCard(null);
+                  setPendingCardNumberInput('');
+                  inputRef.current?.focus();
+                }}
+                className="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!pendingCardNumberInput.trim() || isProcessing}
+                onClick={() => void handleConfirmNewCard()}
+                className="rounded-xl bg-[#7026B7] px-4 py-2 text-xs font-bold text-white hover:bg-[#621FA3] disabled:opacity-50 transition-colors cursor-pointer"
+              >
+                Register & Bind Card
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Operational Focus Workstation with Hawi Personality */}
         <div className="rounded-2xl border border-[#E5E0EB] bg-white p-4 sm:p-5 space-y-4">
           {currentStudent ? (

@@ -68,7 +68,7 @@ export interface UseStudentsViewModelReturn {
 
   // Actions
   handleRegisterStudent: (payload: RegisterStudentPayload) => Promise<void>;
-  handleCardScannedForStudent: (studentId: string, uid: string) => Promise<{ success: boolean; message: string }>;
+  handleCardScannedForStudent: (studentId: string, uid: string, cardNumber?: string) => Promise<{ success: boolean; message: string }>;
   handleAutoPairSequential: () => Promise<{ pairedCount: number }>;
   handleBulkImport: (newStudents: BulkImportStudentRow[], autoPair: boolean, onProgress?: (current: number, total: number) => void) => Promise<void>;
   handleQuickPair: (studentId: string, cardUid: string) => Promise<{ success: boolean; message: string }>;
@@ -281,7 +281,7 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
   };
 
   // 3. Scan & Pair to Single Student
-  const handleCardScannedForStudent = async (studentId: string, uid: string) => {
+  const handleCardScannedForStudent = async (studentId: string, uid: string, cardNumber?: string) => {
     const clean = uid.trim().toUpperCase();
 
     // Check if card is already assigned to another student
@@ -296,23 +296,24 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
 
     const targetStudent = students.find((s) => s.id === studentId);
     const previousUid = targetStudent?.rfid_uid;
+    const previousCardNumber = targetStudent?.card_number;
 
     // Instant optimistic update (0ms UI transition to next student in queue)
     setStudents((prev) =>
-      prev.map((s) => (s.id === studentId ? { ...s, rfid_uid: clean } : s))
+      prev.map((s) => (s.id === studentId ? { ...s, rfid_uid: clean, card_number: cardNumber || s.card_number } : s))
     );
     setUnassignedPool((prev) => prev.filter((c) => c.uid.toUpperCase() !== clean));
 
     try {
-      await studentService.updateStudent(studentId, { rfid_uid: clean });
-      toast.success(`Card ${clean} successfully linked to ${targetStudent?.name || 'student'}!`);
+      await studentService.updateStudent(studentId, { rfid_uid: clean, card_number: cardNumber || undefined });
+      toast.success(`Card ${cardNumber || clean} successfully linked to ${targetStudent?.name || 'student'}!`);
       // Non-blocking background re-sync
       void loadStudents();
-      return { success: true, message: `Card ${clean} successfully linked to student!` };
+      return { success: true, message: `Card ${cardNumber || clean} successfully linked to student!` };
     } catch (err: any) {
       // Revert optimistic update on failure
       setStudents((prev) =>
-        prev.map((s) => (s.id === studentId ? { ...s, rfid_uid: previousUid } : s))
+        prev.map((s) => (s.id === studentId ? { ...s, rfid_uid: previousUid, card_number: previousCardNumber } : s))
       );
       const apiMsg = err?.response?.data?.error?.message || err?.message || 'Failed to link card to student.';
       toast.error(apiMsg);

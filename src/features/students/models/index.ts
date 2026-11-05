@@ -36,6 +36,7 @@ export interface RegisterStudentPayload {
   course?: string;
   year_level?: number;
   rfid_uid?: string;
+  card_number?: string;
 }
 
 export interface UpdateStudentPayload {
@@ -43,6 +44,7 @@ export interface UpdateStudentPayload {
   course?: string | null;
   year_level?: number | null;
   rfid_uid?: string | null;
+  card_number?: string | null;
   avatar_url?: string | null;
   password?: string;
 }

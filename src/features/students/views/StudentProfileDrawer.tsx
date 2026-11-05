@@ -170,6 +170,35 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
     finally { setIsUploadingPhoto(false); }
   };
 
+  // Click to edit printed card number
+  const [isEditingCardNum, setIsEditingCardNum] = useState(false);
+  const [editCardNumInput, setEditCardNumInput] = useState('');
+  const [isSavingCardNum, setIsSavingCardNum] = useState(false);
+
+  const handleSaveStudentCardNumber = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const clean = editCardNumInput.trim().toUpperCase();
+    if (!clean || !currentStudent?.rfid_uid) return;
+    setIsSavingCardNum(true);
+    try {
+      const lookup = await request.get<{ card: { id: string; card_number: string } | null }>(
+        `/cards/lookup/${encodeURIComponent(currentStudent.rfid_uid)}`
+      );
+      if (lookup?.card?.id) {
+        await request.patch(`/cards/${lookup.card.id}`, { card_number: clean });
+        setLocalStudent((prev) => (prev ? { ...prev, card_number: clean } : null));
+        setIsEditingCardNum(false);
+        toast.success(`Printed card number updated to ${clean}!`);
+      } else {
+        toast.error('Card record not found in inventory.');
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || err?.message || 'Failed to update card number.');
+    } finally {
+      setIsSavingCardNum(false);
+    }
+  };
+
   // Inline RFID Card Scanning & Pairing with Auto-Enter
   const [isScanningCard, setIsScanningCard] = useState(false);
   const [inlineCardUid, setInlineCardUid] = useState('');
@@ -651,9 +680,51 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-xs font-black text-[#24133F]">
-                        {(currentStudent as any).card_number ? (currentStudent as any).card_number : 'Card Assigned'}
-                      </p>
+                      {isEditingCardNum ? (
+                        <form onSubmit={handleSaveStudentCardNumber} className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            autoFocus
+                            value={editCardNumInput}
+                            onChange={(e) => setEditCardNumInput(e.target.value.toUpperCase())}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') setIsEditingCardNum(false);
+                            }}
+                            placeholder="e.g. RFID-001"
+                            className="rounded-lg border border-purple-300 bg-white px-2 py-0.5 text-xs font-mono font-bold uppercase text-[#24133F] outline-none focus:border-[#7026B7] focus:ring-2 focus:ring-purple-100"
+                          />
+                          <button
+                            type="submit"
+                            disabled={isSavingCardNum || !editCardNumInput.trim()}
+                            className="p-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer disabled:opacity-50"
+                            title="Save card number"
+                          >
+                            <Check className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingCardNum(false)}
+                            className="p-1 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 cursor-pointer"
+                            title="Cancel"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </form>
+                      ) : (
+                        <div
+                          className="group flex items-center gap-1.5 cursor-pointer"
+                          onClick={() => {
+                            setIsEditingCardNum(true);
+                            setEditCardNumInput((currentStudent as any).card_number || '');
+                          }}
+                          title="Click to edit printed card number"
+                        >
+                          <p className="text-xs font-black text-[#24133F] group-hover:text-[#7026B7] transition-colors">
+                            {(currentStudent as any).card_number ? (currentStudent as any).card_number : 'Card Assigned'}
+                          </p>
+                          <Pencil className="h-3 w-3 text-slate-400 group-hover:text-[#7026B7] transition-colors" />
+                        </div>
+                      )}
                       <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
                         Active
                       </span>

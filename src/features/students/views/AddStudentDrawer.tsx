@@ -6,6 +6,7 @@ import { Eye, EyeOff, Sparkles, Trash2 } from 'lucide-react';
 import { draftStorage } from '../../../utils/draftStorage';
 import { soundManager } from '../../../utils/audioFeedback';
 import { toast } from '../../../context';
+import { request } from '../../../services/apiClient';
 import { cn } from '../../../utils/cn';
 import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
 import type { RegisterStudentPayload } from '../models';
@@ -31,6 +32,9 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
   const [course, setCourse] = useState('BS Information Technology');
   const [yearLevel, setYearLevel] = useState(1);
   const [scannedUid, setScannedUid] = useState('');
+  const [printedCardNumber, setPrintedCardNumber] = useState('');
+  const [cardStatusInfo, setCardStatusInfo] = useState<{ isExisting: boolean; status?: string; existingNumber?: string } | null>(null);
+  const cardLookupDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const [restoredDraft, setRestoredDraft] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{
     studentId?: string;
@@ -41,6 +45,54 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
   }>({});
 
   const scannerInputRef = useRef<HTMLInputElement>(null);
+  const checkCardUid = async (uidToCheck: string) => {
+    const clean = uidToCheck.trim().toUpperCase();
+    if (!clean) {
+      setCardStatusInfo(null);
+      return;
+    }
+    try {
+      const res = await request.get<{ card: { id: string; uid: string; card_number: string; status: string } | null }>(
+        `/cards/lookup/${encodeURIComponent(clean)}`
+      );
+      const foundCard = res?.card;
+      if (foundCard) {
+        setCardStatusInfo({
+          isExisting: true,
+          status: foundCard.status,
+          existingNumber: foundCard.card_number,
+        });
+        setPrintedCardNumber(foundCard.card_number);
+        if (foundCard.status === 'issued') {
+          setFieldErrors((prev) => ({
+            ...prev,
+            scannedUid: `Card ${foundCard.card_number} is already issued to another student.`,
+          }));
+        } else {
+          setFieldErrors((prev) => ({ ...prev, scannedUid: undefined }));
+        }
+      } else {
+        setCardStatusInfo({ isExisting: false });
+        setFieldErrors((prev) => ({ ...prev, scannedUid: undefined }));
+      }
+    } catch {
+      setCardStatusInfo({ isExisting: false });
+    }
+  };
+
+  const handleCardInputChange = (val: string) => {
+    setScannedUid(val);
+    setFieldErrors((prev) => ({ ...prev, scannedUid: undefined }));
+    if (cardLookupDebounceRef.current) clearTimeout(cardLookupDebounceRef.current);
+    if (!val.trim()) {
+      setCardStatusInfo(null);
+      return;
+    }
+    cardLookupDebounceRef.current = setTimeout(() => {
+      void checkCardUid(val);
+    }, 300);
+  };
+
 
   const courseOptions = useMemo(
     () => [
@@ -122,6 +174,8 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
     setCourse('BS Information Technology');
     setYearLevel(1);
     setScannedUid('');
+    setPrintedCardNumber('');
+    setCardStatusInfo(null);
     setRestoredDraft(false);
     setFieldErrors({});
     toast.info('Draft discarded.');
@@ -135,6 +189,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
         soundManager.playSuccessBeep();
         toast.success(`RFID card detected: ${val}`);
         setFieldErrors((prev) => ({ ...prev, scannedUid: undefined }));
+        void checkCardUid(val);
       }
     }
   };
@@ -171,6 +226,8 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
 
     if (requireCard && !scannedUid.trim()) {
       errors.scannedUid = 'Tap card on scanner or click "Issue card later" below.';
+    } else if (scannedUid.trim() && cardStatusInfo && !cardStatusInfo.isExisting && !printedCardNumber.trim()) {
+      errors.scannedUid = 'Please enter the printed card number (e.g. RFID-001) for this new card.';
     }
 
     setFieldErrors(errors);
@@ -198,6 +255,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
         course,
         year_level: yearLevel,
         rfid_uid: scannedUid.trim(),
+        card_number: printedCardNumber.trim().toUpperCase() || undefined,
       });
       draftStorage.clear('add_student');
       setRestoredDraft(false);
@@ -339,16 +397,13 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
             </div>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <input
               ref={scannerInputRef}
               type="text"
               placeholder="Tap card on USB desktop scanner or type UID..."
               value={scannedUid}
-              onChange={(e) => {
-                setScannedUid(e.target.value);
-                setFieldErrors((prev) => ({ ...prev, scannedUid: undefined }));
-              }}
+              onChange={(e) => handleCardInputChange(e.target.value)}
               onKeyDown={handleScannerKeyDown}
               className={cn(
                 'w-full rounded-xl border border-[#D5CEDD] bg-[#FAF8FC] px-3.5 py-2.5 text-xs font-mono font-bold text-[#24133F] placeholder:text-[#A59AAB] focus:border-[#7026B7] focus:bg-white focus:outline-none transition-colors',
@@ -362,11 +417,31 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
                 {scannedUid ? (
                   <span className="text-emerald-700 font-semibold">
                     ✓ Card detected: {scannedUid}
+                    {cardStatusInfo?.isExisting ? ` (Registered: ${cardStatusInfo.existingNumber})` : ''}
                   </span>
                 ) : (
                   'Scanner captures card keystroke automatically on swipe.'
                 )}
               </p>
+            )}
+
+            {/* If card is new, ask for Printed Card Number */}
+            {scannedUid.trim() && cardStatusInfo && !cardStatusInfo.isExisting && (
+              <div className="rounded-xl border border-purple-200 bg-purple-50/70 p-3 space-y-1.5 animate-in fade-in duration-150">
+                <label className="block text-[11px] font-bold text-[#7026B7]">
+                  Printed Card Number *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. RFID-001"
+                  value={printedCardNumber}
+                  onChange={(e) => setPrintedCardNumber(e.target.value.toUpperCase())}
+                  className="w-full rounded-lg border border-purple-300 bg-white px-3 py-2 text-xs font-mono font-bold uppercase text-[#24133F] focus:border-[#7026B7] focus:outline-none focus:ring-2 focus:ring-purple-200"
+                />
+                <p className="text-[10px] text-[#756883]">
+                  Enter the number printed on this card so it gets registered in the RFID Cards inventory.
+                </p>
+              </div>
             )}
           </div>
         </div>
