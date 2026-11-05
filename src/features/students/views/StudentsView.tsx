@@ -318,7 +318,7 @@ export const StudentsView: React.FC = () => {
               <>
                 {studentTab === 'active' && <button type="button" disabled={bulkBusy} onClick={() => setPendingBulkAction('archive')} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-[#7026B7] transition-colors hover:bg-purple-100 focus-visible:outline-2 focus-visible:outline-[#7026B7] disabled:opacity-40"><Archive className="h-3.5 w-3.5 shrink-0" /> Archive</button>}
                 <button type="button" disabled={bulkBusy || selectedWithCards.length > 0} onClick={() => setPendingBulkAction('delete')} title={selectedWithCards.length > 0 ? 'Students with linked cards cannot be deleted. Return cards first.' : 'Delete selected students'} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-rose-500 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5 shrink-0" /> Delete</button>
-                {studentTab === 'active' && <button type="button" disabled={!selectedWithCards.length || bulkBusy} onClick={() => setPendingBulkAction('unlink')} className="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-xs font-bold text-[#7026B7] transition-colors hover:bg-purple-100 focus-visible:outline-2 focus-visible:outline-[#7026B7] disabled:opacity-40"><Link2Off className="h-3.5 w-3.5 shrink-0" /> Return cards</button>}
+                {studentTab === 'active' && <button type="button" disabled={!selectedWithCards.length || bulkBusy} onClick={() => setPendingBulkAction('unlink')} className="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-100 focus-visible:outline-2 focus-visible:outline-emerald-600 disabled:opacity-40"><Link2Off className="h-3.5 w-3.5 shrink-0" /> Return cards</button>}
                 <button type="button" disabled={bulkBusy} onClick={() => setSelectedStudentIds([])} className="inline-flex h-9 items-center rounded-lg px-2 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40">Clear</button>
               </>
             )}
@@ -538,7 +538,7 @@ export const StudentsView: React.FC = () => {
         maxWidth="md"
       >
         <div className="space-y-4 text-sm text-slate-700">
-          <div className={`flex items-center gap-3 rounded-2xl px-3 py-2 ${pendingBulkAction === 'delete' ? 'bg-rose-50' : 'bg-[#F8F2FF]'}`}>
+          <div className={`flex items-center gap-3 rounded-2xl px-3 py-2 ${pendingBulkAction === 'delete' ? 'bg-rose-50' : pendingBulkAction === 'unlink' ? 'bg-emerald-50' : 'bg-[#F8F2FF]'}`}>
             <img
               src={pendingBulkAction === 'unlink' ? hawiTapCardImg : pendingBulkAction === 'archive' ? hawiBoxImg : hawiTrashCanImg}
               alt=""
@@ -584,7 +584,7 @@ export const StudentsView: React.FC = () => {
           )}
           <div className="flex justify-end gap-2.5 border-t border-[#F1EEF4] pt-4 pb-1">
             <Button type="button" variant="secondary" size="md" disabled={bulkBusy} onClick={() => { setPendingBulkAction(null); setDeleteConfirmation(''); }}>Cancel</Button>
-            <Button type="button" variant={pendingBulkAction === 'delete' ? 'danger' : 'primary'} size="md" isLoading={bulkBusy} disabled={pendingBulkAction === 'delete' && !isBulkDeleteConfirmed} onClick={() => void runBulkAction()} leftIcon={pendingBulkAction === 'unlink' ? <Link2Off className="h-4 w-4" /> : pendingBulkAction === 'archive' ? <Archive className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}>
+            <Button type="button" variant={pendingBulkAction === 'delete' ? 'danger' : pendingBulkAction === 'unlink' ? 'success' : 'primary'} size="md" isLoading={bulkBusy} disabled={pendingBulkAction === 'delete' && !isBulkDeleteConfirmed} onClick={() => void runBulkAction()} leftIcon={pendingBulkAction === 'unlink' ? <Link2Off className="h-4 w-4" /> : pendingBulkAction === 'archive' ? <Archive className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}>
               {pendingBulkAction === 'unlink' ? 'Return cards' : pendingBulkAction === 'archive' ? 'Archive students' : 'Delete students'}
             </Button>
           </div>

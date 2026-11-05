@@ -296,7 +296,7 @@ export function CardsPage() {
                 type="button"
                 disabled={bulkBusy}
                 onClick={() => setPendingBulkAction('unarchive')}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-[#7026B7] transition-colors hover:bg-purple-100 focus-visible:outline-2 focus-visible:outline-[#7026B7] disabled:opacity-40 cursor-pointer"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-100 focus-visible:outline-2 focus-visible:outline-emerald-600 disabled:opacity-40 cursor-pointer"
               >
                 <ArchiveRestore className="h-3.5 w-3.5 shrink-0" /> Restore
               </button>
