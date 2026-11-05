@@ -749,9 +749,9 @@ export function CardsPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <b className="text-sm capitalize text-[#24133F]">{event.action.replace(/_/g, ' ')}</b>
                       {event.student_name && (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700">
+                        <span className="inline-flex items-center gap-1 text-xs text-slate-700">
                           <UserRound className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <span>{event.student_name}</span>
+                          <b className="font-bold text-[#24133F]">{event.student_name}</b>
                           {event.student_number && (
                             <span className="rounded-full bg-[#F7F1FD] px-2 py-0.5 text-[11px] font-bold text-[#7026B7]">
                               @{event.student_number}
@@ -770,14 +770,14 @@ export function CardsPage() {
                       {event.actor?.name && (
                         <span className="inline-flex items-center gap-1 shrink-0">
                           <ShieldCheck className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <span>{event.actor.name}</span>
+                          <span>by {event.actor.name}</span>
                         </span>
                       )}
 
                       {event.note && (
                         <span className="inline-flex items-center gap-1 min-w-0">
                           <FileText className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <span className="italic truncate">"{event.note}"</span>
+                          <span className="truncate">{event.note}</span>
                         </span>
                       )}
                     </div>
