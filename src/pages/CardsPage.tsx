@@ -746,10 +746,10 @@ export function CardsPage() {
               {detail.events.length ? (
                 detail.events.map((event) => (
                   <div key={event.id} className="p-3.5 sm:p-4 space-y-1.5">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center justify-between gap-3">
                       <b className="text-sm capitalize text-[#24133F]">{event.action.replace(/_/g, ' ')}</b>
                       {event.student_name && (
-                        <span className="inline-flex items-center gap-1 text-xs text-slate-700">
+                        <div className="inline-flex items-center gap-1.5 text-xs text-slate-700 shrink-0 text-right">
                           <UserRound className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                           <b className="font-bold text-[#24133F]">{event.student_name}</b>
                           {event.student_number && (
@@ -757,7 +757,7 @@ export function CardsPage() {
                               @{event.student_number}
                             </span>
                           )}
-                        </span>
+                        </div>
                       )}
                     </div>
 
