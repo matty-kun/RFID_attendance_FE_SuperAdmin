@@ -28,6 +28,7 @@ const manilaDate = (date: Date) => {
   const value = (type: string) => parts.find(part => part.type === type)?.value ?? '';
   return `${value('year')}-${value('month')}-${value('day')}`;
 };
+const toYMD = (d?: string | null) => (d ? (d.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] ?? '') : '');
 const formatShortDate = (ymd: string) => new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' }).format(new Date(`${ymd}T00:00:00+08:00`));
 const formatManilaTime = (iso: string | null) => iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' }) : '-';
 const getInitials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0].toUpperCase()).join('') || 'ST';
@@ -107,6 +108,26 @@ export function ReportsPage() {
   })), [snapshot]);
   const eventLabel = event === 'all' ? 'All events' : events.find(item => item.id === event)?.name || 'Selected event';
 
+  const handleEventChange = (selectedEventId: string) => {
+    setEvent(selectedEventId);
+    setSession('all');
+    setSelected([]);
+    if (selectedEventId === 'all') {
+      setStartDate(initialStart);
+      setEndDate(initialEnd);
+    } else {
+      const target = events.find((e) => e.id === selectedEventId);
+      if (target) {
+        const s = toYMD(target.start_date);
+        const e = toYMD(target.end_date) || s;
+        if (s) {
+          setStartDate(s);
+          setEndDate(e);
+        }
+      }
+    }
+  };
+
   const handleExport = async (format: ExportFormat) => {
     try {
       const rows: ReportStudentAttendanceRow[] = [];
@@ -139,6 +160,15 @@ export function ReportsPage() {
 
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center gap-3">
+        <Dropdown
+          value={event}
+          onChange={handleEventChange}
+          options={[
+            { value: 'all', label: 'All Events' },
+            ...events.map((item) => ({ value: item.id, label: item.name })),
+          ]}
+        />
+
         <CalendarDatePicker
           startDate={startDate}
           endDate={endDate}
@@ -146,15 +176,6 @@ export function ReportsPage() {
             setStartDate(range.startDate);
             setEndDate(range.endDate);
           }}
-        />
-
-        <Dropdown
-          value={event}
-          onChange={(value) => { setEvent(value); setSession('all'); setSelected([]); }}
-          options={[
-            { value: 'all', label: 'All Events' },
-            ...events.map((item) => ({ value: item.id, label: item.name })),
-          ]}
         />
 
         <Dropdown
