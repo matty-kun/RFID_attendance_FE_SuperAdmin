@@ -294,8 +294,8 @@ export function OverviewPage() {
         </div>
       </div>
 
-      {/* Metric Cards with Smooth Settle Animation on Event Change */}
-      <section key={`metrics-${currentIndex}`} className="animate-card-settle grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* Metric Cards */}
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs transition-shadow hover:shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#756883]">Scans today</span>
