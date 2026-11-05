@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { KeyRound, Eye, EyeOff, Shield, GraduationCap, AlertCircle, Check } from 'lucide-react';
+import { KeyRound, Eye, EyeOff, AlertCircle, Check } from 'lucide-react';
 import { Modal } from './Modal';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -152,39 +152,36 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
     >
       {account && (
         <form onSubmit={handleSubmit} noValidate className="space-y-4 mt-2">
-          {/* Target Account Identification Card */}
-          <div className="rounded-2xl border border-purple-100 bg-gradient-to-r from-purple-50/80 to-purple-50/30 p-3.5">
-            <p className="text-[10px] font-black uppercase tracking-wider text-purple-600 mb-2">
-              Selected Target Account
+          {/* Account Identification Card */}
+          <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FC] p-3.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#756883] mb-2">
+              {account.type === 'Student' ? 'Selected Student' : 'Selected Account'}
             </p>
             <div className="flex items-center gap-3">
               {account.avatarUrl ? (
                 <img
                   src={account.avatarUrl}
                   alt={account.name}
-                  className="h-11 w-11 shrink-0 rounded-full object-cover border-2 border-white shadow-xs"
+                  className="h-11 w-11 shrink-0 rounded-full object-cover border border-[#E5E0EB]"
                 />
               ) : (
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-white bg-purple-200 text-sm font-black text-purple-800 shadow-xs">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#F2E9FC] text-sm font-bold text-[#7026B7]">
                   {initials}
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="truncate text-sm font-extrabold text-slate-900">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="truncate text-sm font-extrabold text-[#24133F]">
                     {account.name}
                   </h3>
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[10px] font-black text-purple-700 border border-purple-200/80 shadow-2xs">
-                    {account.type === 'Admin' ? (
-                      <Shield className="h-3 w-3 text-purple-600" />
-                    ) : (
-                      <GraduationCap className="h-3 w-3 text-purple-600" />
-                    )}
-                    {account.identifier || account.type}
-                  </span>
+                  {account.identifier && (
+                    <span className="font-mono text-xs font-semibold text-[#756883]">
+                      {account.identifier}
+                    </span>
+                  )}
                 </div>
                 {account.email && (
-                  <p className="truncate text-xs font-medium text-slate-500 mt-0.5">
+                  <p className="truncate text-xs font-medium text-[#756883] mt-0.5">
                     {account.email}
                   </p>
                 )}
