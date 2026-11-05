@@ -25,6 +25,7 @@ import {
   ArrowDownAZ,
   Link2Off,
   Trash2,
+  CheckCircle2,
 } from 'lucide-react';
 import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
 import hawiBoxImg from '../../../assets/illustrations/Hawi Box.png';
@@ -552,17 +553,34 @@ export const StudentsView: React.FC = () => {
             </p>
           </div>
           {pendingBulkAction === 'delete' && (
-            <label className="block space-y-1.5 text-xs font-semibold text-slate-700">
-              <span>Type <strong className="font-bold">"DELETE"</strong> to confirm</span>
-              <input
-                value={deleteConfirmation}
-                onChange={(event) => setDeleteConfirmation(event.target.value.toUpperCase())}
-                disabled={bulkBusy}
-                autoComplete="off"
-                placeholder="DELETE"
-                className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs font-sans font-bold tracking-wider text-slate-800 outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100 placeholder:text-slate-400 placeholder:font-normal placeholder:tracking-normal"
-              />
-            </label>
+            <div className="space-y-1.5 text-xs font-semibold text-slate-700">
+              <div className="flex items-center justify-between">
+                <span>Type <strong className="font-bold">"DELETE"</strong> to confirm</span>
+                {isBulkDeleteConfirmed && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 animate-in fade-in">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Matched
+                  </span>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  value={deleteConfirmation}
+                  onChange={(event) => setDeleteConfirmation(event.target.value.toUpperCase())}
+                  disabled={bulkBusy}
+                  autoComplete="off"
+                  placeholder="DELETE"
+                  className={`w-full rounded-xl border px-3.5 py-2.5 text-xs font-sans font-bold tracking-wider outline-none transition-all ${
+                    isBulkDeleteConfirmed
+                      ? 'border-emerald-500 bg-emerald-50/20 text-slate-900 pr-10 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100'
+                      : 'border-slate-300 text-slate-800 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'
+                  } placeholder:text-slate-400 placeholder:font-normal placeholder:tracking-normal`}
+                />
+                {isBulkDeleteConfirmed && (
+                  <CheckCircle2 className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600 animate-in fade-in" />
+                )}
+              </div>
+            </div>
           )}
           <div className="flex justify-end gap-2.5 border-t border-[#F1EEF4] pt-4 pb-1">
             <Button type="button" variant="secondary" size="md" disabled={bulkBusy} onClick={() => { setPendingBulkAction(null); setDeleteConfirmation(''); }}>Cancel</Button>
