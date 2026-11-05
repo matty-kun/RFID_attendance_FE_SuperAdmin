@@ -52,6 +52,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
   }, []);
 
+  useEffect(() => {
+    // Proactively refresh access token every 15 minutes while dashboard is open
+    const interval = setInterval(() => {
+      const storedRefreshToken = localStorage.getItem('super_admin_refresh_token');
+      if (storedRefreshToken) {
+        authService.refreshToken().then((newToken) => {
+          if (newToken) setToken(newToken);
+        }).catch(() => {});
+      }
+    }, 15 * 60 * 1000);
+
+    const handleFocus = () => {
+      const storedRefreshToken = localStorage.getItem('super_admin_refresh_token');
+      if (storedRefreshToken) {
+        authService.refreshToken().then((newToken) => {
+          if (newToken) setToken(newToken);
+        }).catch(() => {});
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
   const login = async (identifier: string, password: string) => {
     setIsLoading(true);
     try {
