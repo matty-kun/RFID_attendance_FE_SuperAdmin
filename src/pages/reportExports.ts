@@ -6,6 +6,7 @@ import {
   formatReportSession,
   formatReportStatus,
 } from './auditPreviewRecords';
+import hawiPeekingUrl from '../assets/illustrations/Hawi Peeking.png';
 
 export interface ExportReportOptions {
   startDate?: string;
@@ -38,6 +39,57 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function loadImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') return resolve(null);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+function formatPeriod(startDate?: string, endDate?: string): string {
+  if (!startDate && !endDate) return 'All dates';
+
+  const parse = (d?: string) => {
+    if (!d) return null;
+    const parts = d.slice(0, 10).split('-');
+    if (parts.length === 3) {
+      const dt = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+    const dt = new Date(d);
+    return isNaN(dt.getTime()) ? null : dt;
+  };
+
+  const start = parse(startDate);
+  const end = parse(endDate);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  if (start && end) {
+    if (start.getTime() === end.getTime()) {
+      return `${months[start.getMonth()]} ${start.getDate()}, ${start.getFullYear()}`;
+    }
+    if (start.getFullYear() === end.getFullYear()) {
+      if (start.getMonth() === end.getMonth()) {
+        return `${months[start.getMonth()]} ${start.getDate()} – ${end.getDate()}, ${start.getFullYear()}`;
+      }
+      return `${months[start.getMonth()]} ${start.getDate()} – ${months[end.getMonth()]} ${end.getDate()}, ${start.getFullYear()}`;
+    }
+    return `${months[start.getMonth()]} ${start.getDate()}, ${start.getFullYear()} – ${months[end.getMonth()]} ${end.getDate()}, ${end.getFullYear()}`;
+  }
+
+  if (end) {
+    return `Through ${months[end.getMonth()]} ${end.getDate()}, ${end.getFullYear()}`;
+  }
+  if (start) {
+    return `From ${months[start.getMonth()]} ${start.getDate()}, ${start.getFullYear()}`;
+  }
+  return 'All dates';
+}
+
 export async function exportAttendance(
   rows: ReportStudentAttendanceRow[],
   format: 'xlsx' | 'pdf' | 'docx',
@@ -48,11 +100,11 @@ export async function exportAttendance(
       ? { endDate: optionsOrEndDate }
       : optionsOrEndDate || {};
 
-  const systemName = options.systemName || 'PresNTC';
-  const eventName = options.eventName || 'All Events';
+  const systemName = options.systemName || 'Presnt';
+  const eventName = options.eventName || 'All events';
   const endDate = options.endDate || '';
   const startDate = options.startDate || '';
-  const dateRange = startDate && endDate ? `${startDate} to ${endDate}` : endDate ? `Through ${endDate}` : 'All Dates';
+  const periodLabel = formatPeriod(startDate, endDate);
   const filename = `attendance-report-${endDate || 'all'}`;
 
   // 1. EXCEL EXPORT
@@ -65,8 +117,9 @@ export async function exportAttendance(
     return;
   }
 
-  // 2. PDF EXPORT (Apple-Grade PresNTC Layout)
+  // 2. PDF EXPORT (Apple-Grade Presnt Layout)
   if (format === 'pdf') {
+    const hawiImg = await loadImage(hawiPeekingUrl);
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const pageWidth = 297;
     const pageHeight = 210;
@@ -84,64 +137,47 @@ export async function exportAttendance(
         pdf.setFillColor(112, 38, 183);
         pdf.rect(margin, 10, usableWidth, 1.2, 'F');
 
-        // Brand & System Title
+        // Brand Title: Presnt
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(10.5);
+        pdf.setFontSize(15);
         pdf.setTextColor(112, 38, 183);
-        pdf.text(systemName.toUpperCase(), margin, 17.5);
-
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(8);
-        pdf.setTextColor(117, 104, 131);
-        pdf.text('RFID Attendance Management System', margin + 22, 17.5);
+        pdf.text(systemName, margin, 18.5);
 
         // Document Title
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(15);
+        pdf.setFontSize(14);
         pdf.setTextColor(36, 19, 63);
-        pdf.text('Student Attendance Records', margin, 25.5);
+        pdf.text('Student Attendance Records', margin, 26);
 
         // Info Card
         pdf.setFillColor(250, 248, 252);
         pdf.setDrawColor(229, 224, 235);
-        pdf.roundedRect(margin, 29, usableWidth, 9, 1.5, 1.5, 'FD');
+        pdf.roundedRect(margin, 29.5, usableWidth, 8.5, 1.5, 1.5, 'FD');
 
         pdf.setFontSize(7.5);
         // Event
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(112, 38, 183);
-        pdf.text('EVENT:', margin + 3, 34.5);
+        pdf.text('EVENT:', margin + 4, 35);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(36, 19, 63);
-        pdf.text(eventName, margin + 17, 34.5);
+        pdf.text(eventName, margin + 17, 35);
 
-        // Date Range
+        // Period (Formatted with month names)
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(117, 104, 131);
-        pdf.text('PERIOD:', margin + 85, 34.5);
+        pdf.text('PERIOD:', margin + 90, 35);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(36, 19, 63);
-        pdf.text(dateRange, margin + 100, 34.5);
+        pdf.text(periodLabel, margin + 104, 35);
 
         // Records Count
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(117, 104, 131);
-        pdf.text('RECORDS:', margin + 160, 34.5);
+        pdf.text('RECORDS:', margin + 190, 35);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(36, 19, 63);
-        pdf.text(`${rows.length} records`, margin + 178, 34.5);
-
-        // Generated
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(117, 104, 131);
-        pdf.text('DATE:', margin + 215, 34.5);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(36, 19, 63);
-        pdf.text(
-          new Date().toLocaleDateString('en-PH', { dateStyle: 'medium' }),
-          margin + 226,
-          34.5,
-        );
+        pdf.text(`${rows.length} records`, margin + 207, 35);
 
         // Table Header
         pdf.setFillColor(244, 239, 251);
@@ -155,14 +191,18 @@ export async function exportAttendance(
       } else {
         // Subsequent pages compact header
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(8);
+        pdf.setFontSize(8.5);
         pdf.setTextColor(112, 38, 183);
-        pdf.text(`${systemName} · Student Attendance Records`, margin, 12);
+        pdf.text(systemName, margin, 12);
+
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(36, 19, 63);
+        pdf.text('Student Attendance Records', margin + 15, 12);
 
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(7.5);
         pdf.setTextColor(117, 104, 131);
-        pdf.text(`Event: ${eventName}  |  ${dateRange}`, margin + 65, 12);
+        pdf.text(`·  ${eventName}  ·  ${periodLabel}`, margin + 63, 12);
 
         // Table Header
         pdf.setFillColor(244, 239, 251);
@@ -181,7 +221,7 @@ export async function exportAttendance(
 
     let y = 56;
     for (const row of rows) {
-      if (y > 192) {
+      if (y > 175) {
         pdf.addPage();
         currentPage += 1;
         drawPageHeader(currentPage);
@@ -260,26 +300,41 @@ export async function exportAttendance(
       y += 6.5;
     }
 
-    // Footers across all pages
+    // Footers and Hawi Peeking across all pages
     const totalPages = pdf.getNumberOfPages();
+    const exportTimeStr = new Date().toLocaleDateString('en-PH', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+
     for (let p = 1; p <= totalPages; p++) {
       pdf.setPage(p);
+
+      // Footer divider line
       pdf.setDrawColor(229, 224, 235);
       pdf.line(margin, pageHeight - 11, pageWidth - margin, pageHeight - 11);
 
+      // Footer metadata
       pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(7);
+      pdf.setFontSize(7.5);
       pdf.setTextColor(165, 154, 171);
       pdf.text(
-        `${systemName} Official Attendance Audit · Confidential`,
+        `Presnt · Exported on ${exportTimeStr} · Confidential`,
         margin,
-        pageHeight - 7,
+        pageHeight - 6.5,
       );
       pdf.text(
         `Page ${p} of ${totalPages}`,
-        pageWidth - margin - 15,
-        pageHeight - 7,
+        pageWidth - margin - 40,
+        pageHeight - 6.5,
       );
+
+      // Hawi Peeking from bottom right corner
+      if (hawiImg) {
+        // Hawi aspect ratio: 1206 / 1305 = 0.924
+        // Width: 22mm, Height: 23.8mm
+        pdf.addImage(hawiImg, 'PNG', pageWidth - margin - 20, pageHeight - 23.5, 20, 21.6);
+      }
     }
 
     pdf.save(`${filename}.pdf`);
@@ -312,7 +367,7 @@ export async function exportAttendance(
             heading: HeadingLevel.HEADING_1,
           }),
           new Paragraph({
-            text: `Event: ${eventName}  |  Period: ${dateRange}  |  ${rows.length} records`,
+            text: `Event: ${eventName}  |  Period: ${periodLabel}  |  ${rows.length} records`,
           }),
           new Table({
             rows: tableRows,
