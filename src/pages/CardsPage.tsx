@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, Check, CircleAlert, CreditCard, ExternalLink, Filter, Hash, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, Trash2, UserRound, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Check, CheckCircle2, CircleAlert, CreditCard, ExternalLink, Filter, Hash, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, Trash2, UserRound, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatYearLevel } from '../utils/formatters';
 import { request } from '../services/apiClient';
@@ -537,17 +537,34 @@ export function CardsPage() {
               This card has no recorded holder or scan history and will be completely removed from inventory. This action cannot be undone.
             </p>
           </div>
-          <label className="block space-y-1.5 text-xs font-semibold text-slate-700">
-            <span>Type <strong className="font-bold">"DELETE"</strong> to confirm</span>
-            <input
-              value={singleDeleteConfirmation}
-              onChange={(e) => setSingleDeleteConfirmation(e.target.value.toUpperCase())}
-              disabled={isDeletingCard}
-              autoComplete="off"
-              placeholder="DELETE"
-              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs font-sans font-bold tracking-wider text-slate-800 outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100 placeholder:text-slate-400 placeholder:font-normal placeholder:tracking-normal"
-            />
-          </label>
+          <div className="space-y-1.5 text-xs font-semibold text-slate-700">
+            <div className="flex items-center justify-between">
+              <span>Type <strong className="font-bold">"DELETE"</strong> to confirm</span>
+              {isSingleDeleteConfirmed && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 animate-in fade-in">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Matched
+                </span>
+              )}
+            </div>
+            <div className="relative">
+              <input
+                value={singleDeleteConfirmation}
+                onChange={(e) => setSingleDeleteConfirmation(e.target.value.toUpperCase())}
+                disabled={isDeletingCard}
+                autoComplete="off"
+                placeholder="DELETE"
+                className={`w-full rounded-xl border px-3.5 py-2.5 text-xs font-sans font-bold tracking-wider outline-none transition-all ${
+                  isSingleDeleteConfirmed
+                    ? 'border-emerald-500 bg-emerald-50/20 text-slate-900 pr-10 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100'
+                    : 'border-slate-300 text-slate-800 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'
+                } placeholder:text-slate-400 placeholder:font-normal placeholder:tracking-normal`}
+              />
+              {isSingleDeleteConfirmed && (
+                <CheckCircle2 className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600 animate-in fade-in" />
+              )}
+            </div>
+          </div>
           <div className="flex justify-end gap-2.5 border-t border-[#F1EEF4] pt-4">
             <Button
               type="button"
@@ -617,17 +634,34 @@ export function CardsPage() {
           </p>
         </div>
         {pendingBulkAction === 'delete' && (
-          <label className="block space-y-1.5 text-xs font-semibold text-slate-700">
-            <span>Type <strong className="font-bold">"DELETE"</strong> to confirm</span>
-            <input
-              value={deleteConfirmation}
-              onChange={(e) => setDeleteConfirmation(e.target.value.toUpperCase())}
-              disabled={bulkBusy}
-              autoComplete="off"
-              placeholder="DELETE"
-              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs font-sans font-bold tracking-wider text-slate-800 outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100 placeholder:text-slate-400 placeholder:font-normal placeholder:tracking-normal"
-            />
-          </label>
+          <div className="space-y-1.5 text-xs font-semibold text-slate-700">
+            <div className="flex items-center justify-between">
+              <span>Type <strong className="font-bold">"DELETE"</strong> to confirm</span>
+              {isBulkDeleteConfirmed && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 animate-in fade-in">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Matched
+                </span>
+              )}
+            </div>
+            <div className="relative">
+              <input
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value.toUpperCase())}
+                disabled={bulkBusy}
+                autoComplete="off"
+                placeholder="DELETE"
+                className={`w-full rounded-xl border px-3.5 py-2.5 text-xs font-sans font-bold tracking-wider outline-none transition-all ${
+                  isBulkDeleteConfirmed
+                    ? 'border-emerald-500 bg-emerald-50/20 text-slate-900 pr-10 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100'
+                    : 'border-slate-300 text-slate-800 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'
+                } placeholder:text-slate-400 placeholder:font-normal placeholder:tracking-normal`}
+              />
+              {isBulkDeleteConfirmed && (
+                <CheckCircle2 className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600 animate-in fade-in" />
+              )}
+            </div>
+          </div>
         )}
         <div className="flex justify-end gap-2.5 border-t border-[#F1EEF4] pt-4">
           <Button
