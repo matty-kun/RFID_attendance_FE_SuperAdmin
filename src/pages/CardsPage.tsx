@@ -761,25 +761,27 @@ export function CardsPage() {
                       )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#756883]">
-                      <span className="inline-flex items-center gap-1 shrink-0">
+                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-[#756883]">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+                        {event.actor?.name && (
+                          <span className="inline-flex items-center gap-1 shrink-0">
+                            <ShieldCheck className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            <span>by {event.actor.name}</span>
+                          </span>
+                        )}
+
+                        {event.note && (
+                          <span className="inline-flex items-center gap-1 min-w-0">
+                            <FileText className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            <span className="truncate">{event.note}</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <span className="inline-flex items-center gap-1 shrink-0 ml-auto text-right">
                         <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                         <time>{date(event.created_at)}</time>
                       </span>
-
-                      {event.actor?.name && (
-                        <span className="inline-flex items-center gap-1 shrink-0">
-                          <ShieldCheck className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <span>by {event.actor.name}</span>
-                        </span>
-                      )}
-
-                      {event.note && (
-                        <span className="inline-flex items-center gap-1 min-w-0">
-                          <FileText className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate">{event.note}</span>
-                        </span>
-                      )}
                     </div>
                   </div>
                 ))
