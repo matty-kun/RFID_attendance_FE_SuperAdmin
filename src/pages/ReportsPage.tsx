@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRightLeft, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
+import { Activity, ArrowRightLeft, BarChart3, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
 import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -76,6 +78,7 @@ export function ReportsPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const pageSize = 25;
+  const [trendView, setTrendView] = useState<'bars' | 'wave'>('bars');
 
   useEffect(() => { void adminService.getEvents().then(setEvents).catch(() => setError('Could not load events.')); }, []);
   useEffect(() => { const timer = window.setTimeout(() => { setQuery(search.trim()); setPage(1); }, 250); return () => window.clearTimeout(timer); }, [search]);
@@ -268,112 +271,233 @@ export function ReportsPage() {
         />
       </div>
 
-      <section aria-label="Attendance totals" className="rounded-[24px] border border-[#E5E0EB] bg-white px-5 py-5 sm:px-6">
+      <section aria-label="Attendance totals" className="rounded-3xl border border-[#E5E0EB] bg-white p-6 shadow-xs">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-bold text-[#24133F]">Attendance totals</h2>
-          <p className="text-xs text-[#756883]">{eventLabel} · {formatShortDate(startDate)}–{formatShortDate(endDate)}</p>
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">Aggregate Performance</p>
+            <h2 className="text-xl font-black text-[#24133F]">Attendance Totals</h2>
+          </div>
+          <span className="rounded-full bg-purple-50 border border-purple-200/80 px-3 py-1 text-xs font-bold text-[#7026B7]">
+            {eventLabel} · {formatShortDate(startDate)}–{formatShortDate(endDate)}
+          </span>
         </div>
-        <div className="mt-5 grid grid-cols-2 border-t border-[#EDE8F1] pt-4 sm:grid-cols-4">
-          <div className="border-r border-[#EDE8F1] py-1 pr-4">
-            <p className="text-xs text-[#756883]">Students checked in</p>
-            <p className="mt-1 text-2xl font-extrabold text-[#24133F]">{loading ? '—' : reportSummary.studentsCheckedIn.toLocaleString()}</p>
+
+        <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="rounded-2xl border border-[#EDE8F1] bg-[#FAF8FC] p-4 space-y-1">
+            <span className="text-xs font-semibold text-[#756883]">Students Checked In</span>
+            <p className="text-2xl font-black text-[#24133F]">{loading ? '—' : reportSummary.studentsCheckedIn.toLocaleString()}</p>
+            <p className="text-[10px] font-bold text-purple-700">Unique attendees</p>
           </div>
-          <div className="py-1 pl-4 sm:border-r sm:border-[#EDE8F1] sm:pr-4">
-            <p className="text-xs text-[#756883]">Time In</p>
-            <p className="mt-1 text-2xl font-extrabold text-[#16883F]">{loading ? '—' : reportSummary.timeIns.toLocaleString()}</p>
+
+          <div className="rounded-2xl border border-[#EDE8F1] bg-[#FAF8FC] p-4 space-y-1">
+            <span className="text-xs font-semibold text-[#756883]">Time In Scans</span>
+            <p className="text-2xl font-black text-emerald-600">{loading ? '—' : reportSummary.timeIns.toLocaleString()}</p>
+            <p className="text-[10px] font-bold text-emerald-700">✦ Entry volume</p>
           </div>
-          <div className="border-r border-t border-[#EDE8F1] py-3 pr-4 sm:border-t-0 sm:py-1 sm:pl-4">
-            <p className="text-xs text-[#756883]">Time Out</p>
-            <p className="mt-1 text-2xl font-extrabold text-[#C52736]">{loading ? '—' : reportSummary.timeOuts.toLocaleString()}</p>
+
+          <div className="rounded-2xl border border-[#EDE8F1] bg-[#FAF8FC] p-4 space-y-1">
+            <span className="text-xs font-semibold text-[#756883]">Time Out Scans</span>
+            <p className="text-2xl font-black text-rose-600">{loading ? '—' : reportSummary.timeOuts.toLocaleString()}</p>
+            <p className="text-[10px] font-bold text-rose-700">⬡ Exit volume</p>
           </div>
-          <div className="border-t border-[#EDE8F1] py-3 pl-4 sm:border-t-0 sm:py-1">
-            <p className="text-xs text-[#756883]">Total scans</p>
-            <p className="mt-1 text-2xl font-extrabold text-[#7026B7]">{loading ? '—' : reportSummary.totalScans.toLocaleString()}</p>
+
+          <div className="rounded-2xl border border-[#EDE8F1] bg-[#FAF8FC] p-4 space-y-1">
+            <span className="text-xs font-semibold text-[#756883]">Total Recorded Scans</span>
+            <p className="text-2xl font-black text-[#7026B7]">{loading ? '—' : reportSummary.totalScans.toLocaleString()}</p>
+            <p className="text-[10px] font-bold text-[#7026B7]">Hardware taps</p>
           </div>
         </div>
-        <p className="mt-3 text-[11px] text-[#897B96]">Students checked in counts each student once. Scan totals count every recorded tap.</p>
       </section>
 
       {/* Row 1: Attendance Trend (Card 1) & Session Breakdown (Card 2) */}
       <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
-        {/* Card 1: Attendance Trend */}
-        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6">
+        {/* Card 1: Attendance Trend (Image 4 bottom-right & Image 3 style) */}
+        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-xs">
           <div>
-            <h2 className="text-lg font-bold text-[#24133F]">Attendance Trend</h2>
-            <p className="text-xs text-[#756883] mt-0.5">Time In and Time Out scans per day</p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">Daily Volume</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <h2 className="text-xl font-black text-[#24133F]">Attendance Trend</h2>
+                  <span className="rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">
+                    ↑ Active Range
+                  </span>
+                </div>
+                <p className="text-xs text-[#756883] mt-1">Time In and Time Out scans per day</p>
+              </div>
+
+              {/* View Switcher: Stadium Bars vs Smooth Flow Curve (Image 4 bottom right!) */}
+              <div className="flex items-center rounded-xl bg-[#FAF8FC] p-1 border border-[#EDE8F1] text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setTrendView('bars')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    trendView === 'bars'
+                      ? 'bg-white text-[#7026B7] shadow-xs'
+                      : 'text-[#756883] hover:text-[#24133F]'
+                  }`}
+                >
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  <span>Bars</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTrendView('wave')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    trendView === 'wave'
+                      ? 'bg-white text-[#7026B7] shadow-xs'
+                      : 'text-[#756883] hover:text-[#24133F]'
+                  }`}
+                >
+                  <Activity className="h-3.5 w-3.5" />
+                  <span>Flow</span>
+                </button>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="my-6 flex h-56 items-center justify-center text-xs text-[#756883]">
+                Loading attendance trend…
+              </div>
+            ) : trendData.length === 0 ? (
+              <div className="my-6 flex h-56 items-center justify-center text-center text-xs text-[#756883]">
+                No attendance records available.
+              </div>
+            ) : (
+              <div className="my-4 h-56 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  {trendView === 'bars' ? (
+                    /* Stadium Bars with Background Tracks (Image 3 style) */
+                    <BarChart data={trendData} margin={{ top: 15, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1EEF4" />
+                      <XAxis dataKey="day" tickLine={false} axisLine={{ stroke: '#EDE8F1' }} tick={{ fill: '#756883', fontSize: 11, fontWeight: 600 }} />
+                      <YAxis tickLine={false} axisLine={false} tick={{ fill: '#A59CAC', fontSize: 10 }} />
+                      <Tooltip
+                        cursor={{ fill: 'rgba(112, 38, 183, 0.04)', rx: 8, ry: 8 }}
+                        content={({ active, payload, label }) => {
+                          if (active && payload && payload.length) {
+                            const inVal = Number(payload[0]?.value ?? 0);
+                            const outVal = Number(payload[1]?.value ?? 0);
+                            return (
+                              <div className="rounded-2xl border border-[#E5E0EB] bg-white px-3.5 py-2.5 shadow-xl text-xs">
+                                <p className="font-extrabold text-[#24133F]">{label}</p>
+                                <div className="mt-1 flex items-center gap-3 font-semibold text-[11px]">
+                                  <span className="flex items-center gap-1 text-emerald-600">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                    In: <strong className="font-bold text-slate-800">{inVal}</strong>
+                                  </span>
+                                  <span className="flex items-center gap-1 text-rose-600">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                                    Out: <strong className="font-bold text-slate-800">{outVal}</strong>
+                                  </span>
+                                  <span className="flex items-center gap-1 text-[#7026B7]">
+                                    Total: <strong className="font-extrabold text-[#7026B7]">{inVal + outVal}</strong>
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Bar
+                        dataKey="present"
+                        name="Time In"
+                        fill="#10B981"
+                        radius={[8, 8, 8, 8]}
+                        background={{ fill: '#FAF8FC', radius: 8 }}
+                        maxBarSize={28}
+                      />
+                      <Bar
+                        dataKey="absent"
+                        name="Time Out"
+                        fill="#EF4444"
+                        radius={[8, 8, 8, 8]}
+                        background={{ fill: '#FAF8FC', radius: 8 }}
+                        maxBarSize={28}
+                      />
+                    </BarChart>
+                  ) : (
+                    /* Monotone Spline Flow Curve (Image 4 bottom right style) */
+                    <AreaChart data={trendData} margin={{ top: 15, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="repInGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.35} />
+                          <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
+                        </linearGradient>
+                        <linearGradient id="repOutGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#EF4444" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#EF4444" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1EEF4" />
+                      <XAxis dataKey="day" tickLine={false} axisLine={{ stroke: '#EDE8F1' }} tick={{ fill: '#756883', fontSize: 11, fontWeight: 600 }} />
+                      <YAxis tickLine={false} axisLine={false} tick={{ fill: '#A59CAC', fontSize: 10 }} />
+                      <Tooltip
+                        content={({ active, payload, label }) => {
+                          if (active && payload && payload.length) {
+                            const inVal = Number(payload[0]?.value ?? 0);
+                            const outVal = Number(payload[1]?.value ?? 0);
+                            return (
+                              <div className="rounded-2xl border border-[#E5E0EB] bg-white px-3.5 py-2.5 shadow-xl text-xs">
+                                <p className="font-extrabold text-[#24133F]">{label}</p>
+                                <div className="mt-1 flex items-center gap-3 font-semibold text-[11px]">
+                                  <span className="flex items-center gap-1 text-emerald-600">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                    In: <strong className="font-bold text-slate-800">{inVal}</strong>
+                                  </span>
+                                  <span className="flex items-center gap-1 text-rose-600">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                                    Out: <strong className="font-bold text-slate-800">{outVal}</strong>
+                                  </span>
+                                  <span className="flex items-center gap-1 text-[#7026B7]">
+                                    Total: <strong className="font-extrabold text-[#7026B7]">{inVal + outVal}</strong>
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="present"
+                        name="Time In"
+                        stroke="#10B981"
+                        strokeWidth={3}
+                        fill="url(#repInGrad)"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="absent"
+                        name="Time Out"
+                        stroke="#EF4444"
+                        strokeWidth={3}
+                        fill="url(#repOutGrad)"
+                      />
+                    </AreaChart>
+                  )}
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
 
-          {loading ? (
-            <div className="my-6 flex h-56 items-center justify-center text-xs text-[#756883]">
-              Loading attendance trend…
+          {/* Sub-Metrics Footer directly copying Image 4 */}
+          <div className="mt-4 pt-3 border-t border-[#EDE8F1] grid grid-cols-2 gap-4">
+            <div className="space-y-0.5">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+                <span>✦</span> Time In Volume
+              </span>
+              <p className="text-lg font-extrabold text-[#24133F]">{reportSummary.timeIns.toLocaleString()}</p>
+              <p className="text-[10px] text-[#756883]">Recorded entries across period</p>
             </div>
-          ) : trendData.length === 0 ? (
-            <div className="my-6 flex h-56 items-center justify-center text-center text-xs text-[#756883]">
-              No attendance records available.
-            </div>
-          ) : (
-            <div className="my-4 h-56 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={trendData} margin={{ top: 15, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1EEF4" />
-                  <XAxis dataKey="day" tickLine={false} axisLine={{ stroke: '#EDE8F1' }} tick={{ fill: '#756883', fontSize: 11, fontWeight: 600 }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fill: '#A59CAC', fontSize: 10 }} />
-                  <Tooltip
-                    cursor={{ fill: 'rgba(112, 38, 183, 0.04)', rx: 8, ry: 8 }}
-                    content={({ active, payload, label }) => {
-                      if (active && payload && payload.length) {
-                        const inVal = Number(payload[0]?.value ?? 0);
-                        const outVal = Number(payload[1]?.value ?? 0);
-                        return (
-                          <div className="rounded-2xl border border-[#E5E0EB] bg-white px-3.5 py-2.5 shadow-lg shadow-purple-950/5 text-xs">
-                            <p className="font-extrabold text-[#24133F]">{label}</p>
-                            <div className="mt-1 flex items-center gap-3 font-semibold text-[11px]">
-                              <span className="flex items-center gap-1 text-emerald-600">
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                                In: <strong className="font-bold text-slate-800">{inVal}</strong>
-                              </span>
-                              <span className="flex items-center gap-1 text-rose-600">
-                                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                                Out: <strong className="font-bold text-slate-800">{outVal}</strong>
-                              </span>
-                              <span className="flex items-center gap-1 text-[#7026B7]">
-                                Total: <strong className="font-extrabold text-[#7026B7]">{inVal + outVal}</strong>
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Bar
-                    dataKey="present"
-                    name="Time In"
-                    fill="#10B981"
-                    radius={[8, 8, 8, 8]}
-                    background={{ fill: '#FAF8FC', radius: 8 }}
-                    maxBarSize={28}
-                  />
-                  <Bar
-                    dataKey="absent"
-                    name="Time Out"
-                    fill="#EF4444"
-                    radius={[8, 8, 8, 8]}
-                    background={{ fill: '#FAF8FC', radius: 8 }}
-                    maxBarSize={28}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {/* Sub-Metrics Footer (Image 4 style) */}
-          <div className="flex items-center justify-between gap-4 text-xs font-semibold pt-3 border-t border-[#EDE8F1]">
-            <div className="flex items-center gap-1.5 text-emerald-700">
-              <span className="text-emerald-500">✦</span> Time In: <strong className="text-[#24133F]">{reportSummary.timeIns.toLocaleString()}</strong>
-            </div>
-            <div className="flex items-center gap-1.5 text-rose-700">
-              <span className="text-rose-500">⬡</span> Time Out: <strong className="text-[#24133F]">{reportSummary.timeOuts.toLocaleString()}</strong>
+            <div className="space-y-0.5">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-rose-700">
+                <span>⬡</span> Time Out Volume
+              </span>
+              <p className="text-lg font-extrabold text-[#24133F]">{reportSummary.timeOuts.toLocaleString()}</p>
+              <p className="text-[10px] text-[#756883]">Recorded exits across period</p>
             </div>
           </div>
         </section>
@@ -424,16 +548,79 @@ export function ReportsPage() {
 
       {/* Checkpoints and Course Breakdown */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Checkpoints */}
-        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6">
+        {/* Checkpoints (Image 4 breakdown style) */}
+        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6 shadow-xs">
           <div>
-            <h2 className="text-lg font-bold text-[#24133F]">Checkpoints</h2>
-            <p className="text-xs text-[#756883] mt-0.5">Scans by checkpoint location</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">Hardware Stations</p>
+                <h2 className="text-lg font-bold text-[#24133F]">Checkpoints Activity</h2>
+              </div>
+              <span className="rounded-full bg-purple-50 px-2.5 py-0.5 text-[11px] font-bold text-[#7026B7]">
+                {checkpointList.length} {checkpointList.length === 1 ? 'Station' : 'Stations'}
+              </span>
+            </div>
+            <p className="text-xs text-[#756883] mt-0.5">Scans distributed across checkpoint terminals</p>
+
+            {/* Checkpoint Volume Bars (Image 4 bottom list style) */}
+            <div className="mt-4 space-y-3">
+              {checkpointList.slice(0, 3).map((cp, idx) => {
+                const maxScan = Math.max(1, ...checkpointList.map(c => c.total));
+                const pct = Math.round((cp.total / maxScan) * 100);
+                return (
+                  <div key={cp.name} className="rounded-xl border border-[#EDE8F1] bg-[#FAF8FC] p-3 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#24133F] flex items-center gap-2">
+                        <span className="h-5 w-5 rounded-md bg-purple-100/70 text-[#7026B7] flex items-center justify-center text-[10px] font-extrabold">
+                          #{idx + 1}
+                        </span>
+                        {cp.name}
+                      </span>
+                      <span className="font-bold text-[#7026B7] tabular-nums">{cp.total.toLocaleString()} scans</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-white">
+                      <div style={{ width: `${Math.max(6, pct)}%` }} className="h-1.5 rounded-full bg-[#7026B7] transition-all duration-500" />
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-[#756883]">
+                      <span className="text-emerald-600 font-semibold">In: {cp.inScans}</span>
+                      <span className="text-rose-600 font-semibold">Out: {cp.outScans}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Course Summary List (Photo 4 bottom list style) */}
+            {!loading && courseChartData.length > 0 && (
+              <div className="mt-2 space-y-2 pb-4 border-b border-[#EDE8F1]">
+                {courseChartData.slice(0, 3).map((c, idx) => {
+                  const maxCount = Math.max(1, ...courseChartData.map(item => item.count));
+                  const pct = Math.round((c.count / maxCount) * 100);
+                  return (
+                    <div key={c.name} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-2 font-semibold text-[#24133F] truncate max-w-[200px]">
+                          <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: COURSE_COLORS[idx % COURSE_COLORS.length] }} />
+                          {c.name}
+                        </span>
+                        <span className="font-bold text-[#756883] tabular-nums">{c.count} scans ({c.expected} roster)</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-[#FAF8FC]">
+                        <div
+                          style={{ width: `${Math.max(6, pct)}%`, backgroundColor: COURSE_COLORS[idx % COURSE_COLORS.length] }}
+                          className="h-1.5 rounded-full transition-all duration-500"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="mt-4 overflow-x-auto">
               <table className="w-full min-w-[400px] text-left text-xs">
                 <thead>
-                  <tr className="text-[#756883] font-medium">
+                  <tr className="text-[#756883] font-medium border-b border-[#EDE8F1]">
                     <th className="py-2.5 pr-4 font-medium">Checkpoint</th>
                     <th className="px-2 py-2.5 font-medium">In Scans</th>
                     <th className="px-2 py-2.5 font-medium">Out Scans</th>
@@ -443,13 +630,13 @@ export function ReportsPage() {
                 <tbody className="divide-y divide-[#F1EEF4]">
                   {loading ? (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-xs text-[#756883]">
+                      <td colSpan={4} className="py-6 text-center text-xs text-[#756883]">
                         Loading checkpoints…
                       </td>
                     </tr>
                   ) : checkpointList.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-xs text-[#756883]">
+                      <td colSpan={4} className="py-6 text-center text-xs text-[#756883]">
                         No attendance records available.
                       </td>
                     </tr>
