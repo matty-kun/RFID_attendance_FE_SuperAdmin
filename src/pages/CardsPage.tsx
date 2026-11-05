@@ -66,6 +66,7 @@ export function CardsPage() {
   const [action, setAction] = useState<Action | null>(null);
   const lastAction = useRef<Action>('register');
   if (action) lastAction.current = action;
+  const activeAction = action || lastAction.current;
   const [uid, setUid] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [registerStep, setRegisterStep] = useState<1 | 2>(1);
@@ -781,26 +782,29 @@ export function CardsPage() {
       isOpen={Boolean(action)}
       onClose={() => !busy && setAction(null)}
       title={
-        action === 'register' ? 'Register RFID card' :
-        action === 'issue' ? 'Issue RFID card' :
-        action === 'return' ? 'Return RFID card' :
-        action === 'lost' ? 'Report lost card' :
-        action === 'damaged' ? 'Mark damaged card' :
-        action === 'archive' ? 'Archive RFID card' :
-        action === 'unarchive' ? 'Restore archived card' :
+        activeAction === 'register' ? 'Register RFID card' :
+        activeAction === 'issue' ? 'Issue RFID card' :
+        activeAction === 'return' ? 'Return RFID card' :
+        activeAction === 'lost' ? 'Report lost card' :
+        activeAction === 'damaged' ? 'Mark damaged card' :
+        activeAction === 'archive' ? 'Archive RFID card' :
+        activeAction === 'unarchive' ? 'Restore archived card' :
         'Restore RFID card'
       }
       description={
-        action === 'register' ? 'Scan the card, then enter its printed number.' :
-        action === 'issue' ? 'Assign this physical card to an active student.' :
-        action === 'archive' ? 'Remove this card from circulation. Its history stays available.' :
-        action === 'unarchive' ? 'Make this card available to issue again.' :
+        activeAction === 'register' ? 'Scan the card, then enter its printed number.' :
+        activeAction === 'issue' ? 'Assign this physical card to an active student.' :
+        activeAction === 'archive' ? 'Remove this card from circulation. Its history stays available.' :
+        activeAction === 'unarchive' ? 'Make this card available to issue again.' :
+        activeAction === 'return' ? 'Unlink this card from its student and return it to inventory.' :
+        activeAction === 'lost' ? 'Deactivate this card and record it as lost in the audit trail.' :
+        activeAction === 'damaged' ? 'Flag this card as damaged and take it out of circulation.' :
         'Card history stays available for auditing.'
       }
-      maxWidth={action === 'issue' ? 'lg' : 'md'}
+      maxWidth={activeAction === 'issue' ? 'lg' : 'md'}
     >
       <div className="space-y-4 p-6 text-xs">
-        {action === 'register' && (
+        {activeAction === 'register' && (
           <div className="relative mb-5 flex items-start justify-between px-8" aria-label={`Step ${registerStep} of 2`}>
             <div className="absolute left-[25%] right-[25%] top-4 h-[2px] bg-[#E5E0EB]" />
             <div className={`absolute left-[25%] top-4 h-[2px] bg-[#A855F7] transition-all ${registerStep === 2 ? 'w-1/2' : 'w-0'}`} />
@@ -815,15 +819,15 @@ export function CardsPage() {
           </div>
         )}
 
-        {action !== 'issue' && (
+        {activeAction !== 'issue' && (
           <div className="flex justify-center">
             <img
               src={
-                lastAction.current === 'damaged' ? hawiBrokenCard :
-                lastAction.current === 'lost' ? hawiCrying :
-                lastAction.current === 'archive' ? hawiBox :
-                lastAction.current === 'restore' || lastAction.current === 'unarchive' ? hawiCheck :
-                lastAction.current === 'return' || lastAction.current === 'register' ? hawiScanning :
+                activeAction === 'damaged' ? hawiBrokenCard :
+                activeAction === 'lost' ? hawiCrying :
+                activeAction === 'archive' ? hawiBox :
+                activeAction === 'restore' || activeAction === 'unarchive' ? hawiCheck :
+                activeAction === 'return' || activeAction === 'register' ? hawiScanning :
                 hawiLooking
               }
               alt=""
@@ -832,22 +836,46 @@ export function CardsPage() {
           </div>
         )}
 
-        {(action !== 'register' && action !== 'issue') && (
-          <label className="block font-semibold">
-            Card UID
-            <div className="relative mt-1">
-              <Radio className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#7026B7]" />
-              <input
-                value={uid}
-                onChange={e => setUid(e.target.value)}
-                disabled
-                className="block h-10 w-full rounded-xl border border-[#E5E0EB] py-0 pl-9 pr-3 focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100 disabled:bg-[#F7F6F9]"
-              />
-            </div>
-          </label>
+        {/* Confirmation Question Headline for Status Changing Actions */}
+        {['lost', 'damaged', 'return', 'archive', 'unarchive', 'restore'].includes(activeAction) && (
+          <div className="text-center space-y-1">
+            <h3 className="text-base font-extrabold text-[#24133F]">
+              {activeAction === 'lost'
+                ? `Mark ${cardNumber || 'this card'} as lost?`
+                : activeAction === 'damaged'
+                ? `Mark ${cardNumber || 'this card'} as damaged?`
+                : activeAction === 'return'
+                ? `Return ${cardNumber || 'this card'} to inventory?`
+                : activeAction === 'archive'
+                ? `Archive ${cardNumber || 'this card'}?`
+                : `Restore ${cardNumber || 'this card'} to inventory?`}
+            </h3>
+            <p className="text-xs text-[#756883] leading-relaxed">
+              {activeAction === 'lost'
+                ? 'This card will be deactivated immediately and taken out of circulation. Attendance checkpoints will reject this card.'
+                : activeAction === 'damaged'
+                ? 'This physical card will be marked as damaged and taken out of active circulation.'
+                : activeAction === 'return'
+                ? 'This card will be unlinked from the student and made available for reassignment.'
+                : activeAction === 'archive'
+                ? 'This card will be moved to the archive. Historical audit trails remain preserved.'
+                : 'This card will be returned to available inventory and can be issued to students again.'}
+            </p>
+          </div>
         )}
 
-        {action === 'register' && registerStep === 1 && (
+        {/* Clean Card Summary Pill for Confirmation Modals */}
+        {['lost', 'damaged', 'return', 'archive', 'unarchive', 'restore'].includes(activeAction) && (
+          <div className="flex items-center justify-between rounded-xl border border-[#E5E0EB] bg-[#FAF8FC] px-3.5 py-2.5">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-[#7026B7]" />
+              <span className="font-mono text-xs font-bold text-[#24133F]">{cardNumber || 'Card'}</span>
+            </div>
+            <span className="font-mono text-[11px] font-semibold text-[#756883]">UID: {uid}</span>
+          </div>
+        )}
+
+        {activeAction === 'register' && registerStep === 1 && (
           <label className="block font-semibold">
             Scan card UID
             <div className="relative mt-1">
@@ -872,7 +900,7 @@ export function CardsPage() {
           </label>
         )}
 
-        {action === 'register' && registerStep === 2 && (
+        {activeAction === 'register' && registerStep === 2 && (
           <>
             <div className="flex items-center justify-between rounded-2xl border border-[#E5E0EB] bg-[#FAF8FC] px-4 py-3">
               <span className="font-semibold text-[#756883]">Card scanned</span>
@@ -1087,53 +1115,59 @@ export function CardsPage() {
           </div>
         )}
 
-        {action !== 'issue' && action !== 'register' && action !== 'archive' && action !== 'unarchive' && (
-          <label className="block font-semibold">
-            Note (optional)
+        {activeAction !== 'issue' && activeAction !== 'register' && (
+          <label className="block text-xs font-semibold text-[#24133F]">
+            <span>Reason or note (optional)</span>
             <input
               value={note}
               onChange={e => setNote(e.target.value)}
               maxLength={500}
-              placeholder="Reason or handoff detail"
-              className="mt-1 block h-10 w-full rounded-xl border border-[#E5E0EB] px-3 focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100"
+              placeholder={
+                activeAction === 'lost'
+                  ? 'e.g. Student reported lost at cafeteria'
+                  : activeAction === 'damaged'
+                  ? 'e.g. Cracked casing or antenna fault'
+                  : activeAction === 'return'
+                  ? 'e.g. Card surrendered at registrar desk'
+                  : 'e.g. Audit note or detail'
+              }
+              className="mt-1.5 block h-10 w-full rounded-xl border border-[#E5E0EB] px-3 text-xs focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100 placeholder:text-[#A59AAB]"
             />
           </label>
         )}
 
-        <div className={`flex gap-2 border-t border-[#F1EEF4] pt-4 ${action === 'register' ? 'justify-between' : 'justify-end'}`}>
+        <div className={`flex gap-2 border-t border-[#F1EEF4] pt-4 ${activeAction === 'register' ? 'justify-between' : 'justify-end'}`}>
           <Button
             variant="secondary"
-            onClick={() => action === 'register' && registerStep === 2 ? setRegisterStep(1) : setAction(null)}
+            onClick={() => activeAction === 'register' && registerStep === 2 ? setRegisterStep(1) : setAction(null)}
             disabled={busy}
-            leftIcon={action === 'register' ? undefined : <X className="h-4 w-4" />}
+            leftIcon={activeAction === 'register' ? undefined : <X className="h-4 w-4" />}
           >
-            {action === 'register' && registerStep === 2 ? 'Back' : 'Cancel'}
+            {activeAction === 'register' && registerStep === 2 ? 'Back' : 'Cancel'}
           </Button>
           <Button
-            variant={action === 'lost' ? 'danger' : 'primary'}
+            variant={activeAction === 'lost' || activeAction === 'damaged' ? 'danger' : activeAction === 'return' ? 'success' : 'primary'}
             onClick={() => {
-              if (action === 'register' && registerStep === 1) {
+              if (activeAction === 'register' && registerStep === 1) {
                 setRegisterStep(2);
                 requestAnimationFrame(() => cardNumberRef.current?.focus());
               } else void submit();
             }}
             isLoading={busy}
-            disabled={!uid.trim() || (action === 'register' && registerStep === 2 && (!cardNumber.trim() || Boolean(registerCardNumberError))) || (action === 'issue' && !studentId)}
+            disabled={!uid.trim() || (activeAction === 'register' && registerStep === 2 && (!cardNumber.trim() || Boolean(registerCardNumberError))) || (activeAction === 'issue' && !studentId)}
           >
-            {action === 'register'
+            {activeAction === 'register'
               ? registerStep === 1 ? 'Next →' : 'Register card'
-              : action === 'issue'
+              : activeAction === 'issue'
               ? selectedStudent ? `Issue to ${selectedStudent.name.split(' ')[0]}` : 'Issue card'
-              : action === 'return'
+              : activeAction === 'return'
               ? 'Confirm return'
-              : action === 'lost'
+              : activeAction === 'lost'
               ? 'Report lost'
-              : action === 'damaged'
+              : activeAction === 'damaged'
               ? 'Mark damaged'
-              : action === 'archive'
+              : activeAction === 'archive'
               ? 'Archive card'
-              : action === 'unarchive'
-              ? 'Restore card'
               : 'Restore card'}
           </Button>
         </div>
