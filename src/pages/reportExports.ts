@@ -311,7 +311,7 @@ export async function exportAttendance(
 
     // Footers and Hawi Peeking across all pages
     const totalPages = pdf.getNumberOfPages();
-    const exportTimeStr = new Date().toLocaleDateString('en-PH', {
+    const exportTimeStr = new Date().toLocaleString('en-PH', {
       dateStyle: 'medium',
       timeStyle: 'short',
     });
