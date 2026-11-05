@@ -67,6 +67,7 @@ export function OverviewPage() {
   const [roster, setRoster] = useState<StudentRosterStats | null>(null);
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [direction, setDirection] = useState<'right' | 'left'>('right');
   const [, setLoading] = useState(true);
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
@@ -138,31 +139,33 @@ export function OverviewPage() {
     ];
   }, [sortedEvents]);
 
-  // Slide navigation
+  // Slide navigation with direction tracking for smooth slide animations
   const goToSlide = useCallback(
-    (index: number) => {
+    (index: number, customDir?: 'right' | 'left') => {
       if (slides.length === 0) return;
       const safeIndex = (index + slides.length) % slides.length;
+      const dir = customDir ?? (safeIndex >= currentIndex ? 'right' : 'left');
+      setDirection(dir);
       setCurrentIndex(safeIndex);
       const slide = slides[safeIndex];
       if (slide) {
         void loadMetrics(slide.id === 'all' ? undefined : slide.id);
       }
     },
-    [slides, loadMetrics]
+    [slides, currentIndex, loadMetrics]
   );
 
-  const handlePrev = () => goToSlide(currentIndex - 1);
-  const handleNext = () => goToSlide(currentIndex + 1);
+  const handlePrev = () => goToSlide(currentIndex - 1, 'left');
+  const handleNext = () => goToSlide(currentIndex + 1, 'right');
 
   // Keyboard navigation with Left & Right arrows
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) return;
       if (e.key === 'ArrowLeft') {
-        goToSlide(currentIndex - 1);
+        goToSlide(currentIndex - 1, 'left');
       } else if (e.key === 'ArrowRight') {
-        goToSlide(currentIndex + 1);
+        goToSlide(currentIndex + 1, 'right');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -199,8 +202,8 @@ export function OverviewPage() {
                 <button
                   key={slide.id}
                   type="button"
-                  onClick={() => goToSlide(idx)}
-                  className={`h-2 rounded-full transition-all cursor-pointer ${
+                  onClick={() => goToSlide(idx, idx >= currentIndex ? 'right' : 'left')}
+                  className={`h-2 rounded-full transition-all duration-300 ease-out cursor-pointer ${
                     isActive
                       ? 'w-7 bg-[#7026B7] shadow-xs'
                       : 'w-2 bg-[#D1C7DF] hover:bg-[#7026B7]/50'
@@ -220,27 +223,33 @@ export function OverviewPage() {
             <button
               type="button"
               onClick={handlePrev}
-              className="shrink-0 flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-white hover:bg-purple-50 active:scale-95 text-[#7026B7] border border-[#E5E0EB] shadow-xs hover:border-[#7026B7]/40 transition cursor-pointer"
+              className="shrink-0 flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-white hover:bg-purple-50 active:scale-90 text-[#7026B7] border border-[#E5E0EB] shadow-xs hover:border-[#7026B7]/40 transition-all duration-200 cursor-pointer"
               aria-label="Previous event"
               title="Previous event (←)"
             >
-              <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
+              <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover:-translate-x-0.5" />
             </button>
           )}
 
           {/* Purple Banner */}
           <section className="relative flex-1 rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9 overflow-hidden shadow-xs">
-            {/* Hawi clipped background */}
+            {/* Hawi clipped background with lively animated pop */}
             <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]">
               <img
+                key={`hawi-${currentIndex}`}
                 src={hawi}
                 alt="Hawi holding an RFID card"
-                className="absolute bottom-0 right-1 z-0 h-[88%] w-auto max-w-[36%] object-contain object-bottom sm:right-8"
+                className="animate-hawi-pop absolute bottom-0 right-1 z-0 h-[88%] w-auto max-w-[36%] object-contain object-bottom sm:right-8"
               />
             </div>
 
-            {/* Main Banner Text Area */}
-            <div className="relative z-10 max-w-[76%] sm:max-w-[70%]">
+            {/* Main Banner Text Area with Directional Slide-in Animation */}
+            <div
+              key={`banner-${currentIndex}`}
+              className={`relative z-10 max-w-[76%] sm:max-w-[70%] ${
+                direction === 'right' ? 'animate-slide-in-right' : 'animate-slide-in-left'
+              }`}
+            >
               {/* Date & Status */}
               <div className="flex items-center gap-2">
                 {!isOverview && currentEvent?.status && (
@@ -278,48 +287,48 @@ export function OverviewPage() {
             <button
               type="button"
               onClick={handleNext}
-              className="shrink-0 flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-white hover:bg-purple-50 active:scale-95 text-[#7026B7] border border-[#E5E0EB] shadow-xs hover:border-[#7026B7]/40 transition cursor-pointer"
+              className="shrink-0 flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-white hover:bg-purple-50 active:scale-90 text-[#7026B7] border border-[#E5E0EB] shadow-xs hover:border-[#7026B7]/40 transition-all duration-200 cursor-pointer"
               aria-label="Next event"
               title="Next event (→)"
             >
-              <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
+              <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover:translate-x-0.5" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Metric Cards */}
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs">
+      {/* Metric Cards with Smooth Settle Animation on Event Change */}
+      <section key={`metrics-${currentIndex}`} className="animate-card-settle grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs transition-shadow hover:shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#756883]">Scans today</span>
             <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]"><ScanLine className="h-4 w-4" /></div>
           </div>
-          <p className="mt-3 text-2xl font-black text-[#24133F]">{number(scansToday)}</p>
+          <p className="mt-3 text-2xl font-black text-[#24133F] transition-all">{number(scansToday)}</p>
         </div>
 
-        <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs">
+        <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs transition-shadow hover:shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#756883]">Active students</span>
             <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]"><Users className="h-4 w-4" /></div>
           </div>
-          <p className="mt-3 text-2xl font-black text-[#24133F]">{number(roster?.active)}</p>
+          <p className="mt-3 text-2xl font-black text-[#24133F] transition-all">{number(roster?.active)}</p>
         </div>
 
-        <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs">
+        <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs transition-shadow hover:shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#756883]">Cards assigned</span>
             <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]"><CreditCard className="h-4 w-4" /></div>
           </div>
-          <p className="mt-3 text-2xl font-black text-[#24133F]">{cardRate}%</p>
+          <p className="mt-3 text-2xl font-black text-[#24133F] transition-all">{cardRate}%</p>
         </div>
 
-        <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs">
+        <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs transition-shadow hover:shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#756883]">Checkpoints</span>
             <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]"><MapPin className="h-4 w-4" /></div>
           </div>
-          <p className="mt-3 text-2xl font-black text-[#24133F]">{locations.length}</p>
+          <p className="mt-3 text-2xl font-black text-[#24133F] transition-all">{locations.length}</p>
         </div>
       </section>
 
@@ -330,7 +339,7 @@ export function OverviewPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-[#24133F]">Attendance volume</h2>
-                <span className="rounded-full bg-purple-50 border border-purple-200/80 px-2 py-0.5 text-[11px] font-bold text-[#7026B7]">
+                <span className="rounded-full bg-purple-50 border border-purple-200/80 px-2 py-0.5 text-[11px] font-bold text-[#7026B7] transition-all">
                   {totalPeriodScans} {totalPeriodScans === 1 ? 'scan' : 'scans'}
                 </span>
               </div>
@@ -429,7 +438,7 @@ export function OverviewPage() {
                                 </span>
                                 <div
                                   style={{ height: `${inHeight}%` }}
-                                  className="w-5 sm:w-7 md:w-8 rounded-t-lg bg-[#10B981] shadow-xs transition-all duration-300 hover:brightness-110"
+                                  className="w-5 sm:w-7 md:w-8 rounded-t-lg bg-[#10B981] shadow-xs transition-all duration-500 ease-out hover:brightness-110"
                                   title={`Time In: ${day.timeIns}`}
                                 />
                               </>
@@ -449,7 +458,7 @@ export function OverviewPage() {
                                 </span>
                                 <div
                                   style={{ height: `${outHeight}%` }}
-                                  className="w-5 sm:w-7 md:w-8 rounded-t-lg bg-[#EF4444] shadow-xs transition-all duration-300 hover:brightness-110"
+                                  className="w-5 sm:w-7 md:w-8 rounded-t-lg bg-[#EF4444] shadow-xs transition-all duration-500 ease-out hover:brightness-110"
                                   title={`Time Out: ${day.timeOuts}`}
                                 />
                               </>
@@ -503,7 +512,7 @@ export function OverviewPage() {
                     <span className="font-bold text-[#756883]">{loc.scansToday}</span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-[#FAF8FC]">
-                    <div style={{ width: `${Math.max(6, pct)}%` }} className="h-2 rounded-full bg-[#7026B7]" />
+                    <div style={{ width: `${Math.max(6, pct)}%` }} className="h-2 rounded-full bg-[#7026B7] transition-all duration-500 ease-out" />
                   </div>
                 </div>
               );
