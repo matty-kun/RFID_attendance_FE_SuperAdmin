@@ -928,31 +928,17 @@ export function CardsPage() {
           </div>
         )}
 
-        {activeAction === 'register' && (
-          <div className="flex items-center justify-between rounded-xl bg-purple-50/70 border border-purple-200/70 px-3.5 py-2.5">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={isContinuousRegister}
-                onChange={e => setIsContinuousRegister(e.target.checked)}
-                className="h-4 w-4 rounded accent-[#7026B7]"
-              />
-              <span className="text-xs font-bold text-[#24133F]">
-                Continuous batch mode (keep open for next card)
-              </span>
-            </label>
+        {lastRegisteredCard && activeAction === 'register' && registerStep === 1 && (
+          <div className="flex items-center justify-between gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3.5 py-2 text-xs font-bold text-emerald-800 animate-in fade-in slide-in-from-top-1">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span>Card {lastRegisteredCard} registered! Tap next card on reader.</span>
+            </div>
             {sessionRegisteredCount > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#E7F8EE] px-2.5 py-0.5 text-[11px] font-bold text-[#087A3A]">
-                <CheckCircle2 className="h-3.5 w-3.5" /> {sessionRegisteredCount} registered
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#E7F8EE] px-2.5 py-0.5 text-[11px] font-bold text-[#087A3A]">
+                {sessionRegisteredCount} registered
               </span>
             )}
-          </div>
-        )}
-
-        {lastRegisteredCard && activeAction === 'register' && registerStep === 1 && (
-          <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3.5 py-2 text-xs font-bold text-emerald-800 animate-in fade-in slide-in-from-top-1">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span>Card {lastRegisteredCard} registered! Tap next card on reader.</span>
           </div>
         )}
 
