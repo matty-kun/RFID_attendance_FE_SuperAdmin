@@ -39,15 +39,24 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function loadImage(src: string): Promise<HTMLImageElement | null> {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined') return resolve(null);
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
-    img.src = src;
-  });
+async function loadHawiDataUrl(url: string): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return new Promise<string | null>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        resolve(typeof reader.result === 'string' ? reader.result : null);
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (err) {
+    console.warn('Could not load Hawi mascot asset:', err);
+    return null;
+  }
 }
 
 function formatPeriod(startDate?: string, endDate?: string): string {
@@ -119,7 +128,7 @@ export async function exportAttendance(
 
   // 2. PDF EXPORT (Apple-Grade Presnt Layout)
   if (format === 'pdf') {
-    const hawiImg = await loadImage(hawiPeekingUrl);
+    const hawiDataUrl = await loadHawiDataUrl(hawiPeekingUrl);
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const pageWidth = 297;
     const pageHeight = 210;
@@ -330,14 +339,24 @@ export async function exportAttendance(
       );
 
       // Hawi Peeking from bottom right corner
-      if (hawiImg) {
-        // Hawi aspect ratio: 1206 / 1305 = 0.924
-        // Width: 22mm, Height: 23.8mm
-        pdf.addImage(hawiImg, 'PNG', pageWidth - margin - 20, pageHeight - 23.5, 20, 21.6);
+      if (hawiDataUrl) {
+        try {
+          // Hawi aspect ratio: 1206 / 1305 = 0.924
+          // Width: 20mm, Height: 21.6mm
+          pdf.addImage(hawiDataUrl, 'PNG', pageWidth - margin - 20, pageHeight - 23.5, 20, 21.6);
+        } catch (imgErr) {
+          console.warn('Could not draw mascot on page', imgErr);
+        }
       }
     }
 
-    pdf.save(`${filename}.pdf`);
+    try {
+      pdf.save(`${filename}.pdf`);
+    } catch (saveErr) {
+      console.warn('pdf.save failed, falling back to downloadBlob:', saveErr);
+      const pdfBlob = pdf.output('blob');
+      downloadBlob(pdfBlob, `${filename}.pdf`);
+    }
     return;
   }
 

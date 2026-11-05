@@ -121,7 +121,7 @@ export function ReportsPage() {
         }
       }
       const { exportAttendance } = await import('./reportExports');
-      exportAttendance(rows, format, { startDate: params.startDate, endDate: params.endDate || endDate, eventName: eventLabel, systemName: 'Presnt' });
+      await exportAttendance(rows, format, { startDate: params.startDate, endDate: params.endDate || endDate, eventName: eventLabel, systemName: 'Presnt' });
     } catch { setError('Could not export the report. Try again.'); }
   };
   return (
