@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import { Document, HeadingLevel, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType } from 'docx';
 import {
@@ -30,7 +30,6 @@ const values = (row: ReportStudentAttendanceRow) => [
   formatReportStatus(row.status),
 ];
 
-const safeCell = (value: string) => (/^[=+\-@\t\r]/.test(value) ? `'${value}` : value);
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -169,13 +168,204 @@ export async function exportAttendance(
   if (options.type && options.type !== 'all') activeFilterParts.push(`Type: ${options.type}`);
   const activeFiltersText = activeFilterParts.join('  ·  ');
 
-  // 1. EXCEL EXPORT
+  // 1. EXCEL EXPORT (Apple-Grade Presnt Layout with Nunito Sans)
   if (format === 'xlsx') {
-    const sheet = XLSX.utils.aoa_to_sheet([headers, ...rows.map((row) => values(row).map(safeCell))]);
-    sheet['!cols'] = [26, 32, 28, 14, 14, 16].map((wch) => ({ wch }));
-    const book = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(book, sheet, 'Attendance');
-    XLSX.writeFile(book, `${filename}.xlsx`);
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = systemName;
+    workbook.created = new Date();
+
+    const sheet = workbook.addWorksheet('Student Attendance', {
+      views: [{ showGridLines: true }],
+    });
+
+    // Column definitions matching PDF proportions
+    sheet.columns = [
+      { key: 'name', width: 32 },
+      { key: 'course', width: 36 },
+      { key: 'session', width: 28 },
+      { key: 'timeIn', width: 16 },
+      { key: 'timeOut', width: 16 },
+      { key: 'status', width: 22 },
+    ];
+
+    // Row 1: Top Brand Title (Presnt)
+    const row1 = sheet.addRow([systemName]);
+    row1.height = 26;
+    row1.getCell(1).font = { name: 'Nunito Sans', size: 16, bold: true, color: { argb: 'FF7026B7' } };
+    row1.getCell(1).alignment = { vertical: 'middle' };
+
+    // Row 2: Document Title
+    const row2 = sheet.addRow(['Student Attendance Records']);
+    row2.height = 22;
+    row2.getCell(1).font = { name: 'Nunito Sans', size: 13, bold: true, color: { argb: 'FF24133F' } };
+    row2.getCell(1).alignment = { vertical: 'middle' };
+
+    // Row 3: Blank spacing
+    const row3 = sheet.addRow([]);
+    row3.height = 8;
+
+    // Row 4: Info Card - Event, Period, and Record Count
+    let curRowIdx = 4;
+    const row4 = sheet.addRow([
+      `EVENT: ${eventName}`,
+      '',
+      `PERIOD: ${periodLabel}`,
+      '',
+      `RECORDS: ${rows.length} records`,
+      '',
+    ]);
+    row4.height = 24;
+    sheet.mergeCells(`A${curRowIdx}:B${curRowIdx}`);
+    sheet.mergeCells(`C${curRowIdx}:D${curRowIdx}`);
+    sheet.mergeCells(`E${curRowIdx}:F${curRowIdx}`);
+
+    for (let c = 1; c <= 6; c++) {
+      const cell = row4.getCell(c);
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFAF8FC' },
+      };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE5E0EB' } },
+        bottom: { style: 'thin', color: { argb: 'FFE5E0EB' } },
+        left: c === 1 ? { style: 'thin', color: { argb: 'FFE5E0EB' } } : undefined,
+        right: c === 6 ? { style: 'thin', color: { argb: 'FFE5E0EB' } } : undefined,
+      };
+      cell.font = { name: 'Nunito Sans', size: 9, bold: true, color: { argb: 'FF24133F' } };
+      cell.alignment = { vertical: 'middle', indent: 1 };
+    }
+    curRowIdx++;
+
+    // Optional Row: Active filters
+    if (activeFiltersText) {
+      const filterRow = sheet.addRow([`FILTERED BY: ${activeFiltersText}`]);
+      filterRow.height = 20;
+      sheet.mergeCells(`A${curRowIdx}:F${curRowIdx}`);
+      for (let c = 1; c <= 6; c++) {
+        const cell = filterRow.getCell(c);
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFAF8FC' },
+        };
+        cell.border = {
+          bottom: { style: 'thin', color: { argb: 'FFE5E0EB' } },
+          left: c === 1 ? { style: 'thin', color: { argb: 'FFE5E0EB' } } : undefined,
+          right: c === 6 ? { style: 'thin', color: { argb: 'FFE5E0EB' } } : undefined,
+        };
+        cell.font = { name: 'Nunito Sans', size: 8.5, color: { argb: 'FF756883' } };
+        cell.alignment = { vertical: 'middle', indent: 1 };
+      }
+      curRowIdx++;
+    }
+
+    // Blank row before table
+    const blankRow = sheet.addRow([]);
+    blankRow.height = 10;
+    curRowIdx++;
+
+    // Table Header Row
+    const headerRow = sheet.addRow(headers.map((h) => h.toUpperCase()));
+    headerRow.height = 25;
+    for (let c = 1; c <= 6; c++) {
+      const cell = headerRow.getCell(c);
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFF4EFFB' },
+      };
+      cell.font = { name: 'Nunito Sans', size: 9, bold: true, color: { argb: 'FF4A3E56' } };
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: c >= 4 && c <= 6 ? 'center' : 'left',
+        indent: c < 4 ? 1 : 0,
+      };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE5E0EB' } },
+        bottom: { style: 'medium', color: { argb: 'FFD8B4ED' } },
+      };
+    }
+
+    // Data Rows
+    for (const row of rows) {
+      const [name, course, session, timeIn, timeOut, status] = values(row);
+      const dataRow = sheet.addRow([name, course, session, timeIn, timeOut, status]);
+      dataRow.height = 22;
+
+      // Student Name (Col 1)
+      const nameCell = dataRow.getCell(1);
+      nameCell.font = { name: 'Nunito Sans', size: 9.5, bold: true, color: { argb: 'FF24133F' } };
+      nameCell.alignment = { vertical: 'middle', indent: 1 };
+
+      // Course (Col 2)
+      const courseCell = dataRow.getCell(2);
+      courseCell.font = { name: 'Nunito Sans', size: 9, color: { argb: 'FF5A4D6B' } };
+      courseCell.alignment = { vertical: 'middle', indent: 1 };
+
+      // Session (Col 3)
+      const sessionCell = dataRow.getCell(3);
+      sessionCell.font = { name: 'Nunito Sans', size: 9, color: { argb: 'FF24133F' } };
+      sessionCell.alignment = { vertical: 'middle', indent: 1 };
+
+      // Time In (Col 4)
+      const inCell = dataRow.getCell(4);
+      inCell.font = {
+        name: 'Nunito Sans',
+        size: 9,
+        bold: timeIn !== '—',
+        color: { argb: timeIn === '—' ? 'FFA59AAB' : 'FF24133F' },
+      };
+      inCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+      // Time Out (Col 5)
+      const outCell = dataRow.getCell(5);
+      outCell.font = {
+        name: 'Nunito Sans',
+        size: 9,
+        bold: timeOut !== '—',
+        color: { argb: timeOut === '—' ? 'FFA59AAB' : 'FF24133F' },
+      };
+      outCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+      // Status Badge (Col 6)
+      const statusCell = dataRow.getCell(6);
+      statusCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      if (status === 'Completed') {
+        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F8EE' } };
+        statusCell.font = { name: 'Nunito Sans', size: 8.5, bold: true, color: { argb: 'FF0E8345' } };
+      } else if (status === 'No Time-Out') {
+        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3D6' } };
+        statusCell.font = { name: 'Nunito Sans', size: 8.5, bold: true, color: { argb: 'FFB45309' } };
+      } else {
+        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE8EA' } };
+        statusCell.font = { name: 'Nunito Sans', size: 8.5, bold: true, color: { argb: 'FFBE123C' } };
+      }
+
+      // Thin bottom row border
+      for (let c = 1; c <= 6; c++) {
+        dataRow.getCell(c).border = {
+          bottom: { style: 'thin', color: { argb: 'FFF1EEF4' } },
+        };
+      }
+    }
+
+    // Footer timestamp row
+    const exportTimeStr = new Date().toLocaleString('en-PH', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+    sheet.addRow([]);
+    const footerRow = sheet.addRow([`Presnt · Exported on ${exportTimeStr}`]);
+    footerRow.height = 18;
+    footerRow.getCell(1).font = { name: 'Nunito Sans', size: 8, color: { argb: 'FFA59AAB' } };
+    footerRow.getCell(1).alignment = { vertical: 'middle', indent: 1 };
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    downloadBlob(blob, `${filename}.xlsx`);
     return;
   }
 
