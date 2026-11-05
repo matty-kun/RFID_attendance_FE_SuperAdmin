@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
-  Check,
   ChevronLeft,
   ChevronRight,
   CreditCard,
@@ -68,21 +67,8 @@ export function OverviewPage() {
   const [roster, setRoster] = useState<StudentRosterStats | null>(null);
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [showQuickSelect, setShowQuickSelect] = useState(false);
   const [, setLoading] = useState(true);
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
-  const quickSelectRef = useRef<HTMLDivElement>(null);
-
-  // Close quick select on outside click
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (quickSelectRef.current && !quickSelectRef.current.contains(event.target as Node)) {
-        setShowQuickSelect(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const loadMetrics = useCallback(async (eventId?: string) => {
     try {
@@ -202,8 +188,8 @@ export function OverviewPage() {
 
   return (
     <div className="space-y-6 pb-8">
-      {/* Banner Carousel with Left & Right Arrows and Dynamic Overview Filter */}
-      <section className="relative rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9">
+      {/* Banner Carousel with Side Arrows (< >) and Top Pagination Dots */}
+      <section className="relative rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9 overflow-hidden">
         {/* Hawi clipped background */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]">
           <img
@@ -213,115 +199,79 @@ export function OverviewPage() {
           />
         </div>
 
-        <div className="relative z-10 max-w-[76%] sm:max-w-[70%]">
-          {/* Header Row: Date / Status badge on left, Left/Right controls on right */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              {isOverview ? (
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]">
-                  {manilaDate()}
-                </p>
-              ) : (
-                <div className="flex items-center gap-2">
-                  {currentEvent?.status && (
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-extrabold capitalize border ${
-                        currentEvent.status === 'ongoing'
-                          ? 'bg-emerald-400/20 text-emerald-300 border-emerald-400/30'
-                          : currentEvent.status === 'completed'
-                          ? 'bg-purple-300/20 text-purple-200 border-purple-300/30'
-                          : 'bg-blue-400/20 text-blue-300 border-blue-400/30'
-                      }`}
-                    >
-                      {currentEvent.status}
-                    </span>
-                  )}
-                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]/80">
-                    {manilaDate()}
-                  </p>
-                </div>
-              )}
-            </div>
+        {/* Top-Center Pagination Dots (o o o o o) */}
+        {slides.length > 1 && (
+          <div className="absolute top-3.5 inset-x-0 flex justify-center items-center gap-1.5 z-20 pointer-events-auto">
+            {slides.map((slide, idx) => {
+              const isActive = currentIndex === idx;
+              return (
+                <button
+                  key={slide.id}
+                  type="button"
+                  onClick={() => goToSlide(idx)}
+                  className={`h-2 rounded-full transition-all cursor-pointer ${
+                    isActive
+                      ? 'w-6 bg-white shadow-xs'
+                      : 'w-2 bg-white/30 hover:bg-white/60'
+                  }`}
+                  title={slide.title}
+                  aria-label={`Go to slide ${idx + 1}: ${slide.title}`}
+                />
+              );
+            })}
+          </div>
+        )}
 
-            {/* Slider Navigation Controls (Left & Right) */}
-            {slides.length > 1 && (
-              <div className="flex items-center gap-2" ref={quickSelectRef}>
-                {/* Counter / Jump Pill */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowQuickSelect((prev) => !prev)}
-                    className="flex items-center gap-1.5 rounded-full bg-white/15 hover:bg-white/20 active:scale-95 px-3 py-1 text-xs font-bold text-white shadow-xs backdrop-blur-md border border-white/20 transition cursor-pointer"
-                    title="Click to jump to any event"
-                  >
-                    <span className="max-w-[110px] sm:max-w-[150px] truncate">
-                      {isOverview ? 'Overview' : currentEvent?.name}
-                    </span>
-                    <span className="text-white/40">·</span>
-                    <span className="text-[#D7B9FA] font-medium tabular-nums">
-                      {currentIndex + 1}/{slides.length}
-                    </span>
-                  </button>
+        {/* Far-Left Arrow Button (<) */}
+        {slides.length > 1 && (
+          <button
+            type="button"
+            onClick={handlePrev}
+            className="absolute left-2.5 sm:left-4 top-1/2 -translate-y-1/2 z-20 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-white/15 hover:bg-white/30 active:scale-90 text-white backdrop-blur-md border border-white/20 transition cursor-pointer shadow-md"
+            aria-label="Previous event"
+            title="Previous event (←)"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+        )}
 
-                  {/* Popover jump menu when there are many events */}
-                  {showQuickSelect && (
-                    <div className="absolute right-0 mt-2 w-72 rounded-2xl border border-slate-100 bg-white p-2 text-slate-800 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
-                      <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                        Jump to Event
-                      </div>
-                      <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
-                        {slides.map((s, idx) => (
-                          <button
-                            key={s.id}
-                            type="button"
-                            onClick={() => {
-                              goToSlide(idx);
-                              setShowQuickSelect(false);
-                            }}
-                            className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition cursor-pointer ${
-                              currentIndex === idx
-                                ? 'bg-purple-50 text-[#7026B7] font-bold'
-                                : 'hover:bg-slate-50 text-slate-700'
-                            }`}
-                          >
-                            <span className="truncate">{s.title}</span>
-                            {currentIndex === idx && (
-                              <Check className="h-3.5 w-3.5 text-[#7026B7] shrink-0" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+        {/* Far-Right Arrow Button (>) */}
+        {slides.length > 1 && (
+          <button
+            type="button"
+            onClick={handleNext}
+            className="absolute right-2.5 sm:right-4 top-1/2 -translate-y-1/2 z-20 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-white/15 hover:bg-white/30 active:scale-90 text-white backdrop-blur-md border border-white/20 transition cursor-pointer shadow-md"
+            aria-label="Next event"
+            title="Next event (→)"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        )}
 
-                {/* Left & Right Arrow Buttons */}
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={handlePrev}
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 hover:bg-white/25 active:scale-90 text-white backdrop-blur-md border border-white/20 transition cursor-pointer shadow-xs"
-                    aria-label="Previous event"
-                    title="Previous event (←)"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleNext}
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 hover:bg-white/25 active:scale-90 text-white backdrop-blur-md border border-white/20 transition cursor-pointer shadow-xs"
-                    aria-label="Next event"
-                    title="Next event (→)"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
+        {/* Main Banner Text Area */}
+        <div className="relative z-10 max-w-[76%] sm:max-w-[70%] pl-8 sm:pl-10 pr-4 pt-1">
+          {/* Date & Status */}
+          <div className="flex items-center gap-2">
+            {!isOverview && currentEvent?.status && (
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-extrabold capitalize border ${
+                  currentEvent.status === 'ongoing'
+                    ? 'bg-emerald-400/20 text-emerald-300 border-emerald-400/30'
+                    : currentEvent.status === 'completed'
+                    ? 'bg-purple-300/20 text-purple-200 border-purple-300/30'
+                    : 'bg-blue-400/20 text-blue-300 border-blue-400/30'
+                }`}
+              >
+                {currentEvent.status}
+              </span>
             )}
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]">
+              {manilaDate()}
+            </p>
           </div>
 
           {/* Banner Title & Subtitle */}
-          <div className="mt-4 min-h-[70px]">
+          <div className="mt-3 min-h-[70px]">
             <h1 className="text-2xl font-extrabold leading-tight sm:text-4xl text-white transition-all">
               {currentSlide?.title}
             </h1>
@@ -329,23 +279,6 @@ export function OverviewPage() {
               {currentSlide?.subtitle}
             </p>
           </div>
-
-          {/* Pagination Dots (when <= 8 items) */}
-          {slides.length > 1 && slides.length <= 8 && (
-            <div className="mt-4 flex items-center gap-1.5">
-              {slides.map((_, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => goToSlide(idx)}
-                  className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                    currentIndex === idx ? 'w-6 bg-white' : 'w-1.5 bg-white/30 hover:bg-white/50'
-                  }`}
-                  aria-label={`Go to slide ${idx + 1}`}
-                />
-              ))}
-            </div>
-          )}
         </div>
       </section>
 
