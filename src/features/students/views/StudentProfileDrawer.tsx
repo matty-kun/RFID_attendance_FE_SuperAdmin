@@ -26,7 +26,6 @@ import {
   Zap,
   Trash2,
   KeyRound,
-  Mail,
 } from 'lucide-react';
 import { ResetPasswordModal } from '../../../components/common/ResetPasswordModal';
 import { DeleteStudentConfirmationModal } from './DeleteStudentConfirmationModal';
@@ -538,6 +537,16 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
 
             {/* Top Right Actions: Archive + Close */}
             <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsResetPasswordOpen(true)}
+                disabled={Boolean(isArchived)}
+                title={isArchived ? 'Restore student before resetting password' : 'Reset Student Password'}
+                aria-label="Reset Password"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 text-white border border-white/25 backdrop-blur-md shadow-xs active:scale-95 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <KeyRound className="h-4 w-4" />
+              </button>
               {!isArchived ? (
                 <button
                   type="button"
@@ -1055,27 +1064,6 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Subtle Mobile App Account & Password */}
-            <div className="mt-2.5 flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/60 px-3.5 py-2.5 text-xs">
-              <div className="flex items-center gap-2 min-w-0 pr-2">
-                <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Account</span>
-                <span className="font-semibold text-slate-700 truncate text-xs">
-                  {currentStudent.email || currentStudent.student_id}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsResetPasswordOpen(true)}
-                disabled={Boolean(isArchived)}
-                title={isArchived ? 'Restore student before resetting password' : 'Reset student mobile app password'}
-                className="inline-flex shrink-0 items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#7026B7] transition-colors cursor-pointer disabled:opacity-50"
-              >
-                <KeyRound className="h-3.5 w-3.5 text-[#7026B7]" />
-                <span>Reset Password</span>
-              </button>
             </div>
           </div>
 
