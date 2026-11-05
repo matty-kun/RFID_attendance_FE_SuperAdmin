@@ -61,7 +61,7 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
   const initials = (fullName: string) => fullName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('');
 
   return (
-    <div className={cn('w-full space-y-4 text-[#24133F]', !isDrawer && 'mx-auto max-w-[1120px]')}>
+    <div className={cn('w-full text-[#24133F] flex flex-col', isDrawer ? 'flex-1 min-h-full' : 'mx-auto max-w-[1120px] space-y-4')}>
       {/* Top Header (only in full page view) */}
       {!isDrawer && (
         <div>
@@ -70,7 +70,7 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
         </div>
       )}
       {/* Toolbar: Search, Role Filter, Refresh, Add Admin */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+      <div className={cn("flex flex-col sm:flex-row sm:items-center justify-between gap-2.5", isDrawer && "mb-4")}>
         <div className="flex flex-wrap items-center gap-2 flex-1">
           <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[#756883] transition-all focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100 sm:max-w-[320px]">
             <Search className="h-4 w-4 shrink-0 text-slate-400" />
@@ -124,14 +124,15 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
       </div>
 
       {/* Admin List */}
-      <div>
+      <div className={cn("w-full", isDrawer && "flex-1 flex flex-col", (isLoading || visibleAdmins.length === 0) && isDrawer && "justify-center items-center my-auto min-h-[360px]")}>
         {isLoading ? (
           <LoadingState
             title="Hawi is finding admin accounts…"
             description="Loading the administrator list."
+            className="my-auto"
           />
         ) : visibleAdmins.length > 0 ? (
-          <div className="max-h-[520px] space-y-1 overflow-y-auto">
+          <div className={cn("space-y-1 overflow-y-auto", isDrawer ? "flex-1" : "max-h-[520px]")}>
             {visibleAdmins.map((admin) => (
               <button
                 type="button"
