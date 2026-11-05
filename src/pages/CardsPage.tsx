@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, Check, CircleAlert, CreditCard, ExternalLink, Filter, Hash, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, UserRound, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Check, CircleAlert, CreditCard, ExternalLink, Filter, Hash, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, Trash2, UserRound, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatYearLevel } from '../utils/formatters';
 import { request } from '../services/apiClient';
@@ -17,6 +17,7 @@ import hawiCrying from '../assets/illustrations/Hawi Crying.png';
 import hawiBox from '../assets/illustrations/Hawi Box.png';
 import hawiCheck from '../assets/illustrations/Hawi Check.png';
 import hawiBrokenCard from '../assets/illustrations/Hawi Broken Card.png';
+import hawiTrash from '../assets/illustrations/Hawi Trash Can.png';
 
 type Status = 'available' | 'issued' | 'lost' | 'damaged' | 'archived';
 type Assignment = { id: string; student_id: string | null; student_number: string; student_name: string; issued_at: string; ended_at: string | null; end_reason: string | null; avatar_url?: string | null; course?: string | null; year_level?: number | null };
@@ -70,6 +71,8 @@ export function CardsPage() {
   const [savingCardNumber, setSavingCardNumber] = useState(false);
   const [inspectUid, setInspectUid] = useState('');
   const [inspecting, setInspecting] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeletingCard, setIsDeletingCard] = useState(false);
   useEffect(() => {
     const open = () => setInspectOpen(true);
     window.addEventListener('presnt:open-card-inspector', open);
@@ -106,7 +109,7 @@ export function CardsPage() {
       if (detailRequest.current === requestId) { setDetailError(message(e)); showToast(message(e), 'error'); }
     }
   };
-  const closeDetail = () => { detailRequest.current += 1; setSelectedCard(null); setDetail(null); };
+  const closeDetail = () => { detailRequest.current += 1; setSelectedCard(null); setDetail(null); setIsDeleteModalOpen(false); };
   const inspectCard = async () => {
     const scanned = inspectUid.trim();
     if (!scanned || inspecting) return;
@@ -130,6 +133,23 @@ export function CardsPage() {
       } catch (e) { showToast(message(e), 'error'); }
     }
   };
+  const handleDeleteCard = async () => {
+    if (!detail?.card || isDeletingCard) return;
+    setIsDeletingCard(true);
+    try {
+      await request.delete(`/cards/${detail.card.id}`);
+      showToast(`Card ${detail.card.card_number} deleted from inventory.`, 'success');
+      setIsDeleteModalOpen(false);
+      closeDetail();
+      void load();
+      void loadSummary();
+    } catch (e: any) {
+      showToast(message(e), 'error');
+    } finally {
+      setIsDeletingCard(false);
+    }
+  };
+
   const handleSaveCardNumber = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const clean = editCardNumber.trim().toUpperCase();
@@ -275,13 +295,87 @@ export function CardsPage() {
                 </span>
               )}
             </div>
-          )}<div className="flex gap-2"><button type="button" disabled={!['available', 'archived'].includes(detail.card.status)} onClick={() => void openAction(detail.card.status === 'archived' ? 'unarchive' : 'archive', detail.card)} aria-label={detail.card.status === 'archived' ? 'Restore archived card' : 'Archive card'} title={detail.card.status === 'issued' ? 'Return the card before archiving' : detail.card.status === 'archived' ? 'Restore archived card' : detail.card.status === 'available' ? 'Archive card' : 'Restore the card before archiving'} className="rounded-2xl border border-white/30 bg-white/20 p-2.5 text-white hover:bg-white/30 disabled:cursor-not-allowed disabled:opacity-50">{detail.card.status === 'archived' ? <ArchiveRestore className="h-5 w-5" /> : <Archive className="h-5 w-5" />}</button><button type="button" onClick={closeDetail} aria-label="Close card history" className="rounded-2xl border border-white/30 bg-white/20 p-2.5 text-white hover:bg-white/30"><X className="h-5 w-5" /></button></div></div><div className="mt-2 flex justify-center"><div className="relative h-72 w-72 sm:h-80 sm:w-80"><img src={hawiCard} alt="" className="h-full w-full object-contain" /><span className="absolute left-[32%] top-[72%] -rotate-1 whitespace-nowrap font-sans text-sm font-black tracking-wide text-[#24133F] sm:text-base">{detail.card.card_number.replace(/^RFID-/, '')}</span></div></div></div><div className="space-y-6 px-7 pb-10">
+          )}<div className="flex gap-2">
+                <button type="button" disabled={!['available', 'archived'].includes(detail.card.status)} onClick={() => void openAction(detail.card.status === 'archived' ? 'unarchive' : 'archive', detail.card)} aria-label={detail.card.status === 'archived' ? 'Restore archived card' : 'Archive card'} title={detail.card.status === 'issued' ? 'Return the card before archiving' : detail.card.status === 'archived' ? 'Restore archived card' : detail.card.status === 'available' ? 'Archive card' : 'Restore the card before archiving'} className="rounded-2xl border border-white/30 bg-white/20 p-2.5 text-white hover:bg-white/30 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">
+                  {detail.card.status === 'archived' ? <ArchiveRestore className="h-5 w-5" /> : <Archive className="h-5 w-5" />}
+                </button>
+                {(() => {
+                  const hasHistory = Boolean(
+                    (detail.assignments && detail.assignments.length > 0) ||
+                    (detail.recent_scans && detail.recent_scans.length > 0) ||
+                    detail.card.status === 'issued'
+                  );
+                  return (
+                    <button
+                      type="button"
+                      disabled={hasHistory || isDeletingCard}
+                      onClick={() => setIsDeleteModalOpen(true)}
+                      aria-label="Delete card"
+                      title={
+                        hasHistory
+                          ? 'Cards with holder or scan history cannot be deleted to preserve attendance audit trail. Archive the card instead.'
+                          : 'Delete card permanently from inventory'
+                      }
+                      className="rounded-2xl border border-white/30 bg-white/20 p-2.5 text-white transition-all hover:bg-rose-600/80 hover:border-rose-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  );
+                })()}
+                <button type="button" onClick={closeDetail} aria-label="Close card history" className="rounded-2xl border border-white/30 bg-white/20 p-2.5 text-white hover:bg-white/30 cursor-pointer">
+                  <X className="h-5 w-5" />
+                </button>
+              </div></div><div className="mt-2 flex justify-center"><div className="relative h-72 w-72 sm:h-80 sm:w-80"><img src={hawiCard} alt="" className="h-full w-full object-contain" /><span className="absolute left-[32%] top-[72%] -rotate-1 whitespace-nowrap font-sans text-sm font-black tracking-wide text-[#24133F] sm:text-base">{detail.card.card_number.replace(/^RFID-/, '')}</span></div></div></div><div className="space-y-6 px-7 pb-10">
         <div className="border-b border-[#F1EEF4] pb-5"><p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#A59AAB]">Card UID</p><div className="flex items-center justify-between gap-3"><p className="font-mono text-sm font-bold">{detail.card.uid}</p><span className={`rounded-full px-3 py-1 font-bold capitalize ${statusStyle[detail.card.status]}`}>{detail.card.status}</span></div><div className="mt-4 flex flex-wrap gap-2 [&>button]:flex-1 [&>button]:justify-center [&>button]:whitespace-nowrap">{detail.card.status === 'available' && <Button size="sm" leftIcon={<CreditCard className="h-4 w-4" />} onClick={() => void openAction('issue', detail.card)}>Issue card</Button>}{detail.card.status === 'issued' && <Button size="sm" variant="success" leftIcon={<RotateCcw className="h-4 w-4" />} onClick={() => void openAction('return', detail.card)}>Return card</Button>}{['available', 'issued'].includes(detail.card.status) && <><Button size="sm" variant="danger" leftIcon={<ShieldAlert className="h-4 w-4" />} onClick={() => void openAction('lost', detail.card)}>Report lost</Button><Button size="sm" variant="secondary" leftIcon={<CircleAlert className="h-4 w-4" />} onClick={() => void openAction('damaged', detail.card)}>Mark damaged</Button></>}{['lost', 'damaged'].includes(detail.card.status) && <Button size="sm" variant="secondary" leftIcon={<ArchiveRestore className="h-4 w-4" />} onClick={() => void openAction('restore', detail.card)}>Restore to available</Button>}</div></div>
         {(detail.assignments.length > 0 || detailReady) && <section><h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[#A59AAB]">{detailReady ? `Holder history · ${detail.assignments.length}` : 'Current holder'}</h3><div className="space-y-3">{detail.assignments.length ? detail.assignments.map(a => { const scans = detail.recent_scans.filter(scan => scan.student_id === a.student_id && scan.recorded_at >= a.issued_at && (!a.ended_at || scan.recorded_at <= a.ended_at)); return <div key={a.id} className="overflow-hidden rounded-2xl border border-[#E5E0EB]"><div className="flex flex-wrap items-center gap-3 p-4">{a.avatar_url ? <img src={a.avatar_url} alt="" className="h-14 w-14 shrink-0 rounded-full object-cover" /> : <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#F2E9FC]"><UserRound className="h-5 w-5 text-[#7026B7]" /></span>}<div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><b className="text-base">{a.student_name}</b><span className="rounded-full bg-[#F7F1FD] px-2 py-0.5 font-bold text-[#7026B7]">@{a.student_number}</span>{!a.ended_at && <span className="rounded-full bg-[#E7F8EE] px-2 py-0.5 font-bold text-[#087A3A]">Current</span>}</div>{a.course && <p className="mt-0.5 text-[#756883]">{a.course}{a.year_level ? ` · ${formatYearLevel(a.year_level)}` : ''}</p>}<p className="mt-1 text-[#756883]">Issued {date(a.issued_at)}{a.ended_at ? ` · ${a.end_reason} ${date(a.ended_at)}` : ''}</p></div>{a.student_id && <Button size="sm" leftIcon={<ExternalLink className="h-3.5 w-3.5" />} onClick={() => navigate(`/students?profile=${encodeURIComponent(a.student_number)}`)}>View Profile</Button>}</div>{detailReady && <div className="border-t border-[#F1EEF4] bg-[#FAF8FC] px-4 py-3"><p className="mb-2 font-bold text-[#756883]">Scans with this card</p>{scans.length ? <div className="space-y-2">{scans.map(scan => <div key={scan.id} className="flex justify-between gap-3"><span className="font-semibold">{scan.type === 'time_in' ? 'Time in' : 'Time out'}</span><time className="text-[#756883]">{date(scan.recorded_at)}</time></div>)}</div> : <p className="text-[#756883]">No scans recorded while this student held the card.</p>}</div>}</div>; }) : <p className="rounded-2xl border border-[#E5E0EB] p-4 text-[#756883]">No holder yet.</p>}</div></section>}
         {detailError && selectedCard && <Button size="sm" onClick={() => void openDetail(selectedCard)}>Retry history</Button>}
         {detailReady && <section><h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[#A59AAB]">Card activity</h3><div className="divide-y divide-[#F1EEF4] rounded-2xl border border-[#E5E0EB]">{detail.events.map(event => <div key={event.id} className="p-4"><b className="text-sm capitalize">{event.action}</b>{event.student_name && ` · ${event.student_name} (${event.student_number})`}<p className="mt-1 text-[#756883]">{date(event.created_at)}{event.actor?.name && ` · ${event.actor.name}`}{event.note && ` · ${event.note}`}</p></div>)}</div></section>}
       </div></div>}
     </Drawer>
+    <Modal
+      isOpen={isDeleteModalOpen && Boolean(detail?.card)}
+      onClose={() => !isDeletingCard && setIsDeleteModalOpen(false)}
+      title="Delete RFID Card"
+      maxWidth="sm"
+      zIndex={600}
+    >
+      {detail?.card && (
+        <div className="space-y-4 p-6 text-xs text-[#24133F]">
+          <div className="flex justify-center">
+            <img src={hawiTrash} alt="" className="h-28 w-28 object-contain" />
+          </div>
+          <div className="text-center space-y-1">
+            <p className="text-sm font-bold text-[#24133F]">
+              Permanently delete <span className="font-mono text-[#7026B7]">{detail.card.card_number}</span>?
+            </p>
+            <p className="text-xs text-[#756883] leading-relaxed">
+              UID: <span className="font-mono font-bold text-slate-700">{detail.card.uid}</span>
+            </p>
+            <p className="text-xs text-rose-600 font-semibold mt-2">
+              This card has no holder or scan history and will be completely removed from your inventory. This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2.5 border-t border-[#F1EEF4] pt-4">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isDeletingCard}
+              onClick={() => setIsDeleteModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              isLoading={isDeletingCard}
+              onClick={() => void handleDeleteCard()}
+            >
+              Delete Card
+            </Button>
+          </div>
+        </div>
+      )}
+    </Modal>
     <Modal isOpen={inspectOpen} onClose={() => !inspecting && setInspectOpen(false)} title="Inspect RFID card" description="Tap a card to find its status, holder, and history." maxWidth="md">
       <div className="space-y-4 p-6 text-xs"><div className="flex justify-center"><img src={hawiScanning} alt="" className="h-28 w-28 object-contain" /></div><label className="block font-semibold">Scan card UID<div className="relative mt-2"><Radio className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#756883]" /><input autoFocus value={inspectUid} onChange={event => setInspectUid(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void inspectCard(); } }} placeholder="Tap or scan card now" className="h-10 w-full rounded-xl border border-[#E5E0EB] pl-9 pr-3 focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100" /></div></label><div className="flex justify-end gap-2 border-t border-[#F1EEF4] pt-4"><Button variant="secondary" onClick={() => setInspectOpen(false)} disabled={inspecting}>Cancel</Button><Button onClick={() => void inspectCard()} disabled={!inspectUid.trim()} isLoading={inspecting}>Inspect card</Button></div></div>
     </Modal>
