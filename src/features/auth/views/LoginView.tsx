@@ -65,7 +65,7 @@ export function LoginView() {
               <span className="text-[#8B2CCB]">Login</span> to your account
             </h2>
             <p className="mt-1.5 text-xs sm:text-sm font-semibold text-[#756883]">
-              welcome! Enter your details to login to your account
+              Welcome! Enter your details to log in to your account.
             </p>
           </div>
 
