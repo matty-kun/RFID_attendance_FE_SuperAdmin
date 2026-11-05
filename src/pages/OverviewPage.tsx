@@ -188,20 +188,11 @@ export function OverviewPage() {
 
   return (
     <div className="space-y-6 pb-8">
-      {/* Banner Carousel with Side Arrows (< >) and Top Pagination Dots */}
-      <section className="relative rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9 overflow-hidden">
-        {/* Hawi clipped background */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]">
-          <img
-            src={hawi}
-            alt="Hawi holding an RFID card"
-            className="absolute bottom-0 right-1 z-0 h-[88%] w-auto max-w-[36%] object-contain object-bottom sm:right-8"
-          />
-        </div>
-
-        {/* Top-Center Pagination Dots (o o o o o) */}
+      {/* Banner Carousel with Outside Arrows and Outside Top Dots */}
+      <div className="space-y-3">
+        {/* Top Pagination Dots (Outside, above the banner) */}
         {slides.length > 1 && (
-          <div className="absolute top-3.5 inset-x-0 flex justify-center items-center gap-1.5 z-20 pointer-events-auto">
+          <div className="flex justify-center items-center gap-2 pt-1">
             {slides.map((slide, idx) => {
               const isActive = currentIndex === idx;
               return (
@@ -211,8 +202,8 @@ export function OverviewPage() {
                   onClick={() => goToSlide(idx)}
                   className={`h-2 rounded-full transition-all cursor-pointer ${
                     isActive
-                      ? 'w-6 bg-white shadow-xs'
-                      : 'w-2 bg-white/30 hover:bg-white/60'
+                      ? 'w-7 bg-[#7026B7] shadow-xs'
+                      : 'w-2 bg-[#D1C7DF] hover:bg-[#7026B7]/50'
                   }`}
                   title={slide.title}
                   aria-label={`Go to slide ${idx + 1}: ${slide.title}`}
@@ -222,65 +213,80 @@ export function OverviewPage() {
           </div>
         )}
 
-        {/* Far-Left Arrow Button (<) */}
-        {slides.length > 1 && (
-          <button
-            type="button"
-            onClick={handlePrev}
-            className="absolute left-2.5 sm:left-4 top-1/2 -translate-y-1/2 z-20 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-white/15 hover:bg-white/30 active:scale-90 text-white backdrop-blur-md border border-white/20 transition cursor-pointer shadow-md"
-            aria-label="Previous event"
-            title="Previous event (←)"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-        )}
+        {/* Banner with Outside Left & Right Arrows */}
+        <div className="relative flex items-center gap-2 sm:gap-3">
+          {/* Left Arrow outside the banner */}
+          {slides.length > 1 && (
+            <button
+              type="button"
+              onClick={handlePrev}
+              className="shrink-0 flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-white hover:bg-purple-50 active:scale-95 text-[#7026B7] border border-[#E5E0EB] shadow-xs hover:border-[#7026B7]/40 transition cursor-pointer"
+              aria-label="Previous event"
+              title="Previous event (←)"
+            >
+              <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
+            </button>
+          )}
 
-        {/* Far-Right Arrow Button (>) */}
-        {slides.length > 1 && (
-          <button
-            type="button"
-            onClick={handleNext}
-            className="absolute right-2.5 sm:right-4 top-1/2 -translate-y-1/2 z-20 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-white/15 hover:bg-white/30 active:scale-90 text-white backdrop-blur-md border border-white/20 transition cursor-pointer shadow-md"
-            aria-label="Next event"
-            title="Next event (→)"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        )}
+          {/* Purple Banner */}
+          <section className="relative flex-1 rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9 overflow-hidden shadow-xs">
+            {/* Hawi clipped background */}
+            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]">
+              <img
+                src={hawi}
+                alt="Hawi holding an RFID card"
+                className="absolute bottom-0 right-1 z-0 h-[88%] w-auto max-w-[36%] object-contain object-bottom sm:right-8"
+              />
+            </div>
 
-        {/* Main Banner Text Area */}
-        <div className="relative z-10 max-w-[76%] sm:max-w-[70%] pl-8 sm:pl-10 pr-4 pt-1">
-          {/* Date & Status */}
-          <div className="flex items-center gap-2">
-            {!isOverview && currentEvent?.status && (
-              <span
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-extrabold capitalize border ${
-                  currentEvent.status === 'ongoing'
-                    ? 'bg-emerald-400/20 text-emerald-300 border-emerald-400/30'
-                    : currentEvent.status === 'completed'
-                    ? 'bg-purple-300/20 text-purple-200 border-purple-300/30'
-                    : 'bg-blue-400/20 text-blue-300 border-blue-400/30'
-                }`}
-              >
-                {currentEvent.status}
-              </span>
-            )}
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]">
-              {manilaDate()}
-            </p>
-          </div>
+            {/* Main Banner Text Area */}
+            <div className="relative z-10 max-w-[76%] sm:max-w-[70%]">
+              {/* Date & Status */}
+              <div className="flex items-center gap-2">
+                {!isOverview && currentEvent?.status && (
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-extrabold capitalize border ${
+                      currentEvent.status === 'ongoing'
+                        ? 'bg-emerald-400/20 text-emerald-300 border-emerald-400/30'
+                        : currentEvent.status === 'completed'
+                        ? 'bg-purple-300/20 text-purple-200 border-purple-300/30'
+                        : 'bg-blue-400/20 text-blue-300 border-blue-400/30'
+                    }`}
+                  >
+                    {currentEvent.status}
+                  </span>
+                )}
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]">
+                  {manilaDate()}
+                </p>
+              </div>
 
-          {/* Banner Title & Subtitle */}
-          <div className="mt-3 min-h-[70px]">
-            <h1 className="text-2xl font-extrabold leading-tight sm:text-4xl text-white transition-all">
-              {currentSlide?.title}
-            </h1>
-            <p className="mt-2 max-w-lg text-sm leading-relaxed text-[#EEE1FA]">
-              {currentSlide?.subtitle}
-            </p>
-          </div>
+              {/* Banner Title & Subtitle */}
+              <div className="mt-3 min-h-[70px]">
+                <h1 className="text-2xl font-extrabold leading-tight sm:text-4xl text-white transition-all">
+                  {currentSlide?.title}
+                </h1>
+                <p className="mt-2 max-w-lg text-sm leading-relaxed text-[#EEE1FA]">
+                  {currentSlide?.subtitle}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Right Arrow outside the banner */}
+          {slides.length > 1 && (
+            <button
+              type="button"
+              onClick={handleNext}
+              className="shrink-0 flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-white hover:bg-purple-50 active:scale-95 text-[#7026B7] border border-[#E5E0EB] shadow-xs hover:border-[#7026B7]/40 transition cursor-pointer"
+              aria-label="Next event"
+              title="Next event (→)"
+            >
+              <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
+            </button>
+          )}
         </div>
-      </section>
+      </div>
 
       {/* Metric Cards */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
