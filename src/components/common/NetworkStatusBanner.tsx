@@ -147,7 +147,7 @@ export const NetworkStatusBanner: React.FC = () => {
               <span className="inline-block h-2 w-2 rounded-full bg-[#EF3340]"></span>
             </p>
             <p className="text-[11px] text-[#756883] leading-snug mt-0.5">
-              Showing cached records. Database edits & live card scan sync will resume when connection returns.
+              Showing cached records. Sync will resume when online.
             </p>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
