@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowRightLeft, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
+import { ArrowRightLeft, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
 import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
@@ -122,7 +122,9 @@ export function ReportsPage() {
       }
       const { exportAttendance } = await import('./reportExports');
       await exportAttendance(rows, format, { startDate: params.startDate, endDate: params.endDate || endDate, eventName: eventLabel, systemName: 'Presnt' });
-    } catch { setError('Could not export the report. Try again.'); }
+    } catch (err) {
+      console.error('Export failed:', err);
+    }
   };
   return (
     <div className="mx-auto w-full max-w-[1180px] space-y-6 text-[#24133F]">
@@ -134,17 +136,6 @@ export function ReportsPage() {
         </div>
       </div>
 
-      {error && (
-        <div role="alert" className="flex items-center justify-between gap-3 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
-          <span className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            {error}
-          </span>
-          <button type="button" onClick={() => void loadReportsData()} className="text-xs font-bold underline">
-            Retry
-          </button>
-        </div>
-      )}
 
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center gap-3">
