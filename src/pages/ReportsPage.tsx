@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRightLeft, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
@@ -35,6 +47,16 @@ const getInitials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0,
 const initialEnd = manilaDate(new Date());
 const initialStart = manilaDate(new Date(Date.now() - 6 * 86400000));
 const emptySummary = { studentsCheckedIn: 0, timeIns: 0, timeOuts: 0, totalScans: 0 };
+const COURSE_COLORS = [
+  '#7026B7', // Brand Purple
+  '#2563EB', // Blue
+  '#10B981', // Emerald
+  '#F59E0B', // Amber
+  '#EC4899', // Pink
+  '#8B5CF6', // Purple Light
+  '#06B6D4', // Cyan
+  '#64748B', // Slate
+];
 
 export function ReportsPage() {
   const [startDate, setStartDate] = useState(initialStart);
@@ -100,6 +122,17 @@ export function ReportsPage() {
   }, [snapshot]);
   const checkpointList: ReportCheckpointItem[] = snapshot?.checkpoints ?? [];
   const courseList: ReportCourseItem[] = snapshot?.courses ?? [];
+  const courseChartData = useMemo(() => {
+    return courseList
+      .map((c) => ({
+        name: c.course,
+        count: (c.timeIn + c.timeOut) || c.expected || 0,
+        timeIn: c.timeIn,
+        timeOut: c.timeOut,
+        expected: c.expected,
+      }))
+      .filter((c) => c.count > 0);
+  }, [courseList]);
   const filteredStudents: ReportStudentAttendanceRow[] = useMemo(() => (snapshot?.rows ?? []).map((row, index) => ({
     id: row.id, name: row.name, initials: getInitials(row.name),
     avatarBg: index % 2 ? 'bg-purple-200' : 'bg-purple-100', avatarColor: 'text-purple-800',
@@ -271,41 +304,43 @@ export function ReportsPage() {
           </div>
 
           {loading ? (
-            <div className="my-6 flex h-52 items-center justify-center text-xs text-[#756883]">
+            <div className="my-6 flex h-56 items-center justify-center text-xs text-[#756883]">
               Loading attendance trend…
             </div>
           ) : trendData.length === 0 ? (
-            <div className="my-6 flex h-52 items-center justify-center text-center text-xs text-[#756883]">
+            <div className="my-6 flex h-56 items-center justify-center text-center text-xs text-[#756883]">
               No attendance records available.
             </div>
           ) : (
-            <div className="my-6 flex h-52 items-end justify-around gap-4 px-2">
-              {trendData.map((item) => (
-                <div key={item.day} className="group relative flex h-full flex-1 flex-col items-center justify-end">
-                  {/* Tooltip */}
-                  <div className="pointer-events-none absolute -top-8 z-10 hidden rounded-lg bg-[#24133F] px-3 py-1.5 text-[11px] font-medium text-white shadow-xl group-hover:block whitespace-nowrap">
-                    {item.day}: {item.present} Time In · {item.absent} Time Out
-                  </div>
-
-                  {/* Stacked Stadium Bars */}
-                  <div className="flex w-12 h-44 flex-col justify-end gap-1.5">
-                    {item.absentPct > 0 && (
-                      <div
-                        className="w-full rounded-[14px] bg-[#EF3340] transition-all duration-300"
-                        style={{ height: `${item.absentPct}%` }}
-                      />
-                    )}
-                    {item.presentPct > 0 && (
-                      <div
-                        className="w-full rounded-[14px] bg-[#10B981] transition-all duration-300"
-                        style={{ height: `${item.presentPct}%` }}
-                      />
-                    )}
-                  </div>
-
-                  <span className="mt-3 text-xs font-medium text-[#756883]">{item.day}</span>
-                </div>
-              ))}
+            <div className="my-4 h-56 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={trendData} margin={{ top: 15, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1EEF4" />
+                  <XAxis dataKey="day" tickLine={false} axisLine={{ stroke: '#EDE8F1' }} tick={{ fill: '#756883', fontSize: 11, fontWeight: 600 }} />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fill: '#A59CAC', fontSize: 10 }} />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        const inVal = Number(payload[0]?.value ?? 0);
+                        const outVal = Number(payload[1]?.value ?? 0);
+                        return (
+                          <div className="rounded-2xl border border-purple-100 bg-[#24133F] px-3.5 py-2 text-white shadow-xl text-xs">
+                            <p className="font-extrabold text-[#D7B9FA]">{label}</p>
+                            <div className="mt-1 flex items-center gap-3 font-semibold">
+                              <span className="text-emerald-400">In: {inVal}</span>
+                              <span className="text-rose-400">Out: {outVal}</span>
+                              <span className="text-purple-200 font-bold">Total: {inVal + outVal}</span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar dataKey="present" name="Time In" fill="#10B981" radius={[6, 6, 0, 0]} maxBarSize={32} />
+                  <Bar dataKey="absent" name="Time Out" fill="#EF4444" radius={[6, 6, 0, 0]} maxBarSize={32} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           )}
 
@@ -418,6 +453,52 @@ export function ReportsPage() {
           <div>
             <h2 className="text-lg font-bold text-[#24133F]">Course Breakdown</h2>
             <p className="mt-0.5 text-xs text-[#756883]">Scan counts follow the selected filters. Active roster is the current student count per course.</p>
+
+            {/* Course Donut Visualization */}
+            {!loading && courseChartData.length > 0 && (
+              <div className="relative my-4 flex h-44 w-full items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={courseChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={45}
+                      outerRadius={68}
+                      paddingAngle={3}
+                      dataKey="count"
+                    >
+                      {courseChartData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COURSE_COLORS[index % COURSE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0];
+                          const item = data.payload;
+                          return (
+                            <div className="rounded-xl bg-[#24133F] px-3 py-1.5 text-xs text-white shadow-lg">
+                              <p className="font-bold text-[#D7B9FA]">{item.name}</p>
+                              <div className="mt-1 space-y-0.5 text-[11px]">
+                                <p className="text-emerald-400">Time In: {item.timeIn}</p>
+                                <p className="text-rose-400">Time Out: {item.timeOut}</p>
+                                <p className="text-purple-200">Roster: {item.expected}</p>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                  <span className="text-lg font-black text-[#24133F]">{courseChartData.length}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#756883]">Courses</span>
+                </div>
+              </div>
+            )}
 
             <div className="mt-4 overflow-x-auto">
               <table className="w-full min-w-[400px] text-left text-xs">

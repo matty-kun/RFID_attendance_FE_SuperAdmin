@@ -4,11 +4,25 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
+  Clock,
   CreditCard,
+  GraduationCap,
   MapPin,
   ScanLine,
   Users,
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 import { adminService } from '../services/adminService';
 import { studentService } from '../features/students/services/studentService';
 import { toast } from '../context';
@@ -33,6 +47,17 @@ const formatDay = (date: string) =>
   }).format(new Date(`${date}T00:00:00+08:00`));
 
 const number = (value?: number) => (value === undefined ? '—' : value.toLocaleString());
+
+const COURSE_COLORS = [
+  '#7026B7', // Brand Purple
+  '#2563EB', // Blue
+  '#10B981', // Emerald
+  '#F59E0B', // Amber
+  '#EC4899', // Pink
+  '#8B5CF6', // Purple Light
+  '#06B6D4', // Cyan
+  '#64748B', // Slate
+];
 
 function formatEventDates(startDate?: string, endDate?: string): string {
   if (!startDate) return '';
@@ -69,7 +94,6 @@ export function OverviewPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState<'right' | 'left'>('right');
   const [, setLoading] = useState(true);
-  const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
   const loadMetrics = useCallback(async (eventId?: string) => {
     try {
@@ -179,15 +203,41 @@ export function OverviewPage() {
   const days = metrics?.attendanceByDay ?? [];
   const locations = metrics?.locationActivity ?? [];
   const totalPeriodScans = days.reduce((sum, d) => sum + d.timeIns + d.timeOuts, 0);
-  const maxSingleMetric = Math.max(1, ...days.map((d) => Math.max(d.timeIns, d.timeOuts)));
-  const yAxisMax = Math.max(4, Math.ceil(maxSingleMetric * 1.25));
-  const yAxisMid = Math.round(yAxisMax / 2);
   const locationPeak = Math.max(1, ...locations.map((location) => location.scansToday));
   const hasCheckpointActivity = locations.some((location) => location.scansToday > 0);
   const today = days.at(-1);
   const scansToday = today ? today.timeIns + today.timeOuts : undefined;
   const cardRate = roster?.active ? Math.round((roster.with_cards / roster.active) * 100) : 0;
   const hasAttendance = days.some((day) => day.timeIns + day.timeOuts > 0);
+
+  // Formatted data for Recharts BarChart
+  const volumeChartData = useMemo(() => {
+    return days.map((d) => ({
+      rawDate: d.date,
+      name: formatDay(d.date),
+      timeIns: d.timeIns,
+      timeOuts: d.timeOuts,
+      total: d.timeIns + d.timeOuts,
+    }));
+  }, [days]);
+
+  // Course distribution data for Donut Chart
+  const courseData = useMemo(() => {
+    const raw = metrics?.courseDistribution ?? [];
+    if (raw.length === 0) {
+      return [{ name: 'No Students', count: 1 }];
+    }
+    return raw;
+  }, [metrics]);
+  const totalCourseStudents = useMemo(() => {
+    return (metrics?.courseDistribution ?? []).reduce((acc, c) => acc + c.count, 0) || roster?.active || 0;
+  }, [metrics, roster]);
+
+  // Hourly distribution for Heatmap / Bar view
+  const hourlyData = useMemo(() => {
+    return metrics?.hourlyActivity ?? [];
+  }, [metrics]);
+  const peakHourlyScan = Math.max(1, ...hourlyData.map((h) => h.total));
 
   return (
     <div className="space-y-6 pb-8">
@@ -301,7 +351,7 @@ export function OverviewPage() {
             <span className="text-xs font-semibold text-[#756883]">Scans today</span>
             <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]"><ScanLine className="h-4 w-4" /></div>
           </div>
-          <p className="mt-3 text-2xl font-black text-[#24133F] transition-all">{number(scansToday)}</p>
+          <p className="mt-3 text-2xl font-black text-[#24133F]">{number(scansToday)}</p>
         </div>
 
         <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs transition-shadow hover:shadow-sm">
@@ -309,7 +359,7 @@ export function OverviewPage() {
             <span className="text-xs font-semibold text-[#756883]">Active students</span>
             <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]"><Users className="h-4 w-4" /></div>
           </div>
-          <p className="mt-3 text-2xl font-black text-[#24133F] transition-all">{number(roster?.active)}</p>
+          <p className="mt-3 text-2xl font-black text-[#24133F]">{number(roster?.active)}</p>
         </div>
 
         <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs transition-shadow hover:shadow-sm">
@@ -317,7 +367,7 @@ export function OverviewPage() {
             <span className="text-xs font-semibold text-[#756883]">Cards assigned</span>
             <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]"><CreditCard className="h-4 w-4" /></div>
           </div>
-          <p className="mt-3 text-2xl font-black text-[#24133F] transition-all">{cardRate}%</p>
+          <p className="mt-3 text-2xl font-black text-[#24133F]">{cardRate}%</p>
         </div>
 
         <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs transition-shadow hover:shadow-sm">
@@ -325,18 +375,19 @@ export function OverviewPage() {
             <span className="text-xs font-semibold text-[#756883]">Checkpoints</span>
             <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]"><MapPin className="h-4 w-4" /></div>
           </div>
-          <p className="mt-3 text-2xl font-black text-[#24133F] transition-all">{locations.length}</p>
+          <p className="mt-3 text-2xl font-black text-[#24133F]">{locations.length}</p>
         </div>
       </section>
 
-      {/* Attendance Volume Chart & Checkpoint Activity */}
+      {/* Row 1: Interactive Recharts Attendance Volume & Checkpoint Activity */}
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Attendance Volume Chart */}
         <div className="rounded-3xl border border-[#E5E0EB] bg-white p-6 shadow-xs lg:col-span-2 flex flex-col justify-between">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-[#24133F]">Attendance volume</h2>
-                <span className="rounded-full bg-purple-50 border border-purple-200/80 px-2 py-0.5 text-[11px] font-bold text-[#7026B7] transition-all">
+                <span className="rounded-full bg-purple-50 border border-purple-200/80 px-2 py-0.5 text-[11px] font-bold text-[#7026B7]">
                   {totalPeriodScans} {totalPeriodScans === 1 ? 'scan' : 'scans'}
                 </span>
               </div>
@@ -364,134 +415,46 @@ export function OverviewPage() {
             </div>
           </div>
 
-          <div className="mt-6 flex gap-3 h-52">
-            {/* Y-Axis Scale Marks */}
-            <div className="flex flex-col justify-between text-[10px] font-semibold text-[#A59CAC] pb-6 shrink-0 text-right w-6 tabular-nums">
-              <span>{yAxisMax}</span>
-              <span>{yAxisMid}</span>
-              <span>0</span>
-            </div>
-
-            {/* Main Chart Area */}
-            <div className="relative flex-1 flex flex-col justify-between">
-              {/* Horizontal Grid Guidelines */}
-              <div className="pointer-events-none absolute inset-x-0 top-0 bottom-6 flex flex-col justify-between z-0">
-                <div className="w-full border-b border-dashed border-slate-100" />
-                <div className="w-full border-b border-dashed border-slate-100" />
-                <div className="w-full border-b border-slate-200" />
-              </div>
-
-              {hasAttendance ? (
-                <div className="relative z-10 flex-1 flex items-end gap-2 sm:gap-4 pb-6">
-                  {days.map((day, idx) => {
-                    const inHeight = day.timeIns > 0 ? Math.min(100, Math.round((day.timeIns / yAxisMax) * 100)) : 0;
-                    const outHeight = day.timeOuts > 0 ? Math.min(100, Math.round((day.timeOuts / yAxisMax) * 100)) : 0;
-                    const total = day.timeIns + day.timeOuts;
-                    const isHovered = hoveredDay === idx;
-                    const isToday = day.date === today?.date;
-
-                    return (
-                      <div
-                        key={day.date}
-                        onMouseEnter={() => setHoveredDay(idx)}
-                        onMouseLeave={() => setHoveredDay(null)}
-                        className={`relative flex-1 flex flex-col items-center justify-end h-full rounded-xl transition-all cursor-pointer py-1 ${
-                          isHovered ? 'bg-purple-50/50' : ''
-                        }`}
-                      >
-                        {/* Floating Tooltip */}
-                        {isHovered && (
-                          <div className="absolute -top-14 z-30 flex flex-col items-center pointer-events-none animate-in fade-in zoom-in-95 duration-100">
-                            <div className="rounded-xl bg-[#24133F] px-3 py-1.5 text-center text-white shadow-xl text-[11px] whitespace-nowrap">
-                              <span className="font-extrabold text-xs">
-                                {formatDay(day.date)} <span className="font-normal text-purple-300 text-[10px]">({total} {total === 1 ? 'scan' : 'scans'})</span>
-                              </span>
-                              <div className="flex items-center justify-center gap-2 mt-0.5 text-[11px]">
-                                <span className="flex items-center gap-1 text-emerald-400 font-bold">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                                  In: {day.timeIns}
-                                </span>
-                                <span className="text-slate-400">·</span>
-                                <span className="flex items-center gap-1 text-rose-400 font-bold">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
-                                  Out: {day.timeOuts}
-                                </span>
-                              </div>
+          {/* Interactive Recharts Bar Chart */}
+          <div className="mt-4 h-56 w-full">
+            {hasAttendance ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={volumeChartData} margin={{ top: 15, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1EEF4" />
+                  <XAxis dataKey="name" tickLine={false} axisLine={{ stroke: '#EDE8F1' }} tick={{ fill: '#756883', fontSize: 11, fontWeight: 600 }} />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fill: '#A59CAC', fontSize: 10 }} />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        const inVal = Number(payload[0]?.value ?? 0);
+                        const outVal = Number(payload[1]?.value ?? 0);
+                        return (
+                          <div className="rounded-2xl border border-purple-100 bg-[#24133F] px-3.5 py-2 text-white shadow-xl text-xs">
+                            <p className="font-extrabold text-[#D7B9FA]">{label}</p>
+                            <div className="mt-1 flex items-center gap-3 font-semibold">
+                              <span className="text-emerald-400">In: {inVal}</span>
+                              <span className="text-rose-400">Out: {outVal}</span>
+                              <span className="text-purple-200 font-bold">Total: {inVal + outVal}</span>
                             </div>
-                            <div className="h-1.5 w-1.5 -rotate-45 bg-[#24133F] -mt-0.5" />
                           </div>
-                        )}
-
-                        {/* Side-by-side Pair of Bars */}
-                        <div className="w-full flex justify-center items-end gap-1.5 sm:gap-2.5 h-full">
-                          {/* Time In Bar (Green) */}
-                          <div className="flex flex-col items-center justify-end h-full">
-                            {day.timeIns > 0 ? (
-                              <>
-                                <span className={`text-[11px] font-bold mb-1.5 tabular-nums transition-colors ${
-                                  isHovered ? 'text-emerald-700 scale-110 font-extrabold' : 'text-emerald-600'
-                                }`}>
-                                  {day.timeIns}
-                                </span>
-                                <div
-                                  style={{ height: `${inHeight}%` }}
-                                  className="w-5 sm:w-7 md:w-8 rounded-t-lg bg-[#10B981] shadow-xs transition-all duration-500 ease-out hover:brightness-110"
-                                  title={`Time In: ${day.timeIns}`}
-                                />
-                              </>
-                            ) : (
-                              <div className="h-1.5 w-5 sm:w-7 md:w-8 rounded-full bg-slate-200" title="Time In: 0" />
-                            )}
-                          </div>
-
-                          {/* Time Out Bar (Red) */}
-                          <div className="flex flex-col items-center justify-end h-full">
-                            {day.timeOuts > 0 ? (
-                              <>
-                                <span className={`text-[11px] font-bold mb-1.5 tabular-nums transition-colors ${
-                                  isHovered ? 'text-rose-700 scale-110 font-extrabold' : 'text-rose-600'
-                                }`}>
-                                  {day.timeOuts}
-                                </span>
-                                <div
-                                  style={{ height: `${outHeight}%` }}
-                                  className="w-5 sm:w-7 md:w-8 rounded-t-lg bg-[#EF4444] shadow-xs transition-all duration-500 ease-out hover:brightness-110"
-                                  title={`Time Out: ${day.timeOuts}`}
-                                />
-                              </>
-                            ) : (
-                              <div className="h-1.5 w-5 sm:w-7 md:w-8 rounded-full bg-slate-200" title="Time Out: 0" />
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Date Label under baseline */}
-                        <div className="absolute -bottom-5 flex items-center justify-center">
-                          <span
-                            className={`text-[10px] font-semibold whitespace-nowrap transition-colors ${
-                              isToday
-                                ? 'text-[#7026B7] font-bold'
-                                : isHovered
-                                ? 'text-slate-900 font-bold'
-                                : 'text-[#756883]'
-                            }`}
-                          >
-                            {formatDay(day.date)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="h-full w-full flex items-center justify-center text-xs text-[#756883] pb-6">
-                  No attendance scans recorded for this period yet.
-                </div>
-              )}
-            </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar dataKey="timeIns" name="Time-In" fill="#10B981" radius={[6, 6, 0, 0]} maxBarSize={32} />
+                  <Bar dataKey="timeOuts" name="Time-Out" fill="#EF4444" radius={[6, 6, 0, 0]} maxBarSize={32} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex items-center justify-center text-xs text-[#756883]">
+                No attendance scans recorded for this period yet.
+              </div>
+            )}
           </div>
         </div>
 
+        {/* Checkpoint Activity */}
         <div className="rounded-3xl border border-[#E5E0EB] bg-white p-6 shadow-xs">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-[#24133F]">Checkpoint activity</h2>
@@ -499,14 +462,14 @@ export function OverviewPage() {
           </div>
           <p className="text-xs text-[#756883]">Distribution across scan locations</p>
 
-          <div className="mt-5 space-y-3">
+          <div className="mt-5 space-y-3.5">
             {hasCheckpointActivity ? locations.map((loc) => {
               const pct = Math.round((loc.scansToday / locationPeak) * 100);
               return (
                 <div key={loc.id} className="space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="font-semibold text-[#24133F]">{loc.name}</span>
-                    <span className="font-bold text-[#756883]">{loc.scansToday}</span>
+                    <span className="font-bold text-[#756883]">{loc.scansToday} scans</span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-[#FAF8FC]">
                     <div style={{ width: `${Math.max(6, pct)}%` }} className="h-2 rounded-full bg-[#7026B7] transition-all duration-500 ease-out" />
@@ -516,6 +479,131 @@ export function OverviewPage() {
             }) : (
               <p className="py-8 text-center text-xs text-[#756883]">No scan activity at checkpoints today.</p>
             )}
+          </div>
+        </div>
+      </section>
+
+      {/* Row 2: Course Distribution Donut Chart & Peak Tap Hours Heatmap */}
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Attendance by Course Donut Chart */}
+        <div className="rounded-3xl border border-[#E5E0EB] bg-white p-6 shadow-xs">
+          <div className="flex items-center gap-2">
+            <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]"><GraduationCap className="h-4 w-4" /></div>
+            <div>
+              <h2 className="text-base font-bold text-[#24133F]">Students by Course</h2>
+              <p className="text-xs text-[#756883]">Enrolled student distribution</p>
+            </div>
+          </div>
+
+          <div className="relative mt-4 h-48 w-full flex items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={courseData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={75}
+                  paddingAngle={3}
+                  dataKey="count"
+                >
+                  {courseData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COURSE_COLORS[index % COURSE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0];
+                      return (
+                        <div className="rounded-xl bg-[#24133F] px-3 py-1.5 text-xs text-white shadow-lg">
+                          <p className="font-bold">{data.name}</p>
+                          <p className="text-purple-200">{Number(data.value).toLocaleString()} students</p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            {/* Center Summary Label */}
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+              <span className="text-xl font-black text-[#24133F]">{number(totalCourseStudents)}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#756883]">Enrolled</span>
+            </div>
+          </div>
+
+          {/* Course Legend Pills */}
+          <div className="mt-2 flex flex-wrap gap-2 justify-center max-h-24 overflow-y-auto pr-1">
+            {courseData.slice(0, 5).map((c, idx) => (
+              <div key={c.name} className="flex items-center gap-1.5 rounded-lg bg-slate-50 px-2 py-1 text-[11px]">
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: COURSE_COLORS[idx % COURSE_COLORS.length] }} />
+                <span className="font-semibold text-slate-700 truncate max-w-[120px]">{c.name}</span>
+                <span className="text-slate-400 font-bold tabular-nums">{c.count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Peak Tap Hours (Hourly Scan Heatmap / Bar View) */}
+        <div className="rounded-3xl border border-[#E5E0EB] bg-white p-6 shadow-xs lg:col-span-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]"><Clock className="h-4 w-4" /></div>
+              <div>
+                <h2 className="text-base font-bold text-[#24133F]">Peak Tap Hours</h2>
+                <p className="text-xs text-[#756883]">Checkpoint scan congestion throughout today (7 AM – 6 PM)</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 text-xs font-semibold text-[#756883]">
+              <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-purple-200" /> Low</span>
+              <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-[#7026B7]" /> Peak Rush</span>
+            </div>
+          </div>
+
+          {/* Interactive Recharts Hourly Bar / Heat Chart */}
+          <div className="mt-5 h-48 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={hourlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1EEF4" />
+                <XAxis dataKey="hour" tickLine={false} axisLine={{ stroke: '#EDE8F1' }} tick={{ fill: '#756883', fontSize: 10, fontWeight: 600 }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fill: '#A59CAC', fontSize: 10 }} />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      const item = payload[0]?.payload as { hour: string; inScans: number; outScans: number; total: number };
+                      return (
+                        <div className="rounded-2xl border border-purple-100 bg-[#24133F] px-3.5 py-2 text-white shadow-xl text-xs">
+                          <p className="font-extrabold text-[#D7B9FA]">{label}</p>
+                          <div className="mt-1 space-y-0.5">
+                            <p className="text-emerald-400 font-semibold">Time-In scans: {item.inScans}</p>
+                            <p className="text-rose-400 font-semibold">Time-Out scans: {item.outScans}</p>
+                            <p className="text-white font-bold pt-1 border-t border-white/20">Total: {item.total} scans</p>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Bar dataKey="total" radius={[6, 6, 0, 0]} maxBarSize={28}>
+                  {hourlyData.map((entry, index) => {
+                    // Heat gradient from light purple to intense brand purple
+                    const ratio = entry.total / peakHourlyScan;
+                    const fill = entry.total === 0
+                      ? '#EDE8F1'
+                      : ratio > 0.65
+                      ? '#7026B7'
+                      : ratio > 0.3
+                      ? '#9333EA'
+                      : '#C084FC';
+                    return <Cell key={`cell-${index}`} fill={fill} />;
+                  })}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </section>

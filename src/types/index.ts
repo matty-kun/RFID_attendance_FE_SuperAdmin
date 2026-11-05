@@ -76,4 +76,6 @@ export interface DashboardMetrics {
   todayTimeIns: number;
   attendanceByDay: Array<{ date: string; timeIns: number; timeOuts: number }>;
   locationActivity: Array<{ id: string; name: string; scansToday: number }>;
+  courseDistribution?: Array<{ name: string; count: number }>;
+  hourlyActivity?: Array<{ hour: string; inScans: number; outScans: number; total: number }>;
 }
