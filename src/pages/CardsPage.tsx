@@ -787,14 +787,13 @@ export function CardsPage() {
                         </div>
 
                         {a.student_id && (
-                          <button
-                            type="button"
+                          <Button
+                            size="sm"
+                            leftIcon={<ExternalLink className="h-3.5 w-3.5" />}
                             onClick={() => void handleViewStudentProfile(a)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#7026B7] bg-[#F7F1FD] hover:bg-[#F2E9FC] active:scale-95 border border-[#E9DCFA] transition-all cursor-pointer shrink-0 shadow-2xs"
                           >
-                            <span>View Profile</span>
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </button>
+                            View Profile
+                          </Button>
                         )}
                       </div>
 
@@ -824,7 +823,7 @@ export function CardsPage() {
                                         <div className="flex items-center gap-2">
                                           <span
                                             className={`h-2 w-2 rounded-full shrink-0 ${
-                                              isTimeIn ? 'bg-emerald-500' : 'bg-[#7026B7]'
+                                              isTimeIn ? 'bg-[#17B556]' : 'bg-[#EF3340]'
                                             }`}
                                             title={isTimeIn ? 'Time In' : 'Time Out'}
                                           />
