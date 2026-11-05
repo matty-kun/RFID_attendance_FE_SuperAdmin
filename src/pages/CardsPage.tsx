@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, Check, CheckCircle2, CircleAlert, CreditCard, ExternalLink, Filter, Hash, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, Trash2, UserRound, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Check, CheckCircle2, CircleAlert, CreditCard, ExternalLink, Filter, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, Trash2, UserRound, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatYearLevel } from '../utils/formatters';
 import { request } from '../services/apiClient';
@@ -228,10 +228,11 @@ export function CardsPage() {
 
   const handleSaveCardNumber = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const clean = editCardNumber.trim().toUpperCase();
     if (!detail) return;
-    if (!clean || clean === detail.card.card_number) {
-      setEditCardNumber(detail.card.card_number);
+    const cleanSuffix = editCardNumber.trim().replace(/^RFID-?/i, '').toUpperCase();
+    const clean = `RFID-${cleanSuffix}`;
+    if (!cleanSuffix || clean === detail.card.card_number) {
+      setEditCardNumber(detail.card.card_number.replace(/^RFID-/i, ''));
       setIsEditingCardNumber(false);
       return;
     }
@@ -245,7 +246,7 @@ export function CardsPage() {
       setIsEditingCardNumber(false);
       showToast(`Printed card number updated to ${clean}!`, 'success');
     } catch (err: any) {
-      setEditCardNumber(detail.card.card_number);
+      setEditCardNumber(detail.card.card_number.replace(/^RFID-/i, ''));
       setIsEditingCardNumber(false);
       showToast(err?.response?.data?.error?.message || err?.message || 'Failed to update card number.', 'error');
     } finally {
@@ -438,7 +439,7 @@ export function CardsPage() {
               role="button"
               tabIndex={0}
               onClick={() => {
-                setEditCardNumber(detail.card.card_number);
+                setEditCardNumber(detail.card.card_number.replace(/^RFID-/i, ''));
                 setIsEditingCardNumber(true);
               }}
               className="group flex items-center gap-2 rounded-xl py-0.5 px-2 -ml-2 transition-all hover:bg-white/20 cursor-pointer"
@@ -450,26 +451,28 @@ export function CardsPage() {
               <Pencil className="h-4 w-4 text-white/70 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
             </div>
           ) : (
-            <div className="flex items-center gap-2 flex-1 max-w-[340px]">
+            <div className="flex items-center gap-1 text-2xl font-black text-white tracking-tight font-mono flex-1 max-w-[340px]">
+              <span className="select-none opacity-90">RFID-</span>
               <input
                 type="text"
                 value={editCardNumber}
-                onChange={(e) => setEditCardNumber(e.target.value.toUpperCase())}
+                onChange={(e) => setEditCardNumber(e.target.value.replace(/^RFID-?/i, '').replace(/[^A-Z0-9-]/gi, '').toUpperCase())}
                 onBlur={() => void handleSaveCardNumber()}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') void handleSaveCardNumber();
                   if (e.key === 'Escape') {
-                    setEditCardNumber(detail.card.card_number);
+                    setEditCardNumber(detail.card.card_number.replace(/^RFID-/i, ''));
                     setIsEditingCardNumber(false);
                   }
                 }}
                 disabled={savingCardNumber}
                 autoFocus
-                placeholder="e.g. RFID-001"
-                className="text-2xl font-black uppercase text-white tracking-tight bg-transparent border-b-2 border-white outline-none px-0 py-0 w-full placeholder:text-white/60 font-mono"
+                placeholder="001"
+                maxLength={27}
+                className="text-2xl font-black uppercase text-white tracking-tight bg-transparent border-b-2 border-white outline-none px-0 py-0 w-32 placeholder:text-white/60 font-mono"
               />
               {savingCardNumber && (
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white shrink-0">
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white shrink-0 ml-1">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
                   Saving…
                 </span>
@@ -698,7 +701,35 @@ export function CardsPage() {
       <div className="space-y-4 p-6 text-xs">{action === 'register' && <div className="relative mb-5 flex items-start justify-between px-8" aria-label={`Step ${registerStep} of 2`}><div className="absolute left-[25%] right-[25%] top-4 h-[2px] bg-[#E5E0EB]" /><div className={`absolute left-[25%] top-4 h-[2px] bg-[#A855F7] transition-all ${registerStep === 2 ? 'w-1/2' : 'w-0'}`} />{(['Scan card', 'Card number'] as const).map((title, index) => <div key={title} className="relative z-10 flex w-24 flex-col items-center gap-2 text-center"><span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${registerStep === index + 1 ? 'bg-[#A855F7] text-white ring-4 ring-[#A855F7]/25' : registerStep > index + 1 ? 'bg-[#A855F7] text-white' : 'bg-[#F3E8FF] text-[#A855F7]'}`}>{registerStep > index + 1 ? <Check className="h-4 w-4" /> : index + 1}</span><span className={registerStep === index + 1 ? 'font-bold text-[#24133F]' : 'text-[#756883]'}>{title}</span></div>)}</div>}
         <div className="flex justify-center"><img src={lastAction.current === 'damaged' ? hawiBrokenCard : lastAction.current === 'lost' ? hawiCrying : lastAction.current === 'archive' ? hawiBox : lastAction.current === 'restore' || lastAction.current === 'unarchive' ? hawiCheck : lastAction.current === 'return' || lastAction.current === 'issue' || lastAction.current === 'register' ? hawiScanning : hawiLooking} alt="" className="h-24 w-24 object-contain" /></div>
         {(action !== 'register' || registerStep === 1) && <label className="block font-semibold">{action === 'register' ? 'Scan card UID' : 'Card UID'}<div className="relative mt-1"><Radio className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#7026B7]" /><input value={uid} onChange={e => setUid(e.target.value)} onKeyDown={e => { if (action === 'register' && e.key === 'Enter') { e.preventDefault(); if (uid.trim()) { setRegisterStep(2); requestAnimationFrame(() => cardNumberRef.current?.focus()); } } }} disabled={action !== 'register'} autoFocus={action === 'register'} placeholder={action === 'register' ? 'Tap or scan card now' : undefined} className="block h-10 w-full rounded-xl border border-[#E5E0EB] py-0 pl-9 pr-3 focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100 disabled:bg-[#F7F6F9]" /></div></label>}
-        {action === 'register' && registerStep === 2 && <><div className="flex items-center justify-between rounded-2xl border border-[#E5E0EB] bg-[#FAF8FC] px-4 py-3"><span className="font-semibold text-[#756883]">Card scanned</span><span className="font-mono font-bold text-[#24133F]">{uid.trim()}</span></div><label className="block font-semibold text-[#24133F]">Printed Card No.<div className="relative mt-1.5"><Hash className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#7026B7]" /><input ref={cardNumberRef} value={cardNumber} onChange={e => setCardNumber(e.target.value.toUpperCase())} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (!busy) void submit(); } }} placeholder="e.g. RFID-001" maxLength={32} className="block h-10 w-full rounded-xl border border-[#E5E0EB] py-0 pl-9 pr-3 uppercase focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100" /></div><span className="mt-1.5 block font-normal text-[#756883]">Enter the number printed on this card.</span></label></>}
+        {action === 'register' && registerStep === 2 && (
+          <>
+            <div className="flex items-center justify-between rounded-2xl border border-[#E5E0EB] bg-[#FAF8FC] px-4 py-3">
+              <span className="font-semibold text-[#756883]">Card scanned</span>
+              <span className="font-mono font-bold text-[#24133F]">{uid.trim()}</span>
+            </div>
+            <label className="block font-semibold text-[#24133F]">
+              <span>Printed Card No.</span>
+              <div className="relative mt-1.5 flex items-center rounded-xl border border-[#E5E0EB] bg-white overflow-hidden transition-all focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100">
+                <span className="flex items-center bg-[#F4EFFB] px-3.5 py-2.5 font-mono text-xs font-black text-[#7026B7] border-r border-[#E5E0EB] select-none">
+                  RFID-
+                </span>
+                <input
+                  ref={cardNumberRef}
+                  value={cardNumber.replace(/^RFID-?/i, '')}
+                  onChange={e => {
+                    const clean = e.target.value.replace(/^RFID-?/i, '').replace(/[^A-Z0-9-]/gi, '').toUpperCase();
+                    setCardNumber(clean ? `RFID-${clean}` : '');
+                  }}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (!busy) void submit(); } }}
+                  placeholder="001"
+                  maxLength={27}
+                  className="block h-10 w-full px-3 text-xs font-mono font-bold uppercase text-[#24133F] outline-none"
+                />
+              </div>
+              <span className="mt-1.5 block font-normal text-[#756883]">Enter the number printed on this card.</span>
+            </label>
+          </>
+        )}
         {action === 'issue' && <label className="block font-semibold">Student<select value={studentId} onChange={e => setStudentId(e.target.value)} className="mt-1 block h-10 w-full rounded-xl border border-[#E5E0EB] px-3 focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100"><option value="">Choose student</option>{students.map(s => <option key={s.id} value={s.id}>{s.name} · {s.student_id}</option>)}</select></label>}
         {action !== 'issue' && action !== 'register' && action !== 'archive' && action !== 'unarchive' && <label className="block font-semibold">Note (optional)<input value={note} onChange={e => setNote(e.target.value)} maxLength={500} placeholder="Reason or handoff detail" className="mt-1 block h-10 w-full rounded-xl border border-[#E5E0EB] px-3 focus:border-[#7026B7] focus:outline-none focus:ring-4 focus:ring-purple-100" /></label>}
         <div className={`flex gap-2 border-t border-[#F1EEF4] pt-4 ${action === 'register' ? 'justify-between' : 'justify-end'}`}><Button variant="secondary" onClick={() => action === 'register' && registerStep === 2 ? setRegisterStep(1) : setAction(null)} disabled={busy} leftIcon={action === 'register' ? undefined : <X className="h-4 w-4" />}>{action === 'register' && registerStep === 2 ? 'Back' : 'Cancel'}</Button><Button variant={action === 'lost' ? 'danger' : 'primary'} onClick={() => { if (action === 'register' && registerStep === 1) { setRegisterStep(2); requestAnimationFrame(() => cardNumberRef.current?.focus()); } else void submit(); }} isLoading={busy} disabled={!uid.trim() || action === 'register' && registerStep === 2 && !cardNumber.trim() || action === 'issue' && !studentId}>{action === 'register' ? registerStep === 1 ? 'Next →' : 'Register card' : action === 'issue' ? 'Issue card' : action === 'return' ? 'Confirm return' : action === 'lost' ? 'Report lost' : action === 'damaged' ? 'Mark damaged' : action === 'archive' ? 'Archive card' : action === 'unarchive' ? 'Restore card' : 'Restore card'}</Button></div>
