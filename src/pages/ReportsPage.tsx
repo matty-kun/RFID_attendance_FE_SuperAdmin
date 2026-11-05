@@ -346,23 +346,35 @@ export function ReportsPage() {
                       return null;
                     }}
                   />
-                  <Bar dataKey="present" name="Time In" fill="#10B981" radius={[6, 6, 0, 0]} maxBarSize={32} />
-                  <Bar dataKey="absent" name="Time Out" fill="#EF4444" radius={[6, 6, 0, 0]} maxBarSize={32} />
+                  <Bar
+                    dataKey="present"
+                    name="Time In"
+                    fill="#10B981"
+                    radius={[8, 8, 8, 8]}
+                    background={{ fill: '#FAF8FC', radius: 8 }}
+                    maxBarSize={28}
+                  />
+                  <Bar
+                    dataKey="absent"
+                    name="Time Out"
+                    fill="#EF4444"
+                    radius={[8, 8, 8, 8]}
+                    background={{ fill: '#FAF8FC', radius: 8 }}
+                    maxBarSize={28}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           )}
 
-          {/* Legend */}
-          <div className="flex items-center gap-6 text-xs text-[#756883] font-medium">
-            <span className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#10B981]" />
-              Time In
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#EF3340]" />
-              Time Out
-            </span>
+          {/* Sub-Metrics Footer (Image 4 style) */}
+          <div className="flex items-center justify-between gap-4 text-xs font-semibold pt-3 border-t border-[#EDE8F1]">
+            <div className="flex items-center gap-1.5 text-emerald-700">
+              <span className="text-emerald-500">✦</span> Time In: <strong className="text-[#24133F]">{reportSummary.timeIns.toLocaleString()}</strong>
+            </div>
+            <div className="flex items-center gap-1.5 text-rose-700">
+              <span className="text-rose-500">⬡</span> Time Out: <strong className="text-[#24133F]">{reportSummary.timeOuts.toLocaleString()}</strong>
+            </div>
           </div>
         </section>
 
