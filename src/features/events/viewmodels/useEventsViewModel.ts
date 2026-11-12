@@ -3,6 +3,7 @@ import { EventRecord, CreateEventPayload } from '../models';
 import { eventService } from '../services';
 import { adminService } from '../../../services/adminService';
 import { toast } from '../../../context';
+import { getEventStatus } from '../../../utils/status';
 
 export interface UseEventsViewModelReturn {
   events: EventRecord[];
@@ -32,9 +33,7 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeEventId, setActiveEventIdState] = useState<string | null>(() =>
-    localStorage.getItem('presnt_active_event_id')
-  );
+  const [activeEventId, setActiveEventIdState] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -47,6 +46,11 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
   const [endDate, setEndDate] = useState('');
 
   const setActiveEventId = (id: string) => {
+    const target = events.find((e) => e.id === id);
+    if (target && getEventStatus(target.start_date, target.end_date) === 'completed') {
+      toast.error('Cannot set completed event as active');
+      return;
+    }
     setActiveEventIdState(id);
     localStorage.setItem('presnt_active_event_id', id);
     adminService
@@ -69,17 +73,52 @@ export const useEventsViewModel = (): UseEventsViewModelReturn => {
       ]);
       setEvents(data);
 
-      const serverActiveId = activeRes?.active_event_id;
-      const savedActive = serverActiveId || localStorage.getItem('presnt_active_event_id');
-      if (savedActive && data.some((e) => e.id === savedActive)) {
-        setActiveEventIdState(savedActive);
-        localStorage.setItem('presnt_active_event_id', savedActive);
-      } else if (data.length > 0) {
-        setActiveEventIdState(data[0].id);
-        localStorage.setItem('presnt_active_event_id', data[0].id);
-        void adminService.setActiveEvent(data[0].id).catch(() => {});
+      let serverActiveId = activeRes?.active_event_id;
+      const ongoingEvent = data.find((e) => getEventStatus(e.start_date, e.end_date) === 'ongoing');
+
+      if (!serverActiveId || activeRes?.active_event_id === null) {
+        if (ongoingEvent) {
+          serverActiveId = ongoingEvent.id;
+          setActiveEventIdState(ongoingEvent.id);
+          localStorage.setItem('presnt_active_event_id', ongoingEvent.id);
+          adminService.setActiveEvent(ongoingEvent.id).catch(() => {});
+        } else {
+          setActiveEventIdState(null);
+          localStorage.removeItem('presnt_active_event_id');
+        }
       } else {
-        setActiveEventIdState(null);
+        const ev = data.find((e) => e.id === serverActiveId);
+        if (ev && getEventStatus(ev.start_date, ev.end_date) === 'completed') {
+          if (ongoingEvent) {
+            serverActiveId = ongoingEvent.id;
+            setActiveEventIdState(ongoingEvent.id);
+            localStorage.setItem('presnt_active_event_id', ongoingEvent.id);
+            adminService.setActiveEvent(ongoingEvent.id).catch(() => {});
+          } else {
+            setActiveEventIdState(null);
+            localStorage.removeItem('presnt_active_event_id');
+          }
+        } else if (ev) {
+          if (getEventStatus(ev.start_date, ev.end_date) !== 'ongoing' && ongoingEvent) {
+            serverActiveId = ongoingEvent.id;
+            setActiveEventIdState(ongoingEvent.id);
+            localStorage.setItem('presnt_active_event_id', ongoingEvent.id);
+            adminService.setActiveEvent(ongoingEvent.id).catch(() => {});
+          } else {
+            setActiveEventIdState(serverActiveId);
+            localStorage.setItem('presnt_active_event_id', serverActiveId);
+          }
+        } else {
+          if (ongoingEvent) {
+            serverActiveId = ongoingEvent.id;
+            setActiveEventIdState(ongoingEvent.id);
+            localStorage.setItem('presnt_active_event_id', ongoingEvent.id);
+            adminService.setActiveEvent(ongoingEvent.id).catch(() => {});
+          } else {
+            setActiveEventIdState(null);
+            localStorage.removeItem('presnt_active_event_id');
+          }
+        }
       }
     } catch (err: any) {
       setError(err?.response?.data?.error?.message || 'Could not load campus events. Try again.');
