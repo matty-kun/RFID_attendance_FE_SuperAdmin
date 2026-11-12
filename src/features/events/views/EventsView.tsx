@@ -50,7 +50,10 @@ export const EventsView: React.FC = () => {
   }, [events, searchQuery]);
 
   const activeEvent = useMemo(() => {
-    return events.find((e) => e.id === activeEventId);
+    const ev = events.find((e) => e.id === activeEventId);
+    if (!ev) return undefined;
+    if (getEventStatus(ev.start_date, ev.end_date) === 'completed') return undefined;
+    return ev;
   }, [events, activeEventId]);
 
   return (
@@ -184,7 +187,7 @@ export const EventsView: React.FC = () => {
             ) : (
               filteredEvents.map((ev) => {
                 const status = getEventStatus(ev.start_date, ev.end_date);
-                const isActive = ev.id === activeEventId;
+                const isActive = ev.id === activeEventId && status !== 'completed';
 
                 return (
                   <tr
@@ -225,6 +228,10 @@ export const EventsView: React.FC = () => {
                         <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-700">
                           <CheckCircle2 className="h-3.5 w-3.5 text-brand-700" />
                           Selected
+                        </span>
+                      ) : status === 'completed' ? (
+                        <span className="text-[11px] font-semibold text-[#A59AAB] italic">
+                          Completed (Inactive)
                         </span>
                       ) : (
                         <button

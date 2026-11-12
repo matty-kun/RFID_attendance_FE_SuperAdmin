@@ -123,9 +123,7 @@ export function AttendancePage() {
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>(() => searchParams.get('eventId') || '');
   const [eventData, setEventData] = useState<EventData | null>(null);
-  const [serverActiveId, setServerActiveId] = useState<string | null>(() =>
-    localStorage.getItem('presnt_active_event_id')
-  );
+  const [serverActiveId, setServerActiveId] = useState<string | null>(null);
   const [eventToDelete, setEventToDelete] = useState<{ id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -289,7 +287,29 @@ export function AttendancePage() {
           adminService.getActiveEvent().catch(() => ({ active_event_id: null, event: null })),
         ]);
         setEvents(allEvents);
-        const activeId = activeRes?.active_event_id || localStorage.getItem('presnt_active_event_id');
+        let activeId: string | null = null;
+        if (activeRes && activeRes.active_event_id) {
+          const ev = allEvents.find((e) => e.id === activeRes.active_event_id);
+          if (ev && getEventStatus(ev.start_date, ev.end_date) !== 'completed') {
+            activeId = activeRes.active_event_id;
+          }
+        }
+
+        // Automatic ongoing event promotion
+        const ongoingEvent = allEvents.find((e) => getEventStatus(e.start_date, e.end_date) === 'ongoing');
+        if (ongoingEvent) {
+          const currentEv = allEvents.find((e) => e.id === activeId);
+          if (!currentEv || getEventStatus(currentEv.start_date, currentEv.end_date) !== 'ongoing') {
+            activeId = ongoingEvent.id;
+            adminService.setActiveEvent(ongoingEvent.id).catch(() => {});
+          }
+        }
+
+        if (activeId) {
+          localStorage.setItem('presnt_active_event_id', activeId);
+        } else {
+          localStorage.removeItem('presnt_active_event_id');
+        }
         setServerActiveId(activeId);
 
         const targetId =
@@ -331,6 +351,11 @@ export function AttendancePage() {
 
   const handleSetActiveEvent = async (e: React.MouseEvent, eventId: string, eventName: string) => {
     e.stopPropagation();
+    const ev = events.find((item) => item.id === eventId);
+    if (ev && getEventStatus(ev.start_date, ev.end_date) === 'completed') {
+      showFeedback(`Cannot set completed event "${eventName}" as active.`, 'warning');
+      return;
+    }
     try {
       await adminService.setActiveEvent(eventId);
       setServerActiveId(eventId);
@@ -788,20 +813,33 @@ export function AttendancePage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {eventData.id === serverActiveId ? (
-              <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#E4F7EB] border border-[#17B556]/30 px-3 py-2 text-xs font-bold text-[#11883E]">
-                <CheckCircle2 className="h-4 w-4 text-[#17B556]" />
-                Active Campus Event
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={(e) => void handleSetActiveEvent(e, eventData.id, eventData.name)}
-                className="rounded-xl border border-[#E5E0EB] bg-white px-3.5 py-2 text-xs font-semibold text-[#756883] hover:border-brand-700 hover:text-brand-700 hover:bg-[#FAF7FD] transition-all shadow-2xs"
-              >
-                Set as Active Campus Event
-              </button>
-            )}
+            {(() => {
+              const isCompleted = eventData.status === 'Completed' || getEventStatus(eventData.startDate, eventData.endDate) === 'completed';
+              if (isCompleted) {
+                return (
+                  <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#F5F3F8] border border-[#E5E0EB] px-3.5 py-2 text-xs font-semibold text-[#8C8299]">
+                    Completed (Inactive)
+                  </span>
+                );
+              }
+              if (eventData.id === serverActiveId) {
+                return (
+                  <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#E4F7EB] border border-[#17B556]/30 px-3 py-2 text-xs font-bold text-[#11883E]">
+                    <CheckCircle2 className="h-4 w-4 text-[#17B556]" />
+                    Active Campus Event
+                  </span>
+                );
+              }
+              return (
+                <button
+                  type="button"
+                  onClick={(e) => void handleSetActiveEvent(e, eventData.id, eventData.name)}
+                  className="rounded-xl border border-[#E5E0EB] bg-white px-3.5 py-2 text-xs font-semibold text-[#756883] hover:border-brand-700 hover:text-brand-700 hover:bg-[#FAF7FD] transition-all shadow-2xs"
+                >
+                  Set as Active Campus Event
+                </button>
+              );
+            })()}
 
             <button
               type="button"
@@ -1234,7 +1272,8 @@ export function AttendancePage() {
               {filteredEventsList.map((ev) => {
                 const dateInfo = formatDateRangeLabel(ev.start_date, ev.end_date);
                 const evRawStatus = getEventStatus(ev.start_date, ev.end_date);
-                const isActiveCampus = ev.id === serverActiveId;
+                const isCompleted = evRawStatus === 'completed';
+                const isActiveCampus = ev.id === serverActiveId && !isCompleted;
 
                 return (
                   <div
@@ -1286,7 +1325,11 @@ export function AttendancePage() {
                     </div>
 
                     <div className="flex items-center gap-2 self-end md:self-center shrink-0">
-                      {isActiveCampus ? (
+                      {isCompleted ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#F5F3F8] border border-[#E5E0EB] px-3 py-2 text-xs font-semibold text-[#8C8299]">
+                          Completed (Inactive)
+                        </span>
+                      ) : isActiveCampus ? (
                         <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#E4F7EB] border border-[#17B556]/30 px-3 py-2 text-xs font-bold text-[#11883E]">
                           <CheckCircle2 className="h-3.5 w-3.5 text-[#17B556]" />
                           Active Event
