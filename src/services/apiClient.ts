@@ -1,6 +1,20 @@
 import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+function resolveBaseUrl(): string {
+  let url = (import.meta.env.VITE_API_URL || '').trim();
+  if (!url) {
+    return 'http://localhost:3000/api/v1';
+  }
+  // Strip trailing slashes
+  url = url.replace(/\/+$/, '');
+  // If base URL was provided without /api/v1 endpoint suffix, append it
+  if (!url.endsWith('/api/v1')) {
+    url = `${url}/api/v1`;
+  }
+  return url;
+}
+
+export const API_BASE_URL = resolveBaseUrl();
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
