@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../../../services/apiClient';
 
 export interface UseLoginViewModelReturn {
   identifier: string;
@@ -66,6 +67,26 @@ export const useLoginViewModel = (): UseLoginViewModelReturn => {
       await login(cleanIdentifier, password);
     } catch (err: any) {
       let serverMessage = err?.response?.data?.error?.message || err?.message || 'Invalid credentials.';
+
+      if (
+        serverMessage === 'Network Error' ||
+        err?.code === 'ERR_NETWORK' ||
+        !err?.response
+      ) {
+        if (
+          typeof window !== 'undefined' &&
+          window.location.hostname !== 'localhost' &&
+          window.location.hostname !== '127.0.0.1' &&
+          API_BASE_URL.includes('localhost')
+        ) {
+          serverMessage =
+            'Network Error: Super Admin cannot reach backend because VITE_API_URL is pointing to localhost. Add VITE_API_URL in Vercel project settings to your Railway URL and redeploy.';
+        } else {
+          serverMessage =
+            'Network Error: Unable to connect to backend server. Please verify your Railway backend is live and CORS allows this domain.';
+        }
+      }
+
       // Strip any raw field prefix like "password: " or "identifier: "
       serverMessage = serverMessage.replace(/^[a-zA-Z0-9_.-]+:\s*/, '');
       setError(serverMessage);
