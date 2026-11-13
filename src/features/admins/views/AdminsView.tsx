@@ -1,124 +1,277 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAdminsViewModel } from '../viewmodels';
-import { Card, CardHeader, CardTitle, CardContent } from '../../../components/common/Card';
 import { Button } from '../../../components/common/Button';
-import { Badge } from '../../../components/common/Badge';
+import { Dropdown } from '../../../components/common/Dropdown';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/common/Table';
-import { Users, Plus, ShieldAlert, Sparkles, UserCheck } from 'lucide-react';
+import { EmptyState } from '../../../components/common/EmptyState';
+import { LoadingState } from '../../../components/common/LoadingState';
+import { DeleteAdminConfirmationModal } from './DeleteAdminConfirmationModal';
+import { AdminProfileDrawer } from './AdminProfileDrawer';
+import { Archive, ExternalLink, Plus, Search, Shield, Sparkles, UserCheck, Users } from 'lucide-react';
+import { cn } from '../../../utils/cn';
+import { useAuth } from '../../auth/context/AuthContext';
 
-export const AdminsView: React.FC = () => {
+export interface AdminsViewProps {
+  isDrawer?: boolean;
+}
+
+export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
+  const { user } = useAuth();
   const {
     admins,
     isModalOpen,
     setIsModalOpen,
     isSubmitting,
+    formError,
+    isLoading,
     name,
     setName,
     email,
     setEmail,
     role,
     setRole,
+    temporaryPassword,
+    setTemporaryPassword,
+    searchQuery,
+    setSearchQuery,
+    page,
+    setPage,
+    total,
+    error,
+    showArchived,
+    setShowArchived,
+    loadAdmins,
     handleCreate,
+    handleUpdateAdmin,
+    handleResetPassword,
+    handleArchiveAdmin,
+    handleRestoreAdmin,
+    deletingAdmin,
+    setDeletingAdmin,
+    handleDeleteAdmin,
+    uploadAdminAvatar,
+    removeAdminAvatar,
+    loadAdminCheckpointActivity,
   } = useAdminsViewModel();
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [selectedAdminId, setSelectedAdminId] = useState<string | null>(null);
+  const visibleAdmins = admins.filter((admin) => roleFilter === 'all' || admin.role === roleFilter);
+  const selectedAdmin = admins.find((admin) => admin.id === selectedAdminId) ?? null;
+  const initials = (fullName: string) => fullName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('');
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex items-center justify-between">
+    <div className={cn('w-full text-[#24133F] flex flex-col', isDrawer ? 'flex-1 min-h-full' : 'mx-auto max-w-[1120px] space-y-4')}>
+      {/* Top Header (only in full page view) */}
+      {!isDrawer && (
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">System Administrators & Marshals</h1>
-          <p className="text-xs text-slate-500 mt-1 font-medium">
-            Manage personnel credentials, kiosk authorization levels, and super admin privileges.
-          </p>
+          <h1 className="text-[22px] font-extrabold leading-tight">Admin Accounts</h1>
+          <p className="text-[11px] text-[#756883]">Manage admin accounts and monitor attendance access.</p>
         </div>
-        <Button
-          variant="primary"
-          leftIcon={<Plus className="w-4 h-4" />}
-          onClick={() => setIsModalOpen(true)}
-        >
-          Add Administrator
-        </Button>
+      )}
+      {/* Toolbar: Search, Role Filter, Refresh, Add Admin */}
+      <div className={cn("flex flex-col sm:flex-row sm:items-center justify-between gap-2.5", isDrawer && "mb-4")}>
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[#756883] transition-all focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100 sm:max-w-[320px]">
+            <Search className="h-4 w-4 shrink-0 text-slate-400" />
+            <span className="sr-only">Search admins</span>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => {
+                setPage(1);
+                setSearchQuery(event.target.value);
+              }}
+              placeholder="Search admin name or email…"
+              className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
+            />
+          </label>
+
+          <Dropdown
+            value={roleFilter}
+            onChange={(val) => setRoleFilter(val)}
+            icon={<Shield className="h-4 w-4 text-[#756883]" />}
+            options={[
+              { value: 'all', label: 'All Roles' },
+              { value: 'super_admin', label: 'Super Admin' },
+              { value: 'admin', label: 'Admin' },
+            ]}
+          />
+          <Dropdown
+            value={showArchived ? 'archived' : 'active'}
+            onChange={(value) => {
+              setPage(1);
+              setSelectedAdminId(null);
+              setShowArchived(value === 'archived');
+            }}
+            icon={showArchived ? <Archive className="h-4 w-4 text-[#756883]" /> : <Users className="h-4 w-4 text-[#756883]" />}
+            options={[
+              { value: 'active', label: 'Active Admins', icon: <UserCheck className="h-3.5 w-3.5 text-[#7026B7]" /> },
+              { value: 'archived', label: 'Archived', icon: <Archive className="h-3.5 w-3.5 text-[#756883]" /> },
+            ]}
+          />
+        </div>
+
+        <div className="self-end sm:self-auto">
+          <Button
+            variant="primary"
+            leftIcon={<Plus className="h-4 w-4" />}
+            onClick={() => setIsModalOpen(true)}
+          >
+            Add Admin
+          </Button>
+        </div>
       </div>
 
-      {/* Security Info Card */}
-      <div className="p-4 rounded-2xl bg-brand-50/70 border border-brand-200/60 flex items-start gap-3">
-        <ShieldAlert className="w-5 h-5 text-brand-700 shrink-0 mt-0.5" />
-        <div className="text-xs text-brand-900 leading-relaxed">
-          <span className="font-black">Role Privilege Notice:</span> Administrators assigned the{' '}
-          <code className="font-mono bg-brand-100 text-brand-800 px-1 py-0.5 rounded font-bold">
-            super_admin
-          </code>{' '}
-          role can create sessions, provision hardware kiosks, generate attendance reports, and promote marshals.
-        </div>
-      </div>
-
-      {/* Admins Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Users className="w-4 h-4 text-brand-600" />
-            Registered Staff & Marshals ({admins.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Staff Member</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role Tier</TableHead>
-                <TableHead>Account Created</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {admins.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-slate-400 text-xs">
-                    No administrators found.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                admins.map((adm) => (
-                  <TableRow key={adm.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-brand-100 border border-brand-200 text-brand-800 flex items-center justify-center font-black text-xs">
-                          {adm.name.charAt(0)}
-                        </div>
-                        <span className="font-bold text-slate-800 text-sm">{adm.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs font-mono text-slate-600">{adm.email}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={adm.role === 'super_admin' ? 'purple' : 'slate'}
-                        size="sm"
-                        dot
+      {/* Admin List */}
+      <div className={cn("w-full", isDrawer && "flex-1 flex flex-col", (isLoading || visibleAdmins.length === 0) && isDrawer && "justify-center items-center my-auto min-h-[360px]")}>
+        {isLoading ? (
+          <LoadingState
+            title="Hawi is finding admin accounts…"
+            description="Loading the administrator list."
+            className="my-auto"
+          />
+        ) : visibleAdmins.length > 0 ? (
+          <div className={cn("space-y-1 overflow-y-auto", isDrawer ? "flex-1" : "max-h-[520px]")}>
+            {visibleAdmins.map((admin) => (
+              <button
+                type="button"
+                key={admin.id}
+                onClick={() => setSelectedAdminId(admin.id)}
+                aria-label={`View ${admin.name} profile`}
+                className="flex w-full items-center justify-between gap-4 rounded-xl px-1 py-3 text-left transition-colors hover:bg-slate-50/70 focus-visible:outline-2 focus-visible:outline-[#7026B7]"
+              >
+                {/* Left: Avatar + Details */}
+                <div className="flex min-w-0 items-center gap-4">
+                  {admin.avatar_url ? <img src={admin.avatar_url} alt="" className="h-14 w-14 shrink-0 rounded-full border-2 border-purple-100 object-cover shadow-xs" /> : <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-purple-100 bg-purple-50 text-lg font-black text-[#7026B7]">{initials(admin.name)}</span>}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-base font-black text-[#24133F]">{admin.name}</span>
+                      <span
+                        className={cn(
+                          'inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold',
+                          admin.role === 'super_admin'
+                            ? 'bg-[#F4EFFB] text-[#7026B7]'
+                            : 'bg-purple-50 text-[#7C27BD]'
+                        )}
                       >
-                        {adm.role === 'super_admin' ? 'Super Administrator' : 'Field Marshal'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-400 font-mono">
-                      {new Date(adm.created_at).toLocaleDateString()}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                        {admin.role === 'super_admin' ? (
+                          <>
+                            <Shield className="h-2.5 w-2.5" />
+                            <span>Super Admin</span>
+                          </>
+                        ) : (
+                          <span>Admin</span>
+                        )}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-slate-400">{admin.email}</p>
+                  </div>
+                </div>
 
-      {/* Create Admin Modal */}
+                <div className="shrink-0">
+                  <span className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#7026B7] px-4 py-2.5 text-xs font-bold text-white shadow-[0_4px_0_#451475]"><ExternalLink className="h-4 w-4" />View Profile</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            variant={
+              error
+                ? 'error'
+                : searchQuery || roleFilter !== 'all'
+                ? 'no-search-results'
+                : 'empty-list'
+            }
+            title={
+              error
+                ? 'Unable to load administrators'
+                : searchQuery || roleFilter !== 'all'
+                ? 'No administrators match these filters'
+                : showArchived
+                ? 'No archived administrators'
+                : 'No administrators registered yet'
+            }
+            description={
+              error
+                ? 'Could not connect to the server. Please check your network and retry.'
+                : searchQuery || roleFilter !== 'all'
+                ? 'Try adjusting your search terms or clearing the role filter.'
+                : showArchived
+                ? 'Deactivated admin accounts will appear here safely archived.'
+                : 'Add system administrators to help manage RFID cards, attendance, and students.'
+            }
+            action={
+              error
+                ? {
+                    label: 'Retry Loading',
+                    variant: 'primary',
+                    onClick: () => void loadAdmins(),
+                  }
+                : searchQuery || roleFilter !== 'all'
+                ? {
+                    label: 'Reset Filters',
+                    variant: 'secondary',
+                    onClick: () => {
+                      setSearchQuery('');
+                      setRoleFilter('all');
+                      setPage(1);
+                    },
+                  }
+                : user?.role === 'super_admin'
+                ? {
+                    label: 'Add Administrator',
+                    variant: 'primary',
+                    onClick: () => setIsModalOpen(true),
+                  }
+                : undefined
+            }
+          />
+        )}
+      </div>
+
+      {/* Pagination */}
+      {total > 25 && (
+        <div className="flex items-center justify-between pt-2 text-xs text-[#756883]">
+          <span>
+            Showing {visibleAdmins.length} of {total} admins
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page * 25 >= total}
+              onClick={() => setPage(page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Admin Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Add Staff Member"
-        description="Invite or provision an account for campus staff or event marshals."
+        title="Register Administrator"
+        description="Create an admin login with a temporary password. Share it privately; the admin must change it after first login."
+        maxWidth="md"
       >
         <form onSubmit={handleCreate} className="space-y-4 mt-2">
+          {formError && (
+            <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+              {formError}
+            </p>
+          )}
           <Input
             label="Full Name"
             placeholder="e.g. Jason Marshal"
@@ -133,6 +286,15 @@ export const AdminsView: React.FC = () => {
             placeholder="e.g. jason@university.edu"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+
+          <Input
+            label="Temporary Password"
+            type="password"
+            value={temporaryPassword}
+            onChange={(event) => setTemporaryPassword(event.target.value)}
+            minLength={12}
             required
           />
 
@@ -158,7 +320,7 @@ export const AdminsView: React.FC = () => {
                 />
                 <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
                   <UserCheck className="w-3.5 h-3.5 text-slate-600" />
-                  Field Marshal
+                  Admin
                 </div>
                 <div className="text-[11px] text-slate-500 mt-1">
                   RFID scanner operation & attendance tap logging
@@ -210,6 +372,34 @@ export const AdminsView: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Edit Admin Modal */}
+      <AdminProfileDrawer
+        isOpen={Boolean(selectedAdmin)}
+        onClose={() => { if (!deletingAdmin) setSelectedAdminId(null); }}
+        admin={selectedAdmin}
+        onUpdate={handleUpdateAdmin}
+        onResetPassword={handleResetPassword}
+        onArchive={handleArchiveAdmin}
+        onRestore={async (adminId) => { const restored = await handleRestoreAdmin(adminId); if (restored) setSelectedAdminId(null); return restored; }}
+        isSelf={user?.id === selectedAdmin?.id}
+        onDelete={setDeletingAdmin}
+        onUploadAvatar={uploadAdminAvatar}
+        onRemoveAvatar={removeAdminAvatar}
+        onLoadCheckpointActivity={loadAdminCheckpointActivity}
+      />
+
+      {/* Delete Admin Confirmation Modal */}
+      <DeleteAdminConfirmationModal
+        isOpen={Boolean(deletingAdmin)}
+        onClose={() => setDeletingAdmin(null)}
+        admin={deletingAdmin}
+        onConfirmDelete={async (adminId) => {
+          const deleted = await handleDeleteAdmin(adminId);
+          if (deleted) setSelectedAdminId(null);
+          return deleted;
+        }}
+      />
     </div>
   );
 };

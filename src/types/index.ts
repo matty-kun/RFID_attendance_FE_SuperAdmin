@@ -16,7 +16,7 @@ export interface EventRecord {
   description: string | null;
   start_date: string;
   end_date: string;
-  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+  status?: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   created_by?: string;
   created_at?: string;
   updated_at?: string;
@@ -31,7 +31,7 @@ export interface SessionRecord {
   time_in_end: string;
   time_out_start: string;
   time_out_end: string;
-  status: 'upcoming' | 'open' | 'closed';
+  status?: 'upcoming' | 'open' | 'closed';
   event?: {
     name: string;
   };
@@ -42,18 +42,17 @@ export interface SessionRecord {
 export interface LocationRecord {
   id: string;
   name: string;
-  room_or_floor?: string;
-  is_active: boolean;
   created_at?: string;
   updated_at?: string;
 }
 
 export interface AdminRecord {
   id: string;
-  auth_user_id?: string;
+  auth_user_id: string;
   name: string;
   email: string;
   role: AdminRole;
+  avatar_url?: string | null;
   created_at: string;
 }
 
@@ -67,43 +66,14 @@ export interface StudentRecord {
   created_at?: string;
 }
 
-export interface AttendanceRecord {
-  id: string;
-  student_id: string;
-  session_id: string;
-  location_id?: string;
-  rfid_tag_id: string;
-  type: 'time_in' | 'time_out';
-  status: 'on_time' | 'late' | 'invalid_location' | 'duplicate';
-  scanned_at: string;
-  recorded_by?: string;
-  recorded_at?: string;
-  student?: {
-    student_id?: string;
-    student_number?: string;
-    name: string;
-    course?: string;
-    course_year?: string;
-  };
-  session?: {
-    id?: string;
-    name: string;
-    date?: string;
-  };
-  location?: {
-    id?: string;
-    name: string;
-  };
-}
-
 export interface DashboardMetrics {
   totalEvents: number;
-  activeSessions: number;
-  totalLocations?: number;
-  totalAdmins?: number;
-  totalScansToday?: number;
-  todayScans?: number;
-  activeKiosks: number;
-  totalStudents?: number;
-  attendanceRate?: number;
+  totalSessions: number;
+  totalLocations: number;
+  totalAdmins: number;
+  totalStudents: number;
+  totalScans: number;
+  todayTimeIns: number;
+  attendanceByDay: Array<{ date: string; timeIns: number; timeOuts: number }>;
+  locationActivity: Array<{ id: string; name: string; scansToday: number }>;
 }

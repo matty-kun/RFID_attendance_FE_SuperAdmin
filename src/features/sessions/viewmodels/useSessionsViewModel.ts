@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { SessionRecord, CreateSessionPayload } from '../models';
 import { EventRecord } from '../../../types';
 import { sessionService } from '../services';
+import { toast } from '../../../context';
 
 export interface UseSessionsViewModelReturn {
   sessions: SessionRecord[];
@@ -9,9 +10,14 @@ export interface UseSessionsViewModelReturn {
   selectedEventId: string;
   setSelectedEventId: (id: string) => void;
   isLoading: boolean;
+  error: string | null;
   isModalOpen: boolean;
   setIsModalOpen: (open: boolean) => void;
   isSubmitting: boolean;
+  editingSessionId: string | null;
+  formError: string | null;
+  startEdit: (session: SessionRecord) => void;
+  startCreate: () => void;
   name: string;
   setName: (v: string) => void;
   date: string;
@@ -33,8 +39,11 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>(initialEventId || '');
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -46,45 +55,86 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      const [evList, sesList] = await Promise.all([
-        sessionService.getEvents(),
-        sessionService.getSessions(selectedEventId || undefined),
-      ]);
+      const evList = await sessionService.getEvents();
       setEvents(evList);
       if (evList.length > 0 && !selectedEventId) {
         setSelectedEventId(evList[0].id);
+        return;
       }
-      setSessions(sesList);
+      setSessions(selectedEventId ? await sessionService.getSessions(selectedEventId) : []);
+    } catch (err: any) {
+      setError(err?.response?.data?.error?.message || 'Could not load attendance sessions. Try again.');
     } finally {
       setIsLoading(false);
     }
   }, [selectedEventId]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
+
+  const startEdit = (session: SessionRecord) => {
+    setEditingSessionId(session.id);
+    setName(session.name);
+    setDate(session.date);
+    setTimeInStart(session.time_in_start.slice(0, 5));
+    setTimeInEnd(session.time_in_end.slice(0, 5));
+    setTimeOutStart(session.time_out_start.slice(0, 5));
+    setTimeOutEnd(session.time_out_end.slice(0, 5));
+    setFormError(null);
+    setIsModalOpen(true);
+  };
+
+  const startCreate = () => {
+    setEditingSessionId(null);
+    setName('');
+    const selectedEvent = events.find((event) => event.id === selectedEventId);
+    setDate(selectedEvent?.start_date || '');
+    setFormError(null);
+    setIsModalOpen(true);
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEventId) return;
+    const selectedEvent = events.find((event) => event.id === selectedEventId);
+    if (selectedEvent && (date < selectedEvent.start_date || date > selectedEvent.end_date)) {
+      setFormError('Session date must be within the selected event.');
+      return;
+    }
+    if (!(timeInStart < timeInEnd && timeInEnd <= timeOutStart && timeOutStart < timeOutEnd)) {
+      setFormError('Time windows must be ordered: Time In, then Time Out.');
+      return;
+    }
+    setFormError(null);
     setIsSubmitting(true);
     try {
       const payload: CreateSessionPayload = {
-        name,
+        name: name.trim(),
         date,
         time_in_start: `${timeInStart}:00`,
         time_in_end: `${timeInEnd}:00`,
         time_out_start: `${timeOutStart}:00`,
         time_out_end: `${timeOutEnd}:00`,
       };
-      await sessionService.createSession(selectedEventId, payload);
+      if (editingSessionId) {
+        await sessionService.updateSession(editingSessionId, payload);
+        toast.success(`Session "${name.trim()}" updated successfully`);
+      } else {
+        await sessionService.createSession(selectedEventId, payload);
+        toast.success(`Session "${name.trim()}" created successfully`);
+      }
       setIsModalOpen(false);
+      setEditingSessionId(null);
       setName('');
       setDate('');
       await loadData();
     } catch (err: any) {
-      alert(err?.message || 'Failed to create session');
+      const apiMsg = err?.response?.data?.error?.message || err?.message || (editingSessionId ? 'Failed to update session' : 'Failed to create session');
+      setFormError(apiMsg);
+      toast.error(apiMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -96,9 +146,14 @@ export const useSessionsViewModel = (initialEventId?: string): UseSessionsViewMo
     selectedEventId,
     setSelectedEventId,
     isLoading,
+    error,
     isModalOpen,
     setIsModalOpen,
     isSubmitting,
+    editingSessionId,
+    formError,
+    startEdit,
+    startCreate,
     name,
     setName,
     date,

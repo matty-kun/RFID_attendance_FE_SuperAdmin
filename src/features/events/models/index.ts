@@ -4,7 +4,7 @@ export interface EventRecord {
   description: string | null;
   start_date: string;
   end_date: string;
-  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+  status?: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   created_at: string;
 }
 

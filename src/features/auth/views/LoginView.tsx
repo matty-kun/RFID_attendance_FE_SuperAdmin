@@ -1,10 +1,11 @@
-import React from 'react';
+import { useRef, useState } from 'react';
+import { AlertCircle, Eye, EyeOff, KeyRound, User, CheckCircle2 } from 'lucide-react';
+import { Checkbox } from '../../../components/common/Checkbox';
 import { useLoginViewModel } from '../viewmodels';
-import { Button } from '../../../components/common/Button';
-import { Input } from '../../../components/common/Input';
-import { ShieldCheck, Lock, User, Sparkles } from 'lucide-react';
+import hawiPeekingImg from '../../../assets/illustrations/Hawi Peeking.png';
+import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
 
-export const LoginView: React.FC = () => {
+export function LoginView() {
   const {
     identifier,
     setIdentifier,
@@ -12,78 +13,226 @@ export const LoginView: React.FC = () => {
     setPassword,
     isLoading,
     error,
+    identifierError,
+    passwordError,
+    clearError,
     handleSubmit,
-    handleQuickDemo,
   } = useLoginViewModel();
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const helpDialog = useRef<HTMLDialogElement>(null);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-6 relative overflow-hidden font-sans">
-      {/* Background Glow */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-brand-600/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-brand-500/15 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl relative z-10">
-        {/* Brand Header */}
-        <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-700 to-brand-500 mx-auto flex items-center justify-center text-white shadow-lg shadow-brand-900/50 mb-4 border border-brand-400/30">
-            <ShieldCheck className="w-7 h-7" />
-          </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Super Admin Portal</h1>
-          <p className="text-sm text-slate-400 mt-1 font-medium">
-            Campus RFID Attendance Management System
+    <div className="min-h-screen w-full bg-white grid grid-cols-1 md:grid-cols-2 font-sans select-none overflow-x-hidden">
+      {/* Left Hero Panel */}
+      <div className="relative flex flex-col justify-between bg-[#EBE2F9] p-8 sm:p-12 md:p-14 lg:p-20 min-h-[440px] md:min-h-screen overflow-hidden">
+        {/* Top Headline Content */}
+        <div className="relative z-10 max-w-md">
+          <span className="text-xs font-extrabold uppercase tracking-widest text-[#8B78A5]">
+            Welcome to Presnt
+          </span>
+          <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl lg:text-[52px] font-black leading-[1.08] tracking-tight text-[#1B0B36]">
+            Attendance in <span className="block text-[#8B2CCB]">Seconds.</span>
+          </h1>
+          <p className="mt-4 text-sm sm:text-base font-semibold text-[#756883] leading-relaxed max-w-sm">
+            Fast, effortless attendance tracking with just a tap.
           </p>
         </div>
 
-        {error && (
-          <div className="mb-6 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold text-center">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Admin Identifier or Email"
-            type="text"
-            placeholder="superadmin or email"
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-            leftIcon={<User className="w-4 h-4" />}
-            required
+        {/* Hawi Mascot Peeking from bottom right */}
+        <div className="pointer-events-none absolute -bottom-4 -right-4 sm:-bottom-6 sm:-right-6 md:-bottom-8 md:-right-8 z-0">
+          <img
+            src={hawiPeekingImg}
+            alt="Hawi mascot"
+            className="h-[280px] sm:h-[380px] md:h-[460px] lg:h-[520px] w-auto object-contain drop-shadow-xl"
           />
-
-          <Input
-            label="Password"
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            leftIcon={<Lock className="w-4 h-4" />}
-            required
-          />
-
-          <Button
-            type="submit"
-            variant="primary"
-            className="w-full py-3 mt-2 text-sm uppercase tracking-wider font-extrabold"
-            isLoading={isLoading}
-          >
-            Authenticate & Enter
-          </Button>
-        </form>
-
-        {/* Demo Fast-fill Pill */}
-        <div className="mt-6 pt-6 border-t border-slate-800 flex items-center justify-between">
-          <div className="text-xs text-slate-500 font-medium">Demo Mode active</div>
-          <button
-            type="button"
-            onClick={handleQuickDemo}
-            className="text-xs text-brand-400 hover:text-brand-300 font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            Quick Demo Fill
-          </button>
         </div>
       </div>
+
+      {/* Right Form Panel */}
+      <div className="flex flex-col justify-between bg-white p-8 sm:p-12 md:p-14 lg:p-20 min-h-[520px] md:min-h-screen">
+        {/* Top Logo */}
+        <div className="text-center">
+          <span className="text-2xl sm:text-3xl font-black tracking-tight text-[#7C27BD]">
+            Presnt
+          </span>
+        </div>
+
+        {/* Form Content */}
+        <div className="my-auto py-8 max-w-[380px] mx-auto w-full">
+          <div className="text-center mb-7">
+            <h2 className="text-2xl sm:text-[28px] font-extrabold tracking-tight text-[#24133F]">
+              <span className="text-[#8B2CCB]">Login</span> to your account
+            </h2>
+            <p className="mt-1.5 text-xs sm:text-sm font-semibold text-[#756883]">
+              Welcome! Enter your details to log in to your account.
+            </p>
+          </div>
+
+                    {sessionStorage.getItem('session_expired_notice') === 'true' && (
+            <div
+              role="status"
+              className="mb-5 flex items-start gap-2.5 rounded-2xl border border-purple-200 bg-purple-50/80 px-4 py-3 text-xs text-[#7026B7]"
+            >
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#7026B7]" />
+              <div className="leading-tight">
+                <span className="font-extrabold block text-xs">Session expired for security.</span>
+                <span className="block text-[11px] font-medium text-[#756883] mt-0.5">
+                  Your unsaved drafts were preserved. Sign in to resume where you left off.
+                </span>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div
+              role="alert"
+              className="mb-4 flex items-start gap-2 rounded-2xl border border-[#EF3340]/20 bg-[#FDE8EA] px-3.5 py-2.5 text-xs font-bold text-[#B91C2A]"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            {/* Admin ID / Identifier */}
+            <div>
+              <label
+                htmlFor="admin-identifier"
+                className="mb-1.5 block text-xs font-bold text-[#24133F]"
+              >
+                Admin ID
+              </label>
+              <div
+                className={`flex h-11 items-center gap-2.5 rounded-2xl border bg-white px-3.5 transition-all ${
+                  identifierError
+                    ? 'border-[#EF3340] focus-within:border-[#EF3340] focus-within:ring-2 focus-within:ring-[#EF3340]/20'
+                    : 'border-[#D8B4ED] focus-within:border-[#7026B7] focus-within:ring-2 focus-within:ring-[#7026B7]/20'
+                }`}
+              >
+                <User className="h-4 w-4 text-[#756883] shrink-0" />
+                <input
+                  id="admin-identifier"
+                  type="text"
+                  autoComplete="username"
+                  placeholder="Enter your ID number"
+                  value={identifier}
+                  onChange={(e) => {
+                    setIdentifier(e.target.value);
+                    clearError();
+                  }}
+                  disabled={isLoading}
+                  className="h-full min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#24133F] outline-none placeholder:font-normal placeholder:text-[#A59CAC]"
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label
+                htmlFor="admin-password"
+                className="mb-1.5 block text-xs font-bold text-[#24133F]"
+              >
+                Password
+              </label>
+              <div
+                className={`flex h-11 items-center gap-2.5 rounded-2xl border bg-white px-3.5 transition-all ${
+                  passwordError
+                    ? 'border-[#EF3340] focus-within:border-[#EF3340] focus-within:ring-2 focus-within:ring-[#EF3340]/20'
+                    : 'border-[#D8B4ED] focus-within:border-[#7026B7] focus-within:ring-2 focus-within:ring-[#7026B7]/20'
+                }`}
+              >
+                <KeyRound className="h-4 w-4 text-[#756883] shrink-0" />
+                <input
+                  id="admin-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  placeholder="Enter your Password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    clearError();
+                  }}
+                  disabled={isLoading}
+                  className="h-full min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#24133F] outline-none placeholder:font-normal placeholder:text-[#A59CAC]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="text-[#756883] hover:text-[#7026B7] cursor-pointer transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Remember me and account assistance */}
+            <div className="flex items-center justify-between text-xs pt-0.5">
+              <Checkbox
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                label="Remember me"
+              />
+              <button
+                type="button"
+                onClick={() => helpDialog.current?.showModal()}
+                className="font-bold text-[#7026B7] hover:underline cursor-pointer"
+              >
+                Forgot Password?
+              </button>
+            </div>
+
+            {/* Sign In 3D Tactile Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="mt-3 flex h-11 w-full items-center justify-center rounded-2xl bg-[#7026B7] text-sm font-bold text-white shadow-[0_4px_0_0_#451475] transition-all hover:bg-[#621FA3] active:translate-y-[2px] active:shadow-[0_1px_0_0_#451475] disabled:opacity-60 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7026B7]"
+            >
+              {isLoading ? 'Signing in…' : 'Sign In'}
+            </button>
+          </form>
+
+        </div>
+
+        {/* Footer Copyright */}
+        <div className="text-center pt-4">
+          <p className="text-xs font-medium text-[#A59AAB]">
+            © 2026 Presnt. All rights reserved.
+          </p>
+        </div>
+      </div>
+
+      {/* Forgot Password Help Dialog */}
+      <dialog
+        ref={helpDialog}
+        aria-labelledby="password-help-title"
+        onClick={(e) => {
+          if (e.target === helpDialog.current) {
+            helpDialog.current?.close();
+          }
+        }}
+        className="fixed left-1/2 top-1/2 m-0 w-[min(400px,calc(100%-32px))] -translate-x-1/2 -translate-y-1/2 rounded-[28px] border border-[#E5E0EB] bg-white p-7 text-center text-[#24133F] shadow-2xl backdrop:bg-[#1A0B2E]/60 backdrop:backdrop-blur-md"
+      >
+        <img
+          src={hawiQuestionImg}
+          alt="Hawi question illustration"
+          className="mx-auto mb-3 h-28 w-28 object-contain"
+        />
+        <h2 id="password-help-title" className="text-xl font-extrabold text-[#24133F]">
+          Forgot Password?
+        </h2>
+        <p className="mt-2 text-xs text-[#756883] leading-relaxed">
+          Forgot your password? Please visit the CITE Office in person to request a password reset. Our authorized personnel will assist you in recovering access to your account.
+        </p>
+        <button
+          type="button"
+          onClick={() => helpDialog.current?.close()}
+          className="mt-5 w-full rounded-2xl bg-[#7026B7] py-2.5 text-xs font-bold text-white shadow-[0_3px_0_0_#451475] hover:bg-[#621FA3] active:translate-y-[1px] active:shadow-none cursor-pointer"
+        >
+          Got It
+        </button>
+      </dialog>
     </div>
   );
-};
+}

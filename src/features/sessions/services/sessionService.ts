@@ -7,11 +7,14 @@ export const sessionService = {
     return adminService.getEvents();
   },
 
-  async getSessions(eventId?: string): Promise<SessionRecord[]> {
+  async getSessions(eventId: string): Promise<SessionRecord[]> {
     return adminService.getSessions(eventId) as Promise<SessionRecord[]>;
   },
 
   async createSession(eventId: string, payload: CreateSessionPayload): Promise<SessionRecord> {
     return adminService.createSession(eventId, payload) as Promise<SessionRecord>;
+  },
+  async updateSession(sessionId: string, payload: CreateSessionPayload): Promise<SessionRecord> {
+    return adminService.updateSession(sessionId, payload) as Promise<SessionRecord>;
   },
 };

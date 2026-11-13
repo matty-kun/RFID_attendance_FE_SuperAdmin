@@ -9,4 +9,10 @@ export const locationService = {
   async createLocation(payload: CreateLocationPayload): Promise<LocationRecord> {
     return adminService.createLocation(payload) as Promise<LocationRecord>;
   },
+  async updateLocation(locationId: string, name: string): Promise<LocationRecord> {
+    return adminService.updateLocation(locationId, name) as Promise<LocationRecord>;
+  },
+  async deleteLocation(locationId: string): Promise<void> {
+    await adminService.deleteLocation(locationId);
+  },
 };

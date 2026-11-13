@@ -3,7 +3,7 @@ import { cn } from '../../utils/cn';
 import { Loader2 } from 'lucide-react';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'outline' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'outline' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
@@ -22,25 +22,27 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    'inline-flex items-center justify-center font-bold tracking-tight rounded-xl transition-all select-none disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none';
+    'inline-flex items-center justify-center font-bold select-none cursor-pointer transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:ring-offset-2';
 
   const variants = {
     primary:
-      'bg-brand-600 hover:bg-brand-700 text-white shadow-tactile active:translate-y-0.5 active:shadow-tactile-pressed border border-brand-700',
+      'bg-[#7026B7] hover:bg-[#631FA4] text-white shadow-[0_5px_0_0_#451475] active:translate-y-[4px] active:shadow-[0_1px_0_0_#451475]',
     secondary:
-      'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 shadow-sm active:translate-y-0.5',
+      'bg-white hover:bg-[#F7F6F9] text-[#24133F] border border-[#E5E0EB] shadow-[0_5px_0_0_#D5CCD8] active:translate-y-[4px] active:shadow-[0_1px_0_0_#D5CCD8]',
     danger:
-      'bg-rose-600 hover:bg-rose-700 text-white border border-rose-700 shadow-sm active:translate-y-0.5',
+      'bg-[#EF3340] hover:bg-[#D92734] text-white shadow-[0_5px_0_0_#B91C2A] active:translate-y-[4px] active:shadow-[0_1px_0_0_#B91C2A]',
+    success:
+      'bg-[#17B556] hover:bg-[#12953B] text-white shadow-[0_5px_0_0_#0E7A2E] active:translate-y-[4px] active:shadow-[0_1px_0_0_#0E7A2E]',
     outline:
-      'bg-transparent hover:bg-brand-50 text-brand-700 border-2 border-brand-500 active:translate-y-0.5',
+      'bg-transparent hover:bg-brand-50 text-brand-700 border border-brand-700 active:translate-y-[1px]',
     ghost:
-      'bg-transparent hover:bg-slate-100 text-slate-700 active:bg-slate-200',
+      'bg-transparent hover:bg-brand-50 text-brand-700 active:bg-brand-100',
   };
 
   const sizes = {
-    sm: 'text-xs px-3 py-1.5 gap-1.5',
-    md: 'text-sm px-4 py-2.5 gap-2',
-    lg: 'text-base px-6 py-3.5 gap-2.5',
+    sm: 'h-8 px-3 text-xs gap-1.5 rounded-xl',
+    md: 'h-10 px-4 text-xs font-bold gap-2 rounded-2xl',
+    lg: 'h-12 px-6 text-sm font-extrabold gap-2.5 rounded-2xl',
   };
 
   return (
@@ -49,9 +51,11 @@ export const Button: React.FC<ButtonProps> = ({
       disabled={disabled || isLoading}
       {...props}
     >
-      {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-current" /> : leftIcon}
+      {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin text-current" /> : leftIcon}
       {children}
       {!isLoading && rightIcon}
     </button>
   );
 };
+
+export default Button;
