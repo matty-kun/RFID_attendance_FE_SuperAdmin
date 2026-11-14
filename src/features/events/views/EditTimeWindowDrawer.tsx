@@ -13,6 +13,7 @@ export interface EditTimeWindowDrawerProps {
   initialStart: string; // "07:00"
   initialEnd: string;   // "08:30"
   onSave: (start: string, end: string, formattedWindow: string) => void;
+  zIndex?: number;
 }
 
 function formatTo12(t: string): string {
@@ -33,6 +34,7 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
   initialStart,
   initialEnd,
   onSave,
+  zIndex,
 }) => {
   const [activeTab, setActiveTab] = useState<'start' | 'end'>('start');
 
@@ -132,6 +134,7 @@ export const EditTimeWindowDrawer: React.FC<EditTimeWindowDrawerProps> = ({
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
+      zIndex={zIndex}
       title={
         windowType === 'IN'
           ? 'Edit Time-IN Window'

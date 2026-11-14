@@ -15,7 +15,21 @@ type Snapshot = {
   sessions: { eventId: string; eventName: string; date: string; eventStartDate: string; period: string; timeIns: number; timeOuts: number }[];
   checkpoints: { name: string; inScans: number; outScans: number; total: number }[];
   courses: ReportCourseItem[];
-  rows: { id: string; name: string; course: string; session: string; day: string; period: string; timeIn: string | null; timeOut: string | null; status: ReportStudentAttendanceRow['status'] }[];
+  rows: {
+    id: string;
+    name: string;
+    course: string;
+    event?: string;
+    eventName?: string;
+    event_name?: string;
+    eventId?: string;
+    session: string;
+    day: string;
+    period: string;
+    timeIn: string | null;
+    timeOut: string | null;
+    status: ReportStudentAttendanceRow['status'] | 'Missing Out';
+  }[];
   rowTotal: number;
   sessionsOptions: string[];
   courseOptions: string[];
@@ -29,6 +43,12 @@ const manilaDate = (date: Date) => {
 };
 const formatShortDate = (ymd: string) => new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' }).format(new Date(`${ymd}T00:00:00+08:00`));
 const formatManilaTime = (iso: string | null) => iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' }) : '-';
+const normalizeDayLabel = (day?: string | null) => {
+  if (!day) return '-';
+  const match = /^Day\s+(-?\d+)$/i.exec(day.trim());
+  if (!match) return day;
+  return `Day ${Math.max(1, Number(match[1]))}`;
+};
 const getInitials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0].toUpperCase()).join('') || 'ST';
 const initialEnd = manilaDate(new Date());
 const initialStart = manilaDate(new Date(Date.now() - 6 * 86400000));
@@ -39,6 +59,9 @@ export function ReportsPage() {
   const [endDate, setEndDate] = useState(initialEnd);
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [knownSessions, setKnownSessions] = useState<string[]>([]);
+  const [knownCourses, setKnownCourses] = useState<string[]>([]);
+  const [knownLocations, setKnownLocations] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const requestId = useRef(0);
@@ -72,16 +95,34 @@ export function ReportsPage() {
     setError('');
     try {
       const result = await request.get<Snapshot>('/reports', { params });
-      if (id === requestId.current) { setSnapshot(result); setSelected([]); }
+      if (id === requestId.current) {
+        setSnapshot(result);
+        setSelected([]);
+        setKnownSessions((prev) =>
+          session === 'all'
+            ? result.sessionsOptions ?? []
+            : Array.from(new Set([...prev, ...(result.sessionsOptions ?? [])]))
+        );
+        setKnownCourses((prev) =>
+          course === 'all'
+            ? result.courseOptions ?? []
+            : Array.from(new Set([...prev, ...(result.courseOptions ?? [])]))
+        );
+        setKnownLocations((prev) =>
+          location === 'all'
+            ? result.locationOptions ?? []
+            : Array.from(new Set([...prev, ...(result.locationOptions ?? [])]))
+        );
+      }
     } catch (err: any) {
       if (id === requestId.current) setError(err?.response?.data?.error?.message || 'Could not load report records. Try again.');
     } finally { if (id === requestId.current) setLoading(false); }
   }, [params]);
   useEffect(() => { void loadReportsData(); }, [loadReportsData]);
 
-  const sessions = snapshot?.sessionsOptions ?? [];
-  const courses = snapshot?.courseOptions ?? [];
-  const locations = snapshot?.locationOptions ?? [];
+  const sessions = knownSessions;
+  const courses = knownCourses;
+  const locations = knownLocations;
   const reportSummary = snapshot?.summary ?? emptySummary;
   const trendData: ReportTrendDay[] = useMemo(() => {
     const rows = snapshot?.trend ?? [];
@@ -98,12 +139,38 @@ export function ReportsPage() {
   }, [snapshot]);
   const checkpointList: ReportCheckpointItem[] = snapshot?.checkpoints ?? [];
   const courseList: ReportCourseItem[] = snapshot?.courses ?? [];
-  const filteredStudents: ReportStudentAttendanceRow[] = useMemo(() => (snapshot?.rows ?? []).map((row, index) => ({
-    id: row.id, name: row.name, initials: getInitials(row.name),
-    avatarBg: index % 2 ? 'bg-purple-200' : 'bg-purple-100', avatarColor: 'text-purple-800',
-    course: row.course, session: row.session, day: row.day, period: row.period,
-    timeIn: formatManilaTime(row.timeIn), timeOut: formatManilaTime(row.timeOut), status: row.status,
-  })), [snapshot]);
+  const eventsById = useMemo(() => new Map(events.map(item => [item.id, item.name])), [events]);
+  const mapReportRow = useCallback((row: Snapshot['rows'][number], index = 0, sessionList = snapshot?.sessions ?? []): ReportStudentAttendanceRow => {
+    const uniqueEvents = Array.from(new Set(sessionList.map(item => item.eventName).filter(Boolean)));
+    const eventName =
+      row.eventName ||
+      row.event_name ||
+      row.event ||
+      (row.eventId ? eventsById.get(row.eventId) : undefined) ||
+      (event !== 'all' ? eventsById.get(event) : undefined) ||
+      (uniqueEvents.length === 1 ? uniqueEvents[0] : undefined) ||
+      '-';
+    return {
+      id: row.id,
+      name: row.name,
+      initials: getInitials(row.name),
+      avatarBg: index % 2 ? 'bg-purple-200' : 'bg-purple-100',
+      avatarColor: 'text-purple-800',
+      course: row.course,
+      event: eventName,
+      session: row.session,
+      day: normalizeDayLabel(row.day),
+      period: row.period,
+      timeIn: formatManilaTime(row.timeIn),
+      timeOut: formatManilaTime(row.timeOut),
+      status: row.status === 'Missing Out' ? 'Time In Only' : row.status,
+    };
+  }, [eventsById, event, snapshot]);
+
+  const filteredStudents: ReportStudentAttendanceRow[] = useMemo(
+    () => (snapshot?.rows ?? []).map((row, index) => mapReportRow(row, index)),
+    [snapshot, mapReportRow]
+  );
   const eventLabel = event === 'all' ? 'All events' : events.find(item => item.id === event)?.name || 'Selected event';
 
   const handleExport = async (format: ExportFormat) => {
@@ -116,7 +183,7 @@ export function ReportsPage() {
       for (let exportPage = 1; exportPage <= totalPages; exportPage++) {
         const result = await request.get<Snapshot>('/reports', { params: { ...params, page: exportPage, limit: 100 } });
         for (const row of result.rows) {
-          rows.push({ id: row.id, name: row.name, initials: getInitials(row.name), avatarBg: '', avatarColor: '', course: row.course, session: row.session, day: row.day, period: row.period, timeIn: formatManilaTime(row.timeIn), timeOut: formatManilaTime(row.timeOut), status: row.status });
+          rows.push(mapReportRow(row, 0, result.sessions ?? []));
         }
       }
       const { exportAttendance } = await import('./reportExports');
@@ -457,30 +524,31 @@ export function ReportsPage() {
         </div>
 
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[940px] text-left text-xs">
+          <table className="w-full min-w-max text-left text-xs">
             <thead>
               <tr className="text-[#756883] font-medium">
-                <th className="w-10 py-3">
+                <th className="w-10 py-3.5 pr-4">
                   <Checkbox
                     aria-label="Select all students"
                     checked={filteredStudents.length > 0 && selected.length === filteredStudents.length}
                     onChange={(e) => setSelected(e.target.checked ? filteredStudents.map((r) => r.id) : [])}
                   />
                 </th>
-                <th className="py-3 font-medium">Name</th>
-                <th className="py-3 font-medium">Course</th>
-                <th className="py-3 font-medium">Session</th>
-                <th className="py-3 font-medium">Day</th>
-                <th className="py-3 font-medium">Period</th>
-                <th className="py-3 font-medium">Time In</th>
-                <th className="py-3 font-medium">Time Out</th>
-                <th className="py-3 font-medium">Status</th>
+                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Name</th>
+                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Course</th>
+                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Event</th>
+                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Session</th>
+                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Day</th>
+                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Period</th>
+                <th className="px-4 py-3.5 text-center font-medium whitespace-nowrap">Time In</th>
+                <th className="px-4 py-3.5 text-center font-medium whitespace-nowrap">Time Out</th>
+                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F1EEF4]">
               {filteredStudents.map((record) => (
                 <tr key={record.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="py-3">
+                  <td className="py-3.5 pr-4">
                     <Checkbox
                       aria-label={`Select ${record.name}`}
                       checked={selected.includes(record.id)}
@@ -491,7 +559,7 @@ export function ReportsPage() {
                       }
                     />
                   </td>
-                  <td className="py-3 font-medium">
+                  <td className="px-4 py-3.5 font-medium whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       <div
                         className={`w-7 h-7 rounded-full ${record.avatarBg} ${record.avatarColor} font-bold text-xs flex items-center justify-center shrink-0`}
@@ -501,18 +569,28 @@ export function ReportsPage() {
                       <span className="font-semibold text-[#24133F] text-xs">{record.name}</span>
                     </div>
                   </td>
-                  <td className="py-3 text-[#24133F]">{record.course}</td>
-                  <td className="py-3 text-[#24133F]">{record.session}</td>
-                  <td className="py-3 text-[#24133F]">{record.day}</td>
-                  <td className="py-3 text-[#24133F]">{record.period}</td>
-                  <td className="py-3 text-[#24133F]">{record.timeIn}</td>
-                  <td className="py-3 text-[#24133F]">{record.timeOut}</td>
-                  <td className="py-3">
+                  {[record.course, record.event, record.session, record.day, record.period, record.timeIn, record.timeOut].map((value, colIndex) => {
+                    const displayValue = value || '-';
+                    const isCenteredColumn = colIndex >= 5;
+                    return (
+                      <td
+                        key={colIndex}
+                        className={`px-4 py-3.5 text-[#24133F] whitespace-nowrap ${isCenteredColumn ? 'text-center' : ''}`}
+                      >
+                        {!isCenteredColumn && displayValue === '-' ? (
+                          <span className="inline-block w-10 text-center">-</span>
+                        ) : (
+                          displayValue
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="px-4 py-3.5 whitespace-nowrap">
                     <span
                       className={`inline-block px-3 py-1 rounded-full text-xs font-semibold text-white ${
                         record.status === 'Completed'
                           ? 'bg-[#10B981]'
-                          : record.status === 'Missing Out'
+                          : record.status === 'Time In Only'
                           ? 'bg-[#F59E0B]'
                           : 'bg-[#EF4444]'
                       }`}

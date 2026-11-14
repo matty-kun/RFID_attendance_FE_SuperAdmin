@@ -1537,6 +1537,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       <EditTimeWindowDrawer
         isOpen={editingTimeSlot.isOpen}
         onClose={() => setEditingTimeSlot((prev) => ({ ...prev, isOpen: false }))}
+        zIndex={600}
         sessionTitle={`${editingTimeSlot.sessionType} Session`}
         sessionType={editingTimeSlot.sessionType}
         windowType={editingTimeSlot.slot}
@@ -1550,6 +1551,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       <AssignOfficersDrawer
         isOpen={drawerConfig.isOpen}
         onClose={() => setDrawerConfig((prev) => ({ ...prev, isOpen: false }))}
+        zIndex={600}
         sessionName={`${drawerConfig.sessionType} Session (${drawerConfig.slot})`}
         sessionTime={drawerConfig.sessionTime}
         sessionDate={formatDateDisplay(startDate)}

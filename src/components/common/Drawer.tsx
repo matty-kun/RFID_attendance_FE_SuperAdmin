@@ -48,6 +48,7 @@ export interface DrawerProps {
   className?: string;
   hideHeader?: boolean;
   noPadding?: boolean;
+  zIndex?: number;
 }
 
 const maxWidthMap = {
@@ -72,6 +73,7 @@ export const Drawer: React.FC<DrawerProps> = ({
   className,
   hideHeader = false,
   noPadding = false,
+  zIndex = 100,
 }) => {
   const drawerId = useId();
   const [isMounted, setIsMounted] = useState(isOpen);
@@ -134,7 +136,7 @@ export const Drawer: React.FC<DrawerProps> = ({
 
   if (!isMounted) return null;
 
-  const dynamicZIndex = 100 + stackDepth * 10;
+  const dynamicZIndex = zIndex + stackDepth * 10;
 
   return createPortal(
     <div

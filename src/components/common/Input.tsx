@@ -3,20 +3,25 @@ import { cn } from '../../utils/cn';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
+  labelClassName?: string;
   error?: string;
+  errorClassName?: string;
   helperText?: string;
   leftIcon?: React.ReactNode;
   rightElement?: React.ReactNode;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, helperText, leftIcon, rightElement, id, ...props }, ref) => {
+  (
+    { className, label, labelClassName, error, errorClassName, helperText, leftIcon, rightElement, id, ...props },
+    ref
+  ) => {
     const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
 
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={inputId} className="block text-[13px] font-semibold text-slate-900 mb-1">
+          <label htmlFor={inputId} className={cn('block text-[13px] font-semibold text-slate-900 mb-1', labelClassName)}>
             {label}
             {props.required && <span className="text-rose-500 font-bold ml-1" title="Required">*</span>}
           </label>
@@ -45,7 +50,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             </div>
           )}
         </div>
-        {error && <p className="mt-1.5 text-xs font-medium text-rose-600">{error}</p>}
+        {error && <p className={cn('mt-1.5 text-xs font-medium text-rose-600', errorClassName)}>{error}</p>}
         {helperText && !error && <p className="mt-1.5 text-xs text-slate-500">{helperText}</p>}
       </div>
     );

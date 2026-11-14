@@ -34,6 +34,7 @@ export interface AssignOfficersDrawerProps {
   sessionStatus?: 'Active' | 'Upcoming' | 'Completed';
   initialAssigned?: AssignedOfficer[];
   onSave: (assigned: AssignedOfficer[]) => void;
+  zIndex?: number;
 }
 
 function getInitials(fullName: string) {
@@ -56,6 +57,7 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
   sessionStatus = 'Active',
   initialAssigned = [],
   onSave,
+  zIndex,
 }) => {
   const [assigned, setAssigned] = useState<AssignedOfficer[]>(initialAssigned);
   const [search, setSearch] = useState('');
@@ -201,6 +203,7 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
+      zIndex={zIndex}
       title="Assign Officers & Checkpoints"
       description="Select admin accounts and allowed scanning checkpoints for this session."
       contextBox={
