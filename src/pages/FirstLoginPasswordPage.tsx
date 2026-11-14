@@ -99,6 +99,8 @@ export function FirstLoginPasswordPage() {
         <form onSubmit={submit} className="mt-6 space-y-4">
           <Input
             label="Temporary Password"
+            labelClassName="text-slate-200"
+            errorClassName="text-rose-300"
             type="password"
             value={currentPassword}
             onChange={(event) => {
@@ -111,6 +113,8 @@ export function FirstLoginPasswordPage() {
 
           <Input
             label="New Password (min 8 chars)"
+            labelClassName="text-slate-200"
+            errorClassName="text-rose-300"
             type="password"
             value={newPassword}
             onChange={(event) => {
@@ -124,6 +128,8 @@ export function FirstLoginPasswordPage() {
 
           <Input
             label="Confirm New Password"
+            labelClassName="text-slate-200"
+            errorClassName="text-rose-300"
             type="password"
             value={confirmPassword}
             onChange={(event) => {

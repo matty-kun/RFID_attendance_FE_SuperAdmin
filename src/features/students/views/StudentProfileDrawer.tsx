@@ -1305,7 +1305,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       >
         <div className="space-y-4 pt-1">
           <p className="text-sm text-[#24133F] leading-relaxed">
-            Confirm you received card <span className="font-mono font-extrabold text-[#7026B7] bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-200">{currentStudent.rfid_uid}</span> from <span className="font-extrabold text-[#7026B7]">{currentStudent.name}</span> (<span className="font-extrabold text-[#24133F]">{currentStudent.student_id}</span>).
+            Confirm you received card <span className="font-mono font-extrabold text-[#7026B7] bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-200">{currentStudent.card_number || currentStudent.rfid_uid}</span> from <span className="font-extrabold text-[#7026B7]">{currentStudent.name}</span> (<span className="font-extrabold text-[#24133F]">{currentStudent.student_id}</span>).
           </p>
 
           <div className="space-y-2.5 text-xs text-[#756883] pt-1">

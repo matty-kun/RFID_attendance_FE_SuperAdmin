@@ -34,10 +34,11 @@ export interface ReportStudentAttendanceRow {
   avatarBg: string;
   avatarColor: string;
   course: string;
+  event: string;
   session: string;
   day: string;
   period: string;
   timeIn: string;
   timeOut: string;
-  status: 'Completed' | 'Missing Out' | 'Time Out Only';
+  status: 'Completed' | 'Time In Only' | 'Time Out Only';
 }

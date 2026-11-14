@@ -63,6 +63,7 @@ export interface StudentRecord {
   course: string;
   year_level: number;
   rfid_uid: string;
+  card_number?: string | null;
   created_at?: string;
 }
 

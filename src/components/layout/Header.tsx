@@ -174,8 +174,8 @@ export function Header() {
         </button>
       </div>
 
-      <dialog ref={pagesDialog} aria-label="Command palette" onCancel={(event) => { event.preventDefault(); closePalette(); }} onClick={(event) => { if (event.target === pagesDialog.current) closePalette(); }} className="command-palette fixed left-1/2 top-1/2 m-0 w-[min(560px,calc(100%-32px))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-[#E5E0EB] bg-white p-0 text-[#24133F] backdrop:bg-[#170D29]/40 backdrop:backdrop-blur-md">
-        <div className="flex items-center gap-3 border-b border-[#E5E0EB] px-4 py-4">
+      <dialog ref={pagesDialog} aria-label="Command palette" onCancel={(event) => { event.preventDefault(); closePalette(); }} onClick={(event) => { if (event.target === pagesDialog.current) closePalette(); }} className="command-palette fixed inset-0 m-auto max-h-[calc(100dvh-32px)] max-w-none w-[min(560px,calc(100vw-32px))] open:flex open:flex-col overflow-hidden rounded-2xl border border-[#E5E0EB] bg-white p-0 text-[#24133F] shadow-2xl backdrop:bg-[#170D29]/40 backdrop:backdrop-blur-md">
+        <div className="flex shrink-0 items-center gap-3 border-b border-[#E5E0EB] px-4 py-4">
           <Search className="h-5 w-5 text-[#756883]" />
           <input ref={searchInput} value={query} onChange={(event) => { setQuery(event.target.value); setSelectedIndex(0); }} onKeyDown={(event) => {
             if (event.key === 'ArrowDown') { event.preventDefault(); setSelectedIndex((index) => Math.min(index + 1, matchingPages.length - 1)); }
@@ -184,12 +184,12 @@ export function Header() {
           }} aria-label="Search commands" aria-controls="command-results" aria-activedescendant={matchingPages.length ? `command-result-${selectedIndex}` : undefined} role="combobox" aria-expanded="true" aria-autocomplete="list" placeholder="Search pages, charts, help..." className="min-w-0 flex-1 bg-transparent text-sm text-[#24133F] outline-none placeholder:text-[#9B89B0]" />
           <kbd className="rounded border border-[#E5E0EB] px-1.5 py-0.5 text-[10px] text-[#756883]">Esc</kbd>
         </div>
-        <div id="command-results" role="listbox" aria-label="Commands" className="max-h-80 overflow-y-auto p-2">
+        <div id="command-results" role="listbox" aria-label="Commands" className="min-h-0 flex-1 max-h-80 overflow-y-auto p-2">
           {matchingPages.length ? matchingPages.map((command, index) => <button id={`command-result-${index}`} role="option" aria-selected={selectedIndex === index} type="button" key={`${command.name}-${command.path}`} onMouseEnter={() => setSelectedIndex(index)} onClick={() => runCommand(command)} className={cn('flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors', selectedIndex === index ? 'bg-[#F0E8FC] text-brand-700' : 'text-[#24133F] hover:bg-[#F7F6F9]')}>
             <command.icon className="h-4 w-4" />{command.name}<span className="ml-auto text-[11px] font-normal text-[#756883]">{command.path || 'Quick action'}</span>
           </button>) : <p className="px-3 py-6 text-center text-sm text-[#756883]">No matching commands</p>}
         </div>
-        <div className="border-t border-[#E5E0EB] px-4 py-2 text-[11px] text-[#756883]">↑ ↓ to select · Enter to open · {shortcutLabel} to toggle</div>
+        <div className="shrink-0 border-t border-[#E5E0EB] px-4 py-2 text-[11px] text-[#756883]">↑ ↓ to select · Enter to open · {shortcutLabel} to toggle</div>
       </dialog>
     </header>
   );

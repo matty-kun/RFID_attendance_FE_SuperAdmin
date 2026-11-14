@@ -39,6 +39,8 @@ function getInitials(fullName: string) {
 
 export function AuditLogPage() {
   const [records, setRecords] = useState<AuditEvent[]>([]);
+  const [knownActions, setKnownActions] = useState<string[]>([]);
+  const [knownActors, setKnownActors] = useState<Map<string, string>>(new Map());
   const [admins, setAdmins] = useState<AdminRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -70,6 +72,24 @@ export function AuditLogPage() {
       setRecords(attendanceRes.records);
       setTotalServer(attendanceRes.total);
       setAdmins([...adminsRes.admins, ...archivedAdminsRes.admins]);
+      setKnownActions((prev) => {
+        const next = new Set(prev);
+        for (const record of attendanceRes.records) {
+          if (record.action && !record.action.startsWith('attendance.')) {
+            next.add(record.action);
+          }
+        }
+        return Array.from(next);
+      });
+      setKnownActors((prev) => {
+        const next = new Map(prev);
+        for (const record of attendanceRes.records) {
+          if (record.actor_id) {
+            next.set(record.actor_id, record.actor_name);
+          }
+        }
+        return next;
+      });
     } catch (err: any) {
       setError(err?.response?.data?.error?.message || 'Could not load audit log records. Try again.');
     } finally {
@@ -117,8 +137,8 @@ export function AuditLogPage() {
 
   const uniqueUsers = useMemo(() => Array.from(new Map([
     ...admins.map((admin) => [admin.id, admin.name] as const),
-    ...records.filter((record) => record.actor_id).map((record) => [record.actor_id!, record.actor_name] as const),
-  ]).entries()).map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label)), [admins, records]);
+    ...Array.from(knownActors.entries()),
+  ]).entries()).map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label)), [admins, knownActors]);
 
   const filtered = mappedEntries;
   const totalCount = totalServer;
@@ -178,7 +198,7 @@ export function AuditLogPage() {
             { value: 'all', label: 'All Actions' },
             { value: 'attendance.time_in', label: 'Time In Recorded' },
             { value: 'attendance.time_out', label: 'Time Out Recorded' },
-            ...Array.from(new Set(records.map((record) => record.action))).filter((action) => !action.startsWith('attendance.')).map((action) => ({ value: action, label: labelForAction(action) })),
+            ...knownActions.map((action) => ({ value: action, label: labelForAction(action) })),
           ]}
         />
 
