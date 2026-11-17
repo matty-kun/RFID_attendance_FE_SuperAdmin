@@ -21,7 +21,7 @@ export const authService = {
         throw new Error('Access denied: Student accounts cannot access the Super Admin portal. Please use the Presnt mobile app.');
       }
       if (user.role === 'admin') {
-        throw new Error('Access denied: Marshal accounts must use the Presnt mobile app. Only Super Admins can access this portal.');
+        throw new Error('Access denied: Admin accounts must use the Presnt mobile app. Only Super Admins can access this portal.');
       }
       throw new Error('Access denied: Super Admin privileges are required.');
     }
@@ -76,7 +76,7 @@ export const authService = {
         throw new Error('Access denied: Student accounts cannot access the Super Admin portal. Please use the Presnt mobile app.');
       }
       if (user.role === 'admin') {
-        throw new Error('Access denied: Marshal accounts must use the Presnt mobile app. Only Super Admins can access this portal.');
+        throw new Error('Access denied: Admin accounts must use the Presnt mobile app. Only Super Admins can access this portal.');
       }
       throw new Error('Access denied: Super Admin privileges are required.');
     }
