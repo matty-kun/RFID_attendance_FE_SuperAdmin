@@ -540,7 +540,7 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
             <div className="flex items-center justify-between text-xs font-semibold text-[#24133F]">
               <span className="flex items-center gap-1.5 text-[#7026B7]">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Registering students into backend...
+                Registering students into system...
               </span>
               <span>
                 {importProgress.current} / {importProgress.total} ({Math.round((importProgress.current / importProgress.total) * 100)}%)

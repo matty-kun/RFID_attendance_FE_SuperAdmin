@@ -65,10 +65,11 @@ const message = (error: unknown) => (error as any)?.response?.data?.error?.messa
 
 const getActionPreposition = (action: string) => {
   const act = action.toLowerCase();
-  if (act === 'return') return 'from';
-  if (act === 'issue') return 'to';
-  if (act === 'lost') return 'by';
-  return 'for';
+  if (act.includes('return')) return 'by';
+  if (act.includes('issue')) return 'to';
+  if (act.includes('lost')) return 'by';
+  if (act.includes('damag')) return 'by';
+  return 'by';
 };
 
 export function CardsPage() {

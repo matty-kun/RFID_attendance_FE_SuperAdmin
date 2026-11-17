@@ -41,7 +41,7 @@ export interface StudentProfileDrawerProps {
   onClose: () => void;
   student: StudentRecord | null;
   onUnlinkCard: (studentId: string, reason?: 'lost' | 'returned') => void;
-  onQuickPair: (studentId: string, cardUid: string) => Promise<{ success: boolean; message: string }> | any;
+  onQuickPair: (studentId: string, cardUid: string, cardNumber?: string) => Promise<{ success: boolean; message: string }> | any;
   onOpenRapidScan: () => void;
   onUpdateStudent?: (studentId: string, payload: { name: string; course: string; year_level: number }) => Promise<any>;
   onResetPassword?: (studentId: string, password: string) => Promise<boolean | void>;
@@ -201,12 +201,14 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   // Inline RFID Card Scanning & Pairing with Auto-Enter
   const [isScanningCard, setIsScanningCard] = useState(false);
   const [inlineCardUid, setInlineCardUid] = useState('');
+  const [inlineCardNumber, setInlineCardNumber] = useState('');
   const [isPairingCard, setIsPairingCard] = useState(false);
   const cardInputRef = useRef<HTMLInputElement>(null);
   const autoSubmitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const submitCardUid = async (uidToSubmit: string) => {
+  const submitCardUid = async (uidToSubmit: string, cardNumberToSubmit?: string) => {
     const cleanUid = uidToSubmit.trim().toUpperCase();
+    const cleanCardNum = (cardNumberToSubmit ?? inlineCardNumber).trim().toUpperCase();
     if (!cleanUid || !currentStudent || isPairingCard) return;
 
     if (autoSubmitTimeoutRef.current) {
@@ -216,15 +218,17 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
 
     setIsPairingCard(true);
     try {
-      const res = await onQuickPair(currentStudent.id, cleanUid);
+      const res = await onQuickPair(currentStudent.id, cleanUid, cleanCardNum || undefined);
       if (res?.success) {
-        setLocalStudent((prev) => prev ? { ...prev, rfid_uid: cleanUid } : prev);
+        setLocalStudent((prev) => prev ? { ...prev, rfid_uid: cleanUid, card_number: cleanCardNum || prev.card_number } : prev);
         activeStudentRef.current = {
           ...currentStudent,
           rfid_uid: cleanUid,
+          card_number: cleanCardNum || (currentStudent as any).card_number,
         };
         setIsScanningCard(false);
         setInlineCardUid('');
+        setInlineCardNumber('');
       } else {
         // Clear input so user can instantly tap next card without manual deletion
         setInlineCardUid('');
@@ -240,7 +244,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
 
   const handleInlineCardSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await submitCardUid(inlineCardUid);
+    await submitCardUid(inlineCardUid, inlineCardNumber);
   };
 
   const handleCardInputChange = (val: string) => {
@@ -793,48 +797,64 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               {isScanningCard && (
                 <form
                   onSubmit={handleInlineCardSubmit}
-                  className="pt-3 border-t border-slate-200 flex flex-col gap-2 animate-in fade-in duration-150"
+                  className="pt-3 border-t border-slate-200 flex flex-col gap-2.5 animate-in fade-in duration-150"
                 >
                   <p className="text-[11px] font-bold text-[#7026B7]">
-                    Tap replacement RFID card or enter Card Number (e.g. RFID-002) / UID:
+                    Tap replacement RFID card and confirm printed Card Number:
                   </p>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                    <div className="relative flex-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="relative">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                        Card UID *
+                      </label>
                       <input
                         ref={cardInputRef}
                         type="text"
                         value={inlineCardUid}
                         onChange={(e) => handleCardInputChange(e.target.value)}
-                        placeholder="Tap card or enter Card No. / UID..."
+                        placeholder="Tap card or enter UID..."
                         className="w-full rounded-xl border border-brand-300 bg-white px-3 py-1.5 text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-brand-500"
                         autoFocus
                       />
                     </div>
-                    <div className="flex items-center gap-1.5 justify-end">
-                      <Button
-                        type="submit"
-                        variant="primary"
-                        size="sm"
-                        disabled={!inlineCardUid.trim() || isPairingCard}
-                        isLoading={isPairingCard}
-                      >
-                        Update Card
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          if (autoSubmitTimeoutRef.current) {
-                            clearTimeout(autoSubmitTimeoutRef.current);
-                          }
-                          setIsScanningCard(false);
-                          setInlineCardUid('');
-                        }}
-                      >
-                        Cancel
-                      </Button>
+                    <div className="relative">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                        Printed Card No. (optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={inlineCardNumber}
+                        onChange={(e) => setInlineCardNumber(e.target.value.toUpperCase())}
+                        placeholder="e.g. 001 or RFID-001"
+                        className="w-full rounded-xl border border-brand-300 bg-white px-3 py-1.5 text-xs font-mono font-bold uppercase text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      />
                     </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 justify-end pt-1">
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="sm"
+                      disabled={!inlineCardUid.trim() || isPairingCard}
+                      isLoading={isPairingCard}
+                    >
+                      Update Card
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        if (autoSubmitTimeoutRef.current) {
+                          clearTimeout(autoSubmitTimeoutRef.current);
+                        }
+                        setIsScanningCard(false);
+                        setInlineCardUid('');
+                        setInlineCardNumber('');
+                      }}
+                    >
+                      Cancel
+                    </Button>
                   </div>
                 </form>
               )}
