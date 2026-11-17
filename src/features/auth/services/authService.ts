@@ -17,6 +17,12 @@ export const authService = {
       localStorage.removeItem('super_admin_token');
       localStorage.removeItem('super_admin_refresh_token');
       localStorage.removeItem('super_admin_user');
+      if ((user.role as string) === 'student') {
+        throw new Error('Access denied: Student accounts cannot access the Super Admin portal. Please use the Presnt mobile app.');
+      }
+      if (user.role === 'admin') {
+        throw new Error('Access denied: Marshal accounts must use the Presnt mobile app. Only Super Admins can access this portal.');
+      }
       throw new Error('Access denied: Super Admin privileges are required.');
     }
 
@@ -66,6 +72,12 @@ export const authService = {
       localStorage.removeItem('super_admin_token');
       localStorage.removeItem('super_admin_refresh_token');
       localStorage.removeItem('super_admin_user');
+      if ((user.role as string) === 'student') {
+        throw new Error('Access denied: Student accounts cannot access the Super Admin portal. Please use the Presnt mobile app.');
+      }
+      if (user.role === 'admin') {
+        throw new Error('Access denied: Marshal accounts must use the Presnt mobile app. Only Super Admins can access this portal.');
+      }
       throw new Error('Access denied: Super Admin privileges are required.');
     }
     localStorage.setItem('super_admin_user', JSON.stringify(user));

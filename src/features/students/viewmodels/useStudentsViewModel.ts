@@ -71,7 +71,7 @@ export interface UseStudentsViewModelReturn {
   handleCardScannedForStudent: (studentId: string, uid: string, cardNumber?: string) => Promise<{ success: boolean; message: string }>;
   handleAutoPairSequential: () => Promise<{ pairedCount: number }>;
   handleBulkImport: (newStudents: BulkImportStudentRow[], autoPair: boolean, onProgress?: (current: number, total: number) => void) => Promise<void>;
-  handleQuickPair: (studentId: string, cardUid: string) => Promise<{ success: boolean; message: string }>;
+  handleQuickPair: (studentId: string, cardUid: string, cardNumber?: string) => Promise<{ success: boolean; message: string }>;
   handleUnlinkCard: (studentId: string, reason?: 'lost' | 'returned') => Promise<void>;
   handleUpdateStudent: (studentId: string, payload: UpdateStudentPayload) => Promise<StudentRecord>;
   handleResetPassword: (studentId: string, newPassword: string) => Promise<boolean>;
@@ -405,7 +405,7 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     await loadStudents();
 
     if (successCount > 0 && failureCount === 0) {
-      toast.success(`Imported ${successCount} student${successCount === 1 ? '' : 's'} to the backend!`);
+      toast.success(`Imported ${successCount} student${successCount === 1 ? '' : 's'} to the system!`);
     } else if (successCount > 0 && failureCount > 0) {
       toast.info(`Imported ${successCount} students; ${failureCount} failed (${lastError}).`);
     } else {
@@ -415,8 +415,8 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
   };
 
   // 6. Quick Inline Link & Unlink Card
-  const handleQuickPair = async (studentId: string, cardUid: string): Promise<{ success: boolean; message: string }> => {
-    return await handleCardScannedForStudent(studentId, cardUid);
+  const handleQuickPair = async (studentId: string, cardUid: string, cardNumber?: string): Promise<{ success: boolean; message: string }> => {
+    return await handleCardScannedForStudent(studentId, cardUid, cardNumber);
   };
 
   const handleUnlinkCard = async (studentId: string, reason: 'lost' | 'returned' = 'returned') => {

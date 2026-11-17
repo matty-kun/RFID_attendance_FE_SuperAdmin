@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../features/auth/context/AuthContext';
 import { request } from '../services/apiClient';
 import { Button } from '../components/common/Button';
@@ -11,6 +12,9 @@ export function FirstLoginPasswordPage() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [generalError, setGeneralError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{
     currentPassword?: string;
@@ -101,13 +105,24 @@ export function FirstLoginPasswordPage() {
             label="Temporary Password"
             labelClassName="text-slate-200"
             errorClassName="text-rose-300"
-            type="password"
+            type={showCurrentPassword ? 'text' : 'password'}
             value={currentPassword}
             onChange={(event) => {
               setCurrentPassword(event.target.value);
               setFieldErrors((prev) => ({ ...prev, currentPassword: undefined }));
             }}
             error={fieldErrors.currentPassword}
+            rightElement={
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword((prev) => !prev)}
+                className="text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                tabIndex={-1}
+                aria-label={showCurrentPassword ? 'Hide temporary password' : 'Show temporary password'}
+              >
+                {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
             required
           />
 
@@ -115,7 +130,7 @@ export function FirstLoginPasswordPage() {
             label="New Password (min 8 chars)"
             labelClassName="text-slate-200"
             errorClassName="text-rose-300"
-            type="password"
+            type={showNewPassword ? 'text' : 'password'}
             value={newPassword}
             onChange={(event) => {
               setNewPassword(event.target.value);
@@ -123,6 +138,17 @@ export function FirstLoginPasswordPage() {
             }}
             error={fieldErrors.newPassword}
             minLength={8}
+            rightElement={
+              <button
+                type="button"
+                onClick={() => setShowNewPassword((prev) => !prev)}
+                className="text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                tabIndex={-1}
+                aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
+              >
+                {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
             required
           />
 
@@ -130,13 +156,24 @@ export function FirstLoginPasswordPage() {
             label="Confirm New Password"
             labelClassName="text-slate-200"
             errorClassName="text-rose-300"
-            type="password"
+            type={showConfirmPassword ? 'text' : 'password'}
             value={confirmPassword}
             onChange={(event) => {
               setConfirmPassword(event.target.value);
               setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined }));
             }}
             error={fieldErrors.confirmPassword}
+            rightElement={
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                className="text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                tabIndex={-1}
+                aria-label={showConfirmPassword ? 'Hide confirmed password' : 'Show confirmed password'}
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
             required
           />
 
