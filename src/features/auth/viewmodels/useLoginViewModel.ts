@@ -68,7 +68,10 @@ export const useLoginViewModel = (): UseLoginViewModelReturn => {
     } catch (err: any) {
       let serverMessage = err?.response?.data?.error?.message || err?.message || 'Invalid credentials.';
 
-      if (
+      if (err?.code === 'ECONNABORTED' || err?.message?.toLowerCase().includes('timeout')) {
+        serverMessage =
+          'Connection timed out. The server took longer than expected to respond (cold start). Please try again.';
+      } else if (
         serverMessage === 'Network Error' ||
         err?.code === 'ERR_NETWORK' ||
         !err?.response

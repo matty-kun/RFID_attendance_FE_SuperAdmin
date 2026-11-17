@@ -22,7 +22,7 @@ export const api = axios.create({
     'Content-Type': 'application/json',
     'X-Client-Type': 'web',
   },
-  timeout: 10000,
+  timeout: 30000,
 });
 
 // Extend internal config for slow-request timers and retry flag
@@ -39,11 +39,14 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // If request takes longer than 3000ms, alert network monitor of slow connection
+    // For auth endpoints allow more time before showing slow alert (cold starts & secure hashing)
+    const isAuth = config.url?.includes('/auth/');
+    const slowThreshold = isAuth ? 12000 : 7000;
+
     if (typeof window !== 'undefined') {
       config._slowTimer = setTimeout(() => {
         window.dispatchEvent(new CustomEvent('presnt:network-slow'));
-      }, 3000);
+      }, slowThreshold);
     }
 
     return config;
