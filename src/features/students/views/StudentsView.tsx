@@ -116,17 +116,41 @@ export const StudentsView: React.FC = () => {
     [filteredStudents, archivedStudentIds]
   );
 
-  const courses = useMemo(
-    () => [...new Set(students.map((s) => s.course).filter((c): c is string => Boolean(c)))].sort(),
-    [students]
-  );
+  const [knownCourses, setKnownCourses] = useState<string[]>([
+    'BSIT', 'BSCS', 'BSIS', 'BSCPE', 'BSECE', 'BSBA', 'BSEd'
+  ]);
+
+  useEffect(() => {
+    if (students.length > 0) {
+      setKnownCourses((prev) => {
+        const set = new Set(prev);
+        students.forEach((s) => {
+          if (s.course?.trim()) set.add(s.course.trim());
+        });
+        return Array.from(set).sort();
+      });
+    }
+  }, [students]);
+
+  const courses = knownCourses;
 
   const currentCohort = studentTab === 'active' ? activeStudents : archivedStudents;
 
-  // Filtered rows for current cohort
-  const visibleStudents = currentCohort.filter(
-    (student) => courseFilter === 'all' || student.course === courseFilter
-  );
+  // Filtered rows for current cohort with real-time as-you-type search
+  const visibleStudents = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    return currentCohort.filter((student) => {
+      const matchesCourse = courseFilter === 'all' || student.course === courseFilter;
+      if (!matchesCourse) return false;
+      if (!q) return true;
+      const nameMatch = student.name.toLowerCase().includes(q);
+      const idMatch = student.student_id.toLowerCase().includes(q);
+      const rfidMatch = student.rfid_uid ? student.rfid_uid.toLowerCase().includes(q) : false;
+      const cardNumMatch = (student as any).card_number ? String((student as any).card_number).toLowerCase().includes(q) : false;
+      const emailMatch = student.email ? student.email.toLowerCase().includes(q) : false;
+      return nameMatch || idMatch || rfidMatch || cardNumMatch || emailMatch;
+    });
+  }, [currentCohort, courseFilter, searchQuery]);
   const selectedStudents = visibleStudents.filter((student) => selectedStudentIds.includes(student.id));
   const selectedWithCards = selectedStudents.filter((student) => Boolean(student.rfid_uid));
   const allVisibleSelected = visibleStudents.length > 0 && visibleStudents.every((student) => selectedStudentIds.includes(student.id));
