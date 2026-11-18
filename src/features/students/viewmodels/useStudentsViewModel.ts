@@ -106,22 +106,32 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
   const [error, setError] = useState('');
   const requestId = useRef(0);
 
-  const loadStudents = useCallback(async () => {
+  const loadStatsAndInventory = useCallback(async () => {
+    try {
+      const [stats, inventory] = await Promise.all([
+        studentService.getRosterStats(),
+        request.get<{cards: {id: string; uid: string; status: string; created_at: string; last_holder?: {student_name: string; student_number: string}}[]; total: number}>('/cards?limit=100'),
+      ]);
+      setStudentStats(stats);
+      setUnassignedPool(inventory.cards.filter(card => card.status === 'available').map((card, index) => ({ id: card.id, cardNumber: index + 1, uid: card.uid, status: 'unassigned' as const, registeredAt: card.created_at })));
+      setLostCards(inventory.cards.filter(card => card.status === 'lost').map((card, index) => ({ id: card.id, cardNumber: index + 1, uid: card.uid, previousStudentName: card.last_holder?.student_name, previousStudentId: card.last_holder?.student_number, revokedAt: card.created_at, reason: 'lost' as const })));
+    } catch {
+      // Non-fatal stats/inventory refresh error
+    }
+  }, []);
+
+  const loadStudents = useCallback(async (includeMeta = true) => {
     const currentRequest = ++requestId.current;
     setIsLoading(true);
     setError('');
     try {
-      const [data, stats, inventory] = await Promise.all([
+      const [data] = await Promise.all([
         studentService.getStudents(page, searchQuery.trim(), sort, direction, 25, showArchived),
-        studentService.getRosterStats(),
-        request.get<{cards: {id: string; uid: string; status: string; created_at: string; last_holder?: {student_name: string; student_number: string}}[]; total: number}>('/cards?limit=100'),
+        ...(includeMeta ? [loadStatsAndInventory()] : []),
       ]);
       if (currentRequest === requestId.current) {
         setStudents(data.students);
         setTotal(data.total);
-        setStudentStats(stats);
-        setUnassignedPool(inventory.cards.filter(card => card.status === 'available').map((card, index) => ({ id: card.id, cardNumber: index + 1, uid: card.uid, status: 'unassigned' as const, registeredAt: card.created_at })));
-        setLostCards(inventory.cards.filter(card => card.status === 'lost').map((card, index) => ({ id: card.id, cardNumber: index + 1, uid: card.uid, previousStudentName: card.last_holder?.student_name, previousStudentId: card.last_holder?.student_number, revokedAt: card.created_at, reason: 'lost' as const })));
       }
     } catch (err: any) {
       if (currentRequest === requestId.current) {
@@ -130,11 +140,15 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     } finally {
       if (currentRequest === requestId.current) setIsLoading(false);
     }
-  }, [page, searchQuery, sort, direction, showArchived]);
+  }, [page, searchQuery, sort, direction, showArchived, loadStatsAndInventory]);
+
+  useEffect(() => {
+    void loadStatsAndInventory();
+  }, [loadStatsAndInventory]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      void loadStudents();
+      void loadStudents(false);
     }, searchQuery ? 250 : 0);
     return () => clearTimeout(timer);
   }, [loadStudents]);
@@ -352,7 +366,7 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     return { pairedCount: successCount };
   };
 
-  // 5. Bulk Import Students from CSV via real POST /api/v1/students
+  // 5. Bulk Import Students from CSV via batched POST /api/v1/students/bulk (with single-POST fallback)
   const handleBulkImport = async (
     newRows: BulkImportStudentRow[],
     autoPair: boolean,
@@ -365,37 +379,73 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     let lastError = '';
     const usedUids = new Set<string>();
 
-    const CONCURRENCY = 4;
-    for (let i = 0; i < newRows.length; i += CONCURRENCY) {
-      const chunk = newRows.slice(i, i + CONCURRENCY);
-      await Promise.all(
-        chunk.map(async (row) => {
-          let uid = row.rfid_uid || undefined;
-          if (!uid && autoPair && cardIdx < available.length) {
-            uid = available[cardIdx].uid;
-            cardIdx++;
-          }
+    const preparedPayloads = newRows.map((row) => {
+      let uid = row.rfid_uid || undefined;
+      if (!uid && autoPair && cardIdx < available.length) {
+        uid = available[cardIdx].uid;
+        cardIdx++;
+      }
+      const cleanId = row.student_id.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      return {
+        student_id: row.student_id.trim(),
+        name: row.name.trim(),
+        email: (row.email || `${cleanId}@ndmc.edu.ph`).trim().toLowerCase(),
+        temporary_password: row.temporary_password || '',
+        course: row.course || 'BS Information Technology',
+        year_level: row.year_level || 1,
+        rfid_uid: uid,
+      };
+    });
 
-          try {
-            const cleanId = row.student_id.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-            await studentService.registerStudent({
-              student_id: row.student_id.trim(),
-              name: row.name.trim(),
-              email: (row.email || `${cleanId}@ndmc.edu.ph`).trim().toLowerCase(),
-              temporary_password: row.temporary_password || '',
-              course: row.course || 'BS Information Technology',
-              year_level: row.year_level || 1,
-              rfid_uid: uid,
-            });
-            successCount++;
-            if (uid) usedUids.add(uid.toUpperCase());
-          } catch (err: any) {
-            failureCount++;
-            lastError = err?.response?.data?.error?.message || err?.message || 'Registration failed';
+    const BATCH_SIZE = 25;
+    let bulkEndpointAvailable = true;
+
+    for (let i = 0; i < preparedPayloads.length; i += BATCH_SIZE) {
+      const batch = preparedPayloads.slice(i, i + BATCH_SIZE);
+
+      if (bulkEndpointAvailable) {
+        try {
+          const result = await studentService.bulkRegisterStudents(batch);
+          successCount += result.summary.created_count;
+          failureCount += result.summary.failed_count;
+          for (const created of result.created) {
+            if (created.rfid_uid) usedUids.add(created.rfid_uid.toUpperCase());
           }
-        })
-      );
-      onProgress?.(Math.min(i + chunk.length, newRows.length), newRows.length);
+          if (result.failed.length > 0) {
+            lastError = result.failed[result.failed.length - 1].error;
+          }
+          onProgress?.(Math.min(i + batch.length, preparedPayloads.length), preparedPayloads.length);
+          continue;
+        } catch (err: any) {
+          if (err?.response?.status === 404) {
+            bulkEndpointAvailable = false;
+          } else {
+            failureCount += batch.length;
+            lastError = err?.response?.data?.error?.message || err?.message || 'Bulk registration failed';
+            onProgress?.(Math.min(i + batch.length, preparedPayloads.length), preparedPayloads.length);
+            continue;
+          }
+        }
+      }
+
+      // Fallback for older backend deployments without /students/bulk
+      const CONCURRENCY = 4;
+      for (let j = 0; j < batch.length; j += CONCURRENCY) {
+        const chunk = batch.slice(j, j + CONCURRENCY);
+        await Promise.all(
+          chunk.map(async (payload) => {
+            try {
+              await studentService.registerStudent(payload);
+              successCount++;
+              if (payload.rfid_uid) usedUids.add(payload.rfid_uid.toUpperCase());
+            } catch (err: any) {
+              failureCount++;
+              lastError = err?.response?.data?.error?.message || err?.message || 'Registration failed';
+            }
+          })
+        );
+        onProgress?.(Math.min(i + j + chunk.length, preparedPayloads.length), preparedPayloads.length);
+      }
     }
 
     if (usedUids.size > 0) {

@@ -7,6 +7,12 @@ export const studentService = {
   getRosterStats: () => request.get<StudentRosterStats>('/students/stats'),
   registerStudent: (payload: RegisterStudentPayload) =>
     request.post<StudentRecord>('/students', payload),
+  bulkRegisterStudents: (students: RegisterStudentPayload[]) =>
+    request.post<{
+      created: StudentRecord[];
+      failed: Array<{ index: number; student_id: string; name: string; error: string }>;
+      summary: { total: number; created_count: number; failed_count: number };
+    }>('/students/bulk', { students }),
   updateStudent: (id: string, payload: UpdateStudentPayload) =>
     request.patch<StudentRecord>(`/students/${id}`, payload),
   resetPassword: (id: string, password: string) =>
