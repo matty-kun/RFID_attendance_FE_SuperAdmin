@@ -8,7 +8,7 @@ import { EmptyState } from '../../../components/common/EmptyState';
 import { LoadingState } from '../../../components/common/LoadingState';
 import { DeleteAdminConfirmationModal } from './DeleteAdminConfirmationModal';
 import { AdminProfileDrawer } from './AdminProfileDrawer';
-import { Archive, ExternalLink, Plus, Search, Shield, Sparkles, UserCheck, Users } from 'lucide-react';
+import { Archive, ExternalLink, Eye, EyeOff, Plus, Search, Shield, Sparkles, UserCheck, Users } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import { useAuth } from '../../auth/context/AuthContext';
 
@@ -56,6 +56,7 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
   } = useAdminsViewModel();
   const [roleFilter, setRoleFilter] = useState('all');
   const [selectedAdminId, setSelectedAdminId] = useState<string | null>(null);
+  const [showTemporaryPassword, setShowTemporaryPassword] = useState(false);
   const visibleAdmins = admins.filter((admin) => roleFilter === 'all' || admin.role === roleFilter);
   const selectedAdmin = admins.find((admin) => admin.id === selectedAdminId) ?? null;
   const initials = (fullName: string) => fullName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('');
@@ -261,7 +262,10 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
       {/* Add Admin Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setShowTemporaryPassword(false);
+        }}
         title="Register Administrator"
         description="Create an admin login with a temporary password. Share it privately; the admin must change it after first login."
         maxWidth="md"
@@ -291,10 +295,22 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
 
           <Input
             label="Temporary Password"
-            type="password"
+            type={showTemporaryPassword ? 'text' : 'password'}
             value={temporaryPassword}
             onChange={(event) => setTemporaryPassword(event.target.value)}
             minLength={12}
+            autoComplete="new-password"
+            rightElement={
+              <button
+                type="button"
+                onClick={() => setShowTemporaryPassword((visible) => !visible)}
+                aria-label={showTemporaryPassword ? 'Hide temporary password' : 'Show temporary password'}
+                title={showTemporaryPassword ? 'Hide password' : 'Show password'}
+                className="rounded-lg p-1.5 text-[#756883] hover:bg-purple-50 hover:text-[#7026B7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7026B7] transition-colors cursor-pointer"
+              >
+                {showTemporaryPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
             required
           />
 

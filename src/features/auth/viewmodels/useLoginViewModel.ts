@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../../../services/apiClient';
 
@@ -66,16 +67,26 @@ export const useLoginViewModel = (): UseLoginViewModelReturn => {
     try {
       await login(cleanIdentifier, password);
     } catch (err: any) {
-      let serverMessage = err?.response?.data?.error?.message || err?.message || 'Invalid credentials.';
+      let serverMessage =
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.message ||
+        (typeof err?.response?.data?.error === 'string' ? err?.response?.data?.error : null) ||
+        err?.message ||
+        'Invalid credentials.';
 
-      if (err?.code === 'ECONNABORTED' || err?.message?.toLowerCase().includes('timeout')) {
+      const isAxios = axios.isAxiosError(err);
+      const isTimeout =
+        err?.code === 'ECONNABORTED' ||
+        err?.message?.toLowerCase().includes('timeout');
+      const isNetworkError =
+        (isAxios && !err.response) ||
+        err?.code === 'ERR_NETWORK' ||
+        serverMessage === 'Network Error';
+
+      if (isTimeout) {
         serverMessage =
           'Connection timed out. The server took longer than expected to respond (cold start). Please try again.';
-      } else if (
-        serverMessage === 'Network Error' ||
-        err?.code === 'ERR_NETWORK' ||
-        !err?.response
-      ) {
+      } else if (isNetworkError) {
         if (
           typeof window !== 'undefined' &&
           window.location.hostname !== 'localhost' &&
@@ -88,15 +99,25 @@ export const useLoginViewModel = (): UseLoginViewModelReturn => {
           serverMessage =
             'Network Error: Unable to connect to backend server. Please verify your Railway backend is live and CORS allows this domain.';
         }
+      } else {
+        // Strip any raw validation field prefix like "password: " or "identifier: " but preserve "Access denied: ..."
+        serverMessage = serverMessage.replace(/^(?:identifier|password|email|student_id|username|error):\s*/i, '');
       }
 
-      // Strip any raw field prefix like "password: " or "identifier: "
-      serverMessage = serverMessage.replace(/^[a-zA-Z0-9_.-]+:\s*/, '');
       setError(serverMessage);
 
-      if (serverMessage.toLowerCase().includes('password')) {
+      const lower = serverMessage.toLowerCase();
+      if (
+        lower.includes('access denied') ||
+        lower.includes('student') ||
+        lower.includes('admin') ||
+        lower.includes('privilege') ||
+        lower.includes('role')
+      ) {
+        setIdentifierError(true);
+      } else if (lower.includes('password')) {
         setPasswordError(true);
-      } else if (serverMessage.toLowerCase().includes('id') || serverMessage.toLowerCase().includes('email') || serverMessage.toLowerCase().includes('student')) {
+      } else if (lower.includes('id') || lower.includes('email') || lower.includes('account')) {
         setIdentifierError(true);
       } else {
         setIdentifierError(true);

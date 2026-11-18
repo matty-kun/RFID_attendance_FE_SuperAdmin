@@ -13,14 +13,15 @@ export const authService = {
       throw new Error('Authentication failed: Missing token or user.');
     }
 
-    if (user.role !== 'super_admin') {
+    const userRole = (user.role || '').toLowerCase();
+    if (userRole !== 'super_admin') {
       localStorage.removeItem('super_admin_token');
       localStorage.removeItem('super_admin_refresh_token');
       localStorage.removeItem('super_admin_user');
-      if ((user.role as string) === 'student') {
+      if (userRole === 'student') {
         throw new Error('Access denied: Student accounts cannot access the Super Admin portal. Please use the Presnt mobile app.');
       }
-      if (user.role === 'admin') {
+      if (userRole === 'admin') {
         throw new Error('Access denied: Admin accounts must use the Presnt mobile app. Only Super Admins can access this portal.');
       }
       throw new Error('Access denied: Super Admin privileges are required.');
@@ -68,14 +69,15 @@ export const authService = {
 
   async getMe(): Promise<SuperAdminUser> {
     const user: SuperAdminUser = await api.get('/auth/me');
-    if (user.role !== 'super_admin') {
+    const userRole = (user.role || '').toLowerCase();
+    if (userRole !== 'super_admin') {
       localStorage.removeItem('super_admin_token');
       localStorage.removeItem('super_admin_refresh_token');
       localStorage.removeItem('super_admin_user');
-      if ((user.role as string) === 'student') {
+      if (userRole === 'student') {
         throw new Error('Access denied: Student accounts cannot access the Super Admin portal. Please use the Presnt mobile app.');
       }
-      if (user.role === 'admin') {
+      if (userRole === 'admin') {
         throw new Error('Access denied: Admin accounts must use the Presnt mobile app. Only Super Admins can access this portal.');
       }
       throw new Error('Access denied: Super Admin privileges are required.');
