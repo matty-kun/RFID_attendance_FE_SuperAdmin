@@ -8,7 +8,7 @@ import { EmptyState } from '../../../components/common/EmptyState';
 import { LoadingState } from '../../../components/common/LoadingState';
 import { DeleteAdminConfirmationModal } from './DeleteAdminConfirmationModal';
 import { AdminProfileDrawer } from './AdminProfileDrawer';
-import { Archive, ExternalLink, Eye, EyeOff, Plus, Search, Shield, Sparkles, UserCheck, Users } from 'lucide-react';
+import { Archive, ExternalLink, Eye, EyeOff, Plus, Search, Shield, UserCheck, Users } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import { useAuth } from '../../auth/context/AuthContext';
 
@@ -70,58 +70,64 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
           <p className="text-[11px] text-[#756883]">Manage admin accounts and monitor attendance access.</p>
         </div>
       )}
-      {/* Toolbar: Search, Role Filter, Refresh, Add Admin */}
-      <div className={cn("flex flex-col sm:flex-row sm:items-center justify-between gap-2.5", isDrawer && "mb-4")}>
-        <div className="flex flex-wrap items-center gap-2 flex-1">
-          <label className="flex h-10 min-w-[200px] flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[#756883] transition-all focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100 sm:max-w-[320px]">
-            <Search className="h-4 w-4 shrink-0 text-slate-400" />
-            <span className="sr-only">Search admins</span>
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(event) => {
-                setPage(1);
-                setSearchQuery(event.target.value);
-              }}
-              placeholder="Search admin name or email…"
-              className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
-            />
-          </label>
-
-          <Dropdown
-            value={roleFilter}
-            onChange={(val) => setRoleFilter(val)}
-            icon={<Shield className="h-4 w-4 text-[#756883]" />}
-            options={[
-              { value: 'all', label: 'All Roles' },
-              { value: 'super_admin', label: 'Super Admin' },
-              { value: 'admin', label: 'Admin' },
-            ]}
-          />
-          <Dropdown
-            value={showArchived ? 'archived' : 'active'}
-            onChange={(value) => {
+      {/* Toolbar: Search, Role Filter, Status Filter, Add Admin */}
+      <div className={cn('flex items-center gap-2 flex-nowrap', isDrawer && 'mb-4')}>
+        <label
+          className={cn(
+            'flex h-10 min-w-0 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[#756883] transition-all focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100',
+            !isDrawer && 'sm:max-w-[320px]'
+          )}
+        >
+          <Search className="h-4 w-4 shrink-0 text-slate-400" />
+          <span className="sr-only">Search admins</span>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => {
               setPage(1);
-              setSelectedAdminId(null);
-              setShowArchived(value === 'archived');
+              setSearchQuery(event.target.value);
             }}
-            icon={showArchived ? <Archive className="h-4 w-4 text-[#756883]" /> : <Users className="h-4 w-4 text-[#756883]" />}
-            options={[
-              { value: 'active', label: 'Active Admins', icon: <UserCheck className="h-3.5 w-3.5 text-[#7026B7]" /> },
-              { value: 'archived', label: 'Archived', icon: <Archive className="h-3.5 w-3.5 text-[#756883]" /> },
-            ]}
+            placeholder="Search admin name or email…"
+            className="w-full min-w-0 bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
           />
-        </div>
+        </label>
 
-        <div className="self-end sm:self-auto">
-          <Button
-            variant="primary"
-            leftIcon={<Plus className="h-4 w-4" />}
-            onClick={() => setIsModalOpen(true)}
-          >
-            Add Admin
-          </Button>
-        </div>
+        <Dropdown
+          value={roleFilter}
+          onChange={(val) => setRoleFilter(val)}
+          className="shrink-0"
+          buttonClassName={cn('whitespace-nowrap', isDrawer && 'px-2.5 gap-1.5')}
+          icon={<Shield className="h-4 w-4 text-[#756883]" />}
+          options={[
+            { value: 'all', label: 'All Roles' },
+            { value: 'super_admin', label: 'Super Admin' },
+            { value: 'admin', label: 'Admin' },
+          ]}
+        />
+        <Dropdown
+          value={showArchived ? 'archived' : 'active'}
+          onChange={(value) => {
+            setPage(1);
+            setSelectedAdminId(null);
+            setShowArchived(value === 'archived');
+          }}
+          className="shrink-0"
+          buttonClassName={cn('whitespace-nowrap', isDrawer && 'px-2.5 gap-1.5')}
+          icon={showArchived ? <Archive className="h-4 w-4 text-[#756883]" /> : <Users className="h-4 w-4 text-[#756883]" />}
+          options={[
+            { value: 'active', label: 'Active Admins', icon: <UserCheck className="h-3.5 w-3.5 text-[#7026B7]" /> },
+            { value: 'archived', label: 'Archived', icon: <Archive className="h-3.5 w-3.5 text-[#756883]" /> },
+          ]}
+        />
+
+        <Button
+          variant="primary"
+          leftIcon={<Plus className="h-4 w-4" />}
+          onClick={() => setIsModalOpen(true)}
+          className={cn('shrink-0 whitespace-nowrap', !isDrawer && 'ml-auto', isDrawer && 'px-3.5')}
+        >
+          Add Admin
+        </Button>
       </div>
 
       {/* Admin List */}
@@ -359,7 +365,6 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
                   className="sr-only"
                 />
                 <div className="font-bold text-xs text-purple-900 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-purple-600" />
                   Super Admin
                 </div>
                 <div className="text-[11px] text-slate-500 mt-1">
@@ -381,7 +386,6 @@ export const AdminsView: React.FC<AdminsViewProps> = ({ isDrawer = false }) => {
               type="submit"
               variant="primary"
               isLoading={isSubmitting}
-              leftIcon={<Sparkles className="w-4 h-4" />}
             >
               Register Admin
             </Button>
