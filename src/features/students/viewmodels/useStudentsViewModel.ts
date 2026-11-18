@@ -106,22 +106,32 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
   const [error, setError] = useState('');
   const requestId = useRef(0);
 
-  const loadStudents = useCallback(async () => {
+  const loadStatsAndInventory = useCallback(async () => {
+    try {
+      const [stats, inventory] = await Promise.all([
+        studentService.getRosterStats(),
+        request.get<{cards: {id: string; uid: string; status: string; created_at: string; last_holder?: {student_name: string; student_number: string}}[]; total: number}>('/cards?limit=100'),
+      ]);
+      setStudentStats(stats);
+      setUnassignedPool(inventory.cards.filter(card => card.status === 'available').map((card, index) => ({ id: card.id, cardNumber: index + 1, uid: card.uid, status: 'unassigned' as const, registeredAt: card.created_at })));
+      setLostCards(inventory.cards.filter(card => card.status === 'lost').map((card, index) => ({ id: card.id, cardNumber: index + 1, uid: card.uid, previousStudentName: card.last_holder?.student_name, previousStudentId: card.last_holder?.student_number, revokedAt: card.created_at, reason: 'lost' as const })));
+    } catch {
+      // Non-fatal stats/inventory refresh error
+    }
+  }, []);
+
+  const loadStudents = useCallback(async (includeMeta = true) => {
     const currentRequest = ++requestId.current;
     setIsLoading(true);
     setError('');
     try {
-      const [data, stats, inventory] = await Promise.all([
+      const [data] = await Promise.all([
         studentService.getStudents(page, searchQuery.trim(), sort, direction, 25, showArchived),
-        studentService.getRosterStats(),
-        request.get<{cards: {id: string; uid: string; status: string; created_at: string; last_holder?: {student_name: string; student_number: string}}[]; total: number}>('/cards?limit=100'),
+        ...(includeMeta ? [loadStatsAndInventory()] : []),
       ]);
       if (currentRequest === requestId.current) {
         setStudents(data.students);
         setTotal(data.total);
-        setStudentStats(stats);
-        setUnassignedPool(inventory.cards.filter(card => card.status === 'available').map((card, index) => ({ id: card.id, cardNumber: index + 1, uid: card.uid, status: 'unassigned' as const, registeredAt: card.created_at })));
-        setLostCards(inventory.cards.filter(card => card.status === 'lost').map((card, index) => ({ id: card.id, cardNumber: index + 1, uid: card.uid, previousStudentName: card.last_holder?.student_name, previousStudentId: card.last_holder?.student_number, revokedAt: card.created_at, reason: 'lost' as const })));
       }
     } catch (err: any) {
       if (currentRequest === requestId.current) {
@@ -130,11 +140,15 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     } finally {
       if (currentRequest === requestId.current) setIsLoading(false);
     }
-  }, [page, searchQuery, sort, direction, showArchived]);
+  }, [page, searchQuery, sort, direction, showArchived, loadStatsAndInventory]);
+
+  useEffect(() => {
+    void loadStatsAndInventory();
+  }, [loadStatsAndInventory]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      void loadStudents();
+      void loadStudents(false);
     }, searchQuery ? 250 : 0);
     return () => clearTimeout(timer);
   }, [loadStudents]);
