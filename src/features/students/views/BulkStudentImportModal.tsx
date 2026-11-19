@@ -17,18 +17,7 @@ export interface BulkStudentImportModalProps {
   ) => Promise<void>;
 }
 
-const COURSE_ALIAS_MAP: Record<string, string> = {
-  BSIT: 'BS Information Technology',
-  BSIS: 'BS Information Systems',
-  BSCPE: 'BS Computer Engineering',
-  BSCS: 'BS Computer Science',
-  BSECE: 'BS Electronics Engineering',
-  IT: 'BS Information Technology',
-  IS: 'BS Information Systems',
-  CS: 'BS Computer Science',
-  CPE: 'BS Computer Engineering',
-  ECE: 'BS Electronics Engineering',
-};
+import { normalizeCourse, saveCustomCourse } from '../../../utils/courseUtils';
 
 function parseYearLevel(val: any): number {
   if (typeof val === 'number' && !isNaN(val)) return Math.min(Math.max(1, Math.round(val)), 6);
@@ -40,10 +29,12 @@ function parseYearLevel(val: any): number {
 }
 
 function resolveCourseName(raw: string): string {
-  const trimmed = raw.trim();
-  const upper = trimmed.toUpperCase();
-  if (COURSE_ALIAS_MAP[upper]) return COURSE_ALIAS_MAP[upper];
-  return trimmed || 'BS Information Technology';
+  const norm = normalizeCourse(raw);
+  if (norm) {
+    saveCustomCourse(norm);
+    return norm;
+  }
+  return 'BS Information Technology';
 }
 
 function normalizeKey(str: string): string {

@@ -126,7 +126,7 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     setError('');
     try {
       const [data] = await Promise.all([
-        studentService.getStudents(page, searchQuery.trim(), sort, direction, 25, showArchived),
+        studentService.getStudents(1, '', sort, direction, 100, showArchived, true),
         ...(includeMeta ? [loadStatsAndInventory()] : []),
       ]);
       if (currentRequest === requestId.current) {
@@ -140,17 +140,14 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     } finally {
       if (currentRequest === requestId.current) setIsLoading(false);
     }
-  }, [page, searchQuery, sort, direction, showArchived, loadStatsAndInventory]);
+  }, [sort, direction, showArchived, loadStatsAndInventory]);
 
   useEffect(() => {
     void loadStatsAndInventory();
   }, [loadStatsAndInventory]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      void loadStudents(false);
-    }, searchQuery ? 250 : 0);
-    return () => clearTimeout(timer);
+    void loadStudents(false);
   }, [loadStudents]);
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Drawer } from '../../../components/common/Drawer';
 import { Dropdown } from '../../../components/common/Dropdown';
+import { CourseCombobox } from '../../../components/common/CourseCombobox';
 import { Input } from '../../../components/common/Input';
 import { Eye, EyeOff, Sparkles, Trash2 } from 'lucide-react';
 import { draftStorage } from '../../../utils/draftStorage';
@@ -16,6 +17,7 @@ export interface AddStudentDrawerProps {
   onClose: () => void;
   onSubmit: (payload: RegisterStudentPayload) => Promise<void>;
   isSubmitting?: boolean;
+  availableCourses?: string[];
 }
 
 export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
@@ -23,6 +25,7 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
   onClose,
   onSubmit,
   isSubmitting = false,
+  availableCourses = [],
 }) => {
   const [studentId, setStudentId] = useState('');
   const [name, setName] = useState('');
@@ -91,17 +94,6 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
     }, 300);
   };
 
-
-  const courseOptions = useMemo(
-    () => [
-      { value: 'BS Information Technology', label: 'BS Information Technology' },
-      { value: 'BS Computer Science', label: 'BS Computer Science' },
-      { value: 'BS Information Systems', label: 'BS Information Systems' },
-      { value: 'BS Computer Engineering', label: 'BS Computer Engineering' },
-      { value: 'BS Business Administration', label: 'BS Business Administration' },
-    ],
-    []
-  );
 
   const yearLevelOptions = useMemo(
     () => [
@@ -489,11 +481,11 @@ export const AddStudentDrawer: React.FC<AddStudentDrawerProps> = ({
               <label className="block text-xs font-semibold text-[#24133F]">
                 Academic program
               </label>
-              <Dropdown
+              <CourseCombobox
                 value={course}
                 onChange={(val) => setCourse(val)}
-                options={courseOptions}
-                placeholder="Select program"
+                availableCourses={availableCourses}
+                placeholder="Select or type program..."
                 className="w-full"
                 buttonClassName="w-full h-10 px-3 text-xs font-medium text-[#24133F]"
               />
