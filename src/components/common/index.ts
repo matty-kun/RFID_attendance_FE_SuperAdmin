@@ -15,3 +15,4 @@ export * from './ImageCropModal';
 export * from './EmptyState';
 export * from './LoadingState';
 export * from './ResetPasswordModal';
+export * from './CourseCombobox';

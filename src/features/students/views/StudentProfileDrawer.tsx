@@ -26,6 +26,8 @@ import {
   Zap,
   Trash2,
   KeyRound,
+  Plus,
+  Search,
 } from 'lucide-react';
 import { ResetPasswordModal } from '../../../components/common/ResetPasswordModal';
 import { DeleteStudentConfirmationModal } from './DeleteStudentConfirmationModal';
@@ -35,6 +37,13 @@ import type { StudentRecord } from '../models';
 import { formatYearLevel } from '../../../utils/formatters';
 import { request } from '../../../services/apiClient';
 import { toStudentScan, type RecordedScan, type StudentScanItem } from './studentScan';
+import {
+  getAllKnownCourses,
+  saveCustomCourse,
+  getCourseAbbreviation,
+  areCoursesEqual,
+  normalizeCourse,
+} from '../../../utils/courseUtils';
 
 export interface StudentProfileDrawerProps {
   isOpen: boolean;
@@ -51,15 +60,8 @@ export interface StudentProfileDrawerProps {
   onUploadAvatar?: (studentId: string, imageBase64: string) => Promise<string>;
   onRemoveAvatar?: (studentId: string) => Promise<void>;
   onDeleteStudent?: (studentId: string) => Promise<boolean>;
+  availableCourses?: string[];
 }
-
-const COURSE_OPTIONS = [
-  'BS Information Technology',
-  'BS Computer Science',
-  'BS Information Systems',
-  'BS Computer Engineering',
-  'BS Business Administration',
-];
 
 const YEAR_OPTIONS = [
   { value: 1, label: '1st Year' },
@@ -84,6 +86,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   onRemoveAvatar,
   onDeleteStudent,
   onResetPassword,
+  availableCourses = [],
 }) => {
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
   const [filterType, setFilterType] = useState<'all' | 'time_in' | 'time_out'>('all');
@@ -281,9 +284,44 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   // Floating Dropdowns for Course & Year
   const [isCourseMenuOpen, setIsCourseMenuOpen] = useState(false);
   const [isYearMenuOpen, setIsYearMenuOpen] = useState(false);
+  const [courseSearch, setCourseSearch] = useState('');
+  const courseSearchInputRef = useRef<HTMLInputElement>(null);
 
   const courseDropdownRef = useRef<HTMLDivElement>(null);
   const yearDropdownRef = useRef<HTMLDivElement>(null);
+
+  const allDrawerCourses = useMemo(() => {
+    const list = [
+      ...(currentStudent?.course ? [currentStudent.course] : []),
+      ...availableCourses,
+    ];
+    return getAllKnownCourses(list);
+  }, [availableCourses, currentStudent?.course, isCourseMenuOpen]);
+
+  const filteredDrawerCourses = useMemo(() => {
+    const q = courseSearch.trim().toLowerCase();
+    if (!q) return allDrawerCourses;
+    return allDrawerCourses.filter((c) => {
+      const abbr = getCourseAbbreviation(c).toLowerCase();
+      const full = c.toLowerCase();
+      return full.includes(q) || abbr.includes(q);
+    });
+  }, [allDrawerCourses, courseSearch]);
+
+  const hasExactCourseMatch = useMemo(() => {
+    const q = courseSearch.trim();
+    if (!q) return true;
+    return allDrawerCourses.some((c) => areCoursesEqual(c, q));
+  }, [allDrawerCourses, courseSearch]);
+
+  useEffect(() => {
+    if (isCourseMenuOpen) {
+      setCourseSearch('');
+      setTimeout(() => {
+        courseSearchInputRef.current?.focus();
+      }, 50);
+    }
+  }, [isCourseMenuOpen]);
 
   // Close floating menus on click outside
   useEffect(() => {
@@ -349,19 +387,22 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   // Handle Course Update
   const handleSelectCourse = async (courseName: string) => {
     setIsCourseMenuOpen(false);
-    if (!currentStudent || courseName === currentStudent.course) return;
+    const normalized = normalizeCourse(courseName) || courseName.trim();
+    if (!normalized) return;
+    saveCustomCourse(normalized);
+    if (!currentStudent || normalized === currentStudent.course) return;
 
     try {
       if (onUpdateStudent) {
         await onUpdateStudent(currentStudent.id, {
           name: currentStudent.name,
-          course: courseName,
+          course: normalized,
           year_level: currentStudent.year_level || 1,
         });
       }
       activeStudentRef.current = {
         ...currentStudent,
-        course: courseName,
+        course: normalized,
       };
     } catch {
       // toast shown by viewmodel
@@ -999,28 +1040,108 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
 
                 {/* Floating Course Menu (No layout shifts) */}
                 {isCourseMenuOpen && (
-                  <div className="absolute top-full left-0 mt-1.5 w-64 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase px-2.5 py-1">
-                      Select Course
-                    </p>
-                    {COURSE_OPTIONS.map((c) => {
-                      const isSelected = c === currentStudent.course;
-                      return (
+                  <div className="absolute top-full left-0 mt-1.5 w-72 bg-white rounded-2xl border border-slate-200 shadow-2xl z-50 p-2 space-y-1.5 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="flex items-center justify-between px-1">
+                      <p className="text-[10px] font-black text-slate-400 uppercase">
+                        Select or Add Course
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setIsCourseMenuOpen(false)}
+                        className="text-slate-400 hover:text-slate-600 p-0.5"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Search / Add Input */}
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                      <input
+                        ref={courseSearchInputRef}
+                        type="text"
+                        value={courseSearch}
+                        onChange={(e) => setCourseSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (!hasExactCourseMatch && courseSearch.trim()) {
+                              void handleSelectCourse(courseSearch.trim());
+                            } else if (filteredDrawerCourses.length > 0) {
+                              void handleSelectCourse(filteredDrawerCourses[0]);
+                            }
+                          }
+                        }}
+                        placeholder="Search or type new course..."
+                        className="w-full h-8 pl-8 pr-7 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-brand-700 focus:outline-none focus:ring-1 focus:ring-brand-700"
+                      />
+                      {courseSearch && (
                         <button
-                          key={c}
                           type="button"
-                          onClick={() => void handleSelectCourse(c)}
-                          className={`w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
-                            isSelected
-                              ? 'bg-brand-50 text-brand-700 font-bold'
-                              : 'text-slate-900 hover:bg-slate-50'
-                          }`}
+                          onClick={() => setCourseSearch('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
                         >
-                          <span className="truncate">{c}</span>
-                          {isSelected && <Check className="h-3.5 w-3.5 text-brand-700 shrink-0 ml-1" />}
+                          <X className="h-3 w-3" />
                         </button>
-                      );
-                    })}
+                      )}
+                    </div>
+
+                    {/* Quick Create Custom Option if search term doesn't match */}
+                    {!hasExactCourseMatch && courseSearch.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => void handleSelectCourse(courseSearch.trim())}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-brand-700 bg-brand-50 hover:bg-brand-100 transition-colors border border-brand-200"
+                      >
+                        <Plus className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate flex-1 text-left">
+                          Add <strong>"{courseSearch.trim()}"</strong>
+                        </span>
+                        <span className="text-[10px] uppercase font-bold text-brand-600 bg-white px-1.5 py-0.5 rounded border border-brand-200 shrink-0">
+                          New
+                        </span>
+                      </button>
+                    )}
+
+                    {/* Courses List */}
+                    <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+                      {filteredDrawerCourses.length === 0 && hasExactCourseMatch ? (
+                        <p className="py-4 text-center text-xs text-slate-400">No matching courses</p>
+                      ) : (
+                        filteredDrawerCourses.map((c) => {
+                          const isSelected = areCoursesEqual(c, currentStudent.course);
+                          const abbr = getCourseAbbreviation(c);
+                          return (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => void handleSelectCourse(c)}
+                              className={`w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                                isSelected
+                                  ? 'bg-brand-50 text-brand-700 font-bold'
+                                  : 'text-slate-900 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                <span className="truncate">{c}</span>
+                                {abbr && abbr !== c && (
+                                  <span
+                                    className={`shrink-0 text-[10px] px-1 py-0.2 rounded font-mono ${
+                                      isSelected
+                                        ? 'bg-brand-200 text-brand-900 font-bold'
+                                        : 'bg-slate-100 text-slate-500'
+                                    }`}
+                                  >
+                                    {abbr}
+                                  </span>
+                                )}
+                              </div>
+                              {isSelected && <Check className="h-3.5 w-3.5 text-brand-700 shrink-0 ml-1" />}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
