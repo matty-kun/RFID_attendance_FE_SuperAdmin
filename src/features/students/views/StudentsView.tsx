@@ -15,6 +15,10 @@ import { StudentProfileDrawer } from './StudentProfileDrawer';
 import { studentService } from '../services/studentService';
 import type { StudentRecord } from '../models';
 import {
+  getAllKnownCourses,
+  areCoursesEqual,
+} from '../../../utils/courseUtils';
+import {
   Search,
   Radio,
   ArchiveRestore,
@@ -46,7 +50,6 @@ export const StudentsView: React.FC = () => {
     isSubmitting,
     page,
     setPage,
-    total,
     studentStats,
     error,
     cardlessStudents,
@@ -116,31 +119,33 @@ export const StudentsView: React.FC = () => {
     [filteredStudents, archivedStudentIds]
   );
 
-  const [knownCourses, setKnownCourses] = useState<string[]>([
-    'BSIT', 'BSCS', 'BSIS', 'BSCPE', 'BSECE', 'BSBA', 'BSEd'
-  ]);
+  const currentCohort = studentTab === 'active' ? activeStudents : archivedStudents;
 
-  useEffect(() => {
-    if (students.length > 0) {
-      setKnownCourses((prev) => {
-        const set = new Set(prev);
-        students.forEach((s) => {
-          if (s.course?.trim()) set.add(s.course.trim());
-        });
-        return Array.from(set).sort();
-      });
-    }
+  const courses = useMemo(() => {
+    const studentCourses = students
+      .map((s) => s.course)
+      .filter((c): c is string => Boolean(c));
+    return getAllKnownCourses(studentCourses);
   }, [students]);
 
-  const courses = knownCourses;
-
-  const currentCohort = studentTab === 'active' ? activeStudents : archivedStudents;
+  const courseCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    currentCohort.forEach((s) => {
+      if (!s.course) return;
+      courses.forEach((c) => {
+        if (areCoursesEqual(s.course, c)) {
+          map.set(c, (map.get(c) || 0) + 1);
+        }
+      });
+    });
+    return map;
+  }, [currentCohort, courses]);
 
   // Filtered rows for current cohort with real-time as-you-type search
   const visibleStudents = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return currentCohort.filter((student) => {
-      const matchesCourse = courseFilter === 'all' || student.course === courseFilter;
+      const matchesCourse = courseFilter === 'all' || areCoursesEqual(student.course, courseFilter);
       if (!matchesCourse) return false;
       if (!q) return true;
       const nameMatch = student.name.toLowerCase().includes(q);
@@ -151,9 +156,19 @@ export const StudentsView: React.FC = () => {
       return nameMatch || idMatch || rfidMatch || cardNumMatch || emailMatch;
     });
   }, [currentCohort, courseFilter, searchQuery]);
+  const PAGE_SIZE = 25;
+  const totalFiltered = visibleStudents.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE));
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+
+  const pagedStudents = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return visibleStudents.slice(start, start + PAGE_SIZE);
+  }, [visibleStudents, currentPage]);
+
   const selectedStudents = visibleStudents.filter((student) => selectedStudentIds.includes(student.id));
   const selectedWithCards = selectedStudents.filter((student) => Boolean(student.rfid_uid));
-  const allVisibleSelected = visibleStudents.length > 0 && visibleStudents.every((student) => selectedStudentIds.includes(student.id));
+  const allPagedSelected = pagedStudents.length > 0 && pagedStudents.every((student) => selectedStudentIds.includes(student.id));
 
   const runBulkAction = async () => {
     if (!pendingBulkAction || bulkBusy) return;
@@ -268,15 +283,28 @@ export const StudentsView: React.FC = () => {
 
             <Dropdown
               value={courseFilter}
-              onChange={(val) => setCourseFilter(val)}
+              onChange={(val) => {
+                setCourseFilter(val);
+                setPage(1);
+              }}
               icon={<GraduationCap className="h-4 w-4" />}
+              className="w-auto"
+              buttonClassName="h-10 min-w-[170px] max-w-[280px] justify-between px-3 text-xs"
+              menuClassName="min-w-[260px] max-w-[360px] max-h-72 shadow-2xl"
               options={[
-                { value: 'all', label: 'All Courses', icon: <GraduationCap className="h-3.5 w-3.5 text-slate-400" /> },
-                ...courses.map((c) => ({
-                  value: c,
-                  label: c,
-                  icon: <GraduationCap className="h-3.5 w-3.5 text-brand-700" />,
-                })),
+                {
+                  value: 'all',
+                  label: `All Courses (${currentCohort.length})`,
+                  icon: <GraduationCap className="h-3.5 w-3.5 text-slate-400" />,
+                },
+                ...courses.map((c) => {
+                  const count = courseCounts.get(c) || 0;
+                  return {
+                    value: c,
+                    label: count > 0 ? `${c} (${count})` : c,
+                    icon: <GraduationCap className="h-3.5 w-3.5 text-brand-700" />,
+                  };
+                }),
               ]}
             />
 
@@ -355,7 +383,20 @@ export const StudentsView: React.FC = () => {
               <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500">
                 <th className="px-3 py-3">
                   <div className="flex items-center gap-3">
-                    <Checkbox aria-label={`Select all students on this page (${visibleStudents.length})`} checked={allVisibleSelected} disabled={!visibleStudents.length || bulkBusy} onChange={(event) => setSelectedStudentIds(event.target.checked ? visibleStudents.map((student) => student.id) : [])} />
+                    <Checkbox
+                      aria-label={`Select all students on this page (${pagedStudents.length})`}
+                      checked={allPagedSelected}
+                      disabled={!pagedStudents.length || bulkBusy}
+                      onChange={(event) => {
+                        if (event.target.checked) {
+                          const next = new Set([...selectedStudentIds, ...pagedStudents.map((s) => s.id)]);
+                          setSelectedStudentIds(Array.from(next));
+                        } else {
+                          const pagedIds = new Set(pagedStudents.map((s) => s.id));
+                          setSelectedStudentIds(selectedStudentIds.filter((id) => !pagedIds.has(id)));
+                        }
+                      }}
+                    />
                     <span>Student</span>
                     {selectedStudents.length > 0 && <span className="font-bold text-[#7026B7]">{selectedStudents.length} selected</span>}
                   </div>
@@ -367,7 +408,7 @@ export const StudentsView: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {visibleStudents.map((student) => {
+              {pagedStudents.map((student) => {
                 const isStudentArchived = archivedStudentIds.includes(student.id);
                 return (
                   <tr
@@ -523,22 +564,22 @@ export const StudentsView: React.FC = () => {
 
           <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-3 py-3 text-xs text-slate-500">
             <span>
-              {total.toLocaleString()} {studentTab} students · Page {page} of {Math.max(1, Math.ceil(total / 25))}
+              {totalFiltered.toLocaleString()} {studentTab} students · Page {currentPage} of {totalPages}
             </span>
             <div className="flex gap-2">
               <Button
                 variant="secondary"
                 size="sm"
-                disabled={page <= 1 || isLoading}
-                onClick={() => setPage(page - 1)}
+                disabled={currentPage <= 1 || isLoading}
+                onClick={() => setPage(currentPage - 1)}
               >
                 Previous
               </Button>
               <Button
                 variant="secondary"
                 size="sm"
-                disabled={page * 25 >= total || isLoading}
-                onClick={() => setPage(page + 1)}
+                disabled={currentPage >= totalPages || isLoading}
+                onClick={() => setPage(currentPage + 1)}
               >
                 Next
               </Button>
@@ -625,6 +666,7 @@ export const StudentsView: React.FC = () => {
         onDeleteStudent={handleDeleteStudent}
         onUploadAvatar={uploadStudentAvatar}
         onRemoveAvatar={removeStudentAvatar}
+        availableCourses={courses}
       />
 
       {/* Slide-in Drawer: Add Single Student */}
@@ -633,6 +675,7 @@ export const StudentsView: React.FC = () => {
         onClose={() => setIsAddDrawerOpen(false)}
         onSubmit={handleRegisterStudent}
         isSubmitting={isSubmitting}
+        availableCourses={courses}
       />
 
       {/* Slide-in Drawer: Rapid Continuous RFID Scanner */}
