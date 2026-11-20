@@ -7,6 +7,8 @@ import { toast } from '../context';
 import type { StudentRosterStats } from '../features/students/models';
 import type { DashboardMetrics, EventRecord } from '../types';
 import hawi from '../assets/illustrations/Hawi Tap Card.png';
+// TEMP: Scan-to-Confirmation Time Tracking (Testing Only — remove before production)
+import { ScanTimingTestPanel } from '../components/testing/ScanTimingTestPanel';
 
 type OverviewData = { metrics: DashboardMetrics; roster: StudentRosterStats; event: EventRecord | null };
 const manilaDate = () => new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date());
@@ -280,6 +282,9 @@ export function OverviewPage() {
           </div>
         </div>
       </section>
+
+      {/* TEMP: Scan-to-Confirmation Time Tracking (Testing Only — remove before production) */}
+      <ScanTimingTestPanel />
     </div>
   );
 }
