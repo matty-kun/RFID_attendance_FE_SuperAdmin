@@ -48,6 +48,8 @@ function getInitials(fullName: string) {
   );
 }
 
+const EMPTY_ASSIGNED: AssignedOfficer[] = [];
+
 export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
   isOpen,
   onClose,
@@ -55,7 +57,7 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
   sessionTime,
   sessionDate,
   sessionStatus = 'Active',
-  initialAssigned = [],
+  initialAssigned = EMPTY_ASSIGNED,
   onSave,
   zIndex,
 }) => {
@@ -87,14 +89,16 @@ export const AssignOfficersDrawer: React.FC<AssignOfficersDrawerProps> = ({
   }, [isOpen, initialAssigned]);
 
   const adminPool = useMemo<Omit<AssignedOfficer, 'location'>[]>(() => {
-    return admins.map((adm) => ({
-      id: adm.id,
-      name: adm.name,
-      initials: getInitials(adm.name),
-      role: adm.role === 'super_admin' ? 'Super Admin' : 'Admin',
-      dutyType: 'both' as const,
-      status: 'Online' as const,
-    }));
+    return admins
+      .filter((adm) => adm.role === 'admin')
+      .map((adm) => ({
+        id: adm.id,
+        name: adm.name,
+        initials: getInitials(adm.name),
+        role: 'Admin',
+        dutyType: 'both' as const,
+        status: 'Online' as const,
+      }));
   }, [admins]);
 
   const filteredAdmins = useMemo(() => {
