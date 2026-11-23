@@ -58,11 +58,11 @@ export function OverviewPage() {
           <h1 className="mt-3 text-2xl font-extrabold leading-tight sm:text-4xl">Attendance today</h1>
           <p className="mt-3 max-w-lg text-sm leading-relaxed text-[#EEE1FA]">{data?.event?.name || 'Student scans and checkpoint activity'}</p>
         </div>
-        <div className="pointer-events-none absolute -bottom-5 -right-3 sm:-bottom-8 sm:-right-6 md:-bottom-10 md:-right-8 z-20">
+        <div className="pointer-events-none absolute -bottom-4 -right-2 sm:-bottom-[22px] sm:-right-2.5 md:-bottom-[26px] md:-right-3 z-20">
           <img
             src={hawiPeeking}
             alt="Hawi mascot peeking"
-            className="h-[185px] sm:h-[235px] md:h-[270px] w-auto object-contain drop-shadow-2xl"
+            className="h-[195px] sm:h-[235px] md:h-[265px] w-auto object-contain drop-shadow-2xl"
           />
         </div>
       </section>
