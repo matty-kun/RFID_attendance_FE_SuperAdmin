@@ -10,6 +10,7 @@ import { LoadingState } from '../../../components/common/LoadingState';
 import { AddStudentDrawer } from './AddStudentDrawer';
 import { RapidCardScanDrawer } from './RapidCardScanDrawer';
 import { BulkStudentImportModal } from './BulkStudentImportModal';
+import { BulkPhotoImportModal } from './BulkPhotoImportModal';
 import { RegisterActionsDropdown } from './RegisterActionsDropdown';
 import { StudentProfileDrawer } from './StudentProfileDrawer';
 import { studentService } from '../services/studentService';
@@ -78,6 +79,7 @@ export const StudentsView: React.FC = () => {
 
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<StudentRecord | null>(null);
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
+  const [isBulkPhotoImportOpen, setIsBulkPhotoImportOpen] = useState(false);
   useEffect(() => {
     const studentNumber = new URLSearchParams(window.location.search).get('profile');
     if (!studentNumber) return;
@@ -205,6 +207,7 @@ export const StudentsView: React.FC = () => {
             onAddStudent={() => setIsAddDrawerOpen(true)}
             onRapidScan={() => setIsRapidScanOpen(true)}
             onBulkImport={() => setIsBulkImportOpen(true)}
+            onBulkPhotoImport={() => setIsBulkPhotoImportOpen(true)}
           />
         </div>
       </div>
@@ -676,6 +679,17 @@ export const StudentsView: React.FC = () => {
         isOpen={isBulkImportOpen}
         onClose={() => setIsBulkImportOpen(false)}
         onImport={handleBulkImport}
+        existingStudents={students}
+      />
+
+      {/* Modal: Bulk Photo Import */}
+      <BulkPhotoImportModal
+        isOpen={isBulkPhotoImportOpen}
+        onClose={() => setIsBulkPhotoImportOpen(false)}
+        onSuccess={() => {
+          setIsBulkPhotoImportOpen(false);
+          void loadStudents();
+        }}
         existingStudents={students}
       />
 
