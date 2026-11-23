@@ -692,6 +692,7 @@ export const StudentsView: React.FC = () => {
         isOpen={isBulkImportOpen}
         onClose={() => setIsBulkImportOpen(false)}
         onImport={handleBulkImport}
+        existingStudents={students}
       />
 
     </div>
