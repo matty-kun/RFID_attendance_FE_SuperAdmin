@@ -4,6 +4,7 @@ import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
 import { Checkbox } from '../components/common/Checkbox';
+import { Button } from '../components/common/Button';
 import { request } from '../services/apiClient';
 import { adminService } from '../services/adminService';
 import type { EventRecord } from '../types';
@@ -171,7 +172,6 @@ export function ReportsPage() {
     () => (snapshot?.rows ?? []).map((row, index) => mapReportRow(row, index)),
     [snapshot, mapReportRow]
   );
-  const eventLabel = event === 'all' ? 'All events' : events.find(item => item.id === event)?.name || 'Selected event';
 
   const handleExport = async (format: ExportFormat) => {
     try {
@@ -280,31 +280,43 @@ export function ReportsPage() {
         />
       </div>
 
-      <section aria-label="Attendance totals" className="rounded-[24px] border border-[#E5E0EB] bg-white px-5 py-5 sm:px-6">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-bold text-[#24133F]">Attendance totals</h2>
-          <p className="text-xs text-[#756883]">{eventLabel} · {formatShortDate(startDate)}–{formatShortDate(endDate)}</p>
+      {/* Attendance Totals Mini Dashboard */}
+      <div
+        className="grid grid-cols-2 overflow-hidden rounded-2xl border border-[#E5E0EB] bg-white sm:grid-cols-4"
+        aria-label="Attendance summary"
+      >
+        <div className="border-r border-[#E5E0EB] px-5 py-4">
+          <p className="text-xs text-[#756883]">Students checked in</p>
+          <p className="mt-1 text-2xl font-extrabold text-[#24133F] tabular-nums">
+            {loading ? '—' : reportSummary.studentsCheckedIn.toLocaleString()}
+          </p>
+          <p className="mt-0.5 text-xs text-[#A59AAB]">Unique attendees</p>
         </div>
-        <div className="mt-5 grid grid-cols-2 border-t border-[#EDE8F1] pt-4 sm:grid-cols-4">
-          <div className="border-r border-[#EDE8F1] py-1 pr-4">
-            <p className="text-xs text-[#756883]">Students checked in</p>
-            <p className="mt-1 text-2xl font-extrabold text-[#24133F]">{loading ? '—' : reportSummary.studentsCheckedIn.toLocaleString()}</p>
-          </div>
-          <div className="py-1 pl-4 sm:border-r sm:border-[#EDE8F1] sm:pr-4">
-            <p className="text-xs text-[#756883]">Time In</p>
-            <p className="mt-1 text-2xl font-extrabold text-[#16883F]">{loading ? '—' : reportSummary.timeIns.toLocaleString()}</p>
-          </div>
-          <div className="border-r border-t border-[#EDE8F1] py-3 pr-4 sm:border-t-0 sm:py-1 sm:pl-4">
-            <p className="text-xs text-[#756883]">Time Out</p>
-            <p className="mt-1 text-2xl font-extrabold text-[#C52736]">{loading ? '—' : reportSummary.timeOuts.toLocaleString()}</p>
-          </div>
-          <div className="border-t border-[#EDE8F1] py-3 pl-4 sm:border-t-0 sm:py-1">
-            <p className="text-xs text-[#756883]">Total scans</p>
-            <p className="mt-1 text-2xl font-extrabold text-[#7026B7]">{loading ? '—' : reportSummary.totalScans.toLocaleString()}</p>
-          </div>
+
+        <div className="px-5 py-4 sm:border-r sm:border-[#E5E0EB]">
+          <p className="text-xs text-[#756883]">Time In</p>
+          <p className="mt-1 text-2xl font-extrabold text-[#16883F] tabular-nums">
+            {loading ? '—' : reportSummary.timeIns.toLocaleString()}
+          </p>
+          <p className="mt-0.5 text-xs text-[#A59AAB]">Recorded entry taps</p>
         </div>
-        <p className="mt-3 text-[11px] text-[#897B96]">Students checked in counts each student once. Scan totals count every recorded tap.</p>
-      </section>
+
+        <div className="border-r border-t border-[#E5E0EB] px-5 py-4 sm:border-t-0 sm:border-r sm:border-[#E5E0EB]">
+          <p className="text-xs text-[#756883]">Time Out</p>
+          <p className="mt-1 text-2xl font-extrabold text-[#C24139] tabular-nums">
+            {loading ? '—' : reportSummary.timeOuts.toLocaleString()}
+          </p>
+          <p className="mt-0.5 text-xs text-[#A59AAB]">Recorded exit taps</p>
+        </div>
+
+        <div className="border-t border-[#E5E0EB] px-5 py-4 sm:border-t-0">
+          <p className="text-xs text-[#756883]">Total scans</p>
+          <p className="mt-1 text-2xl font-extrabold text-[#7026B7] tabular-nums">
+            {loading ? '—' : reportSummary.totalScans.toLocaleString()}
+          </p>
+          <p className="mt-0.5 text-xs text-[#A59AAB]">All recorded taps</p>
+        </div>
+      </div>
 
       {/* Row 1: Attendance Trend (Card 1) & Session Breakdown (Card 2) */}
       <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
@@ -615,8 +627,24 @@ export function ReportsPage() {
       <div className="flex items-center justify-between text-xs text-[#756883]">
         <span>{(snapshot?.rowTotal ?? 0).toLocaleString()} records · Page {page} of {Math.max(1, Math.ceil((snapshot?.rowTotal ?? 0) / pageSize))}</span>
         <div className="flex gap-2">
-          <button type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)} className="rounded-xl border border-[#E5E0EB] px-4 py-2 disabled:opacity-40">Previous</button>
-          <button type="button" disabled={loading || page * pageSize >= (snapshot?.rowTotal ?? 0)} onClick={() => setPage(page + 1)} className="rounded-xl border border-[#E5E0EB] px-4 py-2 disabled:opacity-40">Next</button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={loading || page <= 1}
+            onClick={() => setPage(page - 1)}
+          >
+            Previous
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={loading || page * pageSize >= (snapshot?.rowTotal ?? 0)}
+            onClick={() => setPage(page + 1)}
+          >
+            Next
+          </Button>
         </div>
       </div>
     </div>

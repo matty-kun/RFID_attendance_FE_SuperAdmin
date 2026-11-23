@@ -4,6 +4,7 @@ import { Checkbox } from '../../../components/common/Checkbox';
 import { useLoginViewModel } from '../viewmodels';
 import hawiPeekingImg from '../../../assets/illustrations/Hawi Peeking.png';
 import hawiQuestionImg from '../../../assets/illustrations/Hawi Question.png';
+import presntIcon from '../../../assets/icon.png';
 
 export function LoginView() {
   const {
@@ -52,7 +53,12 @@ export function LoginView() {
       {/* Right Form Panel */}
       <div className="flex flex-col justify-between bg-white p-8 sm:p-12 md:p-14 lg:p-20 min-h-[520px] md:min-h-screen">
         {/* Top Logo */}
-        <div className="text-center">
+        <div className="flex items-center justify-center gap-2.5">
+          <img
+            src={presntIcon}
+            alt="Presnt Logo"
+            className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl shadow-xs object-cover"
+          />
           <span className="text-2xl sm:text-3xl font-black tracking-tight text-[#7C27BD]">
             Presnt
           </span>
