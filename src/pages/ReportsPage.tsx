@@ -7,7 +7,7 @@ import { Checkbox } from '../components/common/Checkbox';
 import { request } from '../services/apiClient';
 import { adminService } from '../services/adminService';
 import type { EventRecord } from '../types';
-import type { ReportTrendDay, ReportSessionItem, ReportCheckpointItem, ReportCourseItem, ReportStudentAttendanceRow } from './auditPreviewRecords';
+import { formatReportSessionLabel, type ReportTrendDay, type ReportSessionItem, type ReportCheckpointItem, type ReportCourseItem, type ReportStudentAttendanceRow } from './auditPreviewRecords';
 
 type Snapshot = {
   summary: { studentsCheckedIn: number; timeIns: number; timeOuts: number; totalScans: number };
@@ -538,8 +538,6 @@ export function ReportsPage() {
                 <th className="px-4 py-3.5 font-medium whitespace-nowrap">Course</th>
                 <th className="px-4 py-3.5 font-medium whitespace-nowrap">Event</th>
                 <th className="px-4 py-3.5 font-medium whitespace-nowrap">Session</th>
-                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Day</th>
-                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Period</th>
                 <th className="px-4 py-3.5 text-center font-medium whitespace-nowrap">Time In</th>
                 <th className="px-4 py-3.5 text-center font-medium whitespace-nowrap">Time Out</th>
                 <th className="px-4 py-3.5 font-medium whitespace-nowrap">Status</th>
@@ -569,9 +567,9 @@ export function ReportsPage() {
                       <span className="font-semibold text-[#24133F] text-xs">{record.name}</span>
                     </div>
                   </td>
-                  {[record.course, record.event, record.session, record.day, record.period, record.timeIn, record.timeOut].map((value, colIndex) => {
+                  {[record.course, record.event, formatReportSessionLabel(record), record.timeIn, record.timeOut].map((value, colIndex) => {
                     const displayValue = value || '-';
-                    const isCenteredColumn = colIndex >= 5;
+                    const isCenteredColumn = colIndex >= 3;
                     return (
                       <td
                         key={colIndex}
