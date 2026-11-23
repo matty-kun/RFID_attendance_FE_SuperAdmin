@@ -79,6 +79,47 @@ export async function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /**
+ * Attempt to find a student in lookup maps with fallback strategies:
+ * 1. Exact match (case-insensitive) on student_id
+ * 2. Exact match (case-insensitive) on rfid_uid
+ * 3. Stripping OS copy suffixes: " (1)", " (2)", "_copy", "-copy"
+ * 4. Stripping common "ID-" or "ID_" or "STUDENT-" prefixes
+ */
+export function findStudentMatch(
+  candidateId: string,
+  studentIdMap: Map<string, MinimalStudentForMatching>,
+  rfidMap: Map<string, MinimalStudentForMatching>
+): MinimalStudentForMatching | undefined {
+  if (!candidateId) return undefined;
+  const lower = candidateId.toLowerCase().trim();
+  if (!lower) return undefined;
+
+  // 1. Direct match on student_id
+  const directStudent = studentIdMap.get(lower);
+  if (directStudent) return directStudent;
+
+  // 2. Direct match on rfid_uid
+  const directRfid = rfidMap.get(lower);
+  if (directRfid) return directRfid;
+
+  // 3. Fallback: OS copy suffix e.g. "2026-00101 (1)" -> "2026-00101"
+  const strippedCopy = lower.replace(/\s*\(\d+\)$/, '').replace(/[-_]copy$/i, '').trim();
+  if (strippedCopy && strippedCopy !== lower) {
+    const copyMatch = studentIdMap.get(strippedCopy) || rfidMap.get(strippedCopy);
+    if (copyMatch) return copyMatch;
+  }
+
+  // 4. Fallback: Prefix like "ID-2026-00101", "ID_2026-00101", "student-2026-00101"
+  const strippedPrefix = lower.replace(/^(id|student)[-_#\s]+/i, '').trim();
+  if (strippedPrefix && strippedPrefix !== lower) {
+    const prefixMatch = studentIdMap.get(strippedPrefix) || rfidMap.get(strippedPrefix);
+    if (prefixMatch) return prefixMatch;
+  }
+
+  return undefined;
+}
+
+/**
  * Process a list of File objects or extracted Zip entries and match with student records.
  */
 export async function parsePhotoFiles(
@@ -89,10 +130,10 @@ export async function parsePhotoFiles(
   const studentIdMap = new Map<string, MinimalStudentForMatching>();
   const rfidMap = new Map<string, MinimalStudentForMatching>();
   for (const s of existingStudents) {
-    if (s.student_id) {
+    if (s.student_id && s.student_id.trim()) {
       studentIdMap.set(s.student_id.trim().toLowerCase(), s);
     }
-    if (s.rfid_uid) {
+    if (s.rfid_uid && s.rfid_uid.trim()) {
       rfidMap.set(s.rfid_uid.trim().toLowerCase(), s);
     }
   }
@@ -104,10 +145,7 @@ export async function parsePhotoFiles(
     if (!SUPPORTED_EXTENSIONS.test(name)) continue;
 
     const candidateId = extractStudentIdFromFilename(name);
-    const candidateLower = candidateId.toLowerCase();
-    const matched = candidateId
-      ? studentIdMap.get(candidateLower) || rfidMap.get(candidateLower)
-      : undefined;
+    const matched = findStudentMatch(candidateId, studentIdMap, rfidMap);
     const base64Data = await blobToBase64(blob);
     const previewUrl = URL.createObjectURL(blob);
     const mimeType = blob.type || getMimeTypeFromFilename(name);
@@ -123,7 +161,9 @@ export async function parsePhotoFiles(
       }
     } else {
       status = 'unmatched';
-      errorReason = `No student found with ID "${candidateId}"`;
+      errorReason = candidateId
+        ? `No student found with ID "${candidateId}"`
+        : 'Filename does not contain a valid student ID';
     }
 
     photos.push({
