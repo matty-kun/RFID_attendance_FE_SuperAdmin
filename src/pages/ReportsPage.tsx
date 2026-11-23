@@ -4,6 +4,7 @@ import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
 import { Checkbox } from '../components/common/Checkbox';
+import { Button } from '../components/common/Button';
 import { request } from '../services/apiClient';
 import { adminService } from '../services/adminService';
 import type { EventRecord } from '../types';
@@ -615,8 +616,24 @@ export function ReportsPage() {
       <div className="flex items-center justify-between text-xs text-[#756883]">
         <span>{(snapshot?.rowTotal ?? 0).toLocaleString()} records · Page {page} of {Math.max(1, Math.ceil((snapshot?.rowTotal ?? 0) / pageSize))}</span>
         <div className="flex gap-2">
-          <button type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)} className="rounded-xl border border-[#E5E0EB] px-4 py-2 disabled:opacity-40">Previous</button>
-          <button type="button" disabled={loading || page * pageSize >= (snapshot?.rowTotal ?? 0)} onClick={() => setPage(page + 1)} className="rounded-xl border border-[#E5E0EB] px-4 py-2 disabled:opacity-40">Next</button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={loading || page <= 1}
+            onClick={() => setPage(page - 1)}
+          >
+            Previous
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={loading || page * pageSize >= (snapshot?.rowTotal ?? 0)}
+            onClick={() => setPage(page + 1)}
+          >
+            Next
+          </Button>
         </div>
       </div>
     </div>
