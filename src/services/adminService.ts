@@ -63,7 +63,10 @@ export const adminService = {
     request.delete<{ message: string }>(`/sessions/${encodeURIComponent(sessionId)}`),
   getSessionLocations: (sessionId: string) =>
     request.get<SessionLocations>(`/sessions/${encodeURIComponent(sessionId)}/locations`),
-  saveSessionLocations: (sessionId: string, payload: { time_in_location_ids: string[]; time_out_location_ids: string[] }) =>
+  saveSessionLocations: (
+    sessionId: string,
+    payload: { time_in_location_ids: string[]; time_out_location_ids: string[]; skip_notification?: boolean }
+  ) =>
     request.put<SessionLocations>(`/sessions/${encodeURIComponent(sessionId)}/locations`, payload),
   getSessionOfficers: (sessionId: string) =>
     request.get<SessionOfficers>(`/sessions/${encodeURIComponent(sessionId)}/officers`),
