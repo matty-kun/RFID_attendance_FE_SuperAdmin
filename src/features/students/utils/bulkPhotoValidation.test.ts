@@ -61,6 +61,15 @@ describe('bulkPhotoValidation utility', () => {
         name: 'Maria Clara',
         course: 'BS Computer Science',
         avatar_url: 'https://example.com/maria.jpg',
+        rfid_uid: 'E280116060',
+      },
+      {
+        id: 'std-3',
+        student_id: '2026-00103',
+        name: 'Crisostomo Ibarra',
+        course: 'BS Information Systems',
+        avatar_url: null,
+        rfid_uid: '04A2B3C4D5',
       },
     ];
 
@@ -69,16 +78,22 @@ describe('bulkPhotoValidation utility', () => {
       const files = [
         { name: '2026-00101.jpg', blob: dummyBlob },
         { name: '2026-00102.png', blob: dummyBlob },
+        { name: '04A2B3C4D5.jpg', blob: dummyBlob }, // Matches by RFID UID!
         { name: '2099-99999.webp', blob: dummyBlob },
         { name: 'notes.txt', blob: new Blob(['text'], { type: 'text/plain' }) }, // should be ignored
       ];
 
       const result = await parsePhotoFiles(files, mockStudents);
 
-      expect(result.totalImages).toBe(3);
-      expect(result.matchedCount).toBe(1);
+      expect(result.totalImages).toBe(4);
+      expect(result.matchedCount).toBe(2);
       expect(result.overwriteCount).toBe(1);
       expect(result.unmatchedCount).toBe(1);
+
+      // Matches by RFID UID
+      const photoRfid = result.photos.find((p) => p.candidateStudentId === '04A2B3C4D5');
+      expect(photoRfid?.status).toBe('matched');
+      expect(photoRfid?.matchedStudent?.name).toBe('Crisostomo Ibarra');
 
       // 1. Matched new photo
       const photo1 = result.photos.find((p) => p.candidateStudentId === '2026-00101');

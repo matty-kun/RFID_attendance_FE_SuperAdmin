@@ -6,7 +6,7 @@ import { studentService } from '../features/students/services/studentService';
 import { toast } from '../context';
 import type { StudentRosterStats } from '../features/students/models';
 import type { DashboardMetrics, EventRecord } from '../types';
-import hawi from '../assets/illustrations/Hawi Tap Card.png';
+import hawiPeeking from '../assets/illustrations/Hawi Peeking.png';
 // TEMP: Scan-to-Confirmation Time Tracking (Testing Only — remove before production)
 import { ScanTimingTestPanel } from '../components/testing/ScanTimingTestPanel';
 
@@ -58,7 +58,13 @@ export function OverviewPage() {
           <h1 className="mt-3 text-2xl font-extrabold leading-tight sm:text-4xl">Attendance today</h1>
           <p className="mt-3 max-w-lg text-sm leading-relaxed text-[#EEE1FA]">{data?.event?.name || 'Student scans and checkpoint activity'}</p>
         </div>
-        <img src={hawi} alt="Hawi holding an RFID card" className="pointer-events-none absolute bottom-0 right-1 z-0 h-[88%] w-auto max-w-[36%] object-contain object-bottom sm:right-8" />
+        <div className="pointer-events-none absolute -bottom-3 -right-2 sm:-bottom-5 sm:right-4 md:-bottom-6 md:right-8 z-0">
+          <img
+            src={hawiPeeking}
+            alt="Hawi mascot peeking"
+            className="h-[155px] sm:h-[195px] md:h-[225px] w-auto object-contain drop-shadow-xl"
+          />
+        </div>
       </section>
 
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">

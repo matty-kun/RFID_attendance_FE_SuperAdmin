@@ -8,6 +8,7 @@ export interface MinimalStudentForMatching {
   name?: string | null;
   course?: string | null;
   avatar_url?: string | null;
+  rfid_uid?: string | null;
 }
 
 export interface ParsedStudentPhoto {
@@ -84,11 +85,15 @@ export async function parsePhotoFiles(
   files: Array<{ name: string; blob: Blob }>,
   existingStudents: MinimalStudentForMatching[]
 ): Promise<BulkPhotoParseResult> {
-  // Build lookup map by lowercase student_id
-  const studentMap = new Map<string, MinimalStudentForMatching>();
+  // Build lookup maps by lowercase student_id and rfid_uid
+  const studentIdMap = new Map<string, MinimalStudentForMatching>();
+  const rfidMap = new Map<string, MinimalStudentForMatching>();
   for (const s of existingStudents) {
     if (s.student_id) {
-      studentMap.set(s.student_id.trim().toLowerCase(), s);
+      studentIdMap.set(s.student_id.trim().toLowerCase(), s);
+    }
+    if (s.rfid_uid) {
+      rfidMap.set(s.rfid_uid.trim().toLowerCase(), s);
     }
   }
 
@@ -99,7 +104,10 @@ export async function parsePhotoFiles(
     if (!SUPPORTED_EXTENSIONS.test(name)) continue;
 
     const candidateId = extractStudentIdFromFilename(name);
-    const matched = candidateId ? studentMap.get(candidateId.toLowerCase()) : undefined;
+    const candidateLower = candidateId.toLowerCase();
+    const matched = candidateId
+      ? studentIdMap.get(candidateLower) || rfidMap.get(candidateLower)
+      : undefined;
     const base64Data = await blobToBase64(blob);
     const previewUrl = URL.createObjectURL(blob);
     const mimeType = blob.type || getMimeTypeFromFilename(name);
