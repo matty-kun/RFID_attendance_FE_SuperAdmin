@@ -42,3 +42,32 @@ export interface ReportStudentAttendanceRow {
   timeOut: string;
   status: 'Completed' | 'Time In Only' | 'Time Out Only';
 }
+
+/**
+ * Formats a concise, non-redundant Session label.
+ * Avoids repeating Day or Period when the session name already contains them.
+ */
+export function formatReportSessionLabel(
+  row: Pick<ReportStudentAttendanceRow, 'session' | 'day' | 'period'>
+): string {
+  const session = (row.session || '').trim();
+  const day = (row.day || '').trim();
+  const period = (row.period || '').trim();
+
+  const validDay = day && day !== '-' ? day : '';
+  const validPeriod = period && period !== '-' ? period : '';
+
+  if (session && session !== '-') {
+    const lower = session.toLowerCase();
+    const parts = [session];
+    if (validDay && !lower.includes(validDay.toLowerCase())) {
+      parts.unshift(validDay);
+    }
+    if (validPeriod && !lower.includes(validPeriod.toLowerCase())) {
+      parts.push(validPeriod);
+    }
+    return parts.join(' · ');
+  }
+
+  return [validDay, validPeriod].filter(Boolean).join(' · ') || '-';
+}
