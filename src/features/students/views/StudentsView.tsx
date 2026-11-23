@@ -128,19 +128,6 @@ export const StudentsView: React.FC = () => {
     return getAllKnownCourses(studentCourses);
   }, [students]);
 
-  const courseCounts = useMemo(() => {
-    const map = new Map<string, number>();
-    currentCohort.forEach((s) => {
-      if (!s.course) return;
-      courses.forEach((c) => {
-        if (areCoursesEqual(s.course, c)) {
-          map.set(c, (map.get(c) || 0) + 1);
-        }
-      });
-    });
-    return map;
-  }, [currentCohort, courses]);
-
   // Filtered rows for current cohort with real-time as-you-type search
   const visibleStudents = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -294,17 +281,14 @@ export const StudentsView: React.FC = () => {
               options={[
                 {
                   value: 'all',
-                  label: `All Courses (${currentCohort.length})`,
+                  label: 'All Courses',
                   icon: <GraduationCap className="h-3.5 w-3.5 text-slate-400" />,
                 },
-                ...courses.map((c) => {
-                  const count = courseCounts.get(c) || 0;
-                  return {
-                    value: c,
-                    label: count > 0 ? `${c} (${count})` : c,
-                    icon: <GraduationCap className="h-3.5 w-3.5 text-brand-700" />,
-                  };
-                }),
+                ...courses.map((c) => ({
+                  value: c,
+                  label: c,
+                  icon: <GraduationCap className="h-3.5 w-3.5 text-brand-700" />,
+                })),
               ]}
             />
 
