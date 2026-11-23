@@ -68,3 +68,14 @@ export interface BulkImportStudentRow {
   year_level?: number;
   rfid_uid?: string;
 }
+
+export interface BulkImportFailureItem {
+  student_id: string;
+  name: string;
+  error: string;
+}
+
+export interface BulkImportResult {
+  createdCount: number;
+  failed: BulkImportFailureItem[];
+}

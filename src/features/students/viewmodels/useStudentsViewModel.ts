@@ -5,6 +5,8 @@ import type {
   RegisterStudentPayload,
   InventoryCard,
   BulkImportStudentRow,
+  BulkImportFailureItem,
+  BulkImportResult,
   UpdateStudentPayload,
 } from '../models';
 import { studentService } from '../services';
@@ -70,7 +72,7 @@ export interface UseStudentsViewModelReturn {
   handleRegisterStudent: (payload: RegisterStudentPayload) => Promise<void>;
   handleCardScannedForStudent: (studentId: string, uid: string, cardNumber?: string) => Promise<{ success: boolean; message: string }>;
   handleAutoPairSequential: () => Promise<{ pairedCount: number }>;
-  handleBulkImport: (newStudents: BulkImportStudentRow[], autoPair: boolean, onProgress?: (current: number, total: number) => void) => Promise<void>;
+  handleBulkImport: (newStudents: BulkImportStudentRow[], autoPair: boolean, onProgress?: (current: number, total: number) => void) => Promise<BulkImportResult>;
   handleQuickPair: (studentId: string, cardUid: string, cardNumber?: string) => Promise<{ success: boolean; message: string }>;
   handleUnlinkCard: (studentId: string, reason?: 'lost' | 'returned') => Promise<void>;
   handleUpdateStudent: (studentId: string, payload: UpdateStudentPayload) => Promise<StudentRecord>;
@@ -368,12 +370,13 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     newRows: BulkImportStudentRow[],
     autoPair: boolean,
     onProgress?: (current: number, total: number) => void
-  ) => {
+  ): Promise<BulkImportResult> => {
     const available = [...unassignedCards];
     let cardIdx = 0;
     let successCount = 0;
     let failureCount = 0;
     let lastError = '';
+    const failedItems: BulkImportFailureItem[] = [];
     const usedUids = new Set<string>();
 
     const preparedPayloads = newRows.map((row) => {
@@ -409,6 +412,13 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
             if (created.rfid_uid) usedUids.add(created.rfid_uid.toUpperCase());
           }
           if (result.failed.length > 0) {
+            for (const f of result.failed) {
+              failedItems.push({
+                student_id: f.student_id,
+                name: f.name,
+                error: f.error,
+              });
+            }
             lastError = result.failed[result.failed.length - 1].error;
           }
           onProgress?.(Math.min(i + batch.length, preparedPayloads.length), preparedPayloads.length);
@@ -417,8 +427,16 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
           if (err?.response?.status === 404) {
             bulkEndpointAvailable = false;
           } else {
+            const batchError = err?.response?.data?.error?.message || err?.message || 'Bulk registration failed';
             failureCount += batch.length;
-            lastError = err?.response?.data?.error?.message || err?.message || 'Bulk registration failed';
+            lastError = batchError;
+            for (const row of batch) {
+              failedItems.push({
+                student_id: row.student_id,
+                name: row.name,
+                error: batchError,
+              });
+            }
             onProgress?.(Math.min(i + batch.length, preparedPayloads.length), preparedPayloads.length);
             continue;
           }
@@ -436,8 +454,14 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
               successCount++;
               if (payload.rfid_uid) usedUids.add(payload.rfid_uid.toUpperCase());
             } catch (err: any) {
+              const rowErr = err?.response?.data?.error?.message || err?.message || 'Registration failed';
               failureCount++;
-              lastError = err?.response?.data?.error?.message || err?.message || 'Registration failed';
+              lastError = rowErr;
+              failedItems.push({
+                student_id: payload.student_id,
+                name: payload.name,
+                error: rowErr,
+              });
             }
           })
         );
@@ -454,11 +478,15 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     if (successCount > 0 && failureCount === 0) {
       toast.success(`Imported ${successCount} student${successCount === 1 ? '' : 's'} to the system!`);
     } else if (successCount > 0 && failureCount > 0) {
-      toast.info(`Imported ${successCount} students; ${failureCount} failed (${lastError}).`);
+      toast.info(`Imported ${successCount} student${successCount === 1 ? '' : 's'}; ${failureCount} flagged (${lastError}).`);
     } else {
-      toast.error(`Bulk import failed: ${lastError || 'Could not register students.'}`);
-      throw new Error(lastError || 'Bulk import failed');
+      toast.error(`Bulk import flagged ${failureCount} error${failureCount === 1 ? '' : 's'}: ${lastError || 'Could not register students.'}`);
     }
+
+    return {
+      createdCount: successCount,
+      failed: failedItems,
+    };
   };
 
   // 6. Quick Inline Link & Unlink Card
