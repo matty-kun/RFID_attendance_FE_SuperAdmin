@@ -6,7 +6,7 @@ import { studentService } from '../features/students/services/studentService';
 import { toast } from '../context';
 import type { StudentRosterStats } from '../features/students/models';
 import type { DashboardMetrics, EventRecord } from '../types';
-import hawi from '../assets/illustrations/Hawi Tap Card.png';
+import hawiPeeking from '../assets/illustrations/Hawi Peeking.png';
 // TEMP: Scan-to-Confirmation Time Tracking (Testing Only — remove before production)
 import { ScanTimingTestPanel } from '../components/testing/ScanTimingTestPanel';
 
@@ -52,13 +52,19 @@ export function OverviewPage() {
 
   return (
     <div className="space-y-6 pb-8">
-      <section className="relative overflow-hidden rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9">
-        <div className="relative z-10 max-w-[72%] sm:max-w-[68%]">
+      <section className="relative rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9">
+        <div className="relative z-10 max-w-[70%] sm:max-w-[65%]">
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]">{manilaDate()}</p>
           <h1 className="mt-3 text-2xl font-extrabold leading-tight sm:text-4xl">Attendance today</h1>
           <p className="mt-3 max-w-lg text-sm leading-relaxed text-[#EEE1FA]">{data?.event?.name || 'Student scans and checkpoint activity'}</p>
         </div>
-        <img src={hawi} alt="Hawi holding an RFID card" className="pointer-events-none absolute bottom-0 right-1 z-0 h-[88%] w-auto max-w-[36%] object-contain object-bottom sm:right-8" />
+        <div className="pointer-events-none absolute -bottom-4 -right-2 sm:-bottom-[22px] sm:-right-2.5 md:-bottom-[26px] md:-right-3 z-20">
+          <img
+            src={hawiPeeking}
+            alt="Hawi mascot peeking"
+            className="h-[195px] sm:h-[235px] md:h-[265px] w-auto object-contain drop-shadow-2xl"
+          />
+        </div>
       </section>
 
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
