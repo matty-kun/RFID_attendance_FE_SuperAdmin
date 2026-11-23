@@ -63,7 +63,12 @@ export function formatReportSessionLabel(
     if (validDay && !lower.includes(validDay.toLowerCase())) {
       parts.unshift(validDay);
     }
-    if (validPeriod && !lower.includes(validPeriod.toLowerCase())) {
+    const hasPeriodInSession =
+      lower.includes('morning') ||
+      lower.includes('afternoon') ||
+      lower.includes('evening') ||
+      lower.includes('session');
+    if (validPeriod && !lower.includes(validPeriod.toLowerCase()) && !hasPeriodInSession) {
       parts.push(validPeriod);
     }
     return parts.join(' · ');
