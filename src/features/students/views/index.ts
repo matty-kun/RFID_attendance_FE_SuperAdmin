@@ -5,3 +5,4 @@ export * from './BulkStudentImportModal';
 export * from './RegisterActionsDropdown';
 export * from './StudentProfileDrawer';
 export * from './DeleteStudentConfirmationModal';
+export * from './BulkPhotoImportModal';

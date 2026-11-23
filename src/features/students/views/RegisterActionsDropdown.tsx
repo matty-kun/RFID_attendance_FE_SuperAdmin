@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, ChevronDown, UserPlus, Zap, UploadCloud } from 'lucide-react';
+import { Plus, ChevronDown, UserPlus, Zap, UploadCloud, Camera } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 
 export interface RegisterActionsDropdownProps {
   onAddStudent: () => void;
   onRapidScan: () => void;
   onBulkImport: () => void;
+  onBulkPhotoImport?: () => void;
   className?: string;
 }
 
@@ -13,6 +14,7 @@ export const RegisterActionsDropdown: React.FC<RegisterActionsDropdownProps> = (
   onAddStudent,
   onRapidScan,
   onBulkImport,
+  onBulkPhotoImport,
   className,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -153,6 +155,29 @@ export const RegisterActionsDropdown: React.FC<RegisterActionsDropdownProps> = (
                 <p className="text-[11px] text-[#756883] line-clamp-1">Upload roster file with auto-pairing</p>
               </div>
             </button>
+
+            {/* 4. Bulk Photo Import */}
+            {onBulkPhotoImport && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => handleSelect(onBulkPhotoImport)}
+                className="flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left hover:bg-[#FAF8FC] transition-colors cursor-pointer"
+              >
+                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                  <Camera className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-[#24133F]">Bulk Import Photos</p>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded-md">
+                      ZIP / Folder
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#756883] line-clamp-1">Match &amp; upload photos by Student ID</p>
+                </div>
+              </button>
+            )}
           </div>
         </div>
       )}
