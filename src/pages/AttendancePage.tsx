@@ -410,6 +410,7 @@ export function AttendancePage() {
         await adminService.saveSessionLocations(targetSessionId, {
           time_in_location_ids: timeInLocationIds,
           time_out_location_ids: timeOutLocationIds,
+          skip_notification: true,
         });
       }
       await adminService.saveSessionOfficers(targetSessionId, updatedOfficers.flatMap((officer) => {
