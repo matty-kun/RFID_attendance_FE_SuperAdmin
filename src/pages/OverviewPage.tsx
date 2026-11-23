@@ -52,17 +52,17 @@ export function OverviewPage() {
 
   return (
     <div className="space-y-6 pb-8">
-      <section className="relative overflow-hidden rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9">
-        <div className="relative z-10 max-w-[72%] sm:max-w-[68%]">
+      <section className="relative rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9">
+        <div className="relative z-10 max-w-[70%] sm:max-w-[65%]">
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]">{manilaDate()}</p>
           <h1 className="mt-3 text-2xl font-extrabold leading-tight sm:text-4xl">Attendance today</h1>
           <p className="mt-3 max-w-lg text-sm leading-relaxed text-[#EEE1FA]">{data?.event?.name || 'Student scans and checkpoint activity'}</p>
         </div>
-        <div className="pointer-events-none absolute -bottom-3 -right-2 sm:-bottom-5 sm:right-4 md:-bottom-6 md:right-8 z-0">
+        <div className="pointer-events-none absolute -bottom-5 -right-3 sm:-bottom-8 sm:-right-6 md:-bottom-10 md:-right-8 z-20">
           <img
             src={hawiPeeking}
             alt="Hawi mascot peeking"
-            className="h-[155px] sm:h-[195px] md:h-[225px] w-auto object-contain drop-shadow-xl"
+            className="h-[185px] sm:h-[235px] md:h-[270px] w-auto object-contain drop-shadow-2xl"
           />
         </div>
       </section>
