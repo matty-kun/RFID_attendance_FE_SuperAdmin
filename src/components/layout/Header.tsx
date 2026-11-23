@@ -14,6 +14,7 @@ import {
   UsersRound,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import presntIcon from '../../assets/icon.png';
 
 const navigation = [
   { name: 'Overview', path: '/overview', icon: LayoutGrid },
@@ -150,8 +151,16 @@ export function Header() {
 
   return (
     <header className="relative flex min-h-[84px] flex-wrap items-center justify-between gap-2 pl-7 pr-11 py-3 md:flex-nowrap">
-      <NavLink to="/overview" className="z-10 text-[30px] font-extrabold leading-none tracking-tight text-[#24133F] md:text-[34px]">
-        Presnt
+      <NavLink
+        to="/overview"
+        aria-label="Presnt Overview"
+        className="z-10 flex items-center transition-transform hover:scale-105 active:scale-95"
+      >
+        <img
+          src={presntIcon}
+          alt="Presnt"
+          className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl shadow-xs object-cover"
+        />
       </NavLink>
 
       <nav aria-label="Main navigation" className="order-3 flex max-w-full gap-1.5 overflow-x-auto rounded-xl bg-[#F2F1F5] p-1.5 md:absolute md:left-[calc(50%+32px)] md:order-2 md:-translate-x-1/2">
