@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Archive, ArchiveRestore, ArrowDown, ArrowUp, ArrowUpDown, Check, CheckCircle2, CircleAlert, Clock, CreditCard, ExternalLink, FileText, Filter, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, ShieldCheck, Trash2, UserRound, X } from 'lucide-react';
+import { compareCardNumbers } from '../utils/cardSort';
 import { formatYearLevel } from '../utils/formatters';
 import { soundManager } from '../utils/audioFeedback';
 import { request } from '../services/apiClient';
@@ -71,23 +72,6 @@ const getActionPreposition = (action: string) => {
   if (act.includes('damag')) return 'by';
   return 'by';
 };
-
-export function extractCardNumberNumeric(cardNum: string): number {
-  if (!cardNum) return Number.MAX_SAFE_INTEGER;
-  const match = cardNum.match(/\d+/);
-  return match ? parseInt(match[0], 10) : Number.MAX_SAFE_INTEGER;
-}
-
-export function compareCardNumbers(a: string, b: string, dir: 'asc' | 'desc' = 'asc'): number {
-  const numA = extractCardNumberNumeric(a);
-  const numB = extractCardNumberNumeric(b);
-  if (numA !== numB) {
-    return dir === 'asc' ? numA - numB : numB - numA;
-  }
-  return dir === 'asc'
-    ? a.localeCompare(b, undefined, { numeric: true })
-    : b.localeCompare(a, undefined, { numeric: true });
-}
 
 export function CardsPage() {
   const [cards, setCards] = useState<Card[]>([]);
@@ -502,18 +486,21 @@ export function CardsPage() {
       <label className="flex h-10 min-w-[230px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100 sm:max-w-[320px]"><Search className="h-4 w-4 text-[#756883]" /><input aria-label="Search card number or UID" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search card number or UID" className="w-full bg-transparent text-xs outline-none placeholder:text-[#A59AAB]" /></label>
       <Dropdown value={status} onChange={value => { setStatus(value as Status | 'all'); setPage(1); }} options={statuses} icon={<Filter className="h-4 w-4" />} buttonClassName="min-w-[150px]" />
       <Dropdown
-        value={sortDirection}
+        value={`${sortField}:${sortDirection}`}
         onChange={(val) => {
-          setSortField('card_number');
-          setSortDirection(val as 'asc' | 'desc');
+          const [field, dir] = val.split(':');
+          setSortField(field as 'card_number' | 'created_at');
+          setSortDirection(dir as 'asc' | 'desc');
           setPage(1);
         }}
         options={[
-          { value: 'asc', label: 'Sort: 001 → 999 (Least to Greatest)' },
-          { value: 'desc', label: 'Sort: 999 → 001 (Greatest to Least)' },
+          { value: 'card_number:asc', label: 'Card No. (001 → 999)' },
+          { value: 'card_number:desc', label: 'Card No. (999 → 001)' },
+          { value: 'created_at:desc', label: 'Recently registered' },
+          { value: 'created_at:asc', label: 'Oldest registered' },
         ]}
         icon={<ArrowUpDown className="h-4 w-4 text-[#7026B7]" />}
-        buttonClassName="min-w-[220px]"
+        buttonClassName="min-w-[190px]"
       />
     </div>
     <div className="relative flex flex-col gap-2 2xl:block">
@@ -629,8 +616,8 @@ export function CardsPage() {
                       title={
                         sortField === 'card_number'
                           ? sortDirection === 'asc'
-                            ? 'Currently sorted least to greatest (001 → 999). Click to sort greatest to least.'
-                            : 'Currently sorted greatest to least (999 → 001). Click to sort least to greatest.'
+                            ? 'Sorted 001 → 999. Click to sort 999 → 001.'
+                            : 'Sorted 999 → 001. Click to sort 001 → 999.'
                           : 'Click to sort by Card No. (001 → 999)'
                       }
                     >
@@ -660,7 +647,39 @@ export function CardsPage() {
                 </th>
                 <th className="px-4 py-3 font-semibold">Status</th>
                 <th className="px-4 py-3 font-semibold">Current holder</th>
-                <th className="px-4 py-3 font-semibold">Registered</th>
+                <th className="px-4 py-3 font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (sortField === 'created_at') {
+                        setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'));
+                      } else {
+                        setSortField('created_at');
+                        setSortDirection('desc');
+                      }
+                      setPage(1);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 -ml-2 text-xs font-bold text-[#756883] hover:text-[#24133F] hover:bg-purple-100/60 transition-colors cursor-pointer group/sort"
+                    title={
+                      sortField === 'created_at'
+                        ? sortDirection === 'desc'
+                          ? 'Sorted newest first. Click to sort oldest first.'
+                          : 'Sorted oldest first. Click to sort newest first.'
+                        : 'Click to sort by registration date'
+                    }
+                  >
+                    <span>Registered</span>
+                    {sortField === 'created_at' ? (
+                      sortDirection === 'desc' ? (
+                        <ArrowDown className="h-3.5 w-3.5 text-[#7026B7]" />
+                      ) : (
+                        <ArrowUp className="h-3.5 w-3.5 text-[#7026B7]" />
+                      )
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 text-[#A59AAB] group-hover/sort:text-[#7026B7]" />
+                    )}
+                  </button>
+                </th>
                 <th className="px-4 py-3 text-right font-semibold">Actions</th>
               </tr>
             </thead>
