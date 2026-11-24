@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, Check, CheckCircle2, CircleAlert, Clock, CreditCard, ExternalLink, FileText, Filter, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, ShieldCheck, Trash2, UserRound, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, ArrowUpDown, Check, CheckCircle2, CircleAlert, Clock, CreditCard, ExternalLink, FileText, Filter, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, ShieldCheck, Trash2, UserRound, X } from 'lucide-react';
 import { formatYearLevel } from '../utils/formatters';
 import { soundManager } from '../utils/audioFeedback';
 import { request } from '../services/apiClient';
@@ -72,6 +72,23 @@ const getActionPreposition = (action: string) => {
   return 'by';
 };
 
+export function extractCardNumberNumeric(cardNum: string): number {
+  if (!cardNum) return Number.MAX_SAFE_INTEGER;
+  const match = cardNum.match(/\d+/);
+  return match ? parseInt(match[0], 10) : Number.MAX_SAFE_INTEGER;
+}
+
+export function compareCardNumbers(a: string, b: string, dir: 'asc' | 'desc' = 'asc'): number {
+  const numA = extractCardNumberNumeric(a);
+  const numB = extractCardNumberNumeric(b);
+  if (numA !== numB) {
+    return dir === 'asc' ? numA - numB : numB - numA;
+  }
+  return dir === 'asc'
+    ? a.localeCompare(b, undefined, { numeric: true })
+    : b.localeCompare(a, undefined, { numeric: true });
+}
+
 export function CardsPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const [total, setTotal] = useState(0);
@@ -80,6 +97,8 @@ export function CardsPage() {
   const [status, setStatus] = useState<Status | 'all'>('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [sortField, setSortField] = useState<'card_number' | 'created_at' | 'status'>('card_number');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const { showToast } = useToast();
   const [detail, setDetail] = useState<Detail | null>(null);
   const [detailReady, setDetailReady] = useState(false);
@@ -241,12 +260,42 @@ export function CardsPage() {
   const load = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const result = await request.get<{ cards: Card[]; total: number }>(`/cards?page=${page}&limit=25&status=${status}&q=${encodeURIComponent(search)}`);
-      setCards(result.cards); setTotal(result.total);
-    } catch (e) { showToast(message(e), 'error'); }
-    finally { if (showLoading) setLoading(false); }
-  }, [page, status, search]);
+      const result = await request.get<{ cards: Card[]; total: number }>(
+        `/cards?page=${page}&limit=25&status=${status}&q=${encodeURIComponent(search)}&sortBy=${sortField}&order=${sortDirection}`
+      );
+      // In-memory natural numeric sort to guarantee perfect 001-999 least-to-greatest order
+      const sortedCards = [...(result.cards || [])].sort((a, b) => {
+        if (sortField === 'card_number') {
+          return compareCardNumbers(a.card_number, b.card_number, sortDirection);
+        }
+        if (sortField === 'created_at') {
+          const tA = new Date(a.created_at).getTime();
+          const tB = new Date(b.created_at).getTime();
+          return sortDirection === 'asc' ? tA - tB : tB - tA;
+        }
+        return sortDirection === 'asc'
+          ? a.status.localeCompare(b.status)
+          : b.status.localeCompare(a.status);
+      });
+      setCards(sortedCards);
+      setTotal(result.total);
+    } catch (e) {
+      showToast(message(e), 'error');
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  }, [page, status, search, sortField, sortDirection]);
   useEffect(() => { void load(); }, [load]);
+
+  const toggleCardNumberSort = () => {
+    if (sortField === 'card_number') {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField('card_number');
+      setSortDirection('asc');
+    }
+    setPage(1);
+  };
   const loadSummary = useCallback(async () => {
     try { setSummary(await request.get<CardSummary>('/cards/summary')); }
     catch (e) { showToast(message(e), 'error'); }
@@ -449,9 +498,23 @@ export function CardsPage() {
       <div className="border-t border-[#E5E0EB] px-5 py-4 sm:border-r sm:border-t-0"><p className="text-xs text-[#756883]">Issued cards</p><p className="mt-1 text-2xl font-extrabold text-[#7026B7]">{summary?.issued ?? '—'}</p><p className="mt-0.5 text-xs text-[#A59AAB]">Currently with students</p></div>
       <div className="border-t border-[#E5E0EB] px-5 py-4 sm:border-t-0"><p className="text-xs text-[#756883]">Lost or damaged</p><p className="mt-1 text-2xl font-extrabold text-[#C24139]">{summary?.lost_or_damaged ?? '—'}</p><p className="mt-0.5 text-xs text-[#A59AAB]">Unavailable for issue</p></div>
     </div>
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <label className="flex h-10 min-w-[230px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100 sm:max-w-[320px]"><Search className="h-4 w-4 text-[#756883]" /><input aria-label="Search card number or UID" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search card number or UID" className="w-full bg-transparent text-xs outline-none placeholder:text-[#A59AAB]" /></label>
       <Dropdown value={status} onChange={value => { setStatus(value as Status | 'all'); setPage(1); }} options={statuses} icon={<Filter className="h-4 w-4" />} buttonClassName="min-w-[150px]" />
+      <Dropdown
+        value={sortDirection}
+        onChange={(val) => {
+          setSortField('card_number');
+          setSortDirection(val as 'asc' | 'desc');
+          setPage(1);
+        }}
+        options={[
+          { value: 'asc', label: 'Sort: 001 → 999 (Least to Greatest)' },
+          { value: 'desc', label: 'Sort: 999 → 001 (Greatest to Least)' },
+        ]}
+        icon={<ArrowUpDown className="h-4 w-4 text-[#7026B7]" />}
+        buttonClassName="min-w-[220px]"
+      />
     </div>
     <div className="relative flex flex-col gap-2 2xl:block">
       <aside aria-label="Bulk card actions" aria-live="polite" className="flex h-9 w-full shrink-0 gap-1 2xl:absolute 2xl:right-[calc(100%+16px)] 2xl:top-12 2xl:h-auto 2xl:w-32 2xl:flex-col">
@@ -559,7 +622,35 @@ export function CardsPage() {
                       disabled={!cards.length || bulkBusy}
                       onChange={(e) => setSelectedCardIds(e.target.checked ? cards.map(c => c.id) : [])}
                     />
-                    <span>Card No.</span>
+                    <button
+                      type="button"
+                      onClick={toggleCardNumberSort}
+                      className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 -ml-2 text-xs font-bold text-[#24133F] hover:bg-purple-100/60 transition-colors cursor-pointer group/sort"
+                      title={
+                        sortField === 'card_number'
+                          ? sortDirection === 'asc'
+                            ? 'Currently sorted least to greatest (001 → 999). Click to sort greatest to least.'
+                            : 'Currently sorted greatest to least (999 → 001). Click to sort least to greatest.'
+                          : 'Click to sort by Card No. (001 → 999)'
+                      }
+                    >
+                      <span>Card No.</span>
+                      {sortField === 'card_number' ? (
+                        sortDirection === 'asc' ? (
+                          <span className="flex items-center gap-0.5 text-[#7026B7]">
+                            <ArrowUp className="h-3.5 w-3.5" />
+                            <span className="text-[10px] font-semibold tracking-tight text-[#7026B7]/80">001-999</span>
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-0.5 text-[#7026B7]">
+                            <ArrowDown className="h-3.5 w-3.5" />
+                            <span className="text-[10px] font-semibold tracking-tight text-[#7026B7]/80">999-001</span>
+                          </span>
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 text-[#A59AAB] group-hover/sort:text-[#7026B7]" />
+                      )}
+                    </button>
                     {selectedCards.length > 0 && (
                       <span className="font-bold text-[#7026B7]">
                         {selectedCards.length} selected
