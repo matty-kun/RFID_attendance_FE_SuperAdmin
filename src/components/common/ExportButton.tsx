@@ -9,6 +9,7 @@ export interface ExportButtonProps {
   disabled?: boolean;
   className?: string;
   defaultFormat?: ExportFormat;
+  label?: string;
 }
 
 export const ExportButton: React.FC<ExportButtonProps> = ({
@@ -16,6 +17,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
   disabled = false,
   className,
   defaultFormat = 'xlsx',
+  label = 'Export',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>(defaultFormat);
@@ -90,7 +92,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
           className="flex items-center gap-2 pl-4 pr-3 text-xs font-bold rounded-l-2xl hover:bg-[#621FA3] active:translate-y-[3px] active:shadow-none transition-all disabled:pointer-events-none"
         >
           <Upload className="h-4 w-4 stroke-[2.5]" />
-          <span>Export</span>
+          <span>{label}</span>
         </button>
 
         {/* Thin vertical separator line matching screenshot */}

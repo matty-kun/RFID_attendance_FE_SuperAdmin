@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowRightLeft, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
+import { AlertCircle, ArrowRightLeft, CheckCircle2, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
 import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
@@ -64,8 +64,14 @@ export function ReportsPage() {
   const [knownCourses, setKnownCourses] = useState<string[]>([]);
   const [knownLocations, setKnownLocations] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFetchingPage, setIsFetchingPage] = useState(false);
   const [error, setError] = useState('');
   const requestId = useRef(0);
+  const pageCache = useRef<Map<number, Snapshot['rows']>>(new Map());
+  const pendingRequests = useRef<Map<number, Promise<Snapshot>>>(new Map());
+  const knownRowsMap = useRef<Map<string, ReportStudentAttendanceRow>>(new Map());
+  const prevFilterKey = useRef<string>('');
+
   const [session, setSession] = useState('all');
   const [event, setEvent] = useState('all');
   const [course, setCourse] = useState('all');
@@ -81,45 +87,140 @@ export function ReportsPage() {
   useEffect(() => { const timer = window.setTimeout(() => { setQuery(search.trim()); setPage(1); }, 250); return () => window.clearTimeout(timer); }, [search]);
   useEffect(() => { setPage(1); setSelected([]); }, [startDate, endDate, event, session, course, type, location]);
 
-  const params = useMemo(() => ({
-    startDate, endDate, page, limit: pageSize,
+  const filterParams = useMemo(() => ({
+    startDate, endDate, limit: pageSize,
     ...(event !== 'all' ? { eventId: event } : {}),
     ...(session !== 'all' ? { session } : {}),
     ...(course !== 'all' ? { course } : {}),
     ...(type !== 'all' ? { type } : {}),
     ...(location !== 'all' ? { location } : {}),
     ...(query ? { search: query } : {}),
-  }), [startDate, endDate, page, event, session, course, type, location, query]);
-  const loadReportsData = useCallback(async () => {
+  }), [startDate, endDate, event, session, course, type, location, query]);
+
+  const filterKey = useMemo(() => JSON.stringify(filterParams), [filterParams]);
+
+  const prefetchPage = useCallback((targetPage: number) => {
+    const total = snapshot?.rowTotal ?? 0;
+    if (targetPage < 1 || (targetPage - 1) * pageSize >= total) return;
+    if (pageCache.current.has(targetPage) || pendingRequests.current.has(targetPage)) return;
+
+    const promise = request.get<Snapshot>('/reports', {
+      params: { ...filterParams, page: targetPage },
+    }).then((res) => {
+      pageCache.current.set(targetPage, res.rows);
+      pendingRequests.current.delete(targetPage);
+      return res;
+    }).catch(() => {
+      pendingRequests.current.delete(targetPage);
+      return null as any;
+    });
+
+    pendingRequests.current.set(targetPage, promise);
+  }, [filterParams, snapshot?.rowTotal, pageSize]);
+
+  const handlePageChange = useCallback((newPage: number) => {
+    if (newPage === page || newPage < 1) return;
+    const maxPage = Math.max(1, Math.ceil((snapshot?.rowTotal ?? 0) / pageSize));
+    if (newPage > maxPage) return;
+
+    if (pageCache.current.has(newPage)) {
+      const cachedRows = pageCache.current.get(newPage)!;
+      setSnapshot((prev) => prev ? { ...prev, rows: cachedRows } : null);
+      setPage(newPage);
+      prefetchPage(newPage + 1);
+      return;
+    }
+
+    setPage(newPage);
+  }, [page, snapshot?.rowTotal, pageSize, prefetchPage]);
+
+  const loadReportsData = useCallback(async (isFullReload = false) => {
     const id = ++requestId.current;
-    setLoading(true);
+    if (isFullReload) {
+      setLoading(true);
+    } else {
+      setIsFetchingPage(true);
+    }
     setError('');
+
     try {
-      const result = await request.get<Snapshot>('/reports', { params });
+      let result: Snapshot;
+      if (pendingRequests.current.has(page)) {
+        result = await pendingRequests.current.get(page)!;
+      } else {
+        result = await request.get<Snapshot>('/reports', {
+          params: { ...filterParams, page, limit: pageSize },
+        });
+      }
+
       if (id === requestId.current) {
-        setSnapshot(result);
-        setSelected([]);
-        setKnownSessions((prev) =>
-          session === 'all'
-            ? result.sessionsOptions ?? []
-            : Array.from(new Set([...prev, ...(result.sessionsOptions ?? [])]))
-        );
-        setKnownCourses((prev) =>
-          course === 'all'
-            ? result.courseOptions ?? []
-            : Array.from(new Set([...prev, ...(result.courseOptions ?? [])]))
-        );
-        setKnownLocations((prev) =>
-          location === 'all'
-            ? result.locationOptions ?? []
-            : Array.from(new Set([...prev, ...(result.locationOptions ?? [])]))
-        );
+        pageCache.current.set(page, result.rows);
+        setSnapshot((prev) => {
+          if (!prev || isFullReload) return result;
+          return {
+            ...prev,
+            rows: result.rows,
+            rowTotal: result.rowTotal,
+          };
+        });
+
+        if (isFullReload) {
+          setKnownSessions((prev) =>
+            session === 'all'
+              ? result.sessionsOptions ?? []
+              : Array.from(new Set([...prev, ...(result.sessionsOptions ?? [])]))
+          );
+          setKnownCourses((prev) =>
+            course === 'all'
+              ? result.courseOptions ?? []
+              : Array.from(new Set([...prev, ...(result.courseOptions ?? [])]))
+          );
+          setKnownLocations((prev) =>
+            location === 'all'
+              ? result.locationOptions ?? []
+              : Array.from(new Set([...prev, ...(result.locationOptions ?? [])]))
+          );
+        }
+
+        if (page * pageSize < result.rowTotal) {
+          prefetchPage(page + 1);
+        }
       }
     } catch (err: any) {
-      if (id === requestId.current) setError(err?.response?.data?.error?.message || 'Could not load report records. Try again.');
-    } finally { if (id === requestId.current) setLoading(false); }
-  }, [params]);
-  useEffect(() => { void loadReportsData(); }, [loadReportsData]);
+      if (id === requestId.current) {
+        setError(err?.response?.data?.error?.message || 'Could not load report records. Try again.');
+      }
+    } finally {
+      if (id === requestId.current) {
+        setLoading(false);
+        setIsFetchingPage(false);
+      }
+    }
+  }, [filterParams, page, session, course, location, prefetchPage, pageSize]);
+
+  useEffect(() => {
+    const isFilterChanged = prevFilterKey.current !== filterKey;
+    if (isFilterChanged) {
+      prevFilterKey.current = filterKey;
+      pageCache.current.clear();
+      pendingRequests.current.clear();
+      if (page !== 1) {
+        setPage(1);
+        return;
+      }
+    }
+
+    if (!isFilterChanged && pageCache.current.has(page) && snapshot) {
+      const cachedRows = pageCache.current.get(page)!;
+      if (snapshot.rows !== cachedRows) {
+        setSnapshot((prev) => prev ? { ...prev, rows: cachedRows } : null);
+      }
+      prefetchPage(page + 1);
+      return;
+    }
+
+    void loadReportsData(isFilterChanged || !snapshot);
+  }, [filterKey, page, snapshot, loadReportsData, prefetchPage]);
 
   const sessions = knownSessions;
   const courses = knownCourses;
@@ -168,27 +269,36 @@ export function ReportsPage() {
     };
   }, [eventsById, event, snapshot]);
 
-  const filteredStudents: ReportStudentAttendanceRow[] = useMemo(
-    () => (snapshot?.rows ?? []).map((row, index) => mapReportRow(row, index)),
-    [snapshot, mapReportRow]
-  );
+  const filteredStudents: ReportStudentAttendanceRow[] = useMemo(() => {
+    const rows = (snapshot?.rows ?? []).map((row, index) => mapReportRow(row, index));
+    rows.forEach((r) => knownRowsMap.current.set(r.id, r));
+    return rows;
+  }, [snapshot?.rows, mapReportRow]);
 
   const handleExport = async (format: ExportFormat) => {
     try {
       const rows: ReportStudentAttendanceRow[] = [];
       if (selected.length) {
-        rows.push(...filteredStudents.filter(row => selected.includes(row.id)));
-      }
-      const totalPages = selected.length ? 0 : Math.ceil((snapshot?.rowTotal ?? 0) / 100);
-      for (let exportPage = 1; exportPage <= totalPages; exportPage++) {
-        const result = await request.get<Snapshot>('/reports', { params: { ...params, page: exportPage, limit: 100 } });
-        for (const row of result.rows) {
-          rows.push(mapReportRow(row, 0, result.sessions ?? []));
+        for (const id of selected) {
+          const row = knownRowsMap.current.get(id) || filteredStudents.find((r) => r.id === id);
+          if (row) rows.push(row);
+        }
+      } else {
+        const totalPages = Math.ceil((snapshot?.rowTotal ?? 0) / 100);
+        for (let exportPage = 1; exportPage <= totalPages; exportPage++) {
+          const result = await request.get<Snapshot>('/reports', {
+            params: { ...filterParams, page: exportPage, limit: 100 },
+          });
+          for (const row of result.rows) {
+            rows.push(mapReportRow(row, 0, result.sessions ?? []));
+          }
         }
       }
       const { exportAttendance } = await import('./reportExports');
       exportAttendance(rows, format, endDate);
-    } catch { setError('Could not export the report. Try again.'); }
+    } catch {
+      setError('Could not export the report. Try again.');
+    }
   };
   return (
     <div className="mx-auto w-full max-w-[1180px] space-y-6 text-[#24133F]">
@@ -206,7 +316,7 @@ export function ReportsPage() {
             <AlertCircle className="h-4 w-4 shrink-0" />
             {error}
           </span>
-          <button type="button" onClick={() => void loadReportsData()} className="text-xs font-bold underline">
+          <button type="button" onClick={() => void loadReportsData(true)} className="text-xs font-bold underline">
             Retry
           </button>
         </div>
@@ -275,6 +385,7 @@ export function ReportsPage() {
 
         <ExportButton
           className="ml-auto"
+          label={selected.length > 0 ? `Export (${selected.length})` : 'Export'}
           onExport={(format) => { void handleExport(format); }}
           disabled={loading || !snapshot?.rowTotal}
         />
@@ -535,15 +646,57 @@ export function ReportsPage() {
           </label>
         </div>
 
+        {/* Selection & Export Indicator Banner */}
+        {selected.length > 0 && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-[#F6EFFE] to-[#FAF5FF] border border-[#E9D7FE] px-4 py-3 text-xs text-[#24133F] animate-in fade-in slide-in-from-top-2 duration-200 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#7026B7] text-white text-[11px] font-bold shrink-0 shadow-sm">
+                {selected.length}
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <CheckCircle2 className="h-4 w-4 text-[#7026B7] shrink-0" />
+                <span className="font-bold text-[#24133F]">
+                  {selected.length} {selected.length === 1 ? 'student' : 'students'} selected for export
+                </span>
+                <span className="text-[#756883] ml-1 hidden sm:inline">
+                  — Export will only download these selected records.
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <ExportButton
+                label={`Export Selected (${selected.length})`}
+                onExport={(format) => { void handleExport(format); }}
+              />
+              <button
+                type="button"
+                onClick={() => setSelected([])}
+                className="h-10 px-3.5 rounded-2xl border border-[#D6BBFB] bg-white font-bold text-xs text-[#7026B7] hover:bg-[#F3E8FF] active:scale-95 transition-all shadow-sm"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="mt-5 overflow-x-auto">
           <table className="w-full min-w-[780px] text-left text-xs">
             <thead>
               <tr className="text-[#756883] font-medium">
                 <th className="w-10 py-3.5 pr-4">
                   <Checkbox
-                    aria-label="Select all students"
-                    checked={filteredStudents.length > 0 && selected.length === filteredStudents.length}
-                    onChange={(e) => setSelected(e.target.checked ? filteredStudents.map((r) => r.id) : [])}
+                    aria-label="Select all students on page"
+                    checked={filteredStudents.length > 0 && filteredStudents.every((r) => selected.includes(r.id))}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        const pageIds = filteredStudents.map((r) => r.id);
+                        setSelected((prev) => Array.from(new Set([...prev, ...pageIds])));
+                      } else {
+                        const pageIdSet = new Set(filteredStudents.map((r) => r.id));
+                        setSelected((prev) => prev.filter((id) => !pageIdSet.has(id)));
+                      }
+                    }}
                   />
                 </th>
                 <th className="px-4 py-3.5 font-medium whitespace-nowrap">Name</th>
@@ -555,7 +708,7 @@ export function ReportsPage() {
                 <th className="px-4 py-3.5 font-medium whitespace-nowrap">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#F1EEF4]">
+            <tbody className={`divide-y divide-[#F1EEF4] transition-opacity duration-150 ${isFetchingPage ? 'opacity-40 pointer-events-none' : ''}`}>
               {filteredStudents.map((record) => (
                 <tr key={record.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="py-3.5 pr-4">
@@ -625,14 +778,18 @@ export function ReportsPage() {
         </div>
       </section>
       <div className="flex items-center justify-between text-xs text-[#756883]">
-        <span>{(snapshot?.rowTotal ?? 0).toLocaleString()} records · Page {page} of {Math.max(1, Math.ceil((snapshot?.rowTotal ?? 0) / pageSize))}</span>
+        <span>
+          {(snapshot?.rowTotal ?? 0).toLocaleString()} records · Page {page} of {Math.max(1, Math.ceil((snapshot?.rowTotal ?? 0) / pageSize))}
+          {isFetchingPage && <span className="ml-2 inline-flex items-center text-[#7026B7] font-medium animate-pulse">Loading page…</span>}
+        </span>
         <div className="flex gap-2">
           <Button
             type="button"
             variant="secondary"
             size="sm"
-            disabled={loading || page <= 1}
-            onClick={() => setPage(page - 1)}
+            disabled={loading || isFetchingPage || page <= 1}
+            onMouseEnter={() => prefetchPage(page - 1)}
+            onClick={() => handlePageChange(page - 1)}
           >
             Previous
           </Button>
@@ -640,8 +797,9 @@ export function ReportsPage() {
             type="button"
             variant="secondary"
             size="sm"
-            disabled={loading || page * pageSize >= (snapshot?.rowTotal ?? 0)}
-            onClick={() => setPage(page + 1)}
+            disabled={loading || isFetchingPage || page * pageSize >= (snapshot?.rowTotal ?? 0)}
+            onMouseEnter={() => prefetchPage(page + 1)}
+            onClick={() => handlePageChange(page + 1)}
           >
             Next
           </Button>
