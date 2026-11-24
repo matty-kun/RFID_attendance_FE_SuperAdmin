@@ -1,8 +1,10 @@
 // TEMP: Scan-to-Confirmation Time Tracking (Testing Only — remove this file and its import before production)
-import { useCallback, useEffect, useState } from 'react';
-import { AlertCircle, Clock, FlaskConical, RefreshCw, Timer } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertCircle, Clock, FlaskConical, RefreshCw, Timer, Trash2, X } from 'lucide-react';
 import { request } from '../../services/apiClient';
 import { adminService } from '../../services/adminService';
+import { Button } from '../common/Button';
+import { toast } from '../../context';
 import type { EventRecord } from '../../types';
 
 interface ScanTimingRecordItem {
@@ -14,6 +16,8 @@ interface ScanTimingRecordItem {
   event_name: string;
   session_id: string;
   session_name: string;
+  session_date?: string | null;
+  day_number?: number | null;
   location_name: string;
   type: 'time_in' | 'time_out';
   recorded_at: string;
@@ -39,6 +43,7 @@ interface ScanTimingMetricsResponse {
     max_duration_ms: number | null;
   };
   event_averages: EventScanTimingAverage[];
+  available_days?: number[];
   records: ScanTimingRecordItem[];
 }
 
@@ -72,9 +77,12 @@ function formatDuration(ms: number | null): string {
 export function ScanTimingTestPanel() {
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
+  const [selectedDay, setSelectedDay] = useState<string>('all');
   const [metrics, setMetrics] = useState<ScanTimingMetricsResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
+  const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
+  const [isResetting, setIsResetting] = useState<boolean>(false);
 
   useEffect(() => {
     void adminService
@@ -85,6 +93,19 @@ export function ScanTimingTestPanel() {
       });
   }, []);
 
+  const availableDays = useMemo(() => {
+    if (metrics?.available_days && metrics.available_days.length > 0) {
+      return metrics.available_days;
+    }
+    const days = new Set<number>();
+    (metrics?.records ?? []).forEach((r) => {
+      if (typeof r.day_number === 'number') {
+        days.add(r.day_number);
+      }
+    });
+    return Array.from(days).sort((a, b) => a - b);
+  }, [metrics]);
+
   const loadMetrics = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -92,6 +113,9 @@ export function ScanTimingTestPanel() {
       const params: Record<string, string | number> = { limit: 50 };
       if (selectedEventId !== 'all') {
         params.eventId = selectedEventId;
+      }
+      if (selectedDay !== 'all') {
+        params.day = selectedDay;
       }
       const data = await request.get<ScanTimingMetricsResponse>(
         '/attendance/scan-timing-metrics',
@@ -106,11 +130,45 @@ export function ScanTimingTestPanel() {
     } finally {
       setLoading(false);
     }
-  }, [selectedEventId]);
+  }, [selectedEventId, selectedDay]);
 
   useEffect(() => {
     void loadMetrics();
   }, [loadMetrics]);
+
+  const handleConfirmReset = async () => {
+    setIsResetting(true);
+    try {
+      const params: Record<string, string | number> = {};
+      if (selectedEventId !== 'all') {
+        params.eventId = selectedEventId;
+      }
+      if (selectedDay !== 'all') {
+        params.day = selectedDay;
+      }
+
+      const res = await request.delete<{ deleted_count: number }>(
+        '/attendance/scan-timing-metrics',
+        { params }
+      );
+      toast.success(
+        `Reset complete: ${res?.deleted_count ?? 0} test scan record(s) deleted. Ready for fresh testing!`
+      );
+      setIsResetModalOpen(false);
+      await loadMetrics();
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.error?.message || 'Failed to delete test scan records.'
+      );
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  const selectedEventName =
+    selectedEventId === 'all'
+      ? 'All Events'
+      : events.find((e) => e.id === selectedEventId)?.name || 'Selected Event';
 
   return (
     <section
@@ -135,10 +193,14 @@ export function ScanTimingTestPanel() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Event Filter */}
           <select
             aria-label="Filter scan timing by event"
             value={selectedEventId}
-            onChange={(e) => setSelectedEventId(e.target.value)}
+            onChange={(e) => {
+              setSelectedEventId(e.target.value);
+              setSelectedDay('all');
+            }}
             className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 text-xs font-semibold text-[#24133F] focus:border-[#7026B7] focus:outline-none"
           >
             <option value="all">All Events</option>
@@ -149,6 +211,28 @@ export function ScanTimingTestPanel() {
             ))}
           </select>
 
+          {/* Day Filter */}
+          <select
+            aria-label="Filter scan timing by day"
+            value={selectedDay}
+            onChange={(e) => setSelectedDay(e.target.value)}
+            className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 text-xs font-semibold text-[#24133F] focus:border-[#7026B7] focus:outline-none"
+          >
+            <option value="all">All Days</option>
+            {availableDays.length > 0 ? (
+              availableDays.map((d) => (
+                <option key={d} value={d}>
+                  Day {d}
+                </option>
+              ))
+            ) : (
+              <>
+                <option value="1">Day 1</option>
+                <option value="2">Day 2</option>
+              </>
+            )}
+          </select>
+
           <button
             type="button"
             onClick={() => void loadMetrics()}
@@ -157,6 +241,18 @@ export function ScanTimingTestPanel() {
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
+          </button>
+
+          {/* Reset / Delete Test Data Button */}
+          <button
+            type="button"
+            onClick={() => setIsResetModalOpen(true)}
+            disabled={loading || !metrics?.overall.total_tracked_scans}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 transition hover:bg-rose-100 disabled:opacity-40"
+            title="Delete test scan records to start with fresh data"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+            Reset Data
           </button>
         </div>
       </div>
@@ -289,7 +385,14 @@ export function ScanTimingTestPanel() {
                       <p className="text-[11px] text-[#756883]">{rec.student_number}</p>
                     </td>
                     <td className="px-4 py-2.5">
-                      <p className="font-semibold text-[#24133F]">{rec.event_name}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="font-semibold text-[#24133F]">{rec.event_name}</p>
+                        {typeof rec.day_number === 'number' && (
+                          <span className="inline-flex rounded-md bg-purple-100 px-1.5 py-0.5 text-[10px] font-black text-purple-700">
+                            Day {rec.day_number}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[11px] text-[#756883]">
                         {rec.session_name} · {rec.location_name}
                       </p>
@@ -327,6 +430,76 @@ export function ScanTimingTestPanel() {
           </table>
         </div>
       </div>
+
+      {/* Reset Confirmation Modal */}
+      {isResetModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+        >
+          <div className="w-full max-w-md rounded-3xl border border-[#E5E0EB] bg-white p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
+                  <Trash2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-[#24133F]">
+                    Reset Test Scan Data
+                  </h3>
+                  <p className="text-xs text-[#756883]">
+                    Clean slate for RFID benchmark re-testing
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !isResetting && setIsResetModalOpen(false)}
+                className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-rose-100 bg-rose-50/60 p-4 text-xs text-rose-900 space-y-1.5">
+              <p className="font-bold">
+                Delete test scan records for:
+              </p>
+              <ul className="list-disc list-inside text-[11px] text-rose-800 space-y-0.5">
+                <li>Event: <span className="font-bold">{selectedEventName}</span></li>
+                <li>Filter: <span className="font-bold">{selectedDay === 'all' ? 'All Days' : `Day ${selectedDay}`}</span></li>
+                <li>Records to clear: <span className="font-bold">{metrics?.overall.total_tracked_scans.toLocaleString() ?? 0} scan(s)</span></li>
+              </ul>
+              <p className="pt-1 text-[11px] text-[#756883]">
+                This permanently deletes the test attendance records so students can be tapped again fresh.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5E0EB]">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={isResetting}
+                onClick={() => setIsResetModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                isLoading={isResetting}
+                disabled={isResetting}
+                onClick={() => void handleConfirmReset()}
+              >
+                Yes, Delete & Reset Data
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
