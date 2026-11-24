@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractCardNumberNumeric, compareCardNumbers } from './CardsPage';
+import { extractCardNumberNumeric, compareCardNumbers } from '../utils/cardSort';
 
 describe('RFID Card Number Sorting (Least to Greatest 001 to 999)', () => {
   it('extracts numeric value correctly from card number strings', () => {
