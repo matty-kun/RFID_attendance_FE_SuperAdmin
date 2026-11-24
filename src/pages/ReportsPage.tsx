@@ -536,7 +536,7 @@ export function ReportsPage() {
         </div>
 
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-max text-left text-xs">
+          <table className="w-full min-w-[780px] text-left text-xs">
             <thead>
               <tr className="text-[#756883] font-medium">
                 <th className="w-10 py-3.5 pr-4">
@@ -546,13 +546,13 @@ export function ReportsPage() {
                     onChange={(e) => setSelected(e.target.checked ? filteredStudents.map((r) => r.id) : [])}
                   />
                 </th>
-                <th className="px-4 py-3.5 font-medium whitespace-nowrap w-[20%]">Name</th>
-                <th className="px-4 py-3.5 font-medium whitespace-nowrap w-[18%]">Course</th>
-                <th className="px-4 py-3.5 font-medium whitespace-nowrap w-[13%]">Event</th>
-                <th className="px-4 py-3.5 font-medium whitespace-nowrap w-[17%]">Session</th>
-                <th className="px-4 py-3.5 text-center font-medium whitespace-nowrap w-[10%]">Time In</th>
-                <th className="px-4 py-3.5 text-center font-medium whitespace-nowrap w-[10%]">Time Out</th>
-                <th className="px-4 py-3.5 font-medium whitespace-nowrap w-[12%]">Status</th>
+                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Name</th>
+                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Course</th>
+                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Event</th>
+                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Session</th>
+                <th className="px-4 py-3.5 text-center font-medium whitespace-nowrap">Time In</th>
+                <th className="px-4 py-3.5 text-center font-medium whitespace-nowrap">Time Out</th>
+                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F1EEF4]">
