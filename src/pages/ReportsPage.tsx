@@ -451,8 +451,10 @@ export function ReportsPage() {
               {trendData.map((item) => (
                 <div key={item.day} className="group relative flex h-full flex-1 flex-col items-center justify-end">
                   {/* Tooltip */}
-                  <div className="pointer-events-none absolute -top-8 z-10 hidden rounded-lg bg-[#24133F] px-3 py-1.5 text-[11px] font-medium text-white shadow-xl group-hover:block whitespace-nowrap">
-                    {item.day}: {item.present} Time In · {item.absent} Time Out
+                  <div className="pointer-events-none absolute -top-8 z-10 hidden rounded-xl bg-white border border-[#E5E0EB] px-3 py-1.5 text-[11px] font-semibold text-[#24133F] shadow-lg group-hover:block whitespace-nowrap">
+                    <span className="font-bold">{item.day}:</span>{' '}
+                    <span className="text-emerald-600 font-bold">{item.present} Time In</span> ·{' '}
+                    <span className="text-rose-600 font-bold">{item.absent} Time Out</span>
                   </div>
 
                   {/* Stacked Stadium Bars */}

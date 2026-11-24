@@ -171,23 +171,23 @@ export function OverviewPage() {
                         {/* Floating Tooltip */}
                         {isHovered && (
                           <div className="absolute -top-14 z-30 flex flex-col items-center pointer-events-none animate-in fade-in zoom-in-95 duration-100">
-                            <div className="rounded-xl bg-[#24133F] px-3 py-1.5 text-center text-white shadow-xl text-[11px] whitespace-nowrap">
-                              <span className="font-extrabold text-xs">
-                                {formatDay(day.date)} <span className="font-normal text-purple-300 text-[10px]">({total} {total === 1 ? 'scan' : 'scans'})</span>
+                            <div className="rounded-xl bg-white border border-[#E5E0EB] px-3 py-1.5 text-center text-[#24133F] shadow-lg text-[11px] whitespace-nowrap">
+                              <span className="font-extrabold text-xs text-[#24133F]">
+                                {formatDay(day.date)} <span className="font-semibold text-[#7026B7] text-[10px]">({total} {total === 1 ? 'scan' : 'scans'})</span>
                               </span>
                               <div className="flex items-center justify-center gap-2 mt-0.5 text-[11px]">
-                                <span className="flex items-center gap-1 text-emerald-400 font-bold">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                                <span className="flex items-center gap-1 text-emerald-600 font-bold">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                                   In: {day.timeIns}
                                 </span>
-                                <span className="text-slate-400">·</span>
-                                <span className="flex items-center gap-1 text-rose-400 font-bold">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+                                <span className="text-slate-300">·</span>
+                                <span className="flex items-center gap-1 text-rose-600 font-bold">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
                                   Out: {day.timeOuts}
                                 </span>
                               </div>
                             </div>
-                            <div className="h-1.5 w-1.5 -rotate-45 bg-[#24133F] -mt-0.5" />
+                            <div className="h-1.5 w-1.5 -rotate-45 bg-white border-b border-r border-[#E5E0EB] -mt-1" />
                           </div>
                         )}
 
