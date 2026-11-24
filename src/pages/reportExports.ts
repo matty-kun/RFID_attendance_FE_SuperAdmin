@@ -79,8 +79,8 @@ export async function exportAttendance(
   if (format === 'pdf') {
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     // Total printable width = 277mm (10mm left + 10mm right margin on 297mm A4 landscape)
-    // Generous widths with balanced spacing between Event and Session
-    const widths = [44, 42, 54, 55, 25, 25, 32];
+    // Balanced column widths: trimmed Event (36mm) and Session (46mm) to eliminate excessive gap
+    const widths = [52, 48, 36, 46, 26, 26, 43];
     const xPositions = widths.reduce<number[]>(
       (positions, width) => [...positions, positions.at(-1)! + width],
       [10]
@@ -172,6 +172,10 @@ export async function exportAttendance(
           (value, colIndex) =>
             new TableCell({
               margins: { top: 100, bottom: 100, left: 140, right: 140 },
+              width: {
+                size: [19, 17, 13, 17, 9, 9, 16][colIndex],
+                type: WidthType.PERCENTAGE,
+              },
               shading:
                 rowIndex === 0
                   ? { type: ShadingType.CLEAR, fill: 'F0E8FC' }
