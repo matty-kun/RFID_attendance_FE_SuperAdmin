@@ -39,7 +39,10 @@ export function buildReportExportRowValues(row: ReportStudentAttendanceRow): str
   ].map((v) => (v && v.trim() ? v.trim() : '-'));
 }
 
-const safeCell = (value: string) => (/^[=+\-@\t\r]/.test(value) ? `'${value}` : value);
+export const safeCell = (value: string) => {
+  if (!value || /^[-–—\s]+$/.test(value)) return value || '-';
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+};
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -76,14 +79,15 @@ export async function exportAttendance(
   if (format === 'pdf') {
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     // Total printable width = 277mm (10mm left + 10mm right margin on 297mm A4 landscape)
-    const widths = [46, 46, 46, 52, 26, 26, 35];
+    // Generous widths with balanced spacing between Event and Session
+    const widths = [44, 42, 54, 55, 25, 25, 32];
     const xPositions = widths.reduce<number[]>(
       (positions, width) => [...positions, positions.at(-1)! + width],
       [10]
     );
     const centeredCols = new Set([4, 5]); // Time In, Time Out
     const lineHeight = 4.6;
-    const cellPadX = 3;
+    const cellPadX = 3.5;
     const rowPadTop = 4.8;
     const rowPadBottom = 3.2;
 

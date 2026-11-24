@@ -3,6 +3,7 @@ import {
   REPORT_EXPORT_HEADERS,
   formatReportSessionLabel,
   buildReportExportRowValues,
+  safeCell,
 } from './reportExports';
 
 describe('SA-12 Report Exports — Non-Redundant Columns & Formatting', () => {
@@ -44,6 +45,37 @@ describe('SA-12 Report Exports — Non-Redundant Columns & Formatting', () => {
         period: 'Afternoon',
       })
     ).toBe('Day 2 · Afternoon');
+  });
+
+  it('strips redundant trailing and leading hyphens from session names', () => {
+    expect(
+      formatReportSessionLabel({
+        session: 'Day 1 - ',
+        day: 'Day 1',
+        period: 'Morning',
+      })
+    ).toBe('Day 1 · Morning');
+
+    expect(
+      formatReportSessionLabel({
+        session: ' - Morning Session - ',
+        day: '',
+        period: '',
+      })
+    ).toBe('Morning Session');
+  });
+
+  it('safeguards Excel cells while preserving clean dashes without leading quotes', () => {
+    // Empty timestamps / missing values show as clean '-' in Excel, NOT "'-"
+    expect(safeCell('-')).toBe('-');
+    expect(safeCell('--')).toBe('--');
+    expect(safeCell('')).toBe('-');
+
+    // Formula injection attempts are safely quoted
+    expect(safeCell('=SUM(A1:B10)')).toBe("'=SUM(A1:B10)");
+    expect(safeCell('+12345')).toBe("'+12345");
+    expect(safeCell('@cmd')).toBe("'@cmd");
+    expect(safeCell('-10+20')).toBe("'-10+20");
   });
 
   it('builds 7-column export rows cleanly with "-" fallbacks', () => {

@@ -46,20 +46,26 @@ export interface ReportStudentAttendanceRow {
 /**
  * Formats a concise, non-redundant Session label.
  * Avoids repeating Day or Period when the session name already contains them.
+ * Cleans trailing or leading hyphens/dashes to prevent redundant punctuation.
  */
 export function formatReportSessionLabel(
   row: Pick<ReportStudentAttendanceRow, 'session' | 'day' | 'period'>
 ): string {
-  const session = (row.session || '').trim();
-  const day = (row.day || '').trim();
-  const period = (row.period || '').trim();
+  const rawSession = (row.session || '').trim();
+  const rawDay = (row.day || '').trim();
+  const rawPeriod = (row.period || '').trim();
 
-  const validDay = day && day !== '-' ? day : '';
-  const validPeriod = period && period !== '-' ? period : '';
+  // Strip leading/trailing dashes, hyphens, and whitespace
+  const cleanDay = rawDay.replace(/^[-–—\s]+|[-–—\s]+$/g, '').trim();
+  const cleanPeriod = rawPeriod.replace(/^[-–—\s]+|[-–—\s]+$/g, '').trim();
+  const cleanSession = rawSession.replace(/^[-–—\s]+|[-–—\s]+$/g, '').trim();
 
-  if (session && session !== '-') {
-    const lower = session.toLowerCase();
-    const parts = [session];
+  const validDay = cleanDay && cleanDay !== '-' ? cleanDay : '';
+  const validPeriod = cleanPeriod && cleanPeriod !== '-' ? cleanPeriod : '';
+
+  if (cleanSession && cleanSession !== '-') {
+    const lower = cleanSession.toLowerCase();
+    const parts = [cleanSession];
     if (validDay && !lower.includes(validDay.toLowerCase())) {
       parts.unshift(validDay);
     }

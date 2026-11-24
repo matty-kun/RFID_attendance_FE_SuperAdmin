@@ -23,6 +23,19 @@ export interface RapidCardScanDrawerProps {
   ) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string };
 }
 
+export function sanitizePrintedCardSuffix(raw: string): string {
+  return raw
+    .replace(/^RFID-?/i, '')
+    .replace(/^-+/, '')
+    .replace(/[^A-Z0-9-]/gi, '')
+    .toUpperCase();
+}
+
+export function formatPrintedCardNumber(raw: string): string {
+  const suffix = sanitizePrintedCardSuffix(raw);
+  return suffix ? `RFID-${suffix}` : '';
+}
+
 export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
   isOpen,
   onClose,
@@ -54,6 +67,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
   const pendingScansRef = useRef<string[]>([]);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const successTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const cardCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Reset & pre-warm audio context on open
   useEffect(() => {
@@ -73,23 +87,34 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
         clearTimeout(timer);
         if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
         if (successTimerRef.current) clearTimeout(successTimerRef.current);
+        if (cardCheckTimeoutRef.current) clearTimeout(cardCheckTimeoutRef.current);
       };
     }
   }, [isOpen]);
 
-  // Global window listener: redirect hardware scanner keystrokes to inputRef if drawer is open
+  // Global window listener: redirect hardware scanner keystrokes to active input if drawer is open
   useEffect(() => {
     if (!isOpen) return;
 
     const handleWindowKeyDown = (e: KeyboardEvent) => {
       // Do not redirect if another drawer is stacked on top
       if (getOpenDrawerCount() > 1) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       const target = e.target as HTMLElement | null;
+
+      // If pending new card input is active, ensure focus is redirected there
+      if (pendingNewCard) {
+        if (target !== newCardInputRef.current && (e.key.length === 1 || e.key === 'Enter')) {
+          newCardInputRef.current?.focus();
+        }
+        return;
+      }
+
       if (target && target.tagName === 'INPUT' && target !== inputRef.current) return;
       if (target && target.tagName === 'TEXTAREA') return;
 
-      if (document.activeElement !== inputRef.current && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (document.activeElement !== inputRef.current) {
         if (e.key.length === 1 || e.key === 'Enter') {
           inputRef.current?.focus();
         }
@@ -98,52 +123,81 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
 
     window.addEventListener('keydown', handleWindowKeyDown);
     return () => window.removeEventListener('keydown', handleWindowKeyDown);
-  }, [isOpen]);
+  }, [isOpen, pendingNewCard]);
 
+  // Immediately focus new card input whenever pending new card prompt opens
+  useEffect(() => {
+    if (pendingNewCard) {
+      requestAnimationFrame(() => {
+        newCardInputRef.current?.focus();
+        newCardInputRef.current?.select();
+      });
+    }
+  }, [pendingNewCard]);
 
   const handleConfirmNewCard = async () => {
-    if (!pendingNewCard || !pendingCardNumberInput.trim() || isProcessing) return;
+    if (!pendingNewCard || !pendingCardNumberInput.trim()) return;
     const { student, uid } = pendingNewCard;
-    if (duplicateCardError) return;
-    const cleanSuffix = pendingCardNumberInput.trim().replace(/^RFID-?/i, '').toUpperCase();
-    const formattedNumber = `RFID-${cleanSuffix}`;
+    const cleanSuffix = sanitizePrintedCardSuffix(pendingCardNumberInput);
+    if (!cleanSuffix) return;
 
-    isProcessingRef.current = true;
+    const formattedNumber = formatPrintedCardNumber(cleanSuffix);
+
+    const localStudentConflict = (students || []).some(
+      (s) => s.card_number?.toUpperCase() === formattedNumber && s.id !== student.id
+    );
+    if (localStudentConflict || duplicateCardError) {
+      soundManager.playErrorBuzz();
+      setDuplicateCardError(duplicateCardError || `${formattedNumber} is already registered`);
+      return;
+    }
+
+    if (cardCheckTimeoutRef.current) {
+      clearTimeout(cardCheckTimeoutRef.current);
+      cardCheckTimeoutRef.current = null;
+    }
+
+    // --- INSTANT OPTIMISTIC ACCEPTANCE (0ms UI delay) ---
+    soundManager.playSuccessBeep();
+    setAssignedCount((prev) => prev + 1);
+    setLastScanned({
+      uid,
+      studentName: student.name,
+      studentId: student.student_id,
+    });
+
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    successTimerRef.current = setTimeout(() => {
+      setLastScanned(null);
+    }, 1800);
+
+    // Immediately clear modal and advance queue without waiting for API
+    setPendingNewCard(null);
+    setPendingCardNumberInput('');
+    setDuplicateCardError('');
+    setIsProcessing(false);
+    isProcessingRef.current = false;
     lastAssignedStudentIdRef.current = student.id;
-    setIsProcessing(true);
 
+    // Immediately refocus main USB scanner listener for next tap
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+
+    // Background server sync
     try {
       const res = await onCardScannedForStudent(student.id, uid, formattedNumber);
-      if (res.success) {
-        soundManager.playSuccessBeep();
-        setAssignedCount((prev) => prev + 1);
-        setLastScanned({
-          uid,
-          studentName: student.name,
-          studentId: student.student_id,
-        });
-
-        if (successTimerRef.current) clearTimeout(successTimerRef.current);
-        successTimerRef.current = setTimeout(() => {
-          setLastScanned(null);
-        }, 1800);
-
-        setPendingNewCard(null);
-        setPendingCardNumberInput('');
-        setDuplicateCardError('');
-      } else {
+      if (!res.success) {
         lastAssignedStudentIdRef.current = null;
         soundManager.playErrorBuzz();
-        setDuplicateCardError(res.message || `${formattedNumber} is already in use`);
+        setAssignedCount((prev) => Math.max(0, prev - 1));
+        toast.error(res.message || `${formattedNumber} failed to link`);
       }
     } catch (err: any) {
       lastAssignedStudentIdRef.current = null;
       soundManager.playErrorBuzz();
-      setDuplicateCardError(err?.message || `${formattedNumber} is already in use`);
-    } finally {
-      isProcessingRef.current = false;
-      setIsProcessing(false);
-      setTimeout(() => newCardInputRef.current?.focus(), 100);
+      setAssignedCount((prev) => Math.max(0, prev - 1));
+      toast.error(err?.message || `${formattedNumber} failed to link`);
     }
   };
 
@@ -277,7 +331,10 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
         setPendingCardNumberInput('');
         isProcessingRef.current = false;
         setIsProcessing(false);
-        setTimeout(() => newCardInputRef.current?.focus(), 80);
+        requestAnimationFrame(() => {
+          newCardInputRef.current?.focus();
+          newCardInputRef.current?.select();
+        });
       }
     },
     [currentStudent, students, onCardScannedForStudent]
@@ -393,25 +450,47 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
                         RFID-
                       </span>
                       <input
-                        ref={newCardInputRef}
+                        ref={(el) => {
+                          (newCardInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+                          if (el && document.activeElement !== el) {
+                            el.focus();
+                          }
+                        }}
                         type="text"
                         autoFocus
                         value={pendingCardNumberInput}
                         onChange={(e) => {
-                          const raw = e.target.value;
-                          const clean = raw.replace(/^RFID-?/i, '').replace(/[^A-Z0-9-]/gi, '').toUpperCase();
+                          const clean = sanitizePrintedCardSuffix(e.target.value);
                           setPendingCardNumberInput(clean);
+
+                          if (cardCheckTimeoutRef.current) {
+                            clearTimeout(cardCheckTimeoutRef.current);
+                            cardCheckTimeoutRef.current = null;
+                          }
+
                           if (clean) {
-                            const candidate = `RFID-${clean}`;
-                            const localStudentConflict = (students || []).some(s => s.card_number?.toUpperCase() === candidate);
+                            const candidate = formatPrintedCardNumber(clean);
+                            const localStudentConflict = (students || []).some(
+                              (s) => s.card_number?.toUpperCase() === candidate
+                            );
                             if (localStudentConflict) {
                               setDuplicateCardError(`${candidate} is already registered`);
                               return;
                             }
-                            void request.get<{ cards: any[] }>(`/cards?q=${encodeURIComponent(candidate)}`).then(res => {
-                              const match = (res.cards || []).some(c => c.card_number?.toUpperCase() === candidate);
-                              setDuplicateCardError(match ? `${candidate} is already registered` : '');
-                            }).catch(() => {});
+                            setDuplicateCardError('');
+                            cardCheckTimeoutRef.current = setTimeout(() => {
+                              void request
+                                .get<{ cards: any[] }>(`/cards?q=${encodeURIComponent(candidate)}`)
+                                .then((res) => {
+                                  const match = (res.cards || []).some(
+                                    (c) => c.card_number?.toUpperCase() === candidate
+                                  );
+                                  if (match) {
+                                    setDuplicateCardError(`${candidate} is already registered`);
+                                  }
+                                })
+                                .catch(() => {});
+                            }, 200);
                           } else {
                             setDuplicateCardError('');
                           }
@@ -419,8 +498,9 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
-                            if (!duplicateCardError) void handleConfirmNewCard();
+                            void handleConfirmNewCard();
                           } else if (e.key === 'Escape') {
+                            if (cardCheckTimeoutRef.current) clearTimeout(cardCheckTimeoutRef.current);
                             setPendingNewCard(null);
                             setPendingCardNumberInput('');
                             setDuplicateCardError('');
@@ -450,8 +530,10 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
                       variant="secondary"
                       size="sm"
                       onClick={() => {
+                        if (cardCheckTimeoutRef.current) clearTimeout(cardCheckTimeoutRef.current);
                         setPendingNewCard(null);
                         setPendingCardNumberInput('');
+                        setDuplicateCardError('');
                         inputRef.current?.focus();
                       }}
                     >
@@ -461,8 +543,7 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
                       type="button"
                       variant="primary"
                       size="sm"
-                      disabled={!pendingCardNumberInput.trim() || Boolean(duplicateCardError) || isProcessing}
-                      isLoading={isProcessing}
+                      disabled={!pendingCardNumberInput.trim() || Boolean(duplicateCardError)}
                       onClick={() => void handleConfirmNewCard()}
                     >
                       Register & Bind Card
