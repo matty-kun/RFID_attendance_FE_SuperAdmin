@@ -1,6 +1,10 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import type { AcademicTerm } from '../types';
-import { academicTermService, type CreateAcademicTermPayload } from '../services/academicTermService';
+import {
+  academicTermService,
+  type CreateAcademicTermPayload,
+  type UpdateAcademicTermPayload,
+} from '../services/academicTermService';
 import { toast } from './ToastContext';
 
 interface AcademicTermContextType {
@@ -12,6 +16,7 @@ interface AcademicTermContextType {
   setSelectedTerm: (term: AcademicTerm | null) => void;
   activateTerm: (termId: string) => Promise<AcademicTerm | null>;
   createTerm: (payload: CreateAcademicTermPayload) => Promise<AcademicTerm | null>;
+  updateTerm: (id: string, payload: UpdateAcademicTermPayload) => Promise<AcademicTerm | null>;
   refreshTerms: () => Promise<void>;
 }
 
@@ -107,6 +112,19 @@ export const AcademicTermProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, [refreshTerms, setSelectedTerm]);
 
+  const updateTerm = useCallback(async (id: string, payload: UpdateAcademicTermPayload): Promise<AcademicTerm | null> => {
+    try {
+      const updated = await academicTermService.updateTerm(id, payload);
+      await refreshTerms();
+      toast.success(`Academic term ${updated.school_year} ${updated.semester} updated successfully.`);
+      return updated;
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.message || 'Failed to update academic term.';
+      toast.error(msg);
+      return null;
+    }
+  }, [refreshTerms]);
+
   const contextValue = useMemo(() => ({
     activeTerm,
     selectedTerm,
@@ -116,8 +134,9 @@ export const AcademicTermProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setSelectedTerm,
     activateTerm,
     createTerm,
+    updateTerm,
     refreshTerms,
-  }), [activeTerm, selectedTerm, terms, isLoading, error, setSelectedTerm, activateTerm, createTerm, refreshTerms]);
+  }), [activeTerm, selectedTerm, terms, isLoading, error, setSelectedTerm, activateTerm, createTerm, updateTerm, refreshTerms]);
 
   return (
     <AcademicTermContext.Provider value={contextValue}>
@@ -135,6 +154,7 @@ const defaultContextValue: AcademicTermContextType = {
   setSelectedTerm: () => {},
   activateTerm: async () => null,
   createTerm: async () => null,
+  updateTerm: async () => null,
   refreshTerms: async () => {},
 };
 

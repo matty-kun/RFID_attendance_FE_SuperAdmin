@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Clock,
   Calendar,
+  Pencil,
 } from 'lucide-react';
 import { Drawer } from '../common/Drawer';
 import { Button } from '../common/Button';
@@ -44,7 +45,7 @@ const formatDateDisplay = (dateStr: string) => {
 };
 
 export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen, onClose }) => {
-  const { terms, activeTerm, activateTerm, createTerm } = useAcademicTerm();
+  const { terms, activeTerm, activateTerm, createTerm, updateTerm } = useAcademicTerm();
 
   // Group terms by school year
   const yearGroups: YearGroup[] = useMemo(() => {
@@ -96,9 +97,10 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
     });
   };
 
-  // Form State: 'year' (create new school year from home) vs 'semester' (add semester inside specific year)
+  // Form State: 'year' (create new school year from home) vs 'semester' (add semester inside specific year) vs 'edit' (edit semester dates)
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [createMode, setCreateMode] = useState<'year' | 'semester'>('year');
+  const [createMode, setCreateMode] = useState<'year' | 'semester' | 'edit'>('year');
+  const [editingTermId, setEditingTermId] = useState<string | null>(null);
   const [schoolYear, setSchoolYear] = useState('');
   const [semester, setSemester] = useState<SemesterType>('1st Sem');
   const [startDate, setStartDate] = useState('');
@@ -121,10 +123,35 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
     setFormError('');
     setShowCreateForm(false);
     setCreateMode('year');
+    setEditingTermId(null);
+  };
+
+  const openEditSemester = (term: AcademicTerm) => {
+    setCreateMode('edit');
+    setEditingTermId(term.id);
+    setSchoolYear(term.school_year);
+    setSemester(term.semester);
+
+    const sDate = term.start_date ? term.start_date.substring(0, 10) : '';
+    const eDate = term.end_date ? term.end_date.substring(0, 10) : '';
+    setStartDate(sDate);
+    setEndDate(eDate);
+
+    const [yearPart, monthPart] = sDate.split('-').map(Number);
+    if (!isNaN(yearPart) && !isNaN(monthPart) && monthPart >= 1 && monthPart <= 12) {
+      setCalYear(yearPart);
+      setCalMonth(monthPart - 1);
+    }
+
+    const isActive = term.id === activeTerm?.id || term.is_active;
+    setSetActiveNow(isActive);
+    setFormError('');
+    setShowCreateForm(true);
   };
 
   const openAddSemesterForYear = (sy: string, defaultSem?: SemesterType) => {
     setCreateMode('semester');
+    setEditingTermId(null);
     setSchoolYear(sy);
     const semToSet = defaultSem || '1st Sem';
     setSemester(semToSet);
@@ -150,6 +177,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
 
   const openCreateNewYear = () => {
     setCreateMode('year');
+    setEditingTermId(null);
     // Suggest next academic year if years already exist
     if (yearGroups.length > 0) {
       const latest = yearGroups[0].school_year;
@@ -252,6 +280,27 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
       return;
     }
 
+    if (createMode === 'edit') {
+      if (!editingTermId) return;
+      setIsSubmitting(true);
+      try {
+        const res = await updateTerm(editingTermId, {
+          start_date: startDate,
+          end_date: endDate,
+        });
+        if (res) {
+          if (setActiveNow && (!activeTerm || activeTerm.id !== editingTermId)) {
+            await activateTerm(editingTermId);
+          }
+          setExpandedYears((prev) => new Set([...prev, trimmedSy]));
+          resetForm();
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     // Check if this school year + semester already exists
     const alreadyExists = terms.some(
       (t) => t.school_year === trimmedSy && t.semester === semester
@@ -339,10 +388,21 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
           >
             <div className="flex items-center justify-between pb-3 border-b border-[#E5E0EB]">
               <div className="flex items-center gap-2 text-sm font-bold text-[#24133F]">
-                <Sparkles className="h-4 w-4 text-[#7026B7]" />
-                {createMode === 'year'
-                  ? 'Create New Academic Year'
-                  : `Add Semester to A.Y. ${schoolYear}`}
+                {createMode === 'edit' ? (
+                  <>
+                    <Pencil className="h-4 w-4 text-[#7026B7]" />
+                    <span>Edit A.Y. {schoolYear} · {semester}</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 text-[#7026B7]" />
+                    <span>
+                      {createMode === 'year'
+                        ? 'Create New Academic Year'
+                        : `Add Semester to A.Y. ${schoolYear}`}
+                    </span>
+                  </>
+                )}
               </div>
               <button
                 type="button"
@@ -366,7 +426,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                 <label className="block text-xs font-bold text-[#24133F] mb-1">
                   Academic Year <span className="text-[#756883] font-normal">(YYYY-YYYY)</span>
                 </label>
-                {createMode === 'semester' ? (
+                {createMode === 'semester' || createMode === 'edit' ? (
                   <div className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-[#24133F]">
                     <GraduationCap className="h-4 w-4 text-[#7026B7]" />
                     <span>A.Y. {schoolYear}</span>
@@ -387,32 +447,42 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
               {/* Semester Selector */}
               <div>
                 <label className="block text-xs font-bold text-[#24133F] mb-1">Semester</label>
-                <div className="flex gap-2">
-                  {(['1st Sem', '2nd Sem'] as SemesterType[]).map((sem) => {
-                    const group = yearGroups.find((g) => g.school_year === schoolYear.trim());
-                    const alreadyConfigured = group?.terms.some((t) => t.semester === sem);
+                {createMode === 'edit' ? (
+                  <div className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-[#24133F]">
+                    <Clock className="h-4 w-4 text-[#7026B7]" />
+                    <span>{semester}</span>
+                    <span className="ml-auto text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                      Locked
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    {(['1st Sem', '2nd Sem'] as SemesterType[]).map((sem) => {
+                      const group = yearGroups.find((g) => g.school_year === schoolYear.trim());
+                      const alreadyConfigured = group?.terms.some((t) => t.semester === sem);
 
-                    return (
-                      <button
-                        key={sem}
-                        type="button"
-                        disabled={alreadyConfigured}
-                        onClick={() => handleSemesterChange(sem)}
-                        className={cn(
-                          'flex-1 py-2 rounded-xl text-xs font-bold transition-all border select-none cursor-pointer',
-                          alreadyConfigured
-                            ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed line-through'
-                            : semester === sem
-                              ? 'bg-[#7026B7] text-white border-[#7026B7] shadow-xs'
-                              : 'bg-white text-[#756883] border-[#E5E0EB] hover:bg-[#FAF8FC]'
-                        )}
-                        title={alreadyConfigured ? `${sem} is already configured for this academic year` : ''}
-                      >
-                        {sem}
-                      </button>
-                    );
-                  })}
-                </div>
+                      return (
+                        <button
+                          key={sem}
+                          type="button"
+                          disabled={alreadyConfigured}
+                          onClick={() => handleSemesterChange(sem)}
+                          className={cn(
+                            'flex-1 py-2 rounded-xl text-xs font-bold transition-all border select-none cursor-pointer',
+                            alreadyConfigured
+                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed line-through'
+                              : semester === sem
+                                ? 'bg-[#7026B7] text-white border-[#7026B7] shadow-xs'
+                                : 'bg-white text-[#756883] border-[#E5E0EB] hover:bg-[#FAF8FC]'
+                          )}
+                          title={alreadyConfigured ? `${sem} is already configured for this academic year` : ''}
+                        >
+                          {sem}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -613,7 +683,9 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                   onChange={(e) => setSetActiveNow(e.target.checked)}
                 />
                 <span className="text-xs font-medium text-[#24133F]">
-                  Set as active term immediately after creation
+                  {createMode === 'edit'
+                    ? 'Set as active term'
+                    : 'Set as active term immediately after creation'}
                 </span>
               </label>
             </div>
@@ -636,7 +708,9 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                   ? 'Saving...'
                   : createMode === 'year'
                     ? 'Create Academic Year'
-                    : 'Add Semester'}
+                    : createMode === 'semester'
+                      ? 'Add Semester'
+                      : 'Save Changes'}
               </Button>
             </div>
           </form>
@@ -792,6 +866,19 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                             </div>
 
                             <div className="flex items-center gap-2 self-end sm:self-center">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditSemester(term);
+                                }}
+                                className="h-8 gap-1.5 text-xs text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7] hover:bg-[#FAF6FE] cursor-pointer"
+                              >
+                                <Pencil className="h-3 w-3" />
+                                Edit
+                              </Button>
+
                               {isActive ? (
                                 <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 px-3 py-1.5 rounded-xl">
                                   <CheckCircle2 className="h-3.5 w-3.5" />
