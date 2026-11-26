@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowRightLeft, Calendar, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
+import { ArrowRightLeft, Calendar, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
+import { toast } from '../context';
 import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
@@ -83,7 +84,6 @@ export function ReportsPage() {
   const [knownLocations, setKnownLocations] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFetchingPage, setIsFetchingPage] = useState(false);
-  const [error, setError] = useState('');
   const requestId = useRef(0);
   const pageCache = useRef<Map<number, Snapshot['rows']>>(new Map());
   const pendingRequests = useRef<Map<number, Promise<Snapshot>>>(new Map());
@@ -99,7 +99,7 @@ export function ReportsPage() {
   const [page, setPage] = useState(1);
   const pageSize = 25;
 
-  useEffect(() => { void adminService.getEvents().then(setEvents).catch(() => setError('Could not load events.')); }, []);
+  useEffect(() => { void adminService.getEvents().then(setEvents).catch(() => toast.error('Could not load events.')); }, []);
   useEffect(() => { const timer = window.setTimeout(() => { setQuery(search.trim()); setPage(1); }, 250); return () => window.clearTimeout(timer); }, [search]);
   useEffect(() => {
     if (selectedTerm) {
@@ -108,16 +108,23 @@ export function ReportsPage() {
   }, [selectedTerm]);
   useEffect(() => { setPage(1); }, [startDate, endDate, termId, event, session, course, type, location]);
 
-  const filterParams = useMemo(() => ({
-    startDate, endDate, limit: pageSize,
-    ...(termId !== 'all' ? { termId } : {}),
-    ...(event !== 'all' ? { eventId: event } : {}),
-    ...(session !== 'all' ? { session } : {}),
-    ...(course !== 'all' ? { course } : {}),
-    ...(type !== 'all' ? { type } : {}),
-    ...(location !== 'all' ? { location } : {}),
-    ...(query ? { search: query } : {}),
-  }), [startDate, endDate, termId, event, session, course, type, location, query]);
+  const filterParams = useMemo(() => {
+    const effectiveStart = startDate || '2000-01-01';
+    const effectiveEnd = endDate || '2099-12-31';
+
+    return {
+      startDate: effectiveStart,
+      endDate: effectiveEnd,
+      limit: pageSize,
+      ...(termId !== 'all' ? { termId } : {}),
+      ...(event !== 'all' ? { eventId: event } : {}),
+      ...(session !== 'all' ? { session } : {}),
+      ...(course !== 'all' ? { course } : {}),
+      ...(type !== 'all' ? { type } : {}),
+      ...(location !== 'all' ? { location } : {}),
+      ...(query ? { search: query } : {}),
+    };
+  }, [startDate, endDate, termId, event, session, course, type, location, query]);
 
   const filterKey = useMemo(() => JSON.stringify(filterParams), [filterParams]);
 
@@ -184,7 +191,6 @@ export function ReportsPage() {
     } else {
       setIsFetchingPage(true);
     }
-    setError('');
 
     try {
       let result: Snapshot;
@@ -231,7 +237,8 @@ export function ReportsPage() {
       }
     } catch (err: any) {
       if (id === requestId.current) {
-        setError(err?.response?.data?.error?.message || 'Could not load report records. Try again.');
+        const msg = err?.response?.data?.error?.message || 'Could not load report records. Try again.';
+        toast.error(msg);
       }
     } finally {
       if (id === requestId.current) {
@@ -329,9 +336,9 @@ export function ReportsPage() {
         }
       }
       const { exportAttendance } = await import('./reportExports');
-      exportAttendance(rows, format, endDate);
+      exportAttendance(rows, format, endDate || new Date().toISOString().slice(0, 10));
     } catch {
-      setError('Could not export the report. Try again.');
+      toast.error('Could not export the report. Try again.');
     }
   };
   return (
@@ -343,18 +350,6 @@ export function ReportsPage() {
           <p className="text-xs text-[#756883]">Attendance activity for selected dates and filters.</p>
         </div>
       </div>
-
-      {error && (
-        <div role="alert" className="flex items-center justify-between gap-3 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
-          <span className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            {error}
-          </span>
-          <button type="button" onClick={() => void loadReportsData(true)} className="text-xs font-bold underline">
-            Retry
-          </button>
-        </div>
-      )}
 
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center gap-3">
@@ -766,8 +761,6 @@ export function ReportsPage() {
             <p className="py-10 text-center text-xs text-[#756883]">
               {loading
                 ? 'Loading attendance records…'
-                : error
-                ? 'Unable to load attendance records.'
                 : 'No attendance records available.'}
             </p>
           )}
