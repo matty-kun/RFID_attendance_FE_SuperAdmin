@@ -43,7 +43,23 @@ const manilaDate = (date: Date) => {
   return `${value('year')}-${value('month')}-${value('day')}`;
 };
 const formatShortDate = (ymd: string) => new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' }).format(new Date(`${ymd}T00:00:00+08:00`));
-const formatManilaTime = (iso: string | null) => iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' }) : '-';
+const formatManilaTime = (iso: string | null) => {
+  if (!iso) return '-';
+  const trimmed = iso.trim();
+  const normalizedSpace = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T');
+  const normalized = normalizedSpace
+    .replace(/([+-]\d{2})(\d{2})$/, '$1:$2')
+    .replace(/([+-]\d{2})$/, '$1:00');
+  const hasExplicitTz = /(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized);
+  const parsed = new Date(hasExplicitTz ? normalized : `${normalized}Z`);
+  if (Number.isNaN(parsed.getTime())) return '-';
+  return parsed.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Manila',
+  });
+};
 const normalizeDayLabel = (day?: string | null) => {
   if (!day) return '-';
   const match = /^Day\s+(-?\d+)$/i.exec(day.trim());

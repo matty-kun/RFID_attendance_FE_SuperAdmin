@@ -61,7 +61,7 @@ const statusStyle: Record<Status, string> = {
   available: 'bg-[#E7F8EE] text-[#087A3A]', issued: 'bg-[#F2E9FC] text-[#7026B7]',
   lost: 'bg-[#FFF0F1] text-[#CE2333]', damaged: 'bg-[#FFF3DC] text-[#9A5900]', archived: 'bg-[#F1EEF4] text-[#756883]',
 };
-const date = (value: string) => new Date(value).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' });
+const date = (value: string) => new Date(value).toLocaleString('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' });
 const message = (error: unknown) => (error as any)?.response?.data?.error?.message || 'Could not complete this action.';
 
 const getActionPreposition = (action: string) => {
