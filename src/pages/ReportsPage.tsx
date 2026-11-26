@@ -121,6 +121,27 @@ export function ReportsPage() {
 
   const filterKey = useMemo(() => JSON.stringify(filterParams), [filterParams]);
 
+  const termOptions = useMemo(() => {
+    if (terms.length > 0) {
+      const distinctYears = new Set(terms.map((t) => t.school_year));
+      const showYear = distinctYears.size > 1;
+      return [
+        { value: 'all', label: 'All Semesters' },
+        ...terms.map((t) => ({
+          value: t.id,
+          label: showYear
+            ? `${t.school_year} · ${t.semester}${t.id === activeTerm?.id ? ' (Active)' : ''}`
+            : `${t.semester}${t.id === activeTerm?.id ? ' (Active)' : ''}`,
+        })),
+      ];
+    }
+    return [
+      { value: 'all', label: 'All Semesters' },
+      { value: '1st Sem', label: '1st Sem' },
+      { value: '2nd Sem', label: '2nd Sem' },
+    ];
+  }, [terms, activeTerm]);
+
   const prefetchPage = useCallback((targetPage: number) => {
     const total = snapshot?.rowTotal ?? 0;
     if (targetPage < 1 || (targetPage - 1) * pageSize >= total) return;
@@ -337,60 +358,25 @@ export function ReportsPage() {
 
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* Academic Term Dropdown */}
+        {/* Semester Filter Dropdown */}
         <Dropdown
           value={termId}
           onChange={(val) => {
-            setTermId(val);
-            const t = terms.find((item) => item.id === val);
-            if (t) setSelectedTerm(t);
+            if (val === 'all') {
+              setTermId('all');
+              return;
+            }
+            const matched = terms.find((item) => item.id === val || item.semester === val);
+            if (matched) {
+              setTermId(matched.id);
+              setSelectedTerm(matched);
+            } else {
+              setTermId(val);
+            }
           }}
           icon={<Calendar className="h-4 w-4 text-[#756883]" />}
-          options={[
-            { value: 'all', label: 'All Semesters' },
-            ...terms.map((t) => ({
-              value: t.id,
-              label: `${t.school_year} · ${t.semester}${t.id === activeTerm?.id ? ' (Active)' : ''}`,
-            })),
-          ]}
+          options={termOptions}
         />
-
-        {/* Quick Semester Toggle (All / 1st Sem / 2nd Sem) */}
-        <div className="flex h-10 items-center rounded-xl bg-slate-100 p-1 border border-slate-200">
-          {(['all', '1st Sem', '2nd Sem'] as const).map((sem) => {
-            const isCurrent =
-              sem === 'all'
-                ? termId === 'all'
-                : selectedTerm?.semester === sem && termId === selectedTerm.id;
-            return (
-              <button
-                key={sem}
-                type="button"
-                onClick={() => {
-                  if (sem === 'all') {
-                    setTermId('all');
-                  } else {
-                    const currentSy = selectedTerm?.school_year || activeTerm?.school_year || '2026-2027';
-                    const target =
-                      terms.find((t) => t.school_year === currentSy && t.semester === sem) ||
-                      terms.find((t) => t.semester === sem);
-                    if (target) {
-                      setTermId(target.id);
-                      setSelectedTerm(target);
-                    }
-                  }
-                }}
-                className={`h-full px-2.5 rounded-lg text-xs font-bold transition-all ${
-                  isCurrent
-                    ? 'bg-white text-[#7026B7] shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {sem === 'all' ? 'All Sem' : sem}
-              </button>
-            );
-          })}
-        </div>
 
         <CalendarDatePicker
           startDate={startDate}

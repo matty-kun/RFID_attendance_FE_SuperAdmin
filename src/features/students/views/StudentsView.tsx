@@ -302,46 +302,22 @@ export const StudentsView: React.FC = () => {
             <Dropdown
               value={selectedTerm?.id || ''}
               onChange={(val) => {
-                const term = terms.find((t) => t.id === val);
+                const term = terms.find((t) => t.id === val || t.semester === val);
                 if (term) setSelectedTerm(term);
                 setPage(1);
               }}
               icon={<Calendar className="h-4 w-4" />}
               className="w-auto"
               buttonClassName="h-10 min-w-[180px] justify-between px-3 text-xs"
-              options={terms.map((t) => ({
+              options={terms.length > 0 ? terms.map((t) => ({
                 value: t.id,
                 label: `${t.school_year} · ${t.semester}${t.id === activeTerm?.id ? ' (Active)' : ''}`,
                 icon: <Calendar className="h-3.5 w-3.5 text-brand-700" />,
-              }))}
+              })) : [
+                { value: '2nd Sem', label: '2026-2027 · 2nd Sem (Active)', icon: <Calendar className="h-3.5 w-3.5 text-brand-700" /> },
+                { value: '1st Sem', label: '2026-2027 · 1st Sem', icon: <Calendar className="h-3.5 w-3.5 text-brand-700" /> },
+              ]}
             />
-
-            <div className="flex h-10 items-center rounded-xl bg-slate-100 p-1 border border-slate-200">
-              {(['1st Sem', '2nd Sem'] as const).map((sem) => {
-                const isCurrent = selectedTerm?.semester === sem;
-                return (
-                  <button
-                    key={sem}
-                    type="button"
-                    onClick={() => {
-                      const currentSy = selectedTerm?.school_year || activeTerm?.school_year || '2026-2027';
-                      const target = terms.find((t) => t.school_year === currentSy && t.semester === sem) || terms.find((t) => t.semester === sem);
-                      if (target) {
-                        setSelectedTerm(target);
-                        setPage(1);
-                      }
-                    }}
-                    className={`h-full px-2.5 rounded-lg text-xs font-bold transition-all ${
-                      isCurrent
-                        ? 'bg-white text-[#7026B7] shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    {sem}
-                  </button>
-                );
-              })}
-            </div>
 
             <Dropdown
               value={studentTab}
