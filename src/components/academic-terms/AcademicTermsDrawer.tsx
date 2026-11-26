@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   CheckCircle2,
   Plus,
-  Sparkles,
   AlertCircle,
   GraduationCap,
   ChevronDown,
@@ -13,6 +12,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { Drawer } from '../common/Drawer';
+import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Checkbox } from '../common/Checkbox';
@@ -344,31 +344,45 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
     return startDate;
   }, [startDate, endDate, hoverDate]);
 
-  return (
-    <Drawer
-      isOpen={isOpen}
-      onClose={() => {
-        resetForm();
-        onClose();
-      }}
-      title="Academic Years & Semesters"
-      description="Configure school years and semesters. The active term automatically scopes students, attendance, and reports."
-      icon={<GraduationCap className="h-5 w-5 text-[#7026B7]" />}
-      maxWidth="xl"
-    >
-      <div className="space-y-6 pt-1">
-        {/* Top Action Bar: Clean Home Drawer Level */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#756883]">
-              Academic Years ({yearGroups.length})
-            </h4>
-            <p className="text-[11px] text-[#756883] mt-0.5">
-              Select an Academic Year to view and configure its semesters.
-            </p>
-          </div>
+  const modalTitle =
+    createMode === 'year'
+      ? 'Create New Academic Year'
+      : createMode === 'semester'
+        ? `Add Semester to A.Y. ${schoolYear}`
+        : `Edit A.Y. ${schoolYear} · ${semester}`;
 
-          {!showCreateForm && (
+  const modalDescription =
+    createMode === 'year'
+      ? 'Configure a new school year and set the dates for its first semester.'
+      : createMode === 'semester'
+        ? `Configure dates for ${semester} under A.Y. ${schoolYear}.`
+        : `Update the date range for A.Y. ${schoolYear} ${semester}.`;
+
+  return (
+    <>
+      <Drawer
+        isOpen={isOpen}
+        onClose={() => {
+          resetForm();
+          onClose();
+        }}
+        title="Academic Years & Semesters"
+        description="Configure school years and semesters. The active term automatically scopes students, attendance, and reports."
+        icon={<GraduationCap className="h-5 w-5 text-[#7026B7]" />}
+        maxWidth="xl"
+      >
+        <div className="space-y-6 pt-1">
+          {/* Top Action Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#756883]">
+                Academic Years ({yearGroups.length})
+              </h4>
+              <p className="text-[11px] text-[#756883] mt-0.5">
+                Select an Academic Year to view and configure its semesters.
+              </p>
+            </div>
+
             <Button
               size="sm"
               onClick={openCreateNewYear}
@@ -377,420 +391,9 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
               <Plus className="h-3.5 w-3.5" />
               New Academic Year
             </Button>
-          )}
-        </div>
+          </div>
 
-        {/* Create Form: Streamlined for Academic Year OR Adding Semester inside Year */}
-        {showCreateForm && (
-          <form
-            onSubmit={handleCreateTerm}
-            className="rounded-2xl border border-[#7026B7]/30 bg-white p-5 shadow-sm space-y-4 animate-in fade-in zoom-in-95 duration-150"
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-[#E5E0EB]">
-              <div className="flex items-center gap-2 text-sm font-bold text-[#24133F]">
-                {createMode === 'edit' ? (
-                  <>
-                    <Pencil className="h-4 w-4 text-[#7026B7]" />
-                    <span>Edit A.Y. {schoolYear} · {semester}</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 text-[#7026B7]" />
-                    <span>
-                      {createMode === 'year'
-                        ? 'Create New Academic Year'
-                        : `Add Semester to A.Y. ${schoolYear}`}
-                    </span>
-                  </>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={resetForm}
-                className="text-xs text-[#756883] hover:text-[#24133F] cursor-pointer"
-              >
-                Cancel
-              </button>
-            </div>
-
-            {formError && (
-              <div className="flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>{formError}</span>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* School Year Field */}
-              <div>
-                <label className="block text-xs font-bold text-[#24133F] mb-1">
-                  Academic Year <span className="text-[#756883] font-normal">(YYYY-YYYY)</span>
-                </label>
-                {createMode === 'semester' || createMode === 'edit' ? (
-                  <div className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-[#24133F]">
-                    <GraduationCap className="h-4 w-4 text-[#7026B7]" />
-                    <span>A.Y. {schoolYear}</span>
-                    <span className="ml-auto text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                      Locked
-                    </span>
-                  </div>
-                ) : (
-                  <Input
-                    value={schoolYear}
-                    onChange={(e) => setSchoolYear(e.target.value)}
-                    placeholder="e.g. 2027-2028"
-                    required
-                  />
-                )}
-              </div>
-
-              {/* Semester Selector */}
-              <div>
-                <label className="block text-xs font-bold text-[#24133F] mb-1">Semester</label>
-                {createMode === 'edit' ? (
-                  <div className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-[#24133F]">
-                    <Clock className="h-4 w-4 text-[#7026B7]" />
-                    <span>{semester}</span>
-                    <span className="ml-auto text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                      Locked
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    {(['1st Sem', '2nd Sem'] as SemesterType[]).map((sem) => {
-                      const group = yearGroups.find((g) => g.school_year === schoolYear.trim());
-                      const alreadyConfigured = group?.terms.some((t) => t.semester === sem);
-
-                      return (
-                        <button
-                          key={sem}
-                          type="button"
-                          disabled={alreadyConfigured}
-                          onClick={() => handleSemesterChange(sem)}
-                          className={cn(
-                            'flex-1 py-2 rounded-xl text-xs font-bold transition-all border select-none cursor-pointer',
-                            alreadyConfigured
-                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed line-through'
-                              : semester === sem
-                                ? 'bg-[#7026B7] text-white border-[#7026B7] shadow-xs'
-                                : 'bg-white text-[#756883] border-[#E5E0EB] hover:bg-[#FAF8FC]'
-                          )}
-                          title={alreadyConfigured ? `${sem} is already configured for this academic year` : ''}
-                        >
-                          {sem}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Custom Interactive Calendar Date Picker */}
-            <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB]/60 p-4 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <span className="text-xs font-bold text-[#24133F] flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4 text-[#7026B7]" />
-                  Term Date Range
-                </span>
-                {/* Semester Presets */}
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setPresetDates('firstSem')}
-                    className="rounded-lg bg-white border border-[#E5E0EB] px-2 py-1 text-[11px] font-semibold text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 transition-colors cursor-pointer"
-                  >
-                    Aug – Dec (1st Sem)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPresetDates('secondSem')}
-                    className="rounded-lg bg-white border border-[#E5E0EB] px-2 py-1 text-[11px] font-semibold text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 transition-colors cursor-pointer"
-                  >
-                    Jan – May (2nd Sem)
-                  </button>
-                </div>
-              </div>
-
-              {/* Start & End Date Summary Cards (Clickable to jump months) */}
-              <div className="grid grid-cols-2 gap-3">
-                <div
-                  onClick={() => {
-                    if (startDate) {
-                      const [y, m] = startDate.split('-').map(Number);
-                      if (!isNaN(y) && !isNaN(m)) {
-                        setCalYear(y);
-                        setCalMonth(m - 1);
-                      }
-                    }
-                  }}
-                  title={startDate ? 'Click to jump to Start Month' : undefined}
-                  className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 shadow-2xs cursor-pointer hover:border-[#7026B7]/50 hover:bg-[#FAF8FC] transition-colors"
-                >
-                  <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">
-                    Start Date
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-3.5 w-3.5 text-[#7026B7] shrink-0" />
-                    <span className="text-xs font-bold text-[#24133F]">
-                      {startDate ? formatDateDisplay(startDate) : 'Click day on calendar'}
-                    </span>
-                  </div>
-                </div>
-
-                <div
-                  onClick={() => {
-                    if (endDate) {
-                      const [y, m] = endDate.split('-').map(Number);
-                      if (!isNaN(y) && !isNaN(m)) {
-                        setCalYear(y);
-                        setCalMonth(m - 1);
-                      }
-                    }
-                  }}
-                  title={endDate ? 'Click to jump to End Month' : undefined}
-                  className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 shadow-2xs cursor-pointer hover:border-[#7026B7]/50 hover:bg-[#FAF8FC] transition-colors"
-                >
-                  <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">
-                    End Date
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-3.5 w-3.5 text-[#7026B7] shrink-0" />
-                    <span className="text-xs font-bold text-[#24133F]">
-                      {endDate ? formatDateDisplay(endDate) : 'Click 2nd day on calendar'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Calendar Month Header & Navigation */}
-              <div className="flex items-center justify-between pt-1 pb-2 border-b border-[#F1EEF4]">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-extrabold text-[#24133F]">
-                    {new Date(calYear, calMonth).toLocaleDateString('en-US', {
-                      month: 'long',
-                      year: 'numeric',
-                    })}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (calMonth === 0) {
-                        setCalMonth(11);
-                        setCalYear((y) => y - 1);
-                      } else {
-                        setCalMonth((m) => m - 1);
-                      }
-                    }}
-                    aria-label="Previous month"
-                    className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F] transition-colors cursor-pointer"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (calMonth === 11) {
-                        setCalMonth(0);
-                        setCalYear((y) => y + 1);
-                      } else {
-                        setCalMonth((m) => m + 1);
-                      }
-                    }}
-                    aria-label="Next month"
-                    className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F] transition-colors cursor-pointer"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Day Name Headers */}
-              <div className="grid grid-cols-7 text-center text-[10px] font-bold text-[#756883]">
-                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
-                  <div key={d} className="py-0.5">
-                    {d}
-                  </div>
-                ))}
-              </div>
-
-              {/* Interactive Calendar Grid with Ribbon Highlight */}
-              <div className="grid grid-cols-7 text-center text-xs">
-                {(() => {
-                  const cells = [];
-                  for (let i = 0; i < firstDay; i++) {
-                    cells.push(<div key={`blank-${i}`} className="h-8" />);
-                  }
-
-                  for (let day = 1; day <= daysInMonth; day++) {
-                    const dayStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                    const isStart = dayStr === effectiveStart;
-                    const isEnd = dayStr === effectiveEnd;
-                    const inRange =
-                      effectiveStart &&
-                      effectiveEnd &&
-                      dayStr > effectiveStart &&
-                      dayStr < effectiveEnd;
-                    const hasRange =
-                      effectiveStart && effectiveEnd && effectiveStart !== effectiveEnd;
-
-                    const dayOfWeek = (firstDay + day - 1) % 7;
-                    const isRowStart = dayOfWeek === 0;
-                    const isRowEnd = dayOfWeek === 6;
-                    const isFirstDayOfMonth = day === 1;
-                    const isLastDayOfMonth = day === daysInMonth;
-
-                    const isLeftEdge = isRowStart || isFirstDayOfMonth;
-                    const isRightEdge = isRowEnd || isLastDayOfMonth;
-
-                    cells.push(
-                      <div
-                        key={day}
-                        className="relative flex h-8 items-center justify-center py-0.5"
-                        onMouseEnter={() => setHoverDate(dayStr)}
-                        onMouseLeave={() => setHoverDate(null)}
-                      >
-                        {hasRange && (
-                          <>
-                            {isStart && (
-                              <div
-                                className={cn(
-                                  'absolute right-0 top-0.5 bottom-0.5 left-1/2 bg-[#E9D5FF]/60',
-                                  isRightEdge && 'rounded-r-full'
-                                )}
-                              />
-                            )}
-                            {inRange && (
-                              <div
-                                className={cn(
-                                  'absolute inset-x-0 top-0.5 bottom-0.5 bg-[#E9D5FF]/60',
-                                  isLeftEdge && isRightEdge && 'rounded-full',
-                                  isLeftEdge && !isRightEdge && 'rounded-l-full',
-                                  isRightEdge && !isLeftEdge && 'rounded-r-full'
-                                )}
-                              />
-                            )}
-                            {isEnd && (
-                              <div
-                                className={cn(
-                                  'absolute left-0 top-0.5 bottom-0.5 right-1/2 bg-[#E9D5FF]/60',
-                                  isLeftEdge && 'rounded-l-full'
-                                )}
-                              />
-                            )}
-                          </>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => handleCalendarDayClick(dayStr)}
-                          className={cn(
-                            'relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors cursor-pointer',
-                            isStart || isEnd
-                              ? 'bg-[#7026B7] font-bold text-white shadow-xs'
-                              : inRange
-                                ? 'text-[#7026B7] font-bold hover:bg-[#D8B4FE]/40'
-                                : 'text-[#24133F] hover:bg-slate-100'
-                          )}
-                        >
-                          {day}
-                        </button>
-                      </div>
-                    );
-                  }
-                  return cells;
-                })()}
-              </div>
-
-              {/* Multi-month Term Continuation Banner */}
-              {effectiveEnd &&
-                effectiveEnd >
-                  `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}` && (
-                  <div className="flex items-center justify-between text-[11px] text-[#7026B7] bg-[#F7F2FD] border border-[#E9D5FF] px-3 py-1.5 rounded-xl animate-in fade-in duration-150">
-                    <span className="font-medium">
-                      Term continues through {formatDateDisplay(effectiveEnd)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const [y, m] = effectiveEnd.split('-').map(Number);
-                        if (!isNaN(y) && !isNaN(m)) {
-                          setCalYear(y);
-                          setCalMonth(m - 1);
-                        }
-                      }}
-                      className="font-bold underline hover:text-[#5E1E9D] cursor-pointer ml-2 shrink-0"
-                    >
-                      Jump to End Month ({new Date(Number(effectiveEnd.split('-')[0]), Number(effectiveEnd.split('-')[1]) - 1).toLocaleDateString('en-US', { month: 'short' })}) &rarr;
-                    </button>
-                  </div>
-                )}
-              {effectiveStart &&
-                effectiveStart < `${calYear}-${String(calMonth + 1).padStart(2, '0')}-01` && (
-                  <div className="flex items-center justify-between text-[11px] text-[#7026B7] bg-[#F7F2FD] border border-[#E9D5FF] px-3 py-1.5 rounded-xl animate-in fade-in duration-150">
-                    <span className="font-medium">
-                      Term started on {formatDateDisplay(effectiveStart)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const [y, m] = effectiveStart.split('-').map(Number);
-                        if (!isNaN(y) && !isNaN(m)) {
-                          setCalYear(y);
-                          setCalMonth(m - 1);
-                        }
-                      }}
-                      className="font-bold underline hover:text-[#5E1E9D] cursor-pointer ml-2 shrink-0"
-                    >
-                      &larr; Jump to Start Month ({new Date(Number(effectiveStart.split('-')[0]), Number(effectiveStart.split('-')[1]) - 1).toLocaleDateString('en-US', { month: 'short' })})
-                    </button>
-                  </div>
-                )}
-            </div>
-
-            <div className="pt-1">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <Checkbox
-                  checked={setActiveNow}
-                  onChange={(e) => setSetActiveNow(e.target.checked)}
-                />
-                <span className="text-xs font-medium text-[#24133F]">
-                  {createMode === 'edit'
-                    ? 'Set as active term'
-                    : 'Set as active term immediately after creation'}
-                </span>
-              </label>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={resetForm}
-                className="text-xs cursor-pointer"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="text-xs bg-[#7026B7] hover:bg-[#5E1E9D] text-white cursor-pointer"
-              >
-                {isSubmitting
-                  ? 'Saving...'
-                  : createMode === 'year'
-                    ? 'Create Academic Year'
-                    : createMode === 'semester'
-                      ? 'Add Semester'
-                      : 'Save Changes'}
-              </Button>
-            </div>
-          </form>
-        )}
-
-        {/* Academic Years Accordion List (Patterned after Events & Attendance) */}
+          {/* Academic Years Accordion List (Patterned after Events & Attendance) */}
         {yearGroups.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#E5E0EB] bg-[#FAF8FC] p-8 text-center space-y-3">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-[#7026B7]">
@@ -1008,6 +611,393 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
         )}
       </div>
     </Drawer>
+
+      {/* Creation / Edit Academic Year Modal (Patterned after Admins & Events Modals) */}
+      <Modal
+        isOpen={showCreateForm}
+        onClose={resetForm}
+        title={modalTitle}
+        description={modalDescription}
+        maxWidth="lg"
+      >
+        <form onSubmit={handleCreateTerm} className="space-y-4 pt-1">
+          {formError && (
+            <div className="flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{formError}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* School Year Field */}
+            <div>
+              <label className="block text-xs font-bold text-[#24133F] mb-1">
+                Academic Year <span className="text-[#756883] font-normal">(YYYY-YYYY)</span>
+              </label>
+              {createMode === 'semester' || createMode === 'edit' ? (
+                <div className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-[#24133F]">
+                  <GraduationCap className="h-4 w-4 text-[#7026B7]" />
+                  <span>A.Y. {schoolYear}</span>
+                  <span className="ml-auto text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                    Locked
+                  </span>
+                </div>
+              ) : (
+                <Input
+                  value={schoolYear}
+                  onChange={(e) => setSchoolYear(e.target.value)}
+                  placeholder="e.g. 2027-2028"
+                  required
+                />
+              )}
+            </div>
+
+            {/* Semester Selector */}
+            <div>
+              <label className="block text-xs font-bold text-[#24133F] mb-1">Semester</label>
+              {createMode === 'edit' ? (
+                <div className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-[#24133F]">
+                  <Clock className="h-4 w-4 text-[#7026B7]" />
+                  <span>{semester}</span>
+                  <span className="ml-auto text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                    Locked
+                  </span>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  {(['1st Sem', '2nd Sem'] as SemesterType[]).map((sem) => {
+                    const group = yearGroups.find((g) => g.school_year === schoolYear.trim());
+                    const alreadyConfigured = group?.terms.some((t) => t.semester === sem);
+
+                    return (
+                      <button
+                        key={sem}
+                        type="button"
+                        disabled={alreadyConfigured}
+                        onClick={() => handleSemesterChange(sem)}
+                        className={cn(
+                          'flex-1 py-2 rounded-xl text-xs font-bold transition-all border select-none cursor-pointer',
+                          alreadyConfigured
+                            ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed line-through'
+                            : semester === sem
+                              ? 'bg-[#7026B7] text-white border-[#7026B7] shadow-xs'
+                              : 'bg-white text-[#756883] border-[#E5E0EB] hover:bg-[#FAF8FC]'
+                        )}
+                        title={alreadyConfigured ? `${sem} is already configured for this academic year` : ''}
+                      >
+                        {sem}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Custom Interactive Calendar Date Picker */}
+          <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB]/60 p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <span className="text-xs font-bold text-[#24133F] flex items-center gap-1.5">
+                <Calendar className="h-4 w-4 text-[#7026B7]" />
+                Term Date Range
+              </span>
+              {/* Semester Presets */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setPresetDates('firstSem')}
+                  className="rounded-lg bg-white border border-[#E5E0EB] px-2 py-1 text-[11px] font-semibold text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 transition-colors cursor-pointer"
+                >
+                  Aug – Dec (1st Sem)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPresetDates('secondSem')}
+                  className="rounded-lg bg-white border border-[#E5E0EB] px-2 py-1 text-[11px] font-semibold text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 transition-colors cursor-pointer"
+                >
+                  Jan – May (2nd Sem)
+                </button>
+              </div>
+            </div>
+
+            {/* Start & End Date Summary Cards (Clickable to jump months) */}
+            <div className="grid grid-cols-2 gap-3">
+              <div
+                onClick={() => {
+                  if (startDate) {
+                    const [y, m] = startDate.split('-').map(Number);
+                    if (!isNaN(y) && !isNaN(m)) {
+                      setCalYear(y);
+                      setCalMonth(m - 1);
+                    }
+                  }
+                }}
+                title={startDate ? 'Click to jump to Start Month' : undefined}
+                className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 shadow-2xs cursor-pointer hover:border-[#7026B7]/50 hover:bg-[#FAF8FC] transition-colors"
+              >
+                <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">
+                  Start Date
+                </span>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-3.5 w-3.5 text-[#7026B7] shrink-0" />
+                  <span className="text-xs font-bold text-[#24133F]">
+                    {startDate ? formatDateDisplay(startDate) : 'Click day on calendar'}
+                  </span>
+                </div>
+              </div>
+
+              <div
+                onClick={() => {
+                  if (endDate) {
+                    const [y, m] = endDate.split('-').map(Number);
+                    if (!isNaN(y) && !isNaN(m)) {
+                      setCalYear(y);
+                      setCalMonth(m - 1);
+                    }
+                  }
+                }}
+                title={endDate ? 'Click to jump to End Month' : undefined}
+                className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 shadow-2xs cursor-pointer hover:border-[#7026B7]/50 hover:bg-[#FAF8FC] transition-colors"
+              >
+                <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">
+                  End Date
+                </span>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-3.5 w-3.5 text-[#7026B7] shrink-0" />
+                  <span className="text-xs font-bold text-[#24133F]">
+                    {endDate ? formatDateDisplay(endDate) : 'Click 2nd day on calendar'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Calendar Month Header & Navigation */}
+            <div className="flex items-center justify-between pt-1 pb-2 border-b border-[#F1EEF4]">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-extrabold text-[#24133F]">
+                  {new Date(calYear, calMonth).toLocaleDateString('en-US', {
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (calMonth === 0) {
+                      setCalMonth(11);
+                      setCalYear((y) => y - 1);
+                    } else {
+                      setCalMonth((m) => m - 1);
+                    }
+                  }}
+                  aria-label="Previous month"
+                  className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F] transition-colors cursor-pointer"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (calMonth === 11) {
+                      setCalMonth(0);
+                      setCalYear((y) => y + 1);
+                    } else {
+                      setCalMonth((m) => m + 1);
+                    }
+                  }}
+                  aria-label="Next month"
+                  className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F] transition-colors cursor-pointer"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Day Name Headers */}
+            <div className="grid grid-cols-7 text-center text-[10px] font-bold text-[#756883]">
+              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+                <div key={d} className="py-0.5">
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            {/* Interactive Calendar Grid with Ribbon Highlight */}
+            <div className="grid grid-cols-7 text-center text-xs">
+              {(() => {
+                const cells = [];
+                for (let i = 0; i < firstDay; i++) {
+                  cells.push(<div key={`blank-${i}`} className="h-8" />);
+                }
+
+                for (let day = 1; day <= daysInMonth; day++) {
+                  const dayStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                  const isStart = dayStr === effectiveStart;
+                  const isEnd = dayStr === effectiveEnd;
+                  const inRange =
+                    effectiveStart &&
+                    effectiveEnd &&
+                    dayStr > effectiveStart &&
+                    dayStr < effectiveEnd;
+                  const hasRange =
+                    effectiveStart && effectiveEnd && effectiveStart !== effectiveEnd;
+
+                  const dayOfWeek = (firstDay + day - 1) % 7;
+                  const isRowStart = dayOfWeek === 0;
+                  const isRowEnd = dayOfWeek === 6;
+                  const isFirstDayOfMonth = day === 1;
+                  const isLastDayOfMonth = day === daysInMonth;
+
+                  const isLeftEdge = isRowStart || isFirstDayOfMonth;
+                  const isRightEdge = isRowEnd || isLastDayOfMonth;
+
+                  cells.push(
+                    <div
+                      key={day}
+                      className="relative flex h-8 items-center justify-center py-0.5"
+                      onMouseEnter={() => setHoverDate(dayStr)}
+                      onMouseLeave={() => setHoverDate(null)}
+                    >
+                      {hasRange && (
+                        <>
+                          {isStart && (
+                            <div
+                              className={cn(
+                                'absolute right-0 top-0.5 bottom-0.5 left-1/2 bg-[#E9D5FF]/60',
+                                isRightEdge && 'rounded-r-full'
+                              )}
+                            />
+                          )}
+                          {inRange && (
+                            <div
+                              className={cn(
+                                'absolute inset-x-0 top-0.5 bottom-0.5 bg-[#E9D5FF]/60',
+                                isLeftEdge && isRightEdge && 'rounded-full',
+                                isLeftEdge && !isRightEdge && 'rounded-l-full',
+                                isRightEdge && !isLeftEdge && 'rounded-r-full'
+                              )}
+                            />
+                          )}
+                          {isEnd && (
+                            <div
+                              className={cn(
+                                'absolute left-0 top-0.5 bottom-0.5 right-1/2 bg-[#E9D5FF]/60',
+                                isLeftEdge && 'rounded-l-full'
+                              )}
+                            />
+                          )}
+                        </>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleCalendarDayClick(dayStr)}
+                        className={cn(
+                          'relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors cursor-pointer',
+                          isStart || isEnd
+                            ? 'bg-[#7026B7] font-bold text-white shadow-xs'
+                            : inRange
+                              ? 'text-[#7026B7] font-bold hover:bg-[#D8B4FE]/40'
+                              : 'text-[#24133F] hover:bg-slate-100'
+                        )}
+                      >
+                        {day}
+                      </button>
+                    </div>
+                  );
+                }
+                return cells;
+              })()}
+            </div>
+
+            {/* Multi-month Term Continuation Banner */}
+            {effectiveEnd &&
+              effectiveEnd >
+                `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}` && (
+                <div className="flex items-center justify-between text-[11px] text-[#7026B7] bg-[#F7F2FD] border border-[#E9D5FF] px-3 py-1.5 rounded-xl animate-in fade-in duration-150">
+                  <span className="font-medium">
+                    Term continues through {formatDateDisplay(effectiveEnd)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const [y, m] = effectiveEnd.split('-').map(Number);
+                      if (!isNaN(y) && !isNaN(m)) {
+                        setCalYear(y);
+                        setCalMonth(m - 1);
+                      }
+                    }}
+                    className="font-bold underline hover:text-[#5E1E9D] cursor-pointer ml-2 shrink-0"
+                  >
+                    Jump to End Month ({new Date(Number(effectiveEnd.split('-')[0]), Number(effectiveEnd.split('-')[1]) - 1).toLocaleDateString('en-US', { month: 'short' })}) &rarr;
+                  </button>
+                </div>
+              )}
+            {effectiveStart &&
+              effectiveStart < `${calYear}-${String(calMonth + 1).padStart(2, '0')}-01` && (
+                <div className="flex items-center justify-between text-[11px] text-[#7026B7] bg-[#F7F2FD] border border-[#E9D5FF] px-3 py-1.5 rounded-xl animate-in fade-in duration-150">
+                  <span className="font-medium">
+                    Term started on {formatDateDisplay(effectiveStart)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const [y, m] = effectiveStart.split('-').map(Number);
+                      if (!isNaN(y) && !isNaN(m)) {
+                        setCalYear(y);
+                        setCalMonth(m - 1);
+                      }
+                    }}
+                    className="font-bold underline hover:text-[#5E1E9D] cursor-pointer ml-2 shrink-0"
+                  >
+                    &larr; Jump to Start Month ({new Date(Number(effectiveStart.split('-')[0]), Number(effectiveStart.split('-')[1]) - 1).toLocaleDateString('en-US', { month: 'short' })})
+                  </button>
+                </div>
+              )}
+          </div>
+
+          <div className="pt-1">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <Checkbox
+                checked={setActiveNow}
+                onChange={(e) => setSetActiveNow(e.target.checked)}
+              />
+              <span className="text-xs font-medium text-[#24133F]">
+                {createMode === 'edit'
+                  ? 'Set as active term'
+                  : 'Set as active term immediately after creation'}
+              </span>
+            </label>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={resetForm}
+              className="text-xs cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="text-xs bg-[#7026B7] hover:bg-[#5E1E9D] text-white cursor-pointer"
+            >
+              {isSubmitting
+                ? 'Saving...'
+                : createMode === 'year'
+                  ? 'Create Academic Year'
+                  : createMode === 'semester'
+                    ? 'Add Semester'
+                    : 'Save Changes'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+    </>
   );
 };
 
