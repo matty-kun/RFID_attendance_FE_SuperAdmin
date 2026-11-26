@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { Calendar, CheckCircle2, Plus, Sparkles, AlertCircle } from 'lucide-react';
-import { Modal } from '../common/Modal';
+import { Calendar, CheckCircle2, Plus, Sparkles, AlertCircle, GraduationCap } from 'lucide-react';
+import { Drawer } from '../common/Drawer';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Checkbox } from '../common/Checkbox';
 import { useAcademicTerm } from '../../context/AcademicTermContext';
 import type { SemesterType } from '../../types';
 
-interface ManageAcademicTermsModalProps {
+export interface AcademicTermsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const ManageAcademicTermsModal: React.FC<ManageAcademicTermsModalProps> = ({ isOpen, onClose }) => {
+export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen, onClose }) => {
   const { terms, activeTerm, activateTerm, createTerm } = useAcademicTerm();
 
   // Create form state
@@ -76,17 +76,32 @@ export const ManageAcademicTermsModal: React.FC<ManageAcademicTermsModalProps> =
   };
 
   return (
-    <Modal
+    <Drawer
       isOpen={isOpen}
       onClose={() => {
         resetForm();
         onClose();
       }}
-      title="Manage Academic Terms"
+      title="Academic Terms"
       description="Configure school years and semesters. The active term automatically scopes students, attendance, and reports."
-      maxWidth="2xl"
+      icon={<GraduationCap className="h-5 w-5 text-[#7026B7]" />}
+      maxWidth="xl"
+      footer={
+        <div className="flex w-full items-center justify-end">
+          <Button
+            variant="outline"
+            onClick={() => {
+              resetForm();
+              onClose();
+            }}
+            className="text-xs"
+          >
+            Done
+          </Button>
+        </div>
+      }
     >
-      <div className="space-y-6 pt-2">
+      <div className="space-y-6 pt-1">
         {/* Existing Terms List */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -272,13 +287,9 @@ export const ManageAcademicTermsModal: React.FC<ManageAcademicTermsModalProps> =
             </div>
           </form>
         ) : null}
-
-        <div className="flex justify-end pt-2 border-t border-[#E5E0EB]">
-          <Button variant="outline" onClick={onClose} className="text-xs">
-            Done
-          </Button>
-        </div>
       </div>
-    </Modal>
+    </Drawer>
   );
 };
+
+export default AcademicTermsDrawer;

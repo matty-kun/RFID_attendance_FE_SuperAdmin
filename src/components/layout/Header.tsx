@@ -16,7 +16,6 @@ import {
 import { cn } from '../../utils/cn';
 import presntIcon from '../../assets/icon.png';
 import { AcademicTermHeaderSelector } from '../academic-terms/AcademicTermHeaderSelector';
-import { ManageAcademicTermsModal } from '../academic-terms/ManageAcademicTermsModal';
 
 const navigation = [
   { name: 'Overview', path: '/overview', icon: LayoutGrid },
@@ -91,7 +90,6 @@ export function Header() {
   const searchInput = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const navigate = useNavigate();
   const matchingPages = commands.filter(({ name, keywords }) => `${name} ${keywords}`.toLowerCase().includes(query.trim().toLowerCase()));
   const shortcutLabel = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K';
@@ -129,7 +127,7 @@ export function Header() {
     } else if (command.action === 'manage-admins') {
       window.dispatchEvent(new CustomEvent('presnt:open-admins-drawer'));
     } else if (command.action === 'manage-academic-terms') {
-      setIsManageModalOpen(true);
+      window.dispatchEvent(new CustomEvent('presnt:open-academic-terms-drawer'));
     } else if (command.path.includes('#')) {
       const [path, hash] = command.path.split('#');
       navigate(path);
@@ -148,12 +146,9 @@ export function Header() {
         else openPalette();
       }
     };
-    const onOpenAcademicTerms = () => setIsManageModalOpen(true);
     window.addEventListener('keydown', onShortcut);
-    window.addEventListener('presnt:open-academic-terms-modal', onOpenAcademicTerms);
     return () => {
       window.removeEventListener('keydown', onShortcut);
-      window.removeEventListener('presnt:open-academic-terms-modal', onOpenAcademicTerms);
       if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
     };
   }, []);
@@ -175,7 +170,7 @@ export function Header() {
 
         <AcademicTermHeaderSelector
           align="left"
-          onOpenManageModal={() => setIsManageModalOpen(true)}
+          onOpenManageModal={() => window.dispatchEvent(new CustomEvent('presnt:open-academic-terms-drawer'))}
         />
       </div>
 
@@ -198,11 +193,6 @@ export function Header() {
           <kbd className="hidden text-[10px] font-semibold lg:inline">{shortcutLabel}</kbd>
         </button>
       </div>
-
-      <ManageAcademicTermsModal
-        isOpen={isManageModalOpen}
-        onClose={() => setIsManageModalOpen(false)}
-      />
 
       <dialog ref={pagesDialog} aria-label="Command palette" onCancel={(event) => { event.preventDefault(); closePalette(); }} onClick={(event) => { if (event.target === pagesDialog.current) closePalette(); }} className="command-palette fixed inset-0 m-auto max-h-[calc(100dvh-32px)] max-w-none w-[min(560px,calc(100vw-32px))] open:flex open:flex-col overflow-hidden rounded-2xl border border-[#E5E0EB] bg-white p-0 text-[#24133F] shadow-2xl backdrop:bg-[#170D29]/40 backdrop:backdrop-blur-md">
         <div className="flex shrink-0 items-center gap-3 border-b border-[#E5E0EB] px-4 py-4">

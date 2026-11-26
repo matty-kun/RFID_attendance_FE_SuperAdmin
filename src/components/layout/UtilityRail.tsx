@@ -56,7 +56,7 @@ export function UtilityRail() {
           type="button"
           onClick={() => {
             setIsOpen(false);
-            window.dispatchEvent(new CustomEvent('presnt:open-academic-terms-modal'));
+            window.dispatchEvent(new CustomEvent('presnt:open-academic-terms-drawer'));
           }}
           aria-label="Manage Academic Terms"
           title="Manage School Year & Semesters"
