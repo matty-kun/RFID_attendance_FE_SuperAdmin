@@ -322,6 +322,11 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
                 const dayOfWeek = (firstDay + day - 1) % 7;
                 const isRowStart = dayOfWeek === 0;
                 const isRowEnd = dayOfWeek === 6;
+                const isFirstDayOfMonth = day === 1;
+                const isLastDayOfMonth = day === daysInMonth;
+
+                const isLeftEdge = isRowStart || isFirstDayOfMonth;
+                const isRightEdge = isRowEnd || isLastDayOfMonth;
 
                 cells.push(
                   <div
@@ -336,7 +341,7 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
                           <div
                             className={cn(
                               'absolute right-0 top-0.5 bottom-0.5 left-1/2 bg-[#E9D5FF]/60',
-                              isRowEnd && 'rounded-r-full'
+                              isRightEdge && 'rounded-r-full'
                             )}
                           />
                         )}
@@ -344,9 +349,9 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
                           <div
                             className={cn(
                               'absolute inset-x-0 top-0.5 bottom-0.5 bg-[#E9D5FF]/60',
-                              isRowStart && isRowEnd && 'rounded-full',
-                              isRowStart && !isRowEnd && 'rounded-l-full',
-                              isRowEnd && !isRowStart && 'rounded-r-full'
+                              isLeftEdge && isRightEdge && 'rounded-full',
+                              isLeftEdge && !isRightEdge && 'rounded-l-full',
+                              isRightEdge && !isLeftEdge && 'rounded-r-full'
                             )}
                           />
                         )}
@@ -354,7 +359,7 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
                           <div
                             className={cn(
                               'absolute left-0 top-0.5 bottom-0.5 right-1/2 bg-[#E9D5FF]/60',
-                              isRowStart && 'rounded-l-full'
+                              isLeftEdge && 'rounded-l-full'
                             )}
                           />
                         )}

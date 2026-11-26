@@ -512,9 +512,21 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                 </div>
               </div>
 
-              {/* Start & End Date Summary Cards */}
+              {/* Start & End Date Summary Cards (Clickable to jump months) */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 shadow-2xs">
+                <div
+                  onClick={() => {
+                    if (startDate) {
+                      const [y, m] = startDate.split('-').map(Number);
+                      if (!isNaN(y) && !isNaN(m)) {
+                        setCalYear(y);
+                        setCalMonth(m - 1);
+                      }
+                    }
+                  }}
+                  title={startDate ? 'Click to jump to Start Month' : undefined}
+                  className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 shadow-2xs cursor-pointer hover:border-[#7026B7]/50 hover:bg-[#FAF8FC] transition-colors"
+                >
                   <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">
                     Start Date
                   </span>
@@ -526,7 +538,19 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 shadow-2xs">
+                <div
+                  onClick={() => {
+                    if (endDate) {
+                      const [y, m] = endDate.split('-').map(Number);
+                      if (!isNaN(y) && !isNaN(m)) {
+                        setCalYear(y);
+                        setCalMonth(m - 1);
+                      }
+                    }
+                  }}
+                  title={endDate ? 'Click to jump to End Month' : undefined}
+                  className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 shadow-2xs cursor-pointer hover:border-[#7026B7]/50 hover:bg-[#FAF8FC] transition-colors"
+                >
                   <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">
                     End Date
                   </span>
@@ -615,6 +639,11 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                     const dayOfWeek = (firstDay + day - 1) % 7;
                     const isRowStart = dayOfWeek === 0;
                     const isRowEnd = dayOfWeek === 6;
+                    const isFirstDayOfMonth = day === 1;
+                    const isLastDayOfMonth = day === daysInMonth;
+
+                    const isLeftEdge = isRowStart || isFirstDayOfMonth;
+                    const isRightEdge = isRowEnd || isLastDayOfMonth;
 
                     cells.push(
                       <div
@@ -629,7 +658,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                               <div
                                 className={cn(
                                   'absolute right-0 top-0.5 bottom-0.5 left-1/2 bg-[#E9D5FF]/60',
-                                  isRowEnd && 'rounded-r-full'
+                                  isRightEdge && 'rounded-r-full'
                                 )}
                               />
                             )}
@@ -637,9 +666,9 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                               <div
                                 className={cn(
                                   'absolute inset-x-0 top-0.5 bottom-0.5 bg-[#E9D5FF]/60',
-                                  isRowStart && isRowEnd && 'rounded-full',
-                                  isRowStart && !isRowEnd && 'rounded-l-full',
-                                  isRowEnd && !isRowStart && 'rounded-r-full'
+                                  isLeftEdge && isRightEdge && 'rounded-full',
+                                  isLeftEdge && !isRightEdge && 'rounded-l-full',
+                                  isRightEdge && !isLeftEdge && 'rounded-r-full'
                                 )}
                               />
                             )}
@@ -647,7 +676,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                               <div
                                 className={cn(
                                   'absolute left-0 top-0.5 bottom-0.5 right-1/2 bg-[#E9D5FF]/60',
-                                  isRowStart && 'rounded-l-full'
+                                  isLeftEdge && 'rounded-l-full'
                                 )}
                               />
                             )}
@@ -674,6 +703,51 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                   return cells;
                 })()}
               </div>
+
+              {/* Multi-month Term Continuation Banner */}
+              {effectiveEnd &&
+                effectiveEnd >
+                  `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}` && (
+                  <div className="flex items-center justify-between text-[11px] text-[#7026B7] bg-[#F7F2FD] border border-[#E9D5FF] px-3 py-1.5 rounded-xl animate-in fade-in duration-150">
+                    <span className="font-medium">
+                      Term continues through {formatDateDisplay(effectiveEnd)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const [y, m] = effectiveEnd.split('-').map(Number);
+                        if (!isNaN(y) && !isNaN(m)) {
+                          setCalYear(y);
+                          setCalMonth(m - 1);
+                        }
+                      }}
+                      className="font-bold underline hover:text-[#5E1E9D] cursor-pointer ml-2 shrink-0"
+                    >
+                      Jump to End Month ({new Date(Number(effectiveEnd.split('-')[0]), Number(effectiveEnd.split('-')[1]) - 1).toLocaleDateString('en-US', { month: 'short' })}) &rarr;
+                    </button>
+                  </div>
+                )}
+              {effectiveStart &&
+                effectiveStart < `${calYear}-${String(calMonth + 1).padStart(2, '0')}-01` && (
+                  <div className="flex items-center justify-between text-[11px] text-[#7026B7] bg-[#F7F2FD] border border-[#E9D5FF] px-3 py-1.5 rounded-xl animate-in fade-in duration-150">
+                    <span className="font-medium">
+                      Term started on {formatDateDisplay(effectiveStart)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const [y, m] = effectiveStart.split('-').map(Number);
+                        if (!isNaN(y) && !isNaN(m)) {
+                          setCalYear(y);
+                          setCalMonth(m - 1);
+                        }
+                      }}
+                      className="font-bold underline hover:text-[#5E1E9D] cursor-pointer ml-2 shrink-0"
+                    >
+                      &larr; Jump to Start Month ({new Date(Number(effectiveStart.split('-')[0]), Number(effectiveStart.split('-')[1]) - 1).toLocaleDateString('en-US', { month: 'short' })})
+                    </button>
+                  </div>
+                )}
             </div>
 
             <div className="pt-1">
