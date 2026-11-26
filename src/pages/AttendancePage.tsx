@@ -93,20 +93,21 @@ export function getAcademicYear(dateStr?: string | null): string {
 
 function formatDateDisplay(dateStr: string) {
   if (!dateStr) return '';
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+  return new Date(`${dateStr.slice(0, 10)}T00:00:00+08:00`).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+    timeZone: 'Asia/Manila',
   });
 }
 
 function formatDateRangeLabel(startDate: string, endDate: string): { label: string; daysCount: number } {
   try {
-    const d1 = new Date(`${startDate}T00:00:00`);
-    const d2 = new Date(`${endDate}T00:00:00`);
+    const d1 = new Date(`${startDate.slice(0, 10)}T00:00:00+08:00`);
+    const d2 = new Date(`${endDate.slice(0, 10)}T00:00:00+08:00`);
     const daysCount = Math.max(1, Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-    const startFormatted = d1.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    const endFormatted = d2.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const startFormatted = d1.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' });
+    const endFormatted = d2.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' });
     const rangeText = startDate === endDate ? startFormatted : `${startFormatted} - ${endFormatted}`;
     return {
       label: `${rangeText} · ${daysCount} ${daysCount === 1 ? 'day' : 'days'}`,
@@ -213,16 +214,15 @@ export function AttendancePage() {
     }));
 
     const { label: dateRangeLabel, daysCount } = formatDateRangeLabel(ev.start_date, ev.end_date);
-    const startObj = new Date(`${ev.start_date}T00:00:00`);
+    const startObj = new Date(`${ev.start_date.slice(0, 10)}T00:00:00Z`);
 
     const days: DaySchedule[] = Array.from({ length: daysCount }, (_, idx) => {
-      const cur = new Date(startObj);
-      cur.setDate(startObj.getDate() + idx);
-      const y = cur.getFullYear();
-      const m = String(cur.getMonth() + 1).padStart(2, '0');
-      const d = String(cur.getDate()).padStart(2, '0');
+      const cur = new Date(startObj.getTime() + idx * 86400000);
+      const y = cur.getUTCFullYear();
+      const m = String(cur.getUTCMonth() + 1).padStart(2, '0');
+      const d = String(cur.getUTCDate()).padStart(2, '0');
       const ymd = `${y}-${m}-${d}`;
-      const dateStr = cur.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      const dateStr = cur.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
       const dayId = `d${idx + 1}`;
       const daySessions = sessions
         .filter((s) => s.date === ymd)

@@ -141,10 +141,12 @@ export const AttendanceListView: React.FC = () => {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs text-slate-500 font-mono">
-                      {new Date(scan.recorded_at).toLocaleString([], {
+                      {new Date(scan.recorded_at).toLocaleString('en-US', {
+                        timeZone: 'Asia/Manila',
                         hour: '2-digit',
                         minute: '2-digit',
                         second: '2-digit',
+                        hour12: true,
                       })}
                     </TableCell>
                   </TableRow>
