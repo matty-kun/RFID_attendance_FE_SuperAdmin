@@ -363,10 +363,12 @@ export function ReportsPage() {
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Filter Bar - Strictly One Line */}
+      <div className="flex items-center gap-2 w-full flex-nowrap overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {/* Semester Filter Dropdown */}
         <Dropdown
+          className="shrink-0"
+          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
           value={termId}
           onChange={(val) => {
             if (val === 'all') {
@@ -386,6 +388,8 @@ export function ReportsPage() {
         />
 
         <CalendarDatePicker
+          className="shrink-0"
+          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
           startDate={startDate}
           endDate={endDate}
           onChange={(range) => {
@@ -395,6 +399,8 @@ export function ReportsPage() {
         />
 
         <Dropdown
+          className="shrink-0"
+          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
           value={event}
           onChange={(value) => { setEvent(value); setSession('all'); }}
           options={[
@@ -404,6 +410,8 @@ export function ReportsPage() {
         />
 
         <Dropdown
+          className="shrink-0"
+          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
           value={session}
           onChange={setSession}
           icon={<Clock className="h-4 w-4 text-[#756883]" />}
@@ -414,6 +422,8 @@ export function ReportsPage() {
         />
 
         <Dropdown
+          className="shrink-0"
+          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
           value={course}
           onChange={setCourse}
           icon={<GraduationCap className="h-4 w-4 text-[#756883]" />}
@@ -424,6 +434,8 @@ export function ReportsPage() {
         />
 
         <Dropdown
+          className="shrink-0"
+          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
           value={type}
           onChange={setType}
           icon={<ArrowRightLeft className="h-4 w-4 text-[#756883]" />}
@@ -435,6 +447,8 @@ export function ReportsPage() {
         />
 
         <Dropdown
+          className="shrink-0"
+          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
           value={location}
           onChange={setLocation}
           icon={<MapPin className="h-4 w-4 text-[#756883]" />}
@@ -444,17 +458,18 @@ export function ReportsPage() {
           ]}
         />
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2 shrink-0">
           {selected.length > 0 && (
             <button
               type="button"
               onClick={() => setSelected([])}
-              className="h-10 px-3 rounded-xl border border-[#E5E0EB] bg-white text-xs font-semibold text-[#756883] hover:text-[#24133F] hover:bg-slate-50 transition-colors cursor-pointer"
+              className="h-10 px-3 rounded-xl border border-[#E5E0EB] bg-white text-xs font-semibold text-[#756883] hover:text-[#24133F] hover:bg-slate-50 transition-colors cursor-pointer shrink-0"
             >
               Clear ({selected.length})
             </button>
           )}
           <ExportButton
+            className="shrink-0"
             label={selected.length > 0 ? `Export (${selected.length})` : 'Export'}
             onExport={(format) => { void handleExport(format); }}
             disabled={loading || !snapshot?.rowTotal}

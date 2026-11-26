@@ -13,6 +13,7 @@ export interface CalendarDatePickerProps {
   endDate?: string;
   onChange: (range: DateRange) => void;
   className?: string;
+  buttonClassName?: string;
 }
 
 function toYMD(date: Date): string {
@@ -47,6 +48,7 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
   endDate = '',
   onChange,
   className,
+  buttonClassName,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -208,7 +210,10 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs font-semibold text-[#24133F] hover:border-[#7026B7] transition-colors focus-visible:outline-2 focus-visible:outline-[#7026B7]"
+        className={cn(
+          'flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs font-semibold text-[#24133F] hover:border-[#7026B7] transition-colors focus-visible:outline-2 focus-visible:outline-[#7026B7] select-none cursor-pointer',
+          buttonClassName
+        )}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
       >
