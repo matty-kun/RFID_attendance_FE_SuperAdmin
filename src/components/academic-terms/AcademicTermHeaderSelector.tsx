@@ -5,10 +5,12 @@ import { cn } from '../../utils/cn';
 
 interface AcademicTermHeaderSelectorProps {
   onOpenManageModal: () => void;
+  align?: 'left' | 'right';
 }
 
 export const AcademicTermHeaderSelector: React.FC<AcademicTermHeaderSelectorProps> = ({
   onOpenManageModal,
+  align = 'left',
 }) => {
   const { terms, selectedTerm, activeTerm, setSelectedTerm } = useAcademicTerm();
   const [isOpen, setIsOpen] = useState(false);
@@ -54,7 +56,9 @@ export const AcademicTermHeaderSelector: React.FC<AcademicTermHeaderSelectorProp
         <span className="whitespace-nowrap">
           {selectedTerm
             ? `${selectedTerm.school_year} · ${selectedTerm.semester}`
-            : 'Academic Term'}
+            : activeTerm
+              ? `${activeTerm.school_year} · ${activeTerm.semester}`
+              : '2026-2027 · 2nd Sem'}
         </span>
         {isCurrentActive && (
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -68,7 +72,12 @@ export const AcademicTermHeaderSelector: React.FC<AcademicTermHeaderSelectorProp
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1.5 w-72 origin-top-right rounded-2xl border border-[#E5E0EB] bg-white p-2 text-[#24133F] shadow-xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-150">
+        <div
+          className={cn(
+            'absolute mt-1.5 w-72 rounded-2xl border border-[#E5E0EB] bg-white p-2 text-[#24133F] shadow-xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-150',
+            align === 'left' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'
+          )}
+        >
           <div className="px-2.5 py-2 border-b border-[#E5E0EB] mb-1">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">
