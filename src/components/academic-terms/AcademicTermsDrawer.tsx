@@ -6,14 +6,15 @@ import {
   AlertCircle,
   GraduationCap,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock,
-  Layers,
+  Calendar,
 } from 'lucide-react';
 import { Drawer } from '../common/Drawer';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Checkbox } from '../common/Checkbox';
-import { Dropdown } from '../common/Dropdown';
 import { useAcademicTerm } from '../../context/AcademicTermContext';
 import type { SemesterType, AcademicTerm } from '../../types';
 import { cn } from '../../utils/cn';
@@ -95,7 +96,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
     });
   };
 
-  // Form State: 'year' (create new school year) vs 'semester' (add semester to existing year)
+  // Form State: 'year' (create new school year from home) vs 'semester' (add semester inside specific year)
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createMode, setCreateMode] = useState<'year' | 'semester'>('year');
   const [schoolYear, setSchoolYear] = useState('');
@@ -105,6 +106,11 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
   const [setActiveNow, setSetActiveNow] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+
+  // Custom Calendar Picker State
+  const [calMonth, setCalMonth] = useState<number>(() => new Date().getMonth());
+  const [calYear, setCalYear] = useState<number>(() => new Date().getFullYear());
+  const [hoverDate, setHoverDate] = useState<string | null>(null);
 
   const resetForm = () => {
     setSchoolYear('');
@@ -120,17 +126,107 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
   const openAddSemesterForYear = (sy: string, defaultSem?: SemesterType) => {
     setCreateMode('semester');
     setSchoolYear(sy);
-    setSemester(defaultSem || '1st Sem');
+    const semToSet = defaultSem || '1st Sem';
+    setSemester(semToSet);
     setFormError('');
+
+    // Pre-align calendar year based on school year and semester
+    const parts = sy.split('-').map(Number);
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      if (semToSet === '1st Sem') {
+        setCalYear(parts[0]);
+        setCalMonth(7); // August
+        setStartDate(`${parts[0]}-08-15`);
+        setEndDate(`${parts[0]}-12-20`);
+      } else {
+        setCalYear(parts[1]);
+        setCalMonth(0); // January
+        setStartDate(`${parts[1]}-01-15`);
+        setEndDate(`${parts[1]}-05-30`);
+      }
+    }
     setShowCreateForm(true);
   };
 
   const openCreateNewYear = () => {
     setCreateMode('year');
-    setSchoolYear('');
+    // Suggest next academic year if years already exist
+    if (yearGroups.length > 0) {
+      const latest = yearGroups[0].school_year;
+      const parts = latest.split('-').map(Number);
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        const nextStart = parts[0] + 1;
+        const nextEnd = parts[1] + 1;
+        const nextSy = `${nextStart}-${nextEnd}`;
+        setSchoolYear(nextSy);
+        setCalYear(nextStart);
+        setCalMonth(7); // August
+        setStartDate(`${nextStart}-08-15`);
+        setEndDate(`${nextStart}-12-20`);
+      } else {
+        setSchoolYear('');
+      }
+    } else {
+      const currentYear = new Date().getFullYear();
+      setSchoolYear(`${currentYear}-${currentYear + 1}`);
+      setCalYear(currentYear);
+      setCalMonth(7);
+      setStartDate(`${currentYear}-08-15`);
+      setEndDate(`${currentYear}-12-20`);
+    }
     setSemester('1st Sem');
     setFormError('');
     setShowCreateForm(true);
+  };
+
+  const handleSemesterChange = (newSem: SemesterType) => {
+    setSemester(newSem);
+    const parts = schoolYear.trim().split('-').map(Number);
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      if (newSem === '1st Sem') {
+        setCalYear(parts[0]);
+        setCalMonth(7);
+        setStartDate(`${parts[0]}-08-15`);
+        setEndDate(`${parts[0]}-12-20`);
+      } else {
+        setCalYear(parts[1]);
+        setCalMonth(0);
+        setStartDate(`${parts[1]}-01-15`);
+        setEndDate(`${parts[1]}-05-30`);
+      }
+    }
+  };
+
+  const handleCalendarDayClick = (dayStr: string) => {
+    if (!startDate || (startDate && endDate && startDate !== endDate)) {
+      setStartDate(dayStr);
+      setEndDate(dayStr);
+    } else if (startDate && (!endDate || startDate === endDate)) {
+      if (dayStr < startDate) {
+        setEndDate(startDate);
+        setStartDate(dayStr);
+      } else {
+        setEndDate(dayStr);
+      }
+    }
+  };
+
+  const setPresetDates = (type: 'firstSem' | 'secondSem') => {
+    const parts = schoolYear.trim().split('-').map(Number);
+    const baseYear = parts.length === 2 && !isNaN(parts[0]) ? parts[0] : calYear;
+    const endYear = parts.length === 2 && !isNaN(parts[1]) ? parts[1] : baseYear + 1;
+
+    if (type === 'firstSem') {
+      setStartDate(`${baseYear}-08-15`);
+      setEndDate(`${baseYear}-12-20`);
+      setCalYear(baseYear);
+      setCalMonth(7); // August
+    } else {
+      setStartDate(`${endYear}-01-15`);
+      setEndDate(`${endYear}-05-30`);
+      setCalYear(endYear);
+      setCalMonth(0); // January
+    }
   };
 
   const handleCreateTerm = async (e: React.FormEvent) => {
@@ -148,7 +244,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
       return;
     }
     if (!startDate || !endDate) {
-      setFormError('Please select both start and end dates.');
+      setFormError('Please select both start and end dates from the calendar.');
       return;
     }
     if (startDate > endDate) {
@@ -184,6 +280,21 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
     }
   };
 
+  // Calendar rendering calculations
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+
+  const effectiveStart = useMemo(() => {
+    if (startDate && hoverDate && !endDate && hoverDate < startDate) return hoverDate;
+    return startDate;
+  }, [startDate, endDate, hoverDate]);
+
+  const effectiveEnd = useMemo(() => {
+    if (endDate) return endDate;
+    if (startDate && hoverDate && hoverDate >= startDate) return hoverDate;
+    return startDate;
+  }, [startDate, endDate, hoverDate]);
+
   return (
     <Drawer
       isOpen={isOpen}
@@ -192,62 +303,35 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
         onClose();
       }}
       title="Academic Years & Semesters"
-      description="Configure school years and semesters. Active term automatically scopes students, attendance, and reports."
+      description="Configure school years and semesters. The active term automatically scopes students, attendance, and reports."
       icon={<GraduationCap className="h-5 w-5 text-[#7026B7]" />}
       maxWidth="xl"
-      footer={
-        <div className="flex w-full items-center justify-end">
-          <Button
-            variant="outline"
-            onClick={() => {
-              resetForm();
-              onClose();
-            }}
-            className="text-xs"
-          >
-            Done
-          </Button>
-        </div>
-      }
     >
       <div className="space-y-6 pt-1">
-        {/* Top Action Bar */}
+        {/* Top Action Bar: Clean Home Drawer Level */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-[#756883]">
               Academic Years ({yearGroups.length})
             </h4>
             <p className="text-[11px] text-[#756883] mt-0.5">
-              Click an Academic Year to view its semesters.
+              Select an Academic Year to view and configure its semesters.
             </p>
           </div>
 
           {!showCreateForm && (
-            <div className="flex items-center gap-2">
-              {yearGroups.length > 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openAddSemesterForYear(yearGroups[0].school_year, yearGroups[0].missingSemesters[0])}
-                  className="gap-1.5 text-xs text-[#7026B7] border-[#7026B7]/30 hover:bg-[#F0E8FC]"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add Semester
-                </Button>
-              )}
-              <Button
-                size="sm"
-                onClick={openCreateNewYear}
-                className="gap-1.5 text-xs bg-[#7026B7] hover:bg-[#5E1E9D] text-white shadow-xs"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add Academic Year
-              </Button>
-            </div>
+            <Button
+              size="sm"
+              onClick={openCreateNewYear}
+              className="gap-1.5 text-xs bg-[#7026B7] hover:bg-[#5E1E9D] text-white shadow-xs self-start sm:self-auto cursor-pointer"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New Academic Year
+            </Button>
           )}
         </div>
 
-        {/* Create Form (Interactive choice: New Academic Year vs Add Semester) */}
+        {/* Create Form: Streamlined for Academic Year OR Adding Semester inside Year */}
         {showCreateForm && (
           <form
             onSubmit={handleCreateTerm}
@@ -256,52 +340,16 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
             <div className="flex items-center justify-between pb-3 border-b border-[#E5E0EB]">
               <div className="flex items-center gap-2 text-sm font-bold text-[#24133F]">
                 <Sparkles className="h-4 w-4 text-[#7026B7]" />
-                {createMode === 'year' ? 'Create New Academic Year' : 'Add Semester to Existing Year'}
+                {createMode === 'year'
+                  ? 'Create New Academic Year'
+                  : `Add Semester to A.Y. ${schoolYear}`}
               </div>
               <button
                 type="button"
                 onClick={resetForm}
-                className="text-xs text-[#756883] hover:text-[#24133F]"
+                className="text-xs text-[#756883] hover:text-[#24133F] cursor-pointer"
               >
                 Cancel
-              </button>
-            </div>
-
-            {/* Mode Switcher Tabs */}
-            <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200">
-              <button
-                type="button"
-                onClick={() => {
-                  setCreateMode('year');
-                  setSchoolYear('');
-                }}
-                className={cn(
-                  'flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5',
-                  createMode === 'year'
-                    ? 'bg-white text-[#7026B7] shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                )}
-              >
-                <GraduationCap className="h-3.5 w-3.5" />
-                New Academic Year
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setCreateMode('semester');
-                  if (yearGroups.length > 0 && !schoolYear) {
-                    setSchoolYear(yearGroups[0].school_year);
-                  }
-                }}
-                className={cn(
-                  'flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5',
-                  createMode === 'semester'
-                    ? 'bg-white text-[#7026B7] shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                )}
-              >
-                <Layers className="h-3.5 w-3.5" />
-                Add Semester
               </button>
             </div>
 
@@ -318,24 +366,14 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                 <label className="block text-xs font-bold text-[#24133F] mb-1">
                   Academic Year <span className="text-[#756883] font-normal">(YYYY-YYYY)</span>
                 </label>
-                {createMode === 'semester' && yearGroups.length > 0 ? (
-                  <Dropdown
-                    value={schoolYear || yearGroups[0]?.school_year || ''}
-                    onChange={(val) => {
-                      setSchoolYear(val);
-                      const targetGroup = yearGroups.find((g) => g.school_year === val);
-                      if (targetGroup && targetGroup.missingSemesters.length > 0) {
-                        setSemester(targetGroup.missingSemesters[0]);
-                      }
-                    }}
-                    icon={<GraduationCap className="h-4 w-4 text-[#756883]" />}
-                    className="w-full"
-                    buttonClassName="w-full h-10 justify-between text-xs"
-                    options={yearGroups.map((g) => ({
-                      value: g.school_year,
-                      label: `A.Y. ${g.school_year}${g.hasActive ? ' (Active Year)' : ''}`,
-                    }))}
-                  />
+                {createMode === 'semester' ? (
+                  <div className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-[#24133F]">
+                    <GraduationCap className="h-4 w-4 text-[#7026B7]" />
+                    <span>A.Y. {schoolYear}</span>
+                    <span className="ml-auto text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                      Locked
+                    </span>
+                  </div>
                 ) : (
                   <Input
                     value={schoolYear}
@@ -346,7 +384,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                 )}
               </div>
 
-              {/* Semester Field */}
+              {/* Semester Selector */}
               <div>
                 <label className="block text-xs font-bold text-[#24133F] mb-1">Semester</label>
                 <div className="flex gap-2">
@@ -359,16 +397,16 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                         key={sem}
                         type="button"
                         disabled={alreadyConfigured}
-                        onClick={() => setSemester(sem)}
+                        onClick={() => handleSemesterChange(sem)}
                         className={cn(
-                          'flex-1 py-2 rounded-xl text-xs font-bold transition-all border select-none',
+                          'flex-1 py-2 rounded-xl text-xs font-bold transition-all border select-none cursor-pointer',
                           alreadyConfigured
                             ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed line-through'
                             : semester === sem
                               ? 'bg-[#7026B7] text-white border-[#7026B7] shadow-xs'
                               : 'bg-white text-[#756883] border-[#E5E0EB] hover:bg-[#FAF8FC]'
                         )}
-                        title={alreadyConfigured ? `${sem} already configured for this year` : ''}
+                        title={alreadyConfigured ? `${sem} is already configured for this academic year` : ''}
                       >
                         {sem}
                       </button>
@@ -376,29 +414,199 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                   })}
                 </div>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold text-[#24133F] mb-1">Start Date</label>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  required
-                />
+            {/* Custom Interactive Calendar Date Picker */}
+            <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB]/60 p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <span className="text-xs font-bold text-[#24133F] flex items-center gap-1.5">
+                  <Calendar className="h-4 w-4 text-[#7026B7]" />
+                  Term Date Range
+                </span>
+                {/* Semester Presets */}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setPresetDates('firstSem')}
+                    className="rounded-lg bg-white border border-[#E5E0EB] px-2 py-1 text-[11px] font-semibold text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 transition-colors cursor-pointer"
+                  >
+                    Aug – Dec (1st Sem)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPresetDates('secondSem')}
+                    className="rounded-lg bg-white border border-[#E5E0EB] px-2 py-1 text-[11px] font-semibold text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 transition-colors cursor-pointer"
+                  >
+                    Jan – May (2nd Sem)
+                  </button>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-[#24133F] mb-1">End Date</label>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  required
-                />
+              {/* Start & End Date Summary Cards */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 shadow-2xs">
+                  <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">
+                    Start Date
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5 text-[#7026B7] shrink-0" />
+                    <span className="text-xs font-bold text-[#24133F]">
+                      {startDate ? formatDateDisplay(startDate) : 'Click day on calendar'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 shadow-2xs">
+                  <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">
+                    End Date
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5 text-[#7026B7] shrink-0" />
+                    <span className="text-xs font-bold text-[#24133F]">
+                      {endDate ? formatDateDisplay(endDate) : 'Click 2nd day on calendar'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Calendar Month Header & Navigation */}
+              <div className="flex items-center justify-between pt-1 pb-2 border-b border-[#F1EEF4]">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-extrabold text-[#24133F]">
+                    {new Date(calYear, calMonth).toLocaleDateString('en-US', {
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (calMonth === 0) {
+                        setCalMonth(11);
+                        setCalYear((y) => y - 1);
+                      } else {
+                        setCalMonth((m) => m - 1);
+                      }
+                    }}
+                    aria-label="Previous month"
+                    className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F] transition-colors cursor-pointer"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (calMonth === 11) {
+                        setCalMonth(0);
+                        setCalYear((y) => y + 1);
+                      } else {
+                        setCalMonth((m) => m + 1);
+                      }
+                    }}
+                    aria-label="Next month"
+                    className="rounded-lg p-1 text-[#756883] hover:bg-slate-100 hover:text-[#24133F] transition-colors cursor-pointer"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Day Name Headers */}
+              <div className="grid grid-cols-7 text-center text-[10px] font-bold text-[#756883]">
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+                  <div key={d} className="py-0.5">
+                    {d}
+                  </div>
+                ))}
+              </div>
+
+              {/* Interactive Calendar Grid with Ribbon Highlight */}
+              <div className="grid grid-cols-7 text-center text-xs">
+                {(() => {
+                  const cells = [];
+                  for (let i = 0; i < firstDay; i++) {
+                    cells.push(<div key={`blank-${i}`} className="h-8" />);
+                  }
+
+                  for (let day = 1; day <= daysInMonth; day++) {
+                    const dayStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const isStart = dayStr === effectiveStart;
+                    const isEnd = dayStr === effectiveEnd;
+                    const inRange =
+                      effectiveStart &&
+                      effectiveEnd &&
+                      dayStr > effectiveStart &&
+                      dayStr < effectiveEnd;
+                    const hasRange =
+                      effectiveStart && effectiveEnd && effectiveStart !== effectiveEnd;
+
+                    const dayOfWeek = (firstDay + day - 1) % 7;
+                    const isRowStart = dayOfWeek === 0;
+                    const isRowEnd = dayOfWeek === 6;
+
+                    cells.push(
+                      <div
+                        key={day}
+                        className="relative flex h-8 items-center justify-center py-0.5"
+                        onMouseEnter={() => setHoverDate(dayStr)}
+                        onMouseLeave={() => setHoverDate(null)}
+                      >
+                        {hasRange && (
+                          <>
+                            {isStart && (
+                              <div
+                                className={cn(
+                                  'absolute right-0 top-0.5 bottom-0.5 left-1/2 bg-[#E9D5FF]/60',
+                                  isRowEnd && 'rounded-r-full'
+                                )}
+                              />
+                            )}
+                            {inRange && (
+                              <div
+                                className={cn(
+                                  'absolute inset-x-0 top-0.5 bottom-0.5 bg-[#E9D5FF]/60',
+                                  isRowStart && isRowEnd && 'rounded-full',
+                                  isRowStart && !isRowEnd && 'rounded-l-full',
+                                  isRowEnd && !isRowStart && 'rounded-r-full'
+                                )}
+                              />
+                            )}
+                            {isEnd && (
+                              <div
+                                className={cn(
+                                  'absolute left-0 top-0.5 bottom-0.5 right-1/2 bg-[#E9D5FF]/60',
+                                  isRowStart && 'rounded-l-full'
+                                )}
+                              />
+                            )}
+                          </>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => handleCalendarDayClick(dayStr)}
+                          className={cn(
+                            'relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors cursor-pointer',
+                            isStart || isEnd
+                              ? 'bg-[#7026B7] font-bold text-white shadow-xs'
+                              : inRange
+                                ? 'text-[#7026B7] font-bold hover:bg-[#D8B4FE]/40'
+                                : 'text-[#24133F] hover:bg-slate-100'
+                          )}
+                        >
+                          {day}
+                        </button>
+                      </div>
+                    );
+                  }
+                  return cells;
+                })()}
               </div>
             </div>
 
-            <div className="pt-2">
+            <div className="pt-1">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <Checkbox
                   checked={setActiveNow}
@@ -415,14 +623,14 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                 type="button"
                 variant="ghost"
                 onClick={resetForm}
-                className="text-xs"
+                className="text-xs cursor-pointer"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="text-xs bg-[#7026B7] hover:bg-[#5E1E9D] text-white"
+                className="text-xs bg-[#7026B7] hover:bg-[#5E1E9D] text-white cursor-pointer"
               >
                 {isSubmitting
                   ? 'Saving...'
@@ -443,13 +651,13 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
             <div>
               <p className="text-sm font-bold text-[#24133F]">No Academic Years Configured</p>
               <p className="text-xs text-[#756883] mt-1">
-                Create your first academic year or run the Supabase database migration to get started.
+                Create your first academic year to organize semesters, students, and attendance.
               </p>
             </div>
             <Button
               size="sm"
               onClick={openCreateNewYear}
-              className="gap-1.5 text-xs bg-[#7026B7] text-white hover:bg-[#5E1E9D]"
+              className="gap-1.5 text-xs bg-[#7026B7] text-white hover:bg-[#5E1E9D] cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
               Add Academic Year
@@ -519,7 +727,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                             e.stopPropagation();
                             openAddSemesterForYear(group.school_year, group.missingSemesters[0]);
                           }}
-                          className="hidden sm:flex items-center gap-1 rounded-xl border border-dashed border-[#7026B7]/40 bg-[#FAF7FD] px-2.5 py-1 text-[11px] font-bold text-[#7026B7] hover:bg-[#F3EDFB] transition-colors"
+                          className="flex items-center gap-1 rounded-xl border border-dashed border-[#7026B7]/40 bg-[#FAF7FD] px-2.5 py-1 text-[11px] font-bold text-[#7026B7] hover:bg-[#F3EDFB] transition-colors cursor-pointer"
                         >
                           <Plus className="h-3 w-3" />
                           <span>Add {group.missingSemesters[0]}</span>
@@ -594,7 +802,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                                   size="sm"
                                   variant="outline"
                                   onClick={() => activateTerm(term.id)}
-                                  className="text-xs hover:border-[#7026B7] hover:text-[#7026B7] hover:bg-[#F0E8FC]"
+                                  className="text-xs hover:border-[#7026B7] hover:text-[#7026B7] hover:bg-[#F0E8FC] cursor-pointer"
                                 >
                                   Set as Active
                                 </Button>
@@ -604,7 +812,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                         );
                       })}
 
-                      {/* Missing Semester Prompt */}
+                      {/* Missing Semester Prompt / Add Semester Button inside card */}
                       {group.missingSemesters.map((missingSem) => (
                         <button
                           key={missingSem}
@@ -626,7 +834,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                             </div>
                           </div>
                           <span className="text-xs font-bold text-[#7026B7] px-2.5 py-1 rounded-lg bg-[#F0E8FC]">
-                            + Add
+                            + Add {missingSem}
                           </span>
                         </button>
                       ))}
