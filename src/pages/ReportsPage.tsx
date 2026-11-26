@@ -4,6 +4,7 @@ import { toast } from '../context';
 import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
+import { Checkbox } from '../components/common/Checkbox';
 import { Button } from '../components/common/Button';
 import { request } from '../services/apiClient';
 import { adminService } from '../services/adminService';
@@ -87,6 +88,7 @@ export function ReportsPage() {
   const requestId = useRef(0);
   const pageCache = useRef<Map<number, Snapshot['rows']>>(new Map());
   const pendingRequests = useRef<Map<number, Promise<Snapshot>>>(new Map());
+  const knownRowsMap = useRef<Map<string, ReportStudentAttendanceRow>>(new Map());
   const prevFilterKey = useRef<string>('');
 
   const [session, setSession] = useState('all');
@@ -96,6 +98,7 @@ export function ReportsPage() {
   const [location, setLocation] = useState('all');
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const pageSize = 25;
 
@@ -106,7 +109,7 @@ export function ReportsPage() {
       setTermId(selectedTerm.id);
     }
   }, [selectedTerm]);
-  useEffect(() => { setPage(1); }, [startDate, endDate, termId, event, session, course, type, location]);
+  useEffect(() => { setPage(1); setSelected([]); }, [startDate, endDate, termId, event, session, course, type, location]);
 
   const filterParams = useMemo(() => {
     const effectiveStart = startDate || '2000-01-01';
@@ -320,19 +323,28 @@ export function ReportsPage() {
   }, [eventsById, event, snapshot]);
 
   const filteredStudents: ReportStudentAttendanceRow[] = useMemo(() => {
-    return (snapshot?.rows ?? []).map((row, index) => mapReportRow(row, index));
+    const rows = (snapshot?.rows ?? []).map((row, index) => mapReportRow(row, index));
+    rows.forEach((r) => knownRowsMap.current.set(r.id, r));
+    return rows;
   }, [snapshot?.rows, mapReportRow]);
 
   const handleExport = async (format: ExportFormat) => {
     try {
       const rows: ReportStudentAttendanceRow[] = [];
-      const totalPages = Math.ceil((snapshot?.rowTotal ?? 0) / 100);
-      for (let exportPage = 1; exportPage <= totalPages; exportPage++) {
-        const result = await request.get<Snapshot>('/reports', {
-          params: { ...filterParams, page: exportPage, limit: 100 },
-        });
-        for (const row of result.rows) {
-          rows.push(mapReportRow(row, 0, result.sessions ?? []));
+      if (selected.length) {
+        for (const id of selected) {
+          const row = knownRowsMap.current.get(id) || filteredStudents.find((r) => r.id === id);
+          if (row) rows.push(row);
+        }
+      } else {
+        const totalPages = Math.ceil((snapshot?.rowTotal ?? 0) / 100);
+        for (let exportPage = 1; exportPage <= totalPages; exportPage++) {
+          const result = await request.get<Snapshot>('/reports', {
+            params: { ...filterParams, page: exportPage, limit: 100 },
+          });
+          for (const row of result.rows) {
+            rows.push(mapReportRow(row, 0, result.sessions ?? []));
+          }
         }
       }
       const { exportAttendance } = await import('./reportExports');
@@ -432,12 +444,22 @@ export function ReportsPage() {
           ]}
         />
 
-        <ExportButton
-          className="ml-auto"
-          label="Export"
-          onExport={(format) => { void handleExport(format); }}
-          disabled={loading || !snapshot?.rowTotal}
-        />
+        <div className="ml-auto flex items-center gap-2">
+          {selected.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelected([])}
+              className="h-10 px-3 rounded-xl border border-[#E5E0EB] bg-white text-xs font-semibold text-[#756883] hover:text-[#24133F] hover:bg-slate-50 transition-colors cursor-pointer"
+            >
+              Clear ({selected.length})
+            </button>
+          )}
+          <ExportButton
+            label={selected.length > 0 ? `Export (${selected.length})` : 'Export'}
+            onExport={(format) => { void handleExport(format); }}
+            disabled={loading || !snapshot?.rowTotal}
+          />
+        </div>
       </div>
 
       {/* Attendance Totals Mini Dashboard */}
@@ -701,6 +723,21 @@ export function ReportsPage() {
           <table className="w-full min-w-[780px] text-left text-xs">
             <thead>
               <tr className="text-[#756883] font-medium">
+                <th className="w-10 py-3.5 pr-4">
+                  <Checkbox
+                    aria-label="Select all students on page"
+                    checked={filteredStudents.length > 0 && filteredStudents.every((r) => selected.includes(r.id))}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        const pageIds = filteredStudents.map((r) => r.id);
+                        setSelected((prev) => Array.from(new Set([...prev, ...pageIds])));
+                      } else {
+                        const pageIdSet = new Set(filteredStudents.map((r) => r.id));
+                        setSelected((prev) => prev.filter((id) => !pageIdSet.has(id)));
+                      }
+                    }}
+                  />
+                </th>
                 <th className="px-4 py-3.5 font-medium whitespace-nowrap">Name</th>
                 <th className="px-4 py-3.5 font-medium whitespace-nowrap">Course</th>
                 <th className="px-4 py-3.5 font-medium whitespace-nowrap">Event</th>
@@ -713,6 +750,17 @@ export function ReportsPage() {
             <tbody className={`divide-y divide-[#F1EEF4] transition-opacity duration-150 ${isFetchingPage ? 'opacity-40 pointer-events-none' : ''}`}>
               {filteredStudents.map((record) => (
                 <tr key={record.id} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="py-3.5 pr-4">
+                    <Checkbox
+                      aria-label={`Select ${record.name}`}
+                      checked={selected.includes(record.id)}
+                      onChange={(e) =>
+                        setSelected((prev) =>
+                          e.target.checked ? [...prev, record.id] : prev.filter((id) => id !== record.id)
+                        )
+                      }
+                    />
+                  </td>
                   <td className="px-4 py-3.5 font-medium whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       <div
