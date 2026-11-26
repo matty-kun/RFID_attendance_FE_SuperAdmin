@@ -1,7 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './features/auth';
-import { ToastProvider } from './context/ToastContext';
+import { ToastProvider, AcademicTermProvider } from './context';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { SuperAdminLayout } from './components/layout/SuperAdminLayout';
 import { NetworkStatusBanner } from './components/common/NetworkStatusBanner';
@@ -53,9 +53,10 @@ export const App: React.FC = () => {
     <BrowserRouter>
       <AuthProvider>
         <ToastProvider>
-          <NetworkStatusBanner />
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
+          <AcademicTermProvider>
+            <NetworkStatusBanner />
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
               {/* Public Authentication Route */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/change-password" element={<FirstLoginPasswordPage />} />
@@ -82,6 +83,7 @@ export const App: React.FC = () => {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
+          </AcademicTermProvider>
         </ToastProvider>
       </AuthProvider>
     </BrowserRouter>

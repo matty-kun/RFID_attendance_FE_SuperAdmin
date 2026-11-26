@@ -19,7 +19,7 @@ import {
   Copy,
 } from 'lucide-react';
 import { Checkbox } from '../../../components/common/Checkbox';
-import { toast } from '../../../context';
+import { toast, useAcademicTerm } from '../../../context';
 import { draftStorage } from '../../../utils/draftStorage';
 import { adminService } from '../../../services/adminService';
 import { EditTimeWindowDrawer } from './EditTimeWindowDrawer';
@@ -126,6 +126,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   onClose,
   onPublished,
 }) => {
+  const { activeTerm } = useAcademicTerm();
   const [isMounted, setIsMounted] = useState(isOpen);
   const [isVisible, setIsVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -586,7 +587,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 <Calendar className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-[#24133F]">Create Event</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-[#24133F]">Create Event</h2>
+                  {activeTerm && (
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                      🎓 {activeTerm.school_year} {activeTerm.semester}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-[#756883]">
                   Set up a new event for attendance management. Complete all steps to publish
                 </p>

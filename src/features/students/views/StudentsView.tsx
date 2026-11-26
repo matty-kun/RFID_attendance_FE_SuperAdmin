@@ -14,6 +14,7 @@ import { BulkPhotoImportModal } from './BulkPhotoImportModal';
 import { RegisterActionsDropdown } from './RegisterActionsDropdown';
 import { StudentProfileDrawer } from './StudentProfileDrawer';
 import { studentService } from '../services/studentService';
+import { useAcademicTerm } from '../../../context/AcademicTermContext';
 import type { StudentRecord } from '../models';
 import {
   getAllKnownCourses,
@@ -31,6 +32,7 @@ import {
   Link2Off,
   Trash2,
   CheckCircle2,
+  Calendar,
 } from 'lucide-react';
 import hawiTapCardImg from '../../../assets/illustrations/Hawi Tap Card.png';
 import hawiBoxImg from '../../../assets/illustrations/Hawi Box.png';
@@ -38,6 +40,7 @@ import hawiTrashCanImg from '../../../assets/illustrations/Hawi Trash Can.png';
 
 export const StudentsView: React.FC = () => {
   const [studentTab, setStudentTab] = useState<'active' | 'archived'>('active');
+  const { terms, selectedTerm, setSelectedTerm, activeTerm } = useAcademicTerm();
   const {
     students,
     filteredStudents,
@@ -68,6 +71,7 @@ export const StudentsView: React.FC = () => {
     handleRegisterStudent,
     handleCardScannedForStudent,
     handleBulkImport,
+    handleSmartSync,
     handleQuickPair,
     handleUnlinkCard,
     handleUpdateStudent,
@@ -75,7 +79,7 @@ export const StudentsView: React.FC = () => {
     uploadStudentAvatar,
     removeStudentAvatar,
     loadStudents,
-  } = useStudentsViewModel(studentTab === 'archived');
+  } = useStudentsViewModel(studentTab === 'archived', selectedTerm?.id);
 
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<StudentRecord | null>(null);
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
@@ -294,6 +298,50 @@ export const StudentsView: React.FC = () => {
                 })),
               ]}
             />
+
+            <Dropdown
+              value={selectedTerm?.id || ''}
+              onChange={(val) => {
+                const term = terms.find((t) => t.id === val);
+                if (term) setSelectedTerm(term);
+                setPage(1);
+              }}
+              icon={<Calendar className="h-4 w-4" />}
+              className="w-auto"
+              buttonClassName="h-10 min-w-[180px] justify-between px-3 text-xs"
+              options={terms.map((t) => ({
+                value: t.id,
+                label: `${t.school_year} · ${t.semester}${t.id === activeTerm?.id ? ' (Active)' : ''}`,
+                icon: <Calendar className="h-3.5 w-3.5 text-brand-700" />,
+              }))}
+            />
+
+            <div className="flex h-10 items-center rounded-xl bg-slate-100 p-1 border border-slate-200">
+              {(['1st Sem', '2nd Sem'] as const).map((sem) => {
+                const isCurrent = selectedTerm?.semester === sem;
+                return (
+                  <button
+                    key={sem}
+                    type="button"
+                    onClick={() => {
+                      const currentSy = selectedTerm?.school_year || activeTerm?.school_year || '2026-2027';
+                      const target = terms.find((t) => t.school_year === currentSy && t.semester === sem) || terms.find((t) => t.semester === sem);
+                      if (target) {
+                        setSelectedTerm(target);
+                        setPage(1);
+                      }
+                    }}
+                    className={`h-full px-2.5 rounded-lg text-xs font-bold transition-all ${
+                      isCurrent
+                        ? 'bg-white text-[#7026B7] shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {sem}
+                  </button>
+                );
+              })}
+            </div>
 
             <Dropdown
               value={studentTab}
@@ -679,6 +727,8 @@ export const StudentsView: React.FC = () => {
         isOpen={isBulkImportOpen}
         onClose={() => setIsBulkImportOpen(false)}
         onImport={handleBulkImport}
+        onSmartSync={handleSmartSync}
+        targetTerm={selectedTerm || activeTerm}
         existingStudents={students}
       />
 
