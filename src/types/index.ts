@@ -78,3 +78,32 @@ export interface DashboardMetrics {
   attendanceByDay: Array<{ date: string; timeIns: number; timeOuts: number }>;
   locationActivity: Array<{ id: string; name: string; scansToday: number }>;
 }
+
+export type SemesterType = '1st Sem' | '2nd Sem';
+
+export interface AcademicTerm {
+  id: string;
+  school_year: string;
+  semester: SemesterType;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SmartBulkSyncItem {
+  student_number: string;
+  full_name: string;
+  course: string;
+  year_level: number;
+  email?: string | null;
+}
+
+export interface SmartBulkSyncSummary {
+  total_input: number;
+  re_enrolled: number;
+  newly_registered: number;
+  archived_missing: number;
+}
+

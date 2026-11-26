@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowRightLeft, CheckCircle2, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
+import { AlertCircle, ArrowRightLeft, Calendar, CheckCircle2, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
 import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
@@ -7,6 +7,7 @@ import { Checkbox } from '../components/common/Checkbox';
 import { Button } from '../components/common/Button';
 import { request } from '../services/apiClient';
 import { adminService } from '../services/adminService';
+import { useAcademicTerm } from '../context/AcademicTermContext';
 import type { EventRecord } from '../types';
 import { formatReportSessionLabel, type ReportTrendDay, type ReportSessionItem, type ReportCheckpointItem, type ReportCourseItem, type ReportStudentAttendanceRow } from './auditPreviewRecords';
 
@@ -72,6 +73,8 @@ const initialStart = manilaDate(new Date(Date.now() - 6 * 86400000));
 const emptySummary = { studentsCheckedIn: 0, timeIns: 0, timeOuts: 0, totalScans: 0 };
 
 export function ReportsPage() {
+  const { terms, selectedTerm, setSelectedTerm, activeTerm } = useAcademicTerm();
+  const [termId, setTermId] = useState<string>(selectedTerm?.id || 'all');
   const [startDate, setStartDate] = useState(initialStart);
   const [endDate, setEndDate] = useState(initialEnd);
   const [events, setEvents] = useState<EventRecord[]>([]);
@@ -101,17 +104,23 @@ export function ReportsPage() {
 
   useEffect(() => { void adminService.getEvents().then(setEvents).catch(() => setError('Could not load events.')); }, []);
   useEffect(() => { const timer = window.setTimeout(() => { setQuery(search.trim()); setPage(1); }, 250); return () => window.clearTimeout(timer); }, [search]);
-  useEffect(() => { setPage(1); setSelected([]); }, [startDate, endDate, event, session, course, type, location]);
+  useEffect(() => {
+    if (selectedTerm) {
+      setTermId(selectedTerm.id);
+    }
+  }, [selectedTerm]);
+  useEffect(() => { setPage(1); setSelected([]); }, [startDate, endDate, termId, event, session, course, type, location]);
 
   const filterParams = useMemo(() => ({
     startDate, endDate, limit: pageSize,
+    ...(termId !== 'all' ? { termId } : {}),
     ...(event !== 'all' ? { eventId: event } : {}),
     ...(session !== 'all' ? { session } : {}),
     ...(course !== 'all' ? { course } : {}),
     ...(type !== 'all' ? { type } : {}),
     ...(location !== 'all' ? { location } : {}),
     ...(query ? { search: query } : {}),
-  }), [startDate, endDate, event, session, course, type, location, query]);
+  }), [startDate, endDate, termId, event, session, course, type, location, query]);
 
   const filterKey = useMemo(() => JSON.stringify(filterParams), [filterParams]);
 
@@ -340,6 +349,61 @@ export function ReportsPage() {
 
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center gap-3">
+        {/* Academic Term Dropdown */}
+        <Dropdown
+          value={termId}
+          onChange={(val) => {
+            setTermId(val);
+            const t = terms.find((item) => item.id === val);
+            if (t) setSelectedTerm(t);
+          }}
+          icon={<Calendar className="h-4 w-4 text-[#756883]" />}
+          options={[
+            { value: 'all', label: 'All Semesters' },
+            ...terms.map((t) => ({
+              value: t.id,
+              label: `${t.school_year} · ${t.semester}${t.id === activeTerm?.id ? ' (Active)' : ''}`,
+            })),
+          ]}
+        />
+
+        {/* Quick Semester Toggle (All / 1st Sem / 2nd Sem) */}
+        <div className="flex h-10 items-center rounded-xl bg-slate-100 p-1 border border-slate-200">
+          {(['all', '1st Sem', '2nd Sem'] as const).map((sem) => {
+            const isCurrent =
+              sem === 'all'
+                ? termId === 'all'
+                : selectedTerm?.semester === sem && termId === selectedTerm.id;
+            return (
+              <button
+                key={sem}
+                type="button"
+                onClick={() => {
+                  if (sem === 'all') {
+                    setTermId('all');
+                  } else {
+                    const currentSy = selectedTerm?.school_year || activeTerm?.school_year || '2026-2027';
+                    const target =
+                      terms.find((t) => t.school_year === currentSy && t.semester === sem) ||
+                      terms.find((t) => t.semester === sem);
+                    if (target) {
+                      setTermId(target.id);
+                      setSelectedTerm(target);
+                    }
+                  }
+                }}
+                className={`h-full px-2.5 rounded-lg text-xs font-bold transition-all ${
+                  isCurrent
+                    ? 'bg-white text-[#7026B7] shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {sem === 'all' ? 'All Sem' : sem}
+              </button>
+            );
+          })}
+        </div>
+
         <CalendarDatePicker
           startDate={startDate}
           endDate={endDate}
