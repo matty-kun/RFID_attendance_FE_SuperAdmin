@@ -76,7 +76,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
   ];
 
   return (
-    <div className={cn('relative inline-flex', className)} ref={containerRef}>
+    <div className={cn('relative inline-flex', isOpen && 'z-30', className)} ref={containerRef}>
       {/* 3D Tactile Split Button matching screenshot */}
       <div
         className={cn(
