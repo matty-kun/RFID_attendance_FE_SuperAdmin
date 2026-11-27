@@ -153,15 +153,16 @@ export function ReportsPage() {
         ...terms.map((t) => ({
           value: t.id,
           label: showYear
-            ? `${t.school_year} · ${t.semester}${t.id === activeTerm?.id ? ' (Active)' : ''}`
-            : `${t.semester}${t.id === activeTerm?.id ? ' (Active)' : ''}`,
+            ? `${t.school_year} · ${t.semester}`
+            : `${t.semester}`,
+          activeDot: t.id === activeTerm?.id || Boolean(t.is_active),
         })),
       ];
     }
     return [
       { value: 'all', label: 'All Semesters' },
-      { value: '1st Sem', label: '1st Sem' },
-      { value: '2nd Sem', label: '2nd Sem' },
+      { value: '1st Sem', label: '1st Sem', activeDot: false },
+      { value: '2nd Sem', label: '2nd Sem', activeDot: true },
     ];
   }, [terms, activeTerm]);
 

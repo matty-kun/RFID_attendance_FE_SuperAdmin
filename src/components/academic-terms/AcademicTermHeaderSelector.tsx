@@ -17,6 +17,10 @@ export const AcademicTermHeaderSelector: React.FC<AcademicTermHeaderSelectorProp
       ? `${activeTerm.school_year} · ${activeTerm.semester}`
       : '2026-2027 · 2nd Sem';
 
+  const isCurrentActive = selectedTerm
+    ? Boolean(activeTerm && selectedTerm.id === activeTerm.id)
+    : Boolean(activeTerm);
+
   const handleClick = () => {
     if (onOpenManageModal) {
       onOpenManageModal();
@@ -29,12 +33,15 @@ export const AcademicTermHeaderSelector: React.FC<AcademicTermHeaderSelectorProp
     <button
       type="button"
       onClick={handleClick}
-      title="Click to manage academic terms"
-      className="text-left select-none cursor-pointer transition-colors hover:text-[#7026B7] focus:outline-hidden"
+      title={isCurrentActive ? 'Active Academic Term (click to manage)' : 'Click to manage academic terms'}
+      className="inline-flex items-center gap-1.5 text-left select-none cursor-pointer transition-colors hover:text-[#7026B7] focus:outline-hidden"
     >
       <span className="text-xs sm:text-[13px] font-bold tracking-tight text-[#24133F] hover:text-[#7026B7] whitespace-nowrap">
         {termText}
       </span>
+      {isCurrentActive && (
+        <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="Active Academic Term" />
+      )}
     </button>
   );
 };
