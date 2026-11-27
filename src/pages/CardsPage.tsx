@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, ArrowDown, ArrowUp, ArrowUpDown, Check, CheckCircle2, CircleAlert, Clock, CreditCard, ExternalLink, FileText, Filter, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, ShieldCheck, Trash2, UserRound, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, ArrowUpDown, Check, CheckCircle2, ChevronDown, CircleAlert, Clock, CreditCard, ExternalLink, FileText, Filter, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, ShieldCheck, Trash2, UserRound, X } from 'lucide-react';
+import { cn } from '../utils/cn';
 import { compareCardNumbers } from '../utils/cardSort';
 import { formatYearLevel } from '../utils/formatters';
 import { soundManager } from '../utils/audioFeedback';
@@ -88,6 +89,13 @@ export function CardsPage() {
   const [detailReady, setDetailReady] = useState(false);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [detailError, setDetailError] = useState('');
+  const [expandedScans, setExpandedScans] = useState<Record<string, boolean>>({});
+  const toggleScans = (assignmentId: string) => {
+    setExpandedScans((prev) => ({
+      ...prev,
+      [assignmentId]: !prev[assignmentId],
+    }));
+  };
   const detailRequest = useRef(0);
   const [action, setAction] = useState<Action | null>(null);
   const lastAction = useRef<Action>('register');
@@ -290,6 +298,7 @@ export function CardsPage() {
     const requestId = ++detailRequest.current;
     setIsEditingCardNumber(false);
     setEditCardNumber('');
+    setExpandedScans({});
     setSelectedCard(card);
     setDetail({ card, assignments: card.holder ? [card.holder] : [], events: [], recent_scans: [] });
     setDetailReady(false);
@@ -837,7 +846,7 @@ export function CardsPage() {
                               </span>
                               {isCurrent ? (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                                   Current
                                 </span>
                               ) : (
@@ -882,65 +891,102 @@ export function CardsPage() {
                       {detailReady && (
                         <div>
                           {scans.length > 0 ? (
-                            <div className="border-t border-[#F1EEF4] bg-[#FAF8FC] px-3.5 sm:px-4 py-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">
-                                  Scans with this card
-                                </span>
-                                <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-[#7026B7] border border-[#E9DCFA] shadow-2xs">
-                                  {scans.length} {scans.length === 1 ? 'scan' : 'scans'}
-                                </span>
-                              </div>
-
-                              <div className="rounded-xl border border-[#E5E0EB] bg-white divide-y divide-[#F1EEF4] overflow-hidden">
-                                {scans.map((scan) => {
-                                  const isTimeIn = scan.type === 'time_in';
-                                  return (
-                                    <div
-                                      key={scan.id}
-                                      className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-xs hover:bg-[#FAF8FC] transition-colors"
+                            <div className="border-t border-[#F1EEF4] bg-[#FAF8FC] px-3.5 sm:px-4 py-2.5">
+                              {(() => {
+                                const isExpanded = Boolean(expandedScans[a.id]);
+                                return (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleScans(a.id)}
+                                      aria-expanded={isExpanded}
+                                      title={isExpanded ? 'Click to collapse scans' : 'Click to expand scans'}
+                                      className="w-full flex items-center justify-between text-left cursor-pointer select-none group/scans rounded-lg py-1 px-1 -mx-1 transition-colors hover:bg-purple-100/40"
                                     >
-                                      <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
-                                          <span
-                                            className={`h-2 w-2 rounded-full shrink-0 ${
-                                              isTimeIn ? 'bg-[#17B556]' : 'bg-[#EF3340]'
-                                            }`}
-                                            title={isTimeIn ? 'Time In' : 'Time Out'}
-                                          />
-                                          <span className="font-bold text-[#24133F]">
-                                            {isTimeIn ? 'Time in' : 'Time out'}
-                                          </span>
-                                          {scan.event_name && (
-                                            <>
-                                              <span className="text-slate-300">·</span>
-                                              <span className="font-medium text-slate-700 truncate">
-                                                {scan.event_name}
-                                              </span>
-                                            </>
-                                          )}
-                                        </div>
-
-                                        {(scan.session_name || scan.location_name) && (
-                                          <div className="flex items-center gap-2 text-[11px] text-[#756883] mt-0.5 pl-4">
-                                            {scan.session_name && <span>{scan.session_name}</span>}
-                                            {scan.session_name && scan.location_name && (
-                                              <span className="text-slate-300">·</span>
-                                            )}
-                                            {scan.location_name && (
-                                              <span>{scan.location_name}</span>
-                                            )}
-                                          </div>
-                                        )}
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#756883] group-hover/scans:text-[#7026B7] transition-colors">
+                                          Scans with this card
+                                        </span>
+                                        <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-[#7026B7] border border-[#E9DCFA] shadow-2xs">
+                                          {scans.length} {scans.length === 1 ? 'scan' : 'scans'}
+                                        </span>
                                       </div>
+                                      <div className="flex items-center gap-1 text-[#756883] group-hover/scans:text-[#7026B7] transition-colors">
+                                        <span className="text-[11px] font-semibold text-[#A59AAB] group-hover/scans:text-[#7026B7]">
+                                          {isExpanded ? 'Hide' : 'Show'}
+                                        </span>
+                                        <ChevronDown
+                                          className={cn(
+                                            'h-4 w-4 transition-transform duration-200',
+                                            isExpanded && 'rotate-180 text-[#7026B7]'
+                                          )}
+                                        />
+                                      </div>
+                                    </button>
 
-                                      <time className="shrink-0 text-right text-xs font-mono text-[#756883] tabular-nums">
-                                        {date(scan.recorded_at)}
-                                      </time>
+                                    <div
+                                      className={cn(
+                                        'grid transition-all duration-300 ease-in-out',
+                                        isExpanded
+                                          ? 'grid-rows-[1fr] opacity-100 mt-2.5'
+                                          : 'grid-rows-[0fr] opacity-0 pointer-events-none'
+                                      )}
+                                    >
+                                      <div className="overflow-hidden">
+                                        <div className="rounded-xl border border-[#E5E0EB] bg-white divide-y divide-[#F1EEF4] overflow-hidden">
+                                          {scans.map((scan) => {
+                                            const isTimeIn = scan.type === 'time_in';
+                                            return (
+                                              <div
+                                                key={scan.id}
+                                                className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-xs hover:bg-[#FAF8FC] transition-colors"
+                                              >
+                                                <div className="min-w-0 flex-1">
+                                                  <div className="flex items-center gap-2">
+                                                    <span
+                                                      className={`h-2 w-2 rounded-full shrink-0 ${
+                                                        isTimeIn ? 'bg-[#17B556]' : 'bg-[#EF3340]'
+                                                      }`}
+                                                      title={isTimeIn ? 'Time In' : 'Time Out'}
+                                                    />
+                                                    <span className="font-bold text-[#24133F]">
+                                                      {isTimeIn ? 'Time in' : 'Time out'}
+                                                    </span>
+                                                    {scan.event_name && (
+                                                      <>
+                                                        <span className="text-slate-300">·</span>
+                                                        <span className="font-medium text-slate-700 truncate">
+                                                          {scan.event_name}
+                                                        </span>
+                                                      </>
+                                                    )}
+                                                  </div>
+
+                                                  {(scan.session_name || scan.location_name) && (
+                                                    <div className="flex items-center gap-2 text-[11px] text-[#756883] mt-0.5 pl-4">
+                                                      {scan.session_name && <span>{scan.session_name}</span>}
+                                                      {scan.session_name && scan.location_name && (
+                                                        <span className="text-slate-300">·</span>
+                                                      )}
+                                                      {scan.location_name && (
+                                                        <span>{scan.location_name}</span>
+                                                      )}
+                                                    </div>
+                                                  )}
+                                                </div>
+
+                                                <time className="shrink-0 text-right text-xs font-mono text-[#756883] tabular-nums">
+                                                  {date(scan.recorded_at)}
+                                                </time>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
                                     </div>
-                                  );
-                                })}
-                              </div>
+                                  </>
+                                );
+                              })()}
                             </div>
                           ) : (
                             <div className="border-t border-[#F1EEF4] bg-[#FAF8FC]/70 px-4 py-2 flex items-center justify-between text-xs text-[#A59AAB]">
