@@ -494,8 +494,8 @@ export function CardsPage() {
           setPage(1);
         }}
         options={[
-          { value: 'card_number:asc', label: 'Card No. (001 → 999)' },
-          { value: 'card_number:desc', label: 'Card No. (999 → 001)' },
+          { value: 'card_number:asc', label: 'Card No. (Ascending)' },
+          { value: 'card_number:desc', label: 'Card No. (Descending)' },
           { value: 'created_at:desc', label: 'Recently registered' },
           { value: 'created_at:asc', label: 'Oldest registered' },
         ]}
@@ -616,9 +616,9 @@ export function CardsPage() {
                       title={
                         sortField === 'card_number'
                           ? sortDirection === 'asc'
-                            ? 'Sorted 001 → 999. Click to sort 999 → 001.'
-                            : 'Sorted 999 → 001. Click to sort 001 → 999.'
-                          : 'Click to sort by Card No. (001 → 999)'
+                            ? 'Sorted Ascending. Click to sort Descending.'
+                            : 'Sorted Descending. Click to sort Ascending.'
+                          : 'Click to sort by Card No. (Ascending)'
                       }
                     >
                       <span>Card No.</span>
@@ -626,12 +626,12 @@ export function CardsPage() {
                         sortDirection === 'asc' ? (
                           <span className="flex items-center gap-0.5 text-[#7026B7]">
                             <ArrowUp className="h-3.5 w-3.5" />
-                            <span className="text-[10px] font-semibold tracking-tight text-[#7026B7]/80">001-999</span>
+                            <span className="text-[10px] font-semibold tracking-tight text-[#7026B7]/80">Asc</span>
                           </span>
                         ) : (
                           <span className="flex items-center gap-0.5 text-[#7026B7]">
                             <ArrowDown className="h-3.5 w-3.5" />
-                            <span className="text-[10px] font-semibold tracking-tight text-[#7026B7]/80">999-001</span>
+                            <span className="text-[10px] font-semibold tracking-tight text-[#7026B7]/80">Desc</span>
                           </span>
                         )
                       ) : (
