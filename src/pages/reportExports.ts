@@ -20,6 +20,7 @@ import {
   type ReportCheckpointItem,
   type ReportCourseItem,
 } from './auditPreviewRecords';
+import { formatYearLevel } from '../utils/formatters';
 
 export { formatReportSessionLabel };
 
@@ -33,6 +34,99 @@ export const REPORT_EXPORT_HEADERS = [
   'Admin Officer',
   'Status',
 ] as const;
+
+export const STUDENT_COMPLIANCE_HEADERS = [
+  'Course',
+  'Year Level',
+  'Student Name',
+  'Present',
+  'Absent',
+  'Total Required',
+  'Attendance Ratio (X/Y)',
+  'Compliance Rate',
+] as const;
+
+export interface StudentComplianceSummaryRow {
+  name: string;
+  course: string;
+  yearLevel: number | null;
+  yearLabel: string;
+  present: number;
+  absent: number;
+  totalRequired: number;
+  ratio: string;
+  complianceRate: string;
+}
+
+export function buildStudentComplianceRows(
+  rows: ReportStudentAttendanceRow[],
+  extra?: ReportExportExtra
+): StudentComplianceSummaryRow[] {
+  const sessionCount = extra?.sessionBreakdown?.length || 0;
+  const rowSessions = new Set(rows.map((r) => `${r.event}::${r.session}`)).size;
+  const totalRequired = Math.max(sessionCount, rowSessions, 1);
+
+  const studentMap = new Map<
+    string,
+    {
+      name: string;
+      course: string;
+      yearLevel: number | null;
+      attendedSessions: Set<string>;
+    }
+  >();
+
+  for (const r of rows) {
+    const studentKey = r.id.includes('::') ? r.id.split('::')[0] : r.name;
+    const existing = studentMap.get(studentKey) || {
+      name: r.name,
+      course: r.course || 'Unspecified',
+      yearLevel: r.yearLevel ?? null,
+      attendedSessions: new Set<string>(),
+    };
+    if (existing.yearLevel === null && r.yearLevel !== undefined && r.yearLevel !== null) {
+      existing.yearLevel = r.yearLevel;
+    }
+    if (r.course && existing.course === 'Unspecified') {
+      existing.course = r.course;
+    }
+    const sessionKey = `${r.event}::${r.session}`;
+    existing.attendedSessions.add(sessionKey);
+    studentMap.set(studentKey, existing);
+  }
+
+  const list: StudentComplianceSummaryRow[] = [];
+  for (const entry of studentMap.values()) {
+    const present = entry.attendedSessions.size;
+    const absent = Math.max(0, totalRequired - present);
+    const ratePct = totalRequired > 0 ? Math.round((present / totalRequired) * 100) : 0;
+    list.push({
+      name: entry.name,
+      course: entry.course,
+      yearLevel: entry.yearLevel,
+      yearLabel: formatYearLevel(entry.yearLevel),
+      present,
+      absent,
+      totalRequired,
+      ratio: `${present} / ${totalRequired}`,
+      complianceRate: `${ratePct}%`,
+    });
+  }
+
+  // Sort: 1. Course (A-Z) -> 2. Year Level (1-4) -> 3. Student Name (A-Z)
+  list.sort((a, b) => {
+    const courseComp = a.course.localeCompare(b.course);
+    if (courseComp !== 0) return courseComp;
+
+    const yA = a.yearLevel ?? 99;
+    const yB = b.yearLevel ?? 99;
+    if (yA !== yB) return yA - yB;
+
+    return a.name.localeCompare(b.name);
+  });
+
+  return list;
+}
 
 export interface ReportExportSummary {
   studentsCheckedIn: number;
@@ -117,6 +211,7 @@ export async function exportAttendance(
   const sessionBreakdown = extra?.sessionBreakdown ?? [];
   const checkpointList = extra?.checkpointList ?? [];
   const courseList = extra?.courseList ?? [];
+  const complianceRows = buildStudentComplianceRows(rows, extra);
 
   // ==========================================
   // 1. EXCEL (.XLSX)
@@ -180,7 +275,34 @@ export async function exportAttendance(
     ];
     XLSX.utils.book_append_sheet(book, summarySheet, 'Attendance Summary');
 
-    // --- Sheet 2: Attendance Records ---
+    // --- Sheet 2: Student Compliance (X/Y) ---
+    const complianceHeaders = [...STUDENT_COMPLIANCE_HEADERS];
+    const complianceMappedRows = complianceRows.map((r) =>
+      [
+        r.course,
+        r.yearLabel,
+        r.name,
+        r.present,
+        r.absent,
+        r.totalRequired,
+        r.ratio,
+        r.complianceRate,
+      ].map(safeCell)
+    );
+    const complianceSheet = XLSX.utils.aoa_to_sheet([complianceHeaders, ...complianceMappedRows]);
+    complianceSheet['!cols'] = [
+      { wch: 32 }, // Course
+      { wch: 14 }, // Year Level
+      { wch: 36 }, // Student Name
+      { wch: 12 }, // Present
+      { wch: 12 }, // Absent
+      { wch: 16 }, // Total Required
+      { wch: 24 }, // Attendance Ratio (X/Y)
+      { wch: 18 }, // Compliance Rate
+    ];
+    XLSX.utils.book_append_sheet(book, complianceSheet, 'Student Compliance (X/Y)');
+
+    // --- Sheet 3: Attendance Records ---
     const mappedRows = rows.map((row) => buildReportExportRowValues(row).map(safeCell));
     const recordsSheet = XLSX.utils.aoa_to_sheet([headers, ...mappedRows]);
     recordsSheet['!cols'] = headers.map((header, colIndex) => {
@@ -198,145 +320,209 @@ export async function exportAttendance(
   // ==========================================
   if (format === 'pdf') {
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    // Printable width: 277mm (10mm left & right margins on 297mm A4 landscape)
-    const widths = [46, 40, 32, 38, 24, 24, 40, 33];
-    const xPositions = widths.reduce<number[]>(
-      (positions, width) => [...positions, positions.at(-1)! + width],
-      [10]
-    );
-    const centeredCols = new Set([4, 5]); // Time In, Time Out
     const lineHeight = 4.6;
     const cellPadX = 3.5;
     const rowPadTop = 4.8;
     const rowPadBottom = 3.2;
 
-    const drawSummaryHeader = (isFirstPage: boolean) => {
-      // Main Title
-      pdf.setTextColor(36, 19, 63);
-      pdf.setFontSize(15);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('PRESNT Attendance Summary', 10, 13);
+    const termText = filters?.academicTerm ? `Term: ${filters.academicTerm}` : '';
+    const eventText = filters?.event ? `Event: ${filters.event}` : '';
+    const scopeLine = [termText, eventText].filter(Boolean).join('   |   ') || `Through ${endDate || 'All Dates'}`;
 
-      // Meta Subtitle
-      pdf.setTextColor(117, 104, 131);
-      pdf.setFontSize(8);
-      pdf.setFont('helvetica', 'normal');
-      const termText = filters?.academicTerm ? `Term: ${filters.academicTerm}` : '';
-      const eventText = filters?.event ? `Event: ${filters.event}` : '';
-      const scopeLine = [termText, eventText].filter(Boolean).join('   |   ') || `Through ${endDate || 'All Dates'}`;
-      pdf.text(scopeLine, 10, 18);
+    const renderPdfTable = (
+      tableTitle: string,
+      tableHeaders: readonly string[],
+      colWidths: number[],
+      tableRows: string[][],
+      centeredIndices: Set<number>,
+      isFirstTable: boolean
+    ) => {
+      const colXPositions = colWidths.reduce<number[]>(
+        (positions, width) => [...positions, positions.at(-1)! + width],
+        [10]
+      );
 
-      const filterLine = `Generated: ${filters?.generatedAt || new Date().toLocaleString()}   |   Day: ${filters?.day || 'All'} · Session: ${filters?.session || 'All'} · Course: ${filters?.course || 'All'}   |   ${rows.length} record${rows.length === 1 ? '' : 's'}`;
-      pdf.text(filterLine, 10, 22.5);
+      const drawHeader = (onFirstPage: boolean) => {
+        pdf.setTextColor(36, 19, 63);
+        pdf.setFontSize(15);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('PRESNT Attendance Summary', 10, 13);
 
-      if (isFirstPage) {
-        // Draw 4 Executive KPI Metric Cards
-        const cardW = 65.5;
-        const cardH = 15;
-        const cardGap = 5;
-        const cardY = 25.5;
+        pdf.setTextColor(117, 104, 131);
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(scopeLine, 10, 18);
 
-        const kpis = [
-          { label: 'UNIQUE STUDENTS', value: String(summary.studentsCheckedIn), bg: [248, 244, 253], border: [233, 213, 255], text: [112, 38, 183] },
-          { label: 'TIME-IN SCANS', value: String(summary.timeIns), bg: [236, 253, 245], border: [167, 243, 208], text: [5, 150, 105] },
-          { label: 'TIME-OUT SCANS', value: String(summary.timeOuts), bg: [254, 242, 242], border: [254, 202, 202], text: [220, 38, 38] },
-          { label: 'TOTAL SCANS', value: String(summary.totalScans), bg: [248, 250, 252], border: [226, 232, 240], text: [71, 85, 105] },
-        ];
+        const filterLine = `Generated: ${filters?.generatedAt || new Date().toLocaleString()}   |   Day: ${filters?.day || 'All'} · Session: ${filters?.session || 'All'} · Course: ${filters?.course || 'All'}   |   ${tableTitle}`;
+        pdf.text(filterLine, 10, 22.5);
 
-        kpis.forEach((kpi, idx) => {
-          const cardX = 10 + idx * (cardW + cardGap);
-          pdf.setFillColor(kpi.bg[0], kpi.bg[1], kpi.bg[2]);
-          pdf.setDrawColor(kpi.border[0], kpi.border[1], kpi.border[2]);
-          pdf.setLineWidth(0.3);
-          pdf.roundedRect(cardX, cardY, cardW, cardH, 2, 2, 'FD');
+        if (onFirstPage) {
+          const cardW = 65.5;
+          const cardH = 15;
+          const cardGap = 5;
+          const cardY = 25.5;
 
-          pdf.setFontSize(6.5);
+          const kpis = [
+            { label: 'UNIQUE STUDENTS', value: String(summary.studentsCheckedIn), bg: [248, 244, 253], border: [233, 213, 255], text: [112, 38, 183] },
+            { label: 'TIME-IN SCANS', value: String(summary.timeIns), bg: [236, 253, 245], border: [167, 243, 208], text: [5, 150, 105] },
+            { label: 'TIME-OUT SCANS', value: String(summary.timeOuts), bg: [254, 242, 242], border: [254, 202, 202], text: [220, 38, 38] },
+            { label: 'TOTAL SCANS', value: String(summary.totalScans), bg: [248, 250, 252], border: [226, 232, 240], text: [71, 85, 105] },
+          ];
+
+          kpis.forEach((kpi, idx) => {
+            const cardX = 10 + idx * (cardW + cardGap);
+            pdf.setFillColor(kpi.bg[0], kpi.bg[1], kpi.bg[2]);
+            pdf.setDrawColor(kpi.border[0], kpi.border[1], kpi.border[2]);
+            pdf.setLineWidth(0.3);
+            pdf.roundedRect(cardX, cardY, cardW, cardH, 2, 2, 'FD');
+
+            pdf.setFontSize(6.5);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(kpi.text[0], kpi.text[1], kpi.text[2]);
+            pdf.text(kpi.label, cardX + 3.5, cardY + 5);
+
+            pdf.setFontSize(13);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(36, 19, 63);
+            pdf.text(kpi.value, cardX + 3.5, cardY + 12);
+          });
+
+          // Section Title
+          pdf.setFontSize(10);
           pdf.setFont('helvetica', 'bold');
-          pdf.setTextColor(kpi.text[0], kpi.text[1], kpi.text[2]);
-          pdf.text(kpi.label, cardX + 3.5, cardY + 5);
+          pdf.setTextColor(112, 38, 183);
+          pdf.text(tableTitle, 10, 47);
 
-          pdf.setFontSize(13);
-          pdf.setFont('helvetica', 'bold');
+          // Table Header Banner
+          pdf.setFillColor(240, 232, 252);
+          pdf.rect(10, 50, 277, 8.5, 'F');
           pdf.setTextColor(36, 19, 63);
-          pdf.text(kpi.value, cardX + 3.5, cardY + 12);
+          pdf.setFontSize(8.5);
+          pdf.setFont('helvetica', 'bold');
+          tableHeaders.forEach((h, index) => {
+            if (centeredIndices.has(index)) {
+              pdf.text(h, colXPositions[index] + colWidths[index] / 2, 55.5, { align: 'center' });
+            } else {
+              pdf.text(h, colXPositions[index] + cellPadX, 55.5);
+            }
+          });
+        } else {
+          // Subsequent Page Header
+          pdf.setFontSize(9.5);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(112, 38, 183);
+          pdf.text(`${tableTitle} (Continued)`, 10, 27);
+
+          pdf.setFillColor(240, 232, 252);
+          pdf.rect(10, 30, 277, 8.5, 'F');
+          pdf.setTextColor(36, 19, 63);
+          pdf.setFontSize(8.5);
+          pdf.setFont('helvetica', 'bold');
+          tableHeaders.forEach((h, index) => {
+            if (centeredIndices.has(index)) {
+              pdf.text(h, colXPositions[index] + colWidths[index] / 2, 35.5, { align: 'center' });
+            } else {
+              pdf.text(h, colXPositions[index] + cellPadX, 35.5);
+            }
+          });
+        }
+      };
+
+      if (!isFirstTable) {
+        pdf.addPage();
+      }
+
+      drawHeader(isFirstTable);
+      let rowTopY = isFirstTable ? 58.5 : 38.5;
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8.5);
+
+      tableRows.forEach((rowValues, rowIndex) => {
+        const cellLines = rowValues.map((value, index) =>
+          pdf.splitTextToSize(value, colWidths[index] - cellPadX * 2) as string[]
+        );
+        const maxLines = Math.max(1, ...cellLines.map((lines) => lines.length));
+        const rowHeight = rowPadTop + (maxLines - 1) * lineHeight + rowPadBottom + 1.5;
+
+        if (rowTopY + rowHeight > 196) {
+          pdf.addPage();
+          drawHeader(false);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(8.5);
+          rowTopY = 38.5;
+        }
+
+        if (rowIndex % 2 === 1) {
+          pdf.setFillColor(250, 248, 252);
+          pdf.rect(10, rowTopY, 277, rowHeight, 'F');
+        }
+
+        pdf.setTextColor(36, 19, 63);
+        const textStartY = rowTopY + rowPadTop;
+        cellLines.forEach((lines, index) => {
+          const text = lines.length ? lines : ['-'];
+          if (centeredIndices.has(index)) {
+            pdf.text(text, colXPositions[index] + colWidths[index] / 2, textStartY, { align: 'center' });
+          } else if (text.length === 1 && text[0] === '-') {
+            pdf.text('-', colXPositions[index] + cellPadX + 4, textStartY, { align: 'center' });
+          } else {
+            pdf.text(text, colXPositions[index] + cellPadX, textStartY);
+          }
         });
 
-        // Table Header Banner
-        pdf.setFillColor(240, 232, 252);
-        pdf.rect(10, 44, 277, 8.5, 'F');
-        pdf.setTextColor(36, 19, 63);
-        pdf.setFontSize(8.5);
-        pdf.setFont('helvetica', 'bold');
-        headers.forEach((header, index) => {
-          if (centeredCols.has(index)) {
-            pdf.text(header, xPositions[index] + widths[index] / 2, 49.5, { align: 'center' });
-          } else {
-            pdf.text(header, xPositions[index] + cellPadX, 49.5);
-          }
-        });
-      } else {
-        // Subsequent Pages Table Header
-        pdf.setFillColor(240, 232, 252);
-        pdf.rect(10, 26, 277, 8.5, 'F');
-        pdf.setTextColor(36, 19, 63);
-        pdf.setFontSize(8.5);
-        pdf.setFont('helvetica', 'bold');
-        headers.forEach((header, index) => {
-          if (centeredCols.has(index)) {
-            pdf.text(header, xPositions[index] + widths[index] / 2, 31.5, { align: 'center' });
-          } else {
-            pdf.text(header, xPositions[index] + cellPadX, 31.5);
-          }
-        });
-      }
+        const borderY = rowTopY + rowHeight;
+        pdf.setDrawColor(232, 228, 237);
+        pdf.line(10, borderY, 287, borderY);
+        rowTopY = borderY;
+      });
     };
 
-    drawSummaryHeader(true);
-    let rowTopY = 52.5;
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(8.5);
-
-    rows.forEach((row, rowIndex) => {
-      const cellValues = buildReportExportRowValues(row);
-      const cellLines = cellValues.map(
-        (value, index) => pdf.splitTextToSize(value, widths[index] - cellPadX * 2) as string[]
+    // Table 1: Student Attendance Compliance (X/Y)
+    if (complianceRows.length > 0) {
+      const compHeaders = [
+        'Course',
+        'Year Level',
+        'Student Name',
+        'Present',
+        'Absent',
+        'Total Req',
+        'Ratio (X/Y)',
+        'Compliance Rate',
+      ];
+      const compWidths = [54, 25, 68, 22, 22, 24, 32, 30];
+      const compRows = complianceRows.map((r) => [
+        r.course,
+        r.yearLabel,
+        r.name,
+        String(r.present),
+        String(r.absent),
+        String(r.totalRequired),
+        r.ratio,
+        r.complianceRate,
+      ]);
+      renderPdfTable(
+        `Student Attendance Compliance (X/Y) — ${complianceRows.length} Students`,
+        compHeaders,
+        compWidths,
+        compRows,
+        new Set([1, 3, 4, 5, 6, 7]),
+        true
       );
-      const maxLines = Math.max(1, ...cellLines.map((lines) => lines.length));
-      const rowHeight = rowPadTop + (maxLines - 1) * lineHeight + rowPadBottom + 1.5;
+    }
 
-      if (rowTopY + rowHeight > 196) {
-        pdf.addPage();
-        drawSummaryHeader(false);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(8.5);
-        rowTopY = 34.5;
-      }
+    // Table 2: Detailed Attendance Records
+    const recordWidths = [46, 40, 32, 38, 24, 24, 40, 33];
+    const recordRows = rows.map(buildReportExportRowValues);
+    renderPdfTable(
+      `Detailed Attendance Records — ${rows.length} Scans`,
+      headers,
+      recordWidths,
+      recordRows,
+      new Set([4, 5]),
+      complianceRows.length === 0
+    );
 
-      if (rowIndex % 2 === 1) {
-        pdf.setFillColor(250, 248, 252);
-        pdf.rect(10, rowTopY, 277, rowHeight, 'F');
-      }
-
-      pdf.setTextColor(36, 19, 63);
-      const textStartY = rowTopY + rowPadTop;
-      cellLines.forEach((lines, index) => {
-        const text = lines.length ? lines : ['-'];
-        if (centeredCols.has(index)) {
-          pdf.text(text, xPositions[index] + widths[index] / 2, textStartY, { align: 'center' });
-        } else if (text.length === 1 && text[0] === '-') {
-          pdf.text('-', xPositions[index] + cellPadX + 4, textStartY, { align: 'center' });
-        } else {
-          pdf.text(text, xPositions[index] + cellPadX, textStartY);
-        }
-      });
-
-      const borderY = rowTopY + rowHeight;
-      pdf.setDrawColor(232, 228, 237);
-      pdf.line(10, borderY, 287, borderY);
-      rowTopY = borderY;
-    });
-
-    // Add page numbers
+    // Page numbering
     const totalPages = pdf.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i);
@@ -587,7 +773,77 @@ export async function exportAttendance(
     );
   }
 
-  // Section 2: Full Detailed Attendance Records Table
+  // Section 2: Student Attendance Compliance (X/Y)
+  if (complianceRows.length > 0) {
+    docChildren.push(
+      new Paragraph({
+        text: `Student Attendance Compliance (X/Y) — ${complianceRows.length} Students`,
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 200, after: 100 },
+      }),
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            tableHeader: true,
+            children: STUDENT_COMPLIANCE_HEADERS.map((h, i) =>
+              new TableCell({
+                margins: { top: 60, bottom: 60, left: 80, right: 80 },
+                width: {
+                  size: [24, 12, 28, 8, 8, 10, 10, 10][i],
+                  type: WidthType.PERCENTAGE,
+                },
+                shading: { type: ShadingType.CLEAR, fill: 'F0E8FC' },
+                children: [
+                  new Paragraph({
+                    alignment: i === 0 || i === 2 ? AlignmentType.LEFT : AlignmentType.CENTER,
+                    children: [new TextRun({ text: h, bold: true, size: 18 })],
+                  }),
+                ],
+              })
+            ),
+          }),
+          ...complianceRows.map((r, idx) =>
+            new TableRow({
+              children: [
+                r.course,
+                r.yearLabel,
+                r.name,
+                String(r.present),
+                String(r.absent),
+                String(r.totalRequired),
+                r.ratio,
+                r.complianceRate,
+              ].map((val, i) =>
+                new TableCell({
+                  margins: { top: 60, bottom: 60, left: 80, right: 80 },
+                  width: {
+                    size: [24, 12, 28, 8, 8, 10, 10, 10][i],
+                    type: WidthType.PERCENTAGE,
+                  },
+                  shading: idx % 2 === 1 ? { type: ShadingType.CLEAR, fill: 'FAF8FC' } : undefined,
+                  children: [
+                    new Paragraph({
+                      alignment: i === 0 || i === 2 ? AlignmentType.LEFT : AlignmentType.CENTER,
+                      children: [
+                        new TextRun({
+                          text: val,
+                          size: 18,
+                          bold: i === 2 || i === 6,
+                        }),
+                      ],
+                    }),
+                  ],
+                })
+              ),
+            })
+          ),
+        ],
+      })
+    );
+  }
+
+  // Section 3: Full Detailed Attendance Records Table
   docChildren.push(
     new Paragraph({
       text: `Student Attendance Records (${rows.length} records)`,
