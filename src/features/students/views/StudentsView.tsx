@@ -311,11 +311,12 @@ export const StudentsView: React.FC = () => {
               buttonClassName="h-10 min-w-[180px] justify-between px-3 text-xs"
               options={terms.length > 0 ? terms.map((t) => ({
                 value: t.id,
-                label: `${t.school_year} · ${t.semester}${t.id === activeTerm?.id ? ' (Active)' : ''}`,
+                label: `${t.school_year} · ${t.semester}`,
                 icon: <Calendar className="h-3.5 w-3.5 text-brand-700" />,
+                activeDot: t.id === activeTerm?.id || Boolean(t.is_active),
               })) : [
-                { value: '2nd Sem', label: '2026-2027 · 2nd Sem (Active)', icon: <Calendar className="h-3.5 w-3.5 text-brand-700" /> },
-                { value: '1st Sem', label: '2026-2027 · 1st Sem', icon: <Calendar className="h-3.5 w-3.5 text-brand-700" /> },
+                { value: '2nd Sem', label: '2026-2027 · 2nd Sem', icon: <Calendar className="h-3.5 w-3.5 text-brand-700" />, activeDot: true },
+                { value: '1st Sem', label: '2026-2027 · 1st Sem', icon: <Calendar className="h-3.5 w-3.5 text-brand-700" />, activeDot: false },
               ]}
             />
 
