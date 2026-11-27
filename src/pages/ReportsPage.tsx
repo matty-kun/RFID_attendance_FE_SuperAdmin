@@ -10,6 +10,7 @@ import { request } from '../services/apiClient';
 import { adminService } from '../services/adminService';
 import { useAcademicTerm } from '../context/AcademicTermContext';
 import type { EventRecord } from '../types';
+import { cn } from '../utils/cn';
 import { formatReportSessionLabel, type ReportTrendDay, type ReportSessionItem, type ReportCheckpointItem, type ReportCourseItem, type ReportStudentAttendanceRow } from './auditPreviewRecords';
 
 type Snapshot = {
@@ -295,9 +296,13 @@ export function ReportsPage() {
   const trendData: ReportTrendDay[] = useMemo(() => {
     const rows = snapshot?.trend ?? [];
     const peak = Math.max(1, ...rows.map(row => row.timeIns + row.timeOuts));
-    return rows.map(row => ({ day: formatShortDate(row.day), present: row.timeIns, absent: row.timeOuts,
-      presentPct: row.timeIns ? Math.max(8, Math.round(row.timeIns / (peak * 1.15) * 100)) : 0,
-      absentPct: row.timeOuts ? Math.max(8, Math.round(row.timeOuts / (peak * 1.15) * 100)) : 0 }));
+    return rows.map(row => ({
+      day: formatShortDate(row.day),
+      present: row.timeIns,
+      absent: row.timeOuts,
+      presentPct: row.timeIns ? Math.max(4, Math.round(row.timeIns / (peak * 1.15) * 100)) : 0,
+      absentPct: row.timeOuts ? Math.max(4, Math.round(row.timeOuts / (peak * 1.15) * 100)) : 0,
+    }));
   }, [snapshot]);
   const sessionBreakdown: ReportSessionItem[] = useMemo(() => {
     const multipleEvents = new Set((snapshot?.sessions ?? []).map(row => row.eventId)).size > 1;
@@ -552,9 +557,9 @@ export function ReportsPage() {
       </div>
 
       {/* Row 1: Attendance Trend (Card 1) & Session Breakdown (Card 2) */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr] items-start">
         {/* Card 1: Attendance Trend */}
-        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6">
+        <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white p-6">
           <div>
             <h2 className="text-lg font-bold text-[#24133F]">Attendance Trend</h2>
             <p className="text-xs text-[#756883] mt-0.5">Time In and Time Out scans per day</p>
@@ -569,7 +574,7 @@ export function ReportsPage() {
               No attendance records available.
             </div>
           ) : (
-            <div className="my-6 flex h-52 items-end justify-around gap-4 px-2">
+            <div className="my-6 flex h-52 items-end justify-around gap-2 px-1">
               {trendData.map((item) => (
                 <div key={item.day} className="group relative flex h-full flex-1 flex-col items-center justify-end">
                   {/* Tooltip */}
@@ -580,29 +585,35 @@ export function ReportsPage() {
                   </div>
 
                   {/* Stacked Stadium Bars */}
-                  <div className="flex w-12 h-44 flex-col justify-end gap-1.5">
+                  <div className="flex w-full max-w-[32px] h-44 flex-col justify-end">
                     {item.absentPct > 0 && (
                       <div
-                        className="w-full rounded-[14px] bg-[#EF3340] transition-all duration-300"
+                        className={cn(
+                          'w-full bg-[#EF3340] transition-all duration-300 min-h-[4px]',
+                          item.presentPct > 0 ? 'rounded-t-md mb-0.5' : 'rounded-md'
+                        )}
                         style={{ height: `${item.absentPct}%` }}
                       />
                     )}
                     {item.presentPct > 0 && (
                       <div
-                        className="w-full rounded-[14px] bg-[#10B981] transition-all duration-300"
+                        className={cn(
+                          'w-full bg-[#10B981] transition-all duration-300 min-h-[4px]',
+                          item.absentPct > 0 ? 'rounded-b-md' : 'rounded-md'
+                        )}
                         style={{ height: `${item.presentPct}%` }}
                       />
                     )}
                   </div>
 
-                  <span className="mt-3 text-xs font-medium text-[#756883]">{item.day}</span>
+                  <span className="mt-3 text-[11px] font-medium text-[#756883] truncate">{item.day}</span>
                 </div>
               ))}
             </div>
           )}
 
           {/* Legend */}
-          <div className="flex items-center gap-6 text-xs text-[#756883] font-medium">
+          <div className="mt-2 flex items-center gap-6 text-xs text-[#756883] font-medium">
             <span className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-[#10B981]" />
               Time In
@@ -621,9 +632,9 @@ export function ReportsPage() {
             <p className="text-xs text-[#756883] mt-0.5">Recorded scans by event day and session period</p>
           </div>
 
-          <div className="mt-4 overflow-x-auto">
+          <div className="mt-4 max-h-[290px] overflow-y-auto overflow-x-auto [scrollbar-width:thin]">
             <table className="w-full min-w-[500px] text-left text-xs">
-              <thead>
+              <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_#F1EEF4]">
                 <tr className="text-[#756883] font-medium">
                   <th className="py-2.5 font-medium">Event Day · Period</th>
                   <th className="py-2.5 font-medium">Time In</th>
@@ -659,16 +670,16 @@ export function ReportsPage() {
       </div>
 
       {/* Checkpoints and Course Breakdown */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
         {/* Checkpoints */}
-        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6">
+        <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white p-6">
           <div>
             <h2 className="text-lg font-bold text-[#24133F]">Checkpoints</h2>
             <p className="text-xs text-[#756883] mt-0.5">Scans by checkpoint location</p>
 
-            <div className="mt-4 overflow-x-auto">
+            <div className="mt-4 max-h-[290px] overflow-y-auto overflow-x-auto [scrollbar-width:thin]">
               <table className="w-full min-w-[400px] text-left text-xs">
-                <thead>
+                <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_#F1EEF4]">
                   <tr className="text-[#756883] font-medium">
                     <th className="py-2.5 pr-4 font-medium">Checkpoint</th>
                     <th className="px-2 py-2.5 font-medium">In Scans</th>
@@ -706,14 +717,14 @@ export function ReportsPage() {
         </section>
 
         {/* Course Breakdown */}
-        <section className="flex flex-col justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6">
+        <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white p-6">
           <div>
             <h2 className="text-lg font-bold text-[#24133F]">Course Breakdown</h2>
             <p className="mt-0.5 text-xs text-[#756883]">Scan counts follow the selected filters. Active roster is the current student count per course.</p>
 
-            <div className="mt-4 overflow-x-auto">
+            <div className="mt-4 max-h-[290px] overflow-y-auto overflow-x-auto [scrollbar-width:thin]">
               <table className="w-full min-w-[400px] text-left text-xs">
-                <thead>
+                <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_#F1EEF4]">
                   <tr className="text-[#756883] font-medium">
                     <th className="py-2.5 pr-4 font-medium">Courses</th>
                     <th className="px-2 py-2.5 font-medium">Active roster</th>
