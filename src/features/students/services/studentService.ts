@@ -2,7 +2,7 @@ import { request } from '../../../services/apiClient';
 import type { StudentRecord, StudentPage, StudentRosterStats, RegisterStudentPayload, UpdateStudentPayload } from '../models';
 
 export const studentService = {
-  getStudents: (page = 1, q = '', sort = 'created_at', direction = 'desc', limit = 25, archived = false, all = false) =>
+  getStudents: (page = 1, q = '', sort = 'created_at', direction = 'desc', limit = 25, archived = false, all = false, term_id?: string) =>
     request.get<StudentPage>('/students', {
       params: {
         page,
@@ -12,6 +12,7 @@ export const studentService = {
         archived,
         ...(q ? { q } : {}),
         ...(all ? { all: 'true' } : {}),
+        ...(term_id ? { term_id } : {}),
       },
     }),
   getRosterStats: () => request.get<StudentRosterStats>('/students/stats'),

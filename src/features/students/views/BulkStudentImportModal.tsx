@@ -9,11 +9,13 @@ import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import { Modal } from '../../../components/common/Modal';
 import { Input } from '../../../components/common/Input';
 import { toast } from '../../../context';
 import type { BulkImportStudentRow, BulkImportResult } from '../models';
+import type { AcademicTerm, SmartBulkSyncItem, SmartBulkSyncSummary } from '../../../types';
 import { formatYearLevel } from '../../../utils/formatters';
 import {
   validateBulkStudentGrid,
@@ -29,7 +31,12 @@ export interface BulkStudentImportModalProps {
     autoPair: boolean,
     onProgress?: (current: number, total: number) => void
   ) => Promise<BulkImportResult>;
-  existingStudents?: Array<{ student_id?: string | null; email?: string | null }>;
+  existingStudents?: Array<{ student_id?: string | null; email?: string | null; name?: string | null }>;
+  targetTerm?: AcademicTerm | null;
+  onSmartSync?: (
+    termId: string,
+    students: SmartBulkSyncItem[]
+  ) => Promise<SmartBulkSyncSummary>;
 }
 
 const SAMPLE_CSV = `student_id,name,email,course,year_level
@@ -44,11 +51,14 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
   onClose,
   onImport,
   existingStudents = [],
+  targetTerm,
+  onSmartSync,
 }) => {
   const [parsedRows, setParsedRows] = useState<BulkImportStudentRow[]>([]);
   const [validationErrors, setValidationErrors] = useState<BulkCsvValidationError[]>([]);
   const [existingDuplicates, setExistingDuplicates] = useState<BulkCsvDuplicateWarning[]>([]);
   const [importSummary, setImportSummary] = useState<BulkImportResult | null>(null);
+  const [smartSyncSummary, setSmartSyncSummary] = useState<SmartBulkSyncSummary | null>(null);
   const [fileName, setFileName] = useState('');
   const [defaultTemporaryPassword, setDefaultTemporaryPassword] = useState('TempPass2026!');
   const [showPassword, setShowPassword] = useState(false);
@@ -61,6 +71,7 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
     setValidationErrors([]);
     setExistingDuplicates([]);
     setImportSummary(null);
+    setSmartSyncSummary(null);
     setFileName('');
     setDefaultTemporaryPassword('TempPass2026!');
     setShowPassword(false);
@@ -80,6 +91,44 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
     () => new Set(existingDuplicates.map((d) => d.student_id.toLowerCase())),
     [existingDuplicates]
   );
+
+  const existingStudentNumberSet = useMemo(() => {
+    return new Set(
+      existingStudents
+        .map((s) => s.student_id?.trim().toLowerCase())
+        .filter((id): id is string => Boolean(id))
+    );
+  }, [existingStudents]);
+
+  const diffStats = useMemo(() => {
+    if (parsedRows.length === 0) return null;
+    let reEnrolled = 0;
+    let newlyRegistered = 0;
+    const uploadedIds = new Set<string>();
+
+    for (const row of parsedRows) {
+      const id = row.student_id.trim().toLowerCase();
+      uploadedIds.add(id);
+      if (existingStudentNumberSet.has(id)) {
+        reEnrolled++;
+      } else {
+        newlyRegistered++;
+      }
+    }
+
+    let missingArchived = 0;
+    for (const s of existingStudents) {
+      if (s.student_id && !uploadedIds.has(s.student_id.trim().toLowerCase())) {
+        missingArchived++;
+      }
+    }
+
+    return {
+      reEnrolled,
+      newlyRegistered,
+      missingArchived,
+    };
+  }, [parsedRows, existingStudentNumberSet, existingStudents]);
 
   const applyValidationGrid = (rawGrid: unknown[][], uploadedFileName: string) => {
     setFileName(uploadedFileName);
@@ -229,6 +278,29 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
       return;
     }
 
+    if (onSmartSync && targetTerm) {
+      setIsProcessing(true);
+      try {
+        const syncItems: SmartBulkSyncItem[] = parsedRows.map((row) => ({
+          student_number: row.student_id.trim(),
+          full_name: row.name.trim(),
+          course: row.course?.trim() || 'BS Information Technology',
+          year_level: row.year_level && row.year_level >= 1 && row.year_level <= 4 ? row.year_level : 1,
+          email: row.email?.trim() || null,
+        }));
+        const summary = await onSmartSync(targetTerm.id, syncItems);
+        setSmartSyncSummary(summary);
+        toast.success(`Smart sync completed for ${targetTerm.school_year} ${targetTerm.semester}!`);
+        return;
+      } catch (err: any) {
+        const msg = err?.response?.data?.error?.message || err?.message || 'Smart sync failed.';
+        toast.error(msg);
+        return;
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+
     setIsProcessing(true);
     setImportProgress({ current: 0, total: parsedRows.length });
 
@@ -266,7 +338,63 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
     >
       <div className="space-y-4 pt-1">
         {/* Post-Import Upload Summary Screen */}
-        {importSummary ? (
+        {smartSyncSummary ? (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-emerald-200 bg-[#FAF8FC] p-5 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                    <CheckCircle2 className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[#24133F]">
+                      Smart Sync Completed {targetTerm ? `for ${targetTerm.school_year} ${targetTerm.semester}` : ''}
+                    </h3>
+                    <p className="text-xs text-[#756883] mt-0.5">{fileName}</p>
+                  </div>
+                </div>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 border border-emerald-200">
+                  {smartSyncSummary.total_input} Processed
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-center">
+                  <p className="text-2xl font-extrabold text-emerald-700">{smartSyncSummary.re_enrolled}</p>
+                  <p className="text-xs font-bold text-emerald-800 mt-0.5">Continuing Students</p>
+                  <p className="text-[10px] text-emerald-600 mt-0.5">Records, cards & history preserved</p>
+                </div>
+                <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3.5 text-center">
+                  <p className="text-2xl font-extrabold text-blue-700">{smartSyncSummary.newly_registered}</p>
+                  <p className="text-xs font-bold text-blue-800 mt-0.5">Newly Registered</p>
+                  <p className="text-[10px] text-blue-600 mt-0.5">Created new student accounts</p>
+                </div>
+                <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 text-center">
+                  <p className="text-2xl font-extrabold text-amber-700">{smartSyncSummary.archived_missing}</p>
+                  <p className="text-xs font-bold text-amber-800 mt-0.5">Moved to Archive</p>
+                  <p className="text-[10px] text-amber-600 mt-0.5">Safely archived, not deleted</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-[#F1EEF4] flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={resetModalState}
+                className="rounded-xl border border-[#E5E0EB] px-4 py-2.5 text-xs font-bold text-[#756883] hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Import another file
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#7026B7] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#621FA3] shadow-[0_4px_0_0_#451475] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        ) : importSummary ? (
           <div className="space-y-4">
             <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FC] p-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -484,6 +612,55 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
               </div>
             )}
 
+            {/* Smart 3-Way Term Diff Preview */}
+            {diffStats && targetTerm && validationErrors.length === 0 && (
+              <div className="rounded-2xl border border-purple-200 bg-[#FAF8FC] p-4 space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-[#7026B7]" />
+                    <span className="text-xs font-bold text-[#24133F]">
+                      Smart Term Sync Preview ({targetTerm.school_year} · {targetTerm.semester})
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-semibold text-[#7026B7] bg-[#F0E8FC] px-2.5 py-0.5 rounded-full border border-purple-200">
+                    Smart 3-Way Diff
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-emerald-800">Continuing</span>
+                      <span className="text-base font-extrabold text-emerald-700">{diffStats.reEnrolled}</span>
+                    </div>
+                    <p className="text-[10px] text-emerald-600 mt-1">
+                      Preserves ID, card UID & past attendance.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-blue-800">New Enrollments</span>
+                      <span className="text-base font-extrabold text-blue-700">{diffStats.newlyRegistered}</span>
+                    </div>
+                    <p className="text-[10px] text-blue-600 mt-1">
+                      New student accounts created for this term.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-amber-800">Move to Archive</span>
+                      <span className="text-base font-extrabold text-amber-700">{diffStats.missingArchived}</span>
+                    </div>
+                    <p className="text-[10px] text-amber-600 mt-1">
+                      Not on new list. Moved to Archive safely.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Default Temporary Password Configuration */}
             {parsedRows.length > 0 && validationErrors.length === 0 && (
               <div className="rounded-xl border border-[#E5E0EB] bg-white p-3.5 space-y-1.5">
@@ -638,10 +815,14 @@ export const BulkStudentImportModal: React.FC<BulkStudentImportModalProps> = ({
                 {isProcessing ? (
                   <>
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span>Importing ({importProgress ? `${importProgress.current}/${importProgress.total}` : 'Please wait...'})</span>
+                    <span>Processing ({importProgress ? `${importProgress.current}/${importProgress.total}` : 'Please wait...'})</span>
                   </>
                 ) : (
-                  <span>Import {parsedRows.length} Students</span>
+                  <span>
+                    {targetTerm
+                      ? `Sync ${parsedRows.length} Students (${targetTerm.semester})`
+                      : `Import ${parsedRows.length} Students`}
+                  </span>
                 )}
               </button>
             </div>

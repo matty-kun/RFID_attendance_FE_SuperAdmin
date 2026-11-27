@@ -24,6 +24,7 @@ export const REPORT_EXPORT_HEADERS = [
   'Session',
   'Time In',
   'Time Out',
+  'Admin Officer',
   'Status',
 ] as const;
 
@@ -35,6 +36,7 @@ export function buildReportExportRowValues(row: ReportStudentAttendanceRow): str
     formatReportSessionLabel(row),
     row.timeIn,
     row.timeOut,
+    row.adminOfficer || row.scannedBy || '-',
     row.status,
   ].map((v) => (v && v.trim() ? v.trim() : '-'));
 }
@@ -79,8 +81,7 @@ export async function exportAttendance(
   if (format === 'pdf') {
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     // Total printable width = 277mm (10mm left + 10mm right margin on 297mm A4 landscape)
-    // Balanced column widths: trimmed Event (36mm) and Session (46mm) to eliminate excessive gap
-    const widths = [52, 48, 36, 46, 26, 26, 43];
+    const widths = [46, 40, 32, 38, 24, 24, 40, 33];
     const xPositions = widths.reduce<number[]>(
       (positions, width) => [...positions, positions.at(-1)! + width],
       [10]
@@ -173,7 +174,7 @@ export async function exportAttendance(
             new TableCell({
               margins: { top: 100, bottom: 100, left: 140, right: 140 },
               width: {
-                size: [19, 17, 13, 17, 9, 9, 16][colIndex],
+                size: [17, 15, 12, 15, 8, 8, 13, 12][colIndex],
                 type: WidthType.PERCENTAGE,
               },
               shading:

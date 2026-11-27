@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowRightLeft, CheckCircle2, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
+import { ArrowRightLeft, Calendar, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
+import { toast } from '../context';
 import { Dropdown } from '../components/common/Dropdown';
 import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
@@ -7,6 +8,7 @@ import { Checkbox } from '../components/common/Checkbox';
 import { Button } from '../components/common/Button';
 import { request } from '../services/apiClient';
 import { adminService } from '../services/adminService';
+import { useAcademicTerm } from '../context/AcademicTermContext';
 import type { EventRecord } from '../types';
 import { formatReportSessionLabel, type ReportTrendDay, type ReportSessionItem, type ReportCheckpointItem, type ReportCourseItem, type ReportStudentAttendanceRow } from './auditPreviewRecords';
 
@@ -29,6 +31,10 @@ type Snapshot = {
     period: string;
     timeIn: string | null;
     timeOut: string | null;
+    adminOfficer?: string | null;
+    scannedBy?: string | null;
+    scannedByIn?: string | null;
+    scannedByOut?: string | null;
     status: ReportStudentAttendanceRow['status'] | 'Missing Out';
   }[];
   rowTotal: number;
@@ -72,6 +78,8 @@ const initialStart = manilaDate(new Date(Date.now() - 6 * 86400000));
 const emptySummary = { studentsCheckedIn: 0, timeIns: 0, timeOuts: 0, totalScans: 0 };
 
 export function ReportsPage() {
+  const { terms, selectedTerm, setSelectedTerm, activeTerm } = useAcademicTerm();
+  const [termId, setTermId] = useState<string>(selectedTerm?.id || 'all');
   const [startDate, setStartDate] = useState(initialStart);
   const [endDate, setEndDate] = useState(initialEnd);
   const [events, setEvents] = useState<EventRecord[]>([]);
@@ -81,7 +89,6 @@ export function ReportsPage() {
   const [knownLocations, setKnownLocations] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFetchingPage, setIsFetchingPage] = useState(false);
-  const [error, setError] = useState('');
   const requestId = useRef(0);
   const pageCache = useRef<Map<number, Snapshot['rows']>>(new Map());
   const pendingRequests = useRef<Map<number, Promise<Snapshot>>>(new Map());
@@ -99,21 +106,55 @@ export function ReportsPage() {
   const [page, setPage] = useState(1);
   const pageSize = 25;
 
-  useEffect(() => { void adminService.getEvents().then(setEvents).catch(() => setError('Could not load events.')); }, []);
+  useEffect(() => { void adminService.getEvents().then(setEvents).catch(() => toast.error('Could not load events.')); }, []);
   useEffect(() => { const timer = window.setTimeout(() => { setQuery(search.trim()); setPage(1); }, 250); return () => window.clearTimeout(timer); }, [search]);
-  useEffect(() => { setPage(1); setSelected([]); }, [startDate, endDate, event, session, course, type, location]);
+  useEffect(() => {
+    if (selectedTerm) {
+      setTermId(selectedTerm.id);
+    }
+  }, [selectedTerm]);
+  useEffect(() => { setPage(1); setSelected([]); }, [startDate, endDate, termId, event, session, course, type, location]);
 
-  const filterParams = useMemo(() => ({
-    startDate, endDate, limit: pageSize,
-    ...(event !== 'all' ? { eventId: event } : {}),
-    ...(session !== 'all' ? { session } : {}),
-    ...(course !== 'all' ? { course } : {}),
-    ...(type !== 'all' ? { type } : {}),
-    ...(location !== 'all' ? { location } : {}),
-    ...(query ? { search: query } : {}),
-  }), [startDate, endDate, event, session, course, type, location, query]);
+  const filterParams = useMemo(() => {
+    const effectiveStart = startDate || '2000-01-01';
+    const effectiveEnd = endDate || '2099-12-31';
+
+    return {
+      startDate: effectiveStart,
+      endDate: effectiveEnd,
+      limit: pageSize,
+      ...(termId !== 'all' ? { termId } : {}),
+      ...(event !== 'all' ? { eventId: event } : {}),
+      ...(session !== 'all' ? { session } : {}),
+      ...(course !== 'all' ? { course } : {}),
+      ...(type !== 'all' ? { type } : {}),
+      ...(location !== 'all' ? { location } : {}),
+      ...(query ? { search: query } : {}),
+    };
+  }, [startDate, endDate, termId, event, session, course, type, location, query]);
 
   const filterKey = useMemo(() => JSON.stringify(filterParams), [filterParams]);
+
+  const termOptions = useMemo(() => {
+    if (terms.length > 0) {
+      const distinctYears = new Set(terms.map((t) => t.school_year));
+      const showYear = distinctYears.size > 1;
+      return [
+        { value: 'all', label: 'All Semesters' },
+        ...terms.map((t) => ({
+          value: t.id,
+          label: showYear
+            ? `${t.school_year} · ${t.semester}${t.id === activeTerm?.id ? ' (Active)' : ''}`
+            : `${t.semester}${t.id === activeTerm?.id ? ' (Active)' : ''}`,
+        })),
+      ];
+    }
+    return [
+      { value: 'all', label: 'All Semesters' },
+      { value: '1st Sem', label: '1st Sem' },
+      { value: '2nd Sem', label: '2nd Sem' },
+    ];
+  }, [terms, activeTerm]);
 
   const prefetchPage = useCallback((targetPage: number) => {
     const total = snapshot?.rowTotal ?? 0;
@@ -157,7 +198,6 @@ export function ReportsPage() {
     } else {
       setIsFetchingPage(true);
     }
-    setError('');
 
     try {
       let result: Snapshot;
@@ -204,7 +244,8 @@ export function ReportsPage() {
       }
     } catch (err: any) {
       if (id === requestId.current) {
-        setError(err?.response?.data?.error?.message || 'Could not load report records. Try again.');
+        const msg = err?.response?.data?.error?.message || 'Could not load report records. Try again.';
+        toast.error(msg);
       }
     } finally {
       if (id === requestId.current) {
@@ -281,6 +322,10 @@ export function ReportsPage() {
       period: row.period,
       timeIn: formatManilaTime(row.timeIn),
       timeOut: formatManilaTime(row.timeOut),
+      adminOfficer: row.adminOfficer || row.scannedBy || '—',
+      scannedBy: row.scannedBy || row.adminOfficer || '—',
+      scannedByIn: row.scannedByIn || null,
+      scannedByOut: row.scannedByOut || null,
       status: row.status === 'Missing Out' ? 'Time In Only' : row.status,
     };
   }, [eventsById, event, snapshot]);
@@ -311,9 +356,9 @@ export function ReportsPage() {
         }
       }
       const { exportAttendance } = await import('./reportExports');
-      exportAttendance(rows, format, endDate);
+      exportAttendance(rows, format, endDate || new Date().toISOString().slice(0, 10));
     } catch {
-      setError('Could not export the report. Try again.');
+      toast.error('Could not export the report. Try again.');
     }
   };
   return (
@@ -326,21 +371,33 @@ export function ReportsPage() {
         </div>
       </div>
 
-      {error && (
-        <div role="alert" className="flex items-center justify-between gap-3 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
-          <span className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            {error}
-          </span>
-          <button type="button" onClick={() => void loadReportsData(true)} className="text-xs font-bold underline">
-            Retry
-          </button>
-        </div>
-      )}
+      {/* Filter Bar - Strictly One Line */}
+      <div className="flex items-center gap-2 w-full flex-nowrap overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* Semester Filter Dropdown */}
+        <Dropdown
+          className="shrink-0"
+          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
+          value={termId}
+          onChange={(val) => {
+            if (val === 'all') {
+              setTermId('all');
+              return;
+            }
+            const matched = terms.find((item) => item.id === val || item.semester === val);
+            if (matched) {
+              setTermId(matched.id);
+              setSelectedTerm(matched);
+            } else {
+              setTermId(val);
+            }
+          }}
+          icon={<Calendar className="h-4 w-4 text-[#756883]" />}
+          options={termOptions}
+        />
 
-      {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-3">
         <CalendarDatePicker
+          className="shrink-0"
+          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
           startDate={startDate}
           endDate={endDate}
           onChange={(range) => {
@@ -350,8 +407,10 @@ export function ReportsPage() {
         />
 
         <Dropdown
+          className="shrink-0"
+          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
           value={event}
-          onChange={(value) => { setEvent(value); setSession('all'); setSelected([]); }}
+          onChange={(value) => { setEvent(value); setSession('all'); }}
           options={[
             { value: 'all', label: 'All Events' },
             ...events.map((item) => ({ value: item.id, label: item.name })),
@@ -359,6 +418,8 @@ export function ReportsPage() {
         />
 
         <Dropdown
+          className="shrink-0"
+          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
           value={session}
           onChange={setSession}
           icon={<Clock className="h-4 w-4 text-[#756883]" />}
@@ -369,6 +430,8 @@ export function ReportsPage() {
         />
 
         <Dropdown
+          className="shrink-0"
+          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
           value={course}
           onChange={setCourse}
           icon={<GraduationCap className="h-4 w-4 text-[#756883]" />}
@@ -379,6 +442,8 @@ export function ReportsPage() {
         />
 
         <Dropdown
+          className="shrink-0"
+          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
           value={type}
           onChange={setType}
           icon={<ArrowRightLeft className="h-4 w-4 text-[#756883]" />}
@@ -390,6 +455,8 @@ export function ReportsPage() {
         />
 
         <Dropdown
+          className="shrink-0"
+          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
           value={location}
           onChange={setLocation}
           icon={<MapPin className="h-4 w-4 text-[#756883]" />}
@@ -399,12 +466,23 @@ export function ReportsPage() {
           ]}
         />
 
-        <ExportButton
-          className="ml-auto"
-          label={selected.length > 0 ? `Export (${selected.length})` : 'Export'}
-          onExport={(format) => { void handleExport(format); }}
-          disabled={loading || !snapshot?.rowTotal}
-        />
+        <div className="ml-auto flex items-center gap-2 shrink-0">
+          {selected.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelected([])}
+              className="h-10 px-3 rounded-xl border border-[#E5E0EB] bg-white text-xs font-semibold text-[#756883] hover:text-[#24133F] hover:bg-slate-50 transition-colors cursor-pointer shrink-0"
+            >
+              Clear ({selected.length})
+            </button>
+          )}
+          <ExportButton
+            className="shrink-0"
+            label={selected.length > 0 ? `Export (${selected.length})` : 'Export'}
+            onExport={(format) => { void handleExport(format); }}
+            disabled={loading || !snapshot?.rowTotal}
+          />
+        </div>
       </div>
 
       {/* Attendance Totals Mini Dashboard */}
@@ -664,40 +742,6 @@ export function ReportsPage() {
           </label>
         </div>
 
-        {/* Selection & Export Indicator Banner */}
-        {selected.length > 0 && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-[#F6EFFE] to-[#FAF5FF] border border-[#E9D7FE] px-4 py-3 text-xs text-[#24133F] animate-in fade-in slide-in-from-top-2 duration-200 shadow-sm">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#7026B7] text-white text-[11px] font-bold shrink-0 shadow-sm">
-                {selected.length}
-              </span>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <CheckCircle2 className="h-4 w-4 text-[#7026B7] shrink-0" />
-                <span className="font-bold text-[#24133F]">
-                  {selected.length} {selected.length === 1 ? 'student' : 'students'} selected for export
-                </span>
-                <span className="text-[#756883] ml-1 hidden sm:inline">
-                  — Export will only download these selected records.
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <ExportButton
-                label={`Export Selected (${selected.length})`}
-                onExport={(format) => { void handleExport(format); }}
-              />
-              <button
-                type="button"
-                onClick={() => setSelected([])}
-                className="h-10 px-3.5 rounded-2xl border border-[#D6BBFB] bg-white font-bold text-xs text-[#7026B7] hover:bg-[#F3E8FF] active:scale-95 transition-all shadow-sm"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-        )}
-
         <div className="mt-5 overflow-x-auto">
           <table className="w-full min-w-[780px] text-left text-xs">
             <thead>
@@ -723,6 +767,7 @@ export function ReportsPage() {
                 <th className="px-4 py-3.5 font-medium whitespace-nowrap">Session</th>
                 <th className="px-4 py-3.5 text-center font-medium whitespace-nowrap">Time In</th>
                 <th className="px-4 py-3.5 text-center font-medium whitespace-nowrap">Time Out</th>
+                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Admin Officer</th>
                 <th className="px-4 py-3.5 font-medium whitespace-nowrap">Status</th>
               </tr>
             </thead>
@@ -766,6 +811,18 @@ export function ReportsPage() {
                       </td>
                     );
                   })}
+                  <td className="px-4 py-3.5 text-[#24133F] whitespace-nowrap">
+                    {record.scannedByIn && record.scannedByOut && record.scannedByIn !== record.scannedByOut ? (
+                      <div className="flex flex-col text-[11px] leading-tight">
+                        <span className="text-emerald-700 font-medium">In: {record.scannedByIn}</span>
+                        <span className="text-rose-700 font-medium">Out: {record.scannedByOut}</span>
+                      </div>
+                    ) : record.adminOfficer && record.adminOfficer !== '—' && record.adminOfficer !== '-' ? (
+                      <span className="font-medium text-xs text-[#24133F]">{record.adminOfficer}</span>
+                    ) : (
+                      <span className="inline-block w-10 text-center text-[#756883]">-</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     <span
                       className={`inline-block px-3 py-1 rounded-full text-xs font-semibold text-white ${
@@ -788,8 +845,6 @@ export function ReportsPage() {
             <p className="py-10 text-center text-xs text-[#756883]">
               {loading
                 ? 'Loading attendance records…'
-                : error
-                ? 'Unable to load attendance records.'
                 : 'No attendance records available.'}
             </p>
           )}

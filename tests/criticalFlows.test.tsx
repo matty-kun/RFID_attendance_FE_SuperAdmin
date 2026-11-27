@@ -9,7 +9,21 @@ import { ReportsPage } from '../src/pages/ReportsPage';
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), showToast: vi.fn() }));
 vi.mock('../src/services/apiClient', () => ({ request: { get: mocks.get, post: mocks.post } }));
-vi.mock('../src/context', () => ({ useToast: () => ({ showToast: mocks.showToast }), toast: { success: mocks.showToast, error: mocks.showToast } }));
+vi.mock('../src/context', () => ({
+  useToast: () => ({ showToast: mocks.showToast }),
+  toast: { success: mocks.showToast, error: mocks.showToast },
+  useAcademicTerm: () => ({
+    activeTerm: null,
+    selectedTerm: null,
+    terms: [],
+    isLoading: false,
+    error: null,
+    setSelectedTerm: vi.fn(),
+    activateTerm: vi.fn(),
+    createTerm: vi.fn(),
+    refreshTerms: vi.fn(),
+  }),
+}));
 vi.mock('../src/services/adminService', () => ({ adminService: { getEvents: () => Promise.resolve([]) } }));
 
 const issued = { id: 'card-1', uid: '123456', card_number: 'RFID-001', status: 'issued', created_at: '2026-10-01T00:00:00Z', holder: { id: 'assignment-1', student_id: 'student-1', student_number: '2026-0001', student_name: 'Ana Cruz', issued_at: '2026-10-01T00:00:00Z', ended_at: null, end_reason: null } };

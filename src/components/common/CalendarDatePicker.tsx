@@ -13,6 +13,7 @@ export interface CalendarDatePickerProps {
   endDate?: string;
   onChange: (range: DateRange) => void;
   className?: string;
+  buttonClassName?: string;
 }
 
 function toYMD(date: Date): string {
@@ -47,6 +48,7 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
   endDate = '',
   onChange,
   className,
+  buttonClassName,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -208,7 +210,10 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs font-semibold text-[#24133F] hover:border-[#7026B7] transition-colors focus-visible:outline-2 focus-visible:outline-[#7026B7]"
+        className={cn(
+          'flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs font-semibold text-[#24133F] hover:border-[#7026B7] transition-colors focus-visible:outline-2 focus-visible:outline-[#7026B7] select-none cursor-pointer',
+          buttonClassName
+        )}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
       >
@@ -322,6 +327,11 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
                 const dayOfWeek = (firstDay + day - 1) % 7;
                 const isRowStart = dayOfWeek === 0;
                 const isRowEnd = dayOfWeek === 6;
+                const isFirstDayOfMonth = day === 1;
+                const isLastDayOfMonth = day === daysInMonth;
+
+                const isLeftEdge = isRowStart || isFirstDayOfMonth;
+                const isRightEdge = isRowEnd || isLastDayOfMonth;
 
                 cells.push(
                   <div
@@ -336,7 +346,7 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
                           <div
                             className={cn(
                               'absolute right-0 top-0.5 bottom-0.5 left-1/2 bg-[#E9D5FF]/60',
-                              isRowEnd && 'rounded-r-full'
+                              isRightEdge && 'rounded-r-full'
                             )}
                           />
                         )}
@@ -344,9 +354,9 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
                           <div
                             className={cn(
                               'absolute inset-x-0 top-0.5 bottom-0.5 bg-[#E9D5FF]/60',
-                              isRowStart && isRowEnd && 'rounded-full',
-                              isRowStart && !isRowEnd && 'rounded-l-full',
-                              isRowEnd && !isRowStart && 'rounded-r-full'
+                              isLeftEdge && isRightEdge && 'rounded-full',
+                              isLeftEdge && !isRightEdge && 'rounded-l-full',
+                              isRightEdge && !isLeftEdge && 'rounded-r-full'
                             )}
                           />
                         )}
@@ -354,7 +364,7 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
                           <div
                             className={cn(
                               'absolute left-0 top-0.5 bottom-0.5 right-1/2 bg-[#E9D5FF]/60',
-                              isRowStart && 'rounded-l-full'
+                              isLeftEdge && 'rounded-l-full'
                             )}
                           />
                         )}

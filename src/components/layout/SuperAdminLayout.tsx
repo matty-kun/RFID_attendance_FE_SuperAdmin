@@ -3,14 +3,25 @@ import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { UtilityRail } from './UtilityRail';
 import { AdminsDrawer } from '../../features/admins';
+import { AcademicTermsDrawer } from '../academic-terms/AcademicTermsDrawer';
 
 export const SuperAdminLayout: React.FC = () => {
   const [isAdminsDrawerOpen, setIsAdminsDrawerOpen] = useState(false);
+  const [isTermsDrawerOpen, setIsTermsDrawerOpen] = useState(false);
 
   useEffect(() => {
-    const handleOpen = () => setIsAdminsDrawerOpen(true);
-    window.addEventListener('presnt:open-admins-drawer', handleOpen);
-    return () => window.removeEventListener('presnt:open-admins-drawer', handleOpen);
+    const handleOpenAdmins = () => setIsAdminsDrawerOpen(true);
+    const handleOpenTerms = () => setIsTermsDrawerOpen(true);
+
+    window.addEventListener('presnt:open-admins-drawer', handleOpenAdmins);
+    window.addEventListener('presnt:open-academic-terms-drawer', handleOpenTerms);
+    window.addEventListener('presnt:open-academic-terms-modal', handleOpenTerms);
+
+    return () => {
+      window.removeEventListener('presnt:open-admins-drawer', handleOpenAdmins);
+      window.removeEventListener('presnt:open-academic-terms-drawer', handleOpenTerms);
+      window.removeEventListener('presnt:open-academic-terms-modal', handleOpenTerms);
+    };
   }, []);
 
   return (
@@ -24,6 +35,11 @@ export const SuperAdminLayout: React.FC = () => {
       <AdminsDrawer
         isOpen={isAdminsDrawerOpen}
         onClose={() => setIsAdminsDrawerOpen(false)}
+      />
+
+      <AcademicTermsDrawer
+        isOpen={isTermsDrawerOpen}
+        onClose={() => setIsTermsDrawerOpen(false)}
       />
     </div>
   );

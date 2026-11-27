@@ -10,8 +10,10 @@ import type {
   UpdateStudentPayload,
 } from '../models';
 import { studentService } from '../services';
+import { academicTermService } from '../../../services/academicTermService';
 import { request } from '../../../services/apiClient';
 import { toast } from '../../../context';
+import type { SmartBulkSyncItem, SmartBulkSyncSummary } from '../../../types';
 
 const ARCHIVED_STORAGE_KEY = 'presnt_archived_students';
 const LOST_CARDS_STORAGE_KEY = 'presnt_lost_cards';
@@ -79,10 +81,11 @@ export interface UseStudentsViewModelReturn {
   handleResetPassword: (studentId: string, newPassword: string) => Promise<boolean>;
   uploadStudentAvatar: (studentId: string, imageBase64: string) => Promise<string>;
   removeStudentAvatar: (studentId: string) => Promise<void>;
+  handleSmartSync: (targetTermId: string, syncStudents: SmartBulkSyncItem[]) => Promise<SmartBulkSyncSummary>;
   loadStudents: () => Promise<void>;
 }
 
-export const useStudentsViewModel = (showArchived = false): UseStudentsViewModelReturn => {
+export const useStudentsViewModel = (showArchived = false, termId?: string): UseStudentsViewModelReturn => {
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [unassignedPool, setUnassignedPool] = useState<InventoryCard[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -128,7 +131,7 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     setError('');
     try {
       const [data] = await Promise.all([
-        studentService.getStudents(1, '', sort, direction, 100, showArchived, true),
+        studentService.getStudents(1, '', sort, direction, 100, showArchived, true, termId),
         ...(includeMeta ? [loadStatsAndInventory()] : []),
       ]);
       if (currentRequest === requestId.current) {
@@ -142,7 +145,7 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     } finally {
       if (currentRequest === requestId.current) setIsLoading(false);
     }
-  }, [sort, direction, showArchived, loadStatsAndInventory]);
+  }, [sort, direction, showArchived, termId, loadStatsAndInventory]);
 
   useEffect(() => {
     void loadStatsAndInventory();
@@ -685,6 +688,20 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     }
   };
 
+  const handleSmartSync = async (
+    targetTermId: string,
+    syncStudents: SmartBulkSyncItem[]
+  ): Promise<SmartBulkSyncSummary> => {
+    setIsSubmitting(true);
+    try {
+      const summary = await academicTermService.bulkSyncStudents(targetTermId, syncStudents);
+      await loadStudents();
+      return summary;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return {
     students,
     filteredStudents,
@@ -729,6 +746,7 @@ export const useStudentsViewModel = (showArchived = false): UseStudentsViewModel
     handleCardScannedForStudent,
     handleAutoPairSequential,
     handleBulkImport,
+    handleSmartSync,
     handleQuickPair,
     handleUnlinkCard,
     handleUpdateStudent,

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { LogOut, Shield } from 'lucide-react';
+import { GraduationCap, LogOut, Shield } from 'lucide-react';
 import { useAuth } from '../../features/auth';
 import { DeleteConfirmationModal } from '../common/DeleteConfirmationModal';
 import hawiWavingImg from '../../assets/illustrations/Hawi Waving.png';
@@ -51,6 +51,20 @@ export function UtilityRail() {
         aria-label="Quick actions"
         className="fixed bottom-8 left-12 z-40 hidden flex-col items-center gap-2.5 md:flex"
       >
+        {/* Manage Academic Terms Button */}
+        <button
+          type="button"
+          onClick={() => {
+            setIsOpen(false);
+            window.dispatchEvent(new CustomEvent('presnt:open-academic-terms-drawer'));
+          }}
+          aria-label="Manage Academic Terms"
+          title="Manage School Year & Semesters"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 active:scale-90 active:translate-y-[1px] transition-all cursor-pointer"
+        >
+          <GraduationCap className="h-4 w-4" />
+        </button>
+
         {/* Manage Admins Button */}
         <button
           type="button"

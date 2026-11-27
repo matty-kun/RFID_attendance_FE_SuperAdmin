@@ -400,16 +400,30 @@ export function AttendancePage() {
 
     try {
       const currentLocations = await adminService.getSessionLocations(targetSessionId);
+      // Merge with existing session locations so assigning officers never wipes out other session checkpoints
+      const mergedTimeIn = Array.from(
+        new Set([
+          ...currentLocations.time_in_locations.map((l) => l.id),
+          ...timeInLocationIds,
+        ])
+      );
+      const mergedTimeOut = Array.from(
+        new Set([
+          ...currentLocations.time_out_locations.map((l) => l.id),
+          ...timeOutLocationIds,
+        ])
+      );
+
       const sameIds = (left: string[], right: string[]) => {
         if (left.length !== right.length) return false;
         const sortedRight = [...right].sort();
         return [...left].sort().every((id, index) => id === sortedRight[index]);
       };
-      if (!sameIds(timeInLocationIds, currentLocations.time_in_locations.map((location) => location.id)) ||
-          !sameIds(timeOutLocationIds, currentLocations.time_out_locations.map((location) => location.id))) {
+      if (!sameIds(mergedTimeIn, currentLocations.time_in_locations.map((location) => location.id)) ||
+          !sameIds(mergedTimeOut, currentLocations.time_out_locations.map((location) => location.id))) {
         await adminService.saveSessionLocations(targetSessionId, {
-          time_in_location_ids: timeInLocationIds,
-          time_out_location_ids: timeOutLocationIds,
+          time_in_location_ids: mergedTimeIn,
+          time_out_location_ids: mergedTimeOut,
           skip_notification: true,
         });
       }
