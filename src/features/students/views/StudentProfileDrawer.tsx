@@ -15,7 +15,7 @@ import {
   X,
   Clock,
   Calendar,
-  MapPin,
+  User,
   Pencil,
   Archive,
   ArchiveRestore,
@@ -1488,19 +1488,30 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                                   <Clock className="h-3 w-3 text-[#A59CAC] shrink-0" />
                                   <span>{scan.timeWindow}</span>
                                 </span>
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="h-3 w-3 text-[#A59CAC] shrink-0" />
-                                  <span>{scan.locationName}</span>
+                                <span className="flex items-center gap-1" title={scan.adminName ? `Scanned by ${scan.adminName}` : 'Admin'}>
+                                  <User className="h-3 w-3 text-[#A59CAC] shrink-0" />
+                                  <span>{scan.adminName}</span>
                                 </span>
                               </div>
                               <p className="mt-1 text-[11px] text-[#756883]">Card used: <span className="font-semibold text-[#24133F]">{scan.cardNumber ?? 'Card not recorded'}</span></p>
                             </div>
 
-                            <div className="text-right shrink-0">
+                            <div className="text-right shrink-0 flex flex-col items-end">
                               {scan.timestamp ? (
-                                <p className="font-mono text-xs font-bold text-[#24133F] tabular-nums">
-                                  {scan.timestamp}
-                                </p>
+                                <>
+                                  <p className="font-mono text-xs font-bold text-[#24133F] tabular-nums">
+                                    {scan.timestamp}
+                                  </p>
+                                  <span
+                                    className={`mt-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                      scan.type === 'time_in'
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                                        : 'bg-rose-50 text-rose-700 border border-rose-200/60'
+                                    }`}
+                                  >
+                                    {scan.type === 'time_in' ? 'Time-In' : 'Time-Out'}
+                                  </span>
+                                </>
                               ) : (
                                 <span className="text-xs text-[#A59AAB] italic">
                                   No scan
