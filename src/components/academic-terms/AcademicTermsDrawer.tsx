@@ -251,26 +251,6 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
     }
   };
 
-  const setPresetDates = (type: 'firstSem' | 'secondSem') => {
-    const parts = schoolYear.trim().split('-').map(Number);
-    const baseYear = parts.length === 2 && !isNaN(parts[0]) ? parts[0] : calYear;
-    const endYear = parts.length === 2 && !isNaN(parts[1]) ? parts[1] : baseYear + 1;
-
-    if (type === 'firstSem') {
-      setStartDate(`${baseYear}-08-15`);
-      setEndDate(`${baseYear}-12-20`);
-      setCalYear(baseYear);
-      setCalMonth(7); // August
-      setActiveDateField('start');
-    } else {
-      setStartDate(`${endYear}-01-15`);
-      setEndDate(`${endYear}-05-30`);
-      setCalYear(endYear);
-      setCalMonth(0); // January
-      setActiveDateField('start');
-    }
-  };
-
   const handleCreateTerm = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
@@ -718,28 +698,11 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
 
           {/* Custom Interactive Calendar Date Picker */}
           <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB]/60 p-4 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-bold text-[#24133F] flex items-center gap-1.5">
                 <Calendar className="h-4 w-4 text-[#7026B7]" />
                 Term Date Range
               </span>
-              {/* Semester Presets */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setPresetDates('firstSem')}
-                  className="rounded-lg bg-white border border-[#E5E0EB] px-2 py-1 text-[11px] font-semibold text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 transition-colors cursor-pointer"
-                >
-                  Aug – Dec (1st Sem)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPresetDates('secondSem')}
-                  className="rounded-lg bg-white border border-[#E5E0EB] px-2 py-1 text-[11px] font-semibold text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 transition-colors cursor-pointer"
-                >
-                  Jan – May (2nd Sem)
-                </button>
-              </div>
             </div>
 
             {/* Start & End Date Summary Cards (Clickable to switch active field and jump months) */}
@@ -981,53 +944,6 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                 return cells;
               })()}
             </div>
-
-            {/* Multi-month Term Continuation Banner */}
-            {effectiveEnd &&
-              effectiveEnd >
-                `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}` && (
-                <div className="flex items-center justify-between text-[11px] text-[#7026B7] bg-[#F7F2FD] border border-[#E9D5FF] px-3 py-1.5 rounded-xl animate-in fade-in duration-150">
-                  <span className="font-medium">
-                    Term continues through {formatDateDisplay(effectiveEnd)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const [y, m] = effectiveEnd.split('-').map(Number);
-                      if (!isNaN(y) && !isNaN(m)) {
-                        setCalYear(y);
-                        setCalMonth(m - 1);
-                        setActiveDateField('end');
-                      }
-                    }}
-                    className="font-bold underline hover:text-[#5E1E9D] cursor-pointer ml-2 shrink-0"
-                  >
-                    Jump to End Month ({new Date(Number(effectiveEnd.split('-')[0]), Number(effectiveEnd.split('-')[1]) - 1).toLocaleDateString('en-US', { month: 'short' })}) &rarr;
-                  </button>
-                </div>
-              )}
-            {effectiveStart &&
-              effectiveStart < `${calYear}-${String(calMonth + 1).padStart(2, '0')}-01` && (
-                <div className="flex items-center justify-between text-[11px] text-[#7026B7] bg-[#F7F2FD] border border-[#E9D5FF] px-3 py-1.5 rounded-xl animate-in fade-in duration-150">
-                  <span className="font-medium">
-                    Term started on {formatDateDisplay(effectiveStart)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const [y, m] = effectiveStart.split('-').map(Number);
-                      if (!isNaN(y) && !isNaN(m)) {
-                        setCalYear(y);
-                        setCalMonth(m - 1);
-                        setActiveDateField('start');
-                      }
-                    }}
-                    className="font-bold underline hover:text-[#5E1E9D] cursor-pointer ml-2 shrink-0"
-                  >
-                    &larr; Jump to Start Month ({new Date(Number(effectiveStart.split('-')[0]), Number(effectiveStart.split('-')[1]) - 1).toLocaleDateString('en-US', { month: 'short' })})
-                  </button>
-                </div>
-              )}
           </div>
 
           <div className="pt-1">
