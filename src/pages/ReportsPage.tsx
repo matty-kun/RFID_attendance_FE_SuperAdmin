@@ -21,7 +21,8 @@ import { adminService } from '../services/adminService';
 import { useAcademicTerm } from '../context/AcademicTermContext';
 import type { EventRecord } from '../types';
 import { formatReportSessionLabel, type ReportSessionItem, type ReportCheckpointItem, type ReportCourseItem, type ReportStudentAttendanceRow } from './auditPreviewRecords';
-import { StudentAttendanceDrawer } from '../components/reports/StudentAttendanceDrawer';
+import { StudentProfileDrawer } from '../features/students/views/StudentProfileDrawer';
+import type { StudentRecord } from '../features/students/models';
 
 type Snapshot = {
   summary: { studentsCheckedIn: number; timeIns: number; timeOuts: number; totalScans: number };
@@ -122,13 +123,7 @@ export function ReportsPage() {
   const [page, setPage] = useState(1);
   const pageSize = 25;
   const [attendanceViewMode, setAttendanceViewMode] = useState<'summaries' | 'logs'>('summaries');
-  const [selectedStudentForAttendance, setSelectedStudentForAttendance] = useState<{
-    id: string;
-    name: string;
-    number?: string;
-    course?: string;
-    yearLevel?: number;
-  } | null>(null);
+  const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<StudentRecord | null>(null);
 
   useEffect(() => { void adminService.getEvents().then(setEvents).catch(() => toast.error('Could not load events.')); }, []);
   useEffect(() => { const timer = window.setTimeout(() => { setQuery(search.trim()); setPage(1); }, 250); return () => window.clearTimeout(timer); }, [search]);
@@ -1105,10 +1100,13 @@ export function ReportsPage() {
                         <button
                           type="button"
                           onClick={() =>
-                            setSelectedStudentForAttendance({
+                            setSelectedStudentForProfile({
                               id: item.studentId,
                               name: item.name,
+                              student_id: item.studentId.substring(0, 8),
                               course: item.course,
+                              year_level: 1,
+                              created_at: new Date().toISOString(),
                             })
                           }
                           className="flex items-center gap-2.5 text-left cursor-pointer group-hover:opacity-90"
@@ -1216,10 +1214,13 @@ export function ReportsPage() {
                           size="sm"
                           variant="outline"
                           onClick={() =>
-                            setSelectedStudentForAttendance({
+                            setSelectedStudentForProfile({
                               id: item.studentId,
                               name: item.name,
+                              student_id: item.studentId.substring(0, 8),
                               course: item.course,
+                              year_level: 1,
+                              created_at: new Date().toISOString(),
                             })
                           }
                           className="gap-1.5 text-xs text-[#7026B7] border-[#E9DCFA] hover:bg-[#FAF7FD] hover:border-[#7026B7] transition-all cursor-pointer shadow-2xs"
@@ -1296,10 +1297,13 @@ export function ReportsPage() {
                       <button
                         type="button"
                         onClick={() =>
-                          setSelectedStudentForAttendance({
+                          setSelectedStudentForProfile({
                             id: record.id.split('::')[0],
                             name: record.name,
+                            student_id: record.id.split('::')[0].substring(0, 8),
                             course: record.course,
+                            year_level: 1,
+                            created_at: new Date().toISOString(),
                           })
                         }
                         className="flex items-center gap-2.5 text-left cursor-pointer group-hover:opacity-90"
@@ -1363,10 +1367,13 @@ export function ReportsPage() {
                         type="button"
                         title="View Day Checklist"
                         onClick={() =>
-                          setSelectedStudentForAttendance({
+                          setSelectedStudentForProfile({
                             id: record.id.split('::')[0],
                             name: record.name,
+                            student_id: record.id.split('::')[0].substring(0, 8),
                             course: record.course,
+                            year_level: 1,
+                            created_at: new Date().toISOString(),
                           })
                         }
                         className="inline-flex items-center gap-1 rounded-lg border border-[#E5E0EB] bg-white px-2 py-1 text-[11px] font-medium text-[#756883] hover:border-[#7026B7] hover:text-[#7026B7] transition-all cursor-pointer shadow-2xs"
@@ -1391,18 +1398,15 @@ export function ReportsPage() {
         )}
       </section>
 
-      {/* Dean's Requirement 2: Student Attendance Detail Drawer ("Wala ka diri sa Day 3 oh") */}
-      <StudentAttendanceDrawer
-        isOpen={Boolean(selectedStudentForAttendance)}
-        onClose={() => setSelectedStudentForAttendance(null)}
-        studentId={selectedStudentForAttendance?.id ?? null}
-        studentName={selectedStudentForAttendance?.name}
-        studentNumber={selectedStudentForAttendance?.number}
-        studentCourse={selectedStudentForAttendance?.course}
-        studentYearLevel={selectedStudentForAttendance?.yearLevel}
-        eventId={event !== 'all' ? event : undefined}
-        eventName={matchedEvent?.name}
-        termName={currentTerm ? `${currentTerm.school_year} · ${currentTerm.semester}` : undefined}
+      {/* Unified Student Profile & Attendance Compliance Drawer */}
+      <StudentProfileDrawer
+        isOpen={Boolean(selectedStudentForProfile)}
+        onClose={() => setSelectedStudentForProfile(null)}
+        student={selectedStudentForProfile}
+        onUnlinkCard={() => {}}
+        onQuickPair={async () => ({ success: true, message: '' })}
+        onOpenRapidScan={() => {}}
+        initialEventId={event !== 'all' ? event : undefined}
       />
       <div className="flex items-center justify-between text-xs text-[#756883]">
         <span>
