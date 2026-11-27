@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   CheckCircle2,
   Plus,
@@ -122,20 +122,39 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
   const [calYear, setCalYear] = useState<number>(() => new Date().getFullYear());
   const [hoverDate, setHoverDate] = useState<string | null>(null);
 
+  const resetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimeoutRef.current) {
+        clearTimeout(resetTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const resetForm = () => {
-    setSchoolYear('');
-    setSemester('1st Sem');
-    setStartDate('');
-    setEndDate('');
-    setActiveDateField('start');
-    setSetActiveNow(true);
-    setFormError('');
     setShowCreateForm(false);
-    setCreateMode('year');
-    setEditingTermId(null);
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
+    // Delay resetting form state until modal unmount animation (180ms) finishes
+    resetTimeoutRef.current = setTimeout(() => {
+      setSchoolYear('');
+      setSemester('1st Sem');
+      setStartDate('');
+      setEndDate('');
+      setActiveDateField('start');
+      setSetActiveNow(true);
+      setFormError('');
+      setCreateMode('year');
+      setEditingTermId(null);
+    }, 220);
   };
 
   const openEditSemester = (term: AcademicTerm) => {
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
     setCreateMode('edit');
     setEditingTermId(term.id);
     setSchoolYear(term.school_year);
@@ -160,6 +179,9 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
   };
 
   const openAddSemesterForYear = (sy: string, defaultSem?: SemesterType) => {
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
     setCreateMode('semester');
     setEditingTermId(null);
     setSchoolYear(sy);
@@ -185,6 +207,9 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
   };
 
   const openCreateNewYear = () => {
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
     setCreateMode('year');
     setEditingTermId(null);
     // Suggest next academic year if years already exist
