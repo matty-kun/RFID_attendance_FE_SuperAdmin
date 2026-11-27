@@ -97,7 +97,7 @@ export function OverviewPage() {
             <span className="text-xs font-semibold text-[#756883]">Checkpoints</span>
             <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]"><MapPin className="h-4 w-4" /></div>
           </div>
-          <p className="mt-3 text-2xl font-black text-[#24133F]">{locations.length}</p>
+          <p className="mt-3 text-2xl font-black text-[#24133F]">{number(data?.metrics.totalLocations)}</p>
         </div>
       </section>
 
@@ -268,7 +268,7 @@ export function OverviewPage() {
           </div>
           <p className="text-xs text-[#756883]">Distribution across scan locations</p>
 
-          <div className="mt-5 space-y-3">
+          <div className="mt-5 space-y-3 max-h-[280px] overflow-y-auto pr-1 [scrollbar-width:thin]">
             {hasCheckpointActivity ? locations.map((loc) => {
               const pct = Math.round((loc.scansToday / locationPeak) * 100);
               return (
