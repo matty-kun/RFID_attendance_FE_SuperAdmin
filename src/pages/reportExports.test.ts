@@ -15,6 +15,7 @@ describe('SA-12 Report Exports — Non-Redundant Columns & Formatting', () => {
       'Session',
       'Time In',
       'Time Out',
+      'Admin Officer',
       'Status',
     ]);
     expect(REPORT_EXPORT_HEADERS).not.toContain('Day');
@@ -78,7 +79,7 @@ describe('SA-12 Report Exports — Non-Redundant Columns & Formatting', () => {
     expect(safeCell('-10+20')).toBe("'-10+20");
   });
 
-  it('builds 7-column export rows cleanly with "-" fallbacks', () => {
+  it('builds 8-column export rows cleanly with "-" fallbacks including Admin Officer', () => {
     const values = buildReportExportRowValues({
       id: '1',
       name: 'Juan Dela Cruz',
@@ -92,6 +93,7 @@ describe('SA-12 Report Exports — Non-Redundant Columns & Formatting', () => {
       period: 'Morning',
       timeIn: '7:05 AM',
       timeOut: '',
+      adminOfficer: 'LEO Admin',
       status: 'Time In Only',
     });
 
@@ -102,6 +104,7 @@ describe('SA-12 Report Exports — Non-Redundant Columns & Formatting', () => {
       'Day 2 - Morning Session',
       '7:05 AM',
       '-',
+      'LEO Admin',
       'Time In Only',
     ]);
   });

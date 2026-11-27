@@ -31,6 +31,10 @@ type Snapshot = {
     period: string;
     timeIn: string | null;
     timeOut: string | null;
+    adminOfficer?: string | null;
+    scannedBy?: string | null;
+    scannedByIn?: string | null;
+    scannedByOut?: string | null;
     status: ReportStudentAttendanceRow['status'] | 'Missing Out';
   }[];
   rowTotal: number;
@@ -318,6 +322,10 @@ export function ReportsPage() {
       period: row.period,
       timeIn: formatManilaTime(row.timeIn),
       timeOut: formatManilaTime(row.timeOut),
+      adminOfficer: row.adminOfficer || row.scannedBy || '—',
+      scannedBy: row.scannedBy || row.adminOfficer || '—',
+      scannedByIn: row.scannedByIn || null,
+      scannedByOut: row.scannedByOut || null,
       status: row.status === 'Missing Out' ? 'Time In Only' : row.status,
     };
   }, [eventsById, event, snapshot]);
@@ -759,6 +767,7 @@ export function ReportsPage() {
                 <th className="px-4 py-3.5 font-medium whitespace-nowrap">Session</th>
                 <th className="px-4 py-3.5 text-center font-medium whitespace-nowrap">Time In</th>
                 <th className="px-4 py-3.5 text-center font-medium whitespace-nowrap">Time Out</th>
+                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Admin Officer</th>
                 <th className="px-4 py-3.5 font-medium whitespace-nowrap">Status</th>
               </tr>
             </thead>
@@ -802,6 +811,18 @@ export function ReportsPage() {
                       </td>
                     );
                   })}
+                  <td className="px-4 py-3.5 text-[#24133F] whitespace-nowrap">
+                    {record.scannedByIn && record.scannedByOut && record.scannedByIn !== record.scannedByOut ? (
+                      <div className="flex flex-col text-[11px] leading-tight">
+                        <span className="text-emerald-700 font-medium">In: {record.scannedByIn}</span>
+                        <span className="text-rose-700 font-medium">Out: {record.scannedByOut}</span>
+                      </div>
+                    ) : record.adminOfficer && record.adminOfficer !== '—' && record.adminOfficer !== '-' ? (
+                      <span className="font-medium text-xs text-[#24133F]">{record.adminOfficer}</span>
+                    ) : (
+                      <span className="inline-block w-10 text-center text-[#756883]">-</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     <span
                       className={`inline-block px-3 py-1 rounded-full text-xs font-semibold text-white ${

@@ -40,6 +40,10 @@ export interface ReportStudentAttendanceRow {
   period: string;
   timeIn: string;
   timeOut: string;
+  adminOfficer?: string;
+  scannedBy?: string;
+  scannedByIn?: string | null;
+  scannedByOut?: string | null;
   status: 'Completed' | 'Time In Only' | 'Time Out Only';
 }
 
