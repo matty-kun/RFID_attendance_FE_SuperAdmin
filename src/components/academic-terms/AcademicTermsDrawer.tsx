@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
-  CheckCircle2,
   Check,
   Plus,
   AlertCircle,
@@ -633,13 +632,8 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                                   </button>
                                 ) : null}
 
-                                {/* Active Status / Set as Active Action as Icon */}
-                                {isActive ? (
-                                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 px-3 py-1.5 rounded-xl">
-                                    <CheckCircle2 className="h-3.5 w-3.5" />
-                                    Currently Active
-                                  </span>
-                                ) : (
+                                {/* Set as Active Action (hidden if already active) */}
+                                {!isActive && (
                                   <button
                                     type="button"
                                     onClick={(e) => {
