@@ -61,7 +61,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
 
     return sortedYears.map((sy) => {
       const yearTerms = (map.get(sy) || []).sort((a, b) => a.semester.localeCompare(b.semester));
-      const hasActive = yearTerms.some((t) => t.id === activeTerm?.id || t.is_active);
+      const hasActive = yearTerms.some((t) => (activeTerm ? t.id === activeTerm.id : Boolean(t.is_active)));
       const configuredSems = new Set(yearTerms.map((t) => t.semester));
       const missingSemesters: SemesterType[] = [];
       if (!configuredSems.has('1st Sem')) missingSemesters.push('1st Sem');
@@ -143,7 +143,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
       setCalMonth(monthPart - 1);
     }
 
-    const isActive = term.id === activeTerm?.id || term.is_active;
+    const isActive = activeTerm ? term.id === activeTerm.id : Boolean(term.is_active);
     setSetActiveNow(isActive);
     setFormError('');
     setShowCreateForm(true);
@@ -499,7 +499,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                   {isExpanded && (
                     <div className="border-t border-[#F1EEF4] p-4 space-y-2.5 bg-[#FAF8FB]/60 animate-in fade-in slide-in-from-top-1 duration-150">
                       {group.terms.map((term) => {
-                        const isActive = term.id === activeTerm?.id || term.is_active;
+                        const isActive = activeTerm ? term.id === activeTerm.id : Boolean(term.is_active);
 
                         return (
                           <div

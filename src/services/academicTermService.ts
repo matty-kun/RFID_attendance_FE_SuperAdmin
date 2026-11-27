@@ -7,6 +7,7 @@ export interface CreateAcademicTermPayload {
   start_date: string;
   end_date: string;
   set_active?: boolean;
+  is_active?: boolean;
 }
 
 export interface UpdateAcademicTermPayload {
@@ -14,6 +15,8 @@ export interface UpdateAcademicTermPayload {
   semester?: SemesterType;
   start_date?: string;
   end_date?: string;
+  set_active?: boolean;
+  is_active?: boolean;
 }
 
 export const academicTermService = {
@@ -22,7 +25,10 @@ export const academicTermService = {
   getTerms: () => request.get<AcademicTerm[]>('/academic-terms'),
   
   createTerm: (payload: CreateAcademicTermPayload) =>
-    request.post<AcademicTerm>('/academic-terms', payload),
+    request.post<AcademicTerm>('/academic-terms', {
+      ...payload,
+      is_active: payload.set_active ?? payload.is_active ?? false,
+    }),
     
   updateTerm: (id: string, payload: UpdateAcademicTermPayload) =>
     request.patch<AcademicTerm>(`/academic-terms/${encodeURIComponent(id)}`, payload),
