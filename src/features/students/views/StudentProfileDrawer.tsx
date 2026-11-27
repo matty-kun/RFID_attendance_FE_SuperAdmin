@@ -468,27 +468,61 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   }, [isOpen, currentStudent?.id]);
 
   useEffect(() => {
-    if (!selectedEventId || selectedEventId === 'all') {
-      setEventSessions([]);
-      return;
-    }
+    if (!isOpen) return;
     let isMounted = true;
-    adminService.getSessions(selectedEventId)
-      .then((sessions) => {
-        if (isMounted) setEventSessions(sessions || []);
-      })
-      .catch(() => {
-        if (isMounted) setEventSessions([]);
-      });
+
+    if (selectedEventId && selectedEventId !== 'all') {
+      adminService.getSessions(selectedEventId)
+        .then((sessions) => {
+          if (isMounted) setEventSessions(sessions || []);
+        })
+        .catch(() => {
+          if (isMounted) setEventSessions([]);
+        });
+    } else {
+      // Fetch all sessions across events that appear in this student's attendance records
+      const eventIds = Array.from(
+        new Set(
+          rawScans
+            .map((s) => s.session?.event_id)
+            .filter((id): id is string => Boolean(id))
+        )
+      );
+
+      if (eventIds.length === 0) {
+        setEventSessions([]);
+        return;
+      }
+
+      Promise.all(eventIds.map((id) => adminService.getSessions(id).catch(() => [])))
+        .then((results) => {
+          if (isMounted) {
+            const combined = results.flat();
+            const uniqueMap = new Map<string, SessionRecord>();
+            for (const sess of combined) {
+              if (sess?.id && !uniqueMap.has(sess.id)) {
+                uniqueMap.set(sess.id, sess);
+              }
+            }
+            setEventSessions(Array.from(uniqueMap.values()));
+          }
+        })
+        .catch(() => {
+          if (isMounted) setEventSessions([]);
+        });
+    }
+
     return () => {
       isMounted = false;
     };
-  }, [selectedEventId]);
+  }, [isOpen, selectedEventId, rawScans]);
 
   const attendanceMetrics = useMemo(() => {
     const targetSessions =
-      selectedEventId !== 'all' && eventSessions.length > 0
-        ? eventSessions
+      eventSessions.length > 0
+        ? (selectedEventId === 'all'
+            ? eventSessions
+            : eventSessions.filter((s) => s.event_id === selectedEventId || !s.event_id))
         : Array.from(
             new Map(
               rawScans
@@ -565,6 +599,9 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         map.set(s.eventId, s.eventName);
       }
     });
+    if (initialEventId && initialEventId !== 'all' && !map.has(initialEventId)) {
+      map.set(initialEventId, 'Selected Event');
+    }
     return [
       { value: 'all', label: `All Events (${map.size})` },
       ...Array.from(map.entries()).map(([id, name]) => ({
@@ -572,7 +609,7 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
         label: name,
       })),
     ];
-  }, [scans]);
+  }, [scans, initialEventId]);
 
   // Filter by selected event
   const eventFilteredScans = useMemo(() => {
