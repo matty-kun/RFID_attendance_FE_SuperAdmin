@@ -79,9 +79,14 @@ const emptySummary = { studentsCheckedIn: 0, timeIns: 0, timeOuts: 0, totalScans
 
 export function ReportsPage() {
   const { terms, selectedTerm, setSelectedTerm, activeTerm } = useAcademicTerm();
-  const [termId, setTermId] = useState<string>(selectedTerm?.id || 'all');
-  const [startDate, setStartDate] = useState(initialStart);
-  const [endDate, setEndDate] = useState(initialEnd);
+  const currentTerm = selectedTerm || activeTerm || terms[0];
+  const [termId, setTermId] = useState<string>(currentTerm?.id || 'all');
+  const [startDate, setStartDate] = useState(
+    currentTerm?.start_date ? currentTerm.start_date.substring(0, 10) : initialStart
+  );
+  const [endDate, setEndDate] = useState(
+    currentTerm?.end_date ? currentTerm.end_date.substring(0, 10) : initialEnd
+  );
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [knownSessions, setKnownSessions] = useState<string[]>([]);
@@ -111,6 +116,10 @@ export function ReportsPage() {
   useEffect(() => {
     if (selectedTerm) {
       setTermId(selectedTerm.id);
+      if (selectedTerm.start_date && selectedTerm.end_date) {
+        setStartDate(selectedTerm.start_date.substring(0, 10));
+        setEndDate(selectedTerm.end_date.substring(0, 10));
+      }
     }
   }, [selectedTerm]);
   useEffect(() => { setPage(1); setSelected([]); }, [startDate, endDate, termId, event, session, course, type, location]);
@@ -381,12 +390,19 @@ export function ReportsPage() {
           onChange={(val) => {
             if (val === 'all') {
               setTermId('all');
+              setSelectedTerm(null as any);
+              setStartDate('');
+              setEndDate('');
               return;
             }
             const matched = terms.find((item) => item.id === val || item.semester === val);
             if (matched) {
               setTermId(matched.id);
               setSelectedTerm(matched);
+              if (matched.start_date && matched.end_date) {
+                setStartDate(matched.start_date.substring(0, 10));
+                setEndDate(matched.end_date.substring(0, 10));
+              }
             } else {
               setTermId(val);
             }
@@ -410,7 +426,19 @@ export function ReportsPage() {
           className="shrink-0"
           buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
           value={event}
-          onChange={(value) => { setEvent(value); setSession('all'); }}
+          onChange={(value) => {
+            setEvent(value);
+            setSession('all');
+            if (value !== 'all') {
+              const matchedEvent = events.find((e) => e.id === value);
+              if (matchedEvent?.start_date && matchedEvent?.end_date) {
+                const evStart = matchedEvent.start_date.substring(0, 10);
+                const evEnd = matchedEvent.end_date.substring(0, 10);
+                if (!startDate || evStart < startDate) setStartDate(evStart);
+                if (!endDate || evEnd > endDate) setEndDate(evEnd);
+              }
+            }
+          }}
           options={[
             { value: 'all', label: 'All Events' },
             ...events.map((item) => ({ value: item.id, label: item.name })),
