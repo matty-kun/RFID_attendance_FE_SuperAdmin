@@ -771,10 +771,10 @@ export function ReportsPage() {
         </div>
 
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[780px] text-left text-xs">
+          <table className="w-full text-left text-xs">
             <thead>
               <tr className="text-[#756883] font-medium">
-                <th className="w-10 py-3.5 pr-4">
+                <th className="w-9 py-3 pr-3">
                   <Checkbox
                     aria-label="Select all students on page"
                     checked={filteredStudents.length > 0 && filteredStudents.every((r) => selected.includes(r.id))}
@@ -789,20 +789,19 @@ export function ReportsPage() {
                     }}
                   />
                 </th>
-                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Name</th>
-                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Course</th>
-                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Event</th>
-                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Session</th>
-                <th className="px-4 py-3.5 text-center font-medium whitespace-nowrap">Time In</th>
-                <th className="px-4 py-3.5 text-center font-medium whitespace-nowrap">Time Out</th>
-                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Admin Officer</th>
-                <th className="px-4 py-3.5 font-medium whitespace-nowrap">Status</th>
+                <th className="px-3 py-3 font-medium whitespace-nowrap">Name</th>
+                <th className="px-3 py-3 font-medium whitespace-nowrap">Course</th>
+                <th className="px-3 py-3 font-medium whitespace-nowrap">Event &amp; Session</th>
+                <th className="px-3 py-3 text-center font-medium whitespace-nowrap">Time In</th>
+                <th className="px-3 py-3 text-center font-medium whitespace-nowrap">Time Out</th>
+                <th className="px-3 py-3 font-medium whitespace-nowrap">Admin Officer</th>
+                <th className="px-3 py-3 font-medium whitespace-nowrap">Status</th>
               </tr>
             </thead>
             <tbody className={`divide-y divide-[#F1EEF4] transition-opacity duration-150 ${isFetchingPage ? 'opacity-40 pointer-events-none' : ''}`}>
               {filteredStudents.map((record) => (
                 <tr key={record.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="py-3.5 pr-4">
+                  <td className="py-3 pr-3">
                     <Checkbox
                       aria-label={`Select ${record.name}`}
                       checked={selected.includes(record.id)}
@@ -813,8 +812,8 @@ export function ReportsPage() {
                       }
                     />
                   </td>
-                  <td className="px-4 py-3.5 font-medium whitespace-nowrap">
-                    <div className="flex items-center gap-3">
+                  <td className="px-3 py-3 font-medium whitespace-nowrap">
+                    <div className="flex items-center gap-2.5">
                       <div
                         className={`w-7 h-7 rounded-full ${record.avatarBg} ${record.avatarColor} font-bold text-xs flex items-center justify-center shrink-0`}
                       >
@@ -823,23 +822,20 @@ export function ReportsPage() {
                       <span className="font-semibold text-[#24133F] text-xs">{record.name}</span>
                     </div>
                   </td>
-                  {[record.course, record.event, formatReportSessionLabel(record), record.timeIn, record.timeOut].map((value, colIndex) => {
-                    const displayValue = value || '-';
-                    const isCenteredColumn = colIndex >= 3;
-                    return (
-                      <td
-                        key={colIndex}
-                        className={`px-4 py-3.5 text-[#24133F] whitespace-nowrap ${isCenteredColumn ? 'text-center' : ''}`}
-                      >
-                        {!isCenteredColumn && displayValue === '-' ? (
-                          <span className="inline-block w-10 text-center">-</span>
-                        ) : (
-                          displayValue
-                        )}
-                      </td>
-                    );
-                  })}
-                  <td className="px-4 py-3.5 text-[#24133F] whitespace-nowrap">
+                  <td className="px-3 py-3 text-[#24133F] whitespace-nowrap">
+                    {record.course || '-'}
+                  </td>
+                  <td className="px-3 py-3 text-[#24133F]">
+                    <div className="font-semibold text-xs leading-tight">{record.event || '-'}</div>
+                    <div className="text-[11px] text-[#756883] mt-0.5 leading-tight">{formatReportSessionLabel(record) || '-'}</div>
+                  </td>
+                  <td className="px-3 py-3 text-center text-[#24133F] whitespace-nowrap">
+                    {record.timeIn || '-'}
+                  </td>
+                  <td className="px-3 py-3 text-center text-[#24133F] whitespace-nowrap">
+                    {record.timeOut || '-'}
+                  </td>
+                  <td className="px-3 py-3 text-[#24133F] whitespace-nowrap">
                     {record.scannedByIn && record.scannedByOut && record.scannedByIn !== record.scannedByOut ? (
                       <div className="flex flex-col text-[11px] leading-tight">
                         <span className="text-emerald-700 font-medium">In: {record.scannedByIn}</span>
@@ -851,7 +847,7 @@ export function ReportsPage() {
                       <span className="inline-block w-10 text-center text-[#756883]">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3.5 whitespace-nowrap">
+                  <td className="px-3 py-3 whitespace-nowrap">
                     <span
                       className={`inline-block px-3 py-1 rounded-full text-xs font-semibold text-white ${
                         record.status === 'Completed'
