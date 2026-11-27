@@ -10,8 +10,7 @@ import { request } from '../services/apiClient';
 import { adminService } from '../services/adminService';
 import { useAcademicTerm } from '../context/AcademicTermContext';
 import type { EventRecord } from '../types';
-import { cn } from '../utils/cn';
-import { formatReportSessionLabel, type ReportTrendDay, type ReportSessionItem, type ReportCheckpointItem, type ReportCourseItem, type ReportStudentAttendanceRow } from './auditPreviewRecords';
+import { formatReportSessionLabel, type ReportSessionItem, type ReportCheckpointItem, type ReportCourseItem, type ReportStudentAttendanceRow } from './auditPreviewRecords';
 
 type Snapshot = {
   summary: { studentsCheckedIn: number; timeIns: number; timeOuts: number; totalScans: number };
@@ -293,17 +292,12 @@ export function ReportsPage() {
   const courses = knownCourses;
   const locations = knownLocations;
   const reportSummary = snapshot?.summary ?? emptySummary;
-  const trendData: ReportTrendDay[] = useMemo(() => {
-    const rows = snapshot?.trend ?? [];
-    const peak = Math.max(1, ...rows.map(row => row.timeIns + row.timeOuts));
-    return rows.map(row => ({
-      day: formatShortDate(row.day),
-      present: row.timeIns,
-      absent: row.timeOuts,
-      presentPct: row.timeIns ? Math.max(4, Math.round(row.timeIns / (peak * 1.15) * 100)) : 0,
-      absentPct: row.timeOuts ? Math.max(4, Math.round(row.timeOuts / (peak * 1.15) * 100)) : 0,
-    }));
-  }, [snapshot]);
+  const [hoveredTrendIdx, setHoveredTrendIdx] = useState<number | null>(null);
+  const trendRows = snapshot?.trend ?? [];
+  const totalTrendScans = useMemo(() => trendRows.reduce((sum, d) => sum + d.timeIns + d.timeOuts, 0), [trendRows]);
+  const maxSingleTrend = useMemo(() => Math.max(1, ...trendRows.map(d => Math.max(d.timeIns, d.timeOuts))), [trendRows]);
+  const yAxisMax = Math.max(4, Math.ceil(maxSingleTrend * 1.25));
+  const yAxisMid = Math.round(yAxisMax / 2);
   const sessionBreakdown: ReportSessionItem[] = useMemo(() => {
     const multipleEvents = new Set((snapshot?.sessions ?? []).map(row => row.eventId)).size > 1;
     return (snapshot?.sessions ?? []).map(row => ({ id: `${row.eventId}::${row.date}::${row.period}`,
@@ -560,69 +554,157 @@ export function ReportsPage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr] items-start">
         {/* Card 1: Attendance Trend */}
         <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white p-6">
-          <div>
-            <h2 className="text-lg font-bold text-[#24133F]">Attendance Trend</h2>
-            <p className="text-xs text-[#756883] mt-0.5">Time In and Time Out scans per day</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-[#24133F]">Attendance Trend</h2>
+                <span className="rounded-full bg-purple-50 border border-purple-200/80 px-2 py-0.5 text-[11px] font-bold text-[#7026B7]">
+                  {totalTrendScans} {totalTrendScans === 1 ? 'scan' : 'scans'}
+                </span>
+              </div>
+              <p className="text-xs text-[#756883] mt-0.5">Time In and Time Out scans by date</p>
+            </div>
+
+            <div className="flex items-center gap-3 text-[11px] font-semibold text-[#756883] shrink-0">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#10B981]" />
+                <span className="font-bold text-emerald-700">Time-In</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#EF4444]" />
+                <span className="font-bold text-rose-700">Time-Out</span>
+              </div>
+            </div>
           </div>
 
           {loading ? (
-            <div className="my-6 flex h-52 items-center justify-center text-xs text-[#756883]">
+            <div className="mt-6 flex h-52 items-center justify-center text-xs text-[#756883]">
               Loading attendance trend…
             </div>
-          ) : trendData.length === 0 ? (
-            <div className="my-6 flex h-52 items-center justify-center text-center text-xs text-[#756883]">
+          ) : trendRows.length === 0 ? (
+            <div className="mt-6 flex h-52 items-center justify-center text-center text-xs text-[#756883]">
               No attendance records available.
             </div>
           ) : (
-            <div className="my-6 flex h-52 items-end justify-around gap-2 px-1">
-              {trendData.map((item) => (
-                <div key={item.day} className="group relative flex h-full flex-1 flex-col items-center justify-end">
-                  {/* Tooltip */}
-                  <div className="pointer-events-none absolute -top-8 z-10 hidden rounded-xl bg-white border border-[#E5E0EB] px-3 py-1.5 text-[11px] font-semibold text-[#24133F] shadow-lg group-hover:block whitespace-nowrap">
-                    <span className="font-bold">{item.day}:</span>{' '}
-                    <span className="text-emerald-600 font-bold">{item.present} Time In</span> ·{' '}
-                    <span className="text-rose-600 font-bold">{item.absent} Time Out</span>
-                  </div>
+            <div className="mt-6 flex gap-3 h-52">
+              {/* Y-Axis Scale Marks */}
+              <div className="flex flex-col justify-between text-[10px] font-semibold text-[#A59CAC] pb-6 shrink-0 text-right w-6 tabular-nums">
+                <span>{yAxisMax}</span>
+                <span>{yAxisMid}</span>
+                <span>0</span>
+              </div>
 
-                  {/* Stacked Stadium Bars */}
-                  <div className="flex w-full max-w-[32px] h-44 flex-col justify-end">
-                    {item.absentPct > 0 && (
-                      <div
-                        className={cn(
-                          'w-full bg-[#EF3340] transition-all duration-300 min-h-[4px]',
-                          item.presentPct > 0 ? 'rounded-t-md mb-0.5' : 'rounded-md'
-                        )}
-                        style={{ height: `${item.absentPct}%` }}
-                      />
-                    )}
-                    {item.presentPct > 0 && (
-                      <div
-                        className={cn(
-                          'w-full bg-[#10B981] transition-all duration-300 min-h-[4px]',
-                          item.absentPct > 0 ? 'rounded-b-md' : 'rounded-md'
-                        )}
-                        style={{ height: `${item.presentPct}%` }}
-                      />
-                    )}
-                  </div>
-
-                  <span className="mt-3 text-[11px] font-medium text-[#756883] truncate">{item.day}</span>
+              {/* Main Chart Area */}
+              <div className="relative flex-1 flex flex-col justify-between overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {/* Horizontal Grid Guidelines */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 bottom-6 flex flex-col justify-between z-0">
+                  <div className="w-full border-b border-dashed border-slate-100" />
+                  <div className="w-full border-b border-dashed border-slate-100" />
+                  <div className="w-full border-b border-slate-200" />
                 </div>
-              ))}
+
+                <div className="relative z-10 flex-1 flex items-end gap-1.5 sm:gap-2.5 pb-6 min-w-full">
+                  {trendRows.map((item, idx) => {
+                    const inHeight = item.timeIns > 0 ? Math.min(100, Math.round((item.timeIns / yAxisMax) * 100)) : 0;
+                    const outHeight = item.timeOuts > 0 ? Math.min(100, Math.round((item.timeOuts / yAxisMax) * 100)) : 0;
+                    const total = item.timeIns + item.timeOuts;
+                    const isHovered = hoveredTrendIdx === idx;
+                    const formattedDate = formatShortDate(item.day);
+
+                    return (
+                      <div
+                        key={item.day}
+                        onMouseEnter={() => setHoveredTrendIdx(idx)}
+                        onMouseLeave={() => setHoveredTrendIdx(null)}
+                        className={`relative flex-1 flex flex-col items-center justify-end h-full rounded-xl transition-all cursor-pointer py-1 ${
+                          isHovered ? 'bg-purple-50/50' : ''
+                        }`}
+                      >
+                        {/* Floating Tooltip */}
+                        {isHovered && (
+                          <div className="absolute -top-14 z-30 flex flex-col items-center pointer-events-none animate-in fade-in zoom-in-95 duration-100">
+                            <div className="rounded-xl bg-white border border-[#E5E0EB] px-3 py-1.5 text-center text-[#24133F] shadow-lg text-[11px] whitespace-nowrap">
+                              <span className="font-extrabold text-xs text-[#24133F]">
+                                {formattedDate} <span className="font-semibold text-[#7026B7] text-[10px]">({total} {total === 1 ? 'scan' : 'scans'})</span>
+                              </span>
+                              <div className="flex items-center justify-center gap-2 mt-0.5 text-[11px]">
+                                <span className="flex items-center gap-1 text-emerald-600 font-bold">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                  In: {item.timeIns}
+                                </span>
+                                <span className="text-slate-300">·</span>
+                                <span className="flex items-center gap-1 text-rose-600 font-bold">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                                  Out: {item.timeOuts}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="h-1.5 w-1.5 -rotate-45 bg-white border-b border-r border-[#E5E0EB] -mt-1" />
+                          </div>
+                        )}
+
+                        {/* Side-by-side Pair of Bars */}
+                        <div className="w-full flex justify-center items-end gap-1 sm:gap-1.5 h-full">
+                          {/* Time In Bar (Green) */}
+                          <div className="flex flex-col items-center justify-end h-full flex-1 max-w-[18px]">
+                            {item.timeIns > 0 ? (
+                              <>
+                                <span className={`text-[10px] font-bold mb-1 tabular-nums transition-colors ${
+                                  isHovered ? 'text-emerald-700 scale-110 font-extrabold' : 'text-emerald-600'
+                                }`}>
+                                  {item.timeIns}
+                                </span>
+                                <div
+                                  style={{ height: `${inHeight}%` }}
+                                  className="w-full rounded-t-lg bg-[#10B981] shadow-xs transition-all duration-300 hover:brightness-110"
+                                  title={`Time In: ${item.timeIns}`}
+                                />
+                              </>
+                            ) : (
+                              <div className="h-1.5 w-full rounded-full bg-slate-200" title="Time In: 0" />
+                            )}
+                          </div>
+
+                          {/* Time Out Bar (Red) */}
+                          <div className="flex flex-col items-center justify-end h-full flex-1 max-w-[18px]">
+                            {item.timeOuts > 0 ? (
+                              <>
+                                <span className={`text-[10px] font-bold mb-1 tabular-nums transition-colors ${
+                                  isHovered ? 'text-rose-700 scale-110 font-extrabold' : 'text-rose-600'
+                                }`}>
+                                  {item.timeOuts}
+                                </span>
+                                <div
+                                  style={{ height: `${outHeight}%` }}
+                                  className="w-full rounded-t-lg bg-[#EF4444] shadow-xs transition-all duration-300 hover:brightness-110"
+                                  title={`Time Out: ${item.timeOuts}`}
+                                />
+                              </>
+                            ) : (
+                              <div className="h-1.5 w-full rounded-full bg-slate-200" title="Time Out: 0" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Date Label under baseline */}
+                        <div className="absolute -bottom-5 flex items-center justify-center">
+                          <span
+                            className={`text-[10px] font-semibold whitespace-nowrap transition-colors ${
+                              isHovered
+                                ? 'text-slate-900 font-bold'
+                                : 'text-[#756883]'
+                            }`}
+                          >
+                            {formattedDate}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
-
-          {/* Legend */}
-          <div className="mt-2 flex items-center gap-6 text-xs text-[#756883] font-medium">
-            <span className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#10B981]" />
-              Time In
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#EF3340]" />
-              Time Out
-            </span>
-          </div>
         </section>
 
         {/* Card 2: Session Breakdown */}
