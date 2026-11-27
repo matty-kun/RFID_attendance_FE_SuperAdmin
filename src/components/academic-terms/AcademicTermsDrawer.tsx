@@ -457,14 +457,8 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                     className="flex items-center justify-between p-4 cursor-pointer select-none transition-colors bg-[#FCFBFD] hover:bg-slate-50"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F5F2F8] text-[#756883] border border-[#E5E0EB]">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F5F2F8] text-[#756883] border border-[#E5E0EB]">
                         <GraduationCap className="h-5 w-5" />
-                        {group.hasActive && (
-                          <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 ring-2 ring-white" />
-                          </span>
-                        )}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -472,9 +466,9 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                             A.Y. {group.school_year}
                           </h3>
                           {group.hasActive && (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200">
-                              <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-                              Active Year
+                            <span className="relative flex h-2 w-2 shrink-0" title="Active Academic Year">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                             </span>
                           )}
                         </div>
