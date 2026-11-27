@@ -499,7 +499,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                       )}
                       <div
                         className={cn(
-                          'flex h-7 w-7 items-center justify-center rounded-lg text-[#756883] transition-transform duration-200',
+                          'flex h-7 w-7 items-center justify-center rounded-lg text-[#756883] transition-transform duration-300 ease-in-out',
                           isExpanded && 'rotate-180 text-[#7026B7]'
                         )}
                       >
@@ -508,115 +508,124 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                     </div>
                   </div>
 
-                  {/* Semesters List Inside This Year (Accordion Content) */}
-                  {isExpanded && (
-                    <div className="border-t border-[#F1EEF4] p-4 space-y-2.5 bg-[#FAF8FB]/60 animate-in fade-in slide-in-from-top-1 duration-150">
-                      {group.terms.map((term) => {
-                        const isActive = activeTerm ? term.id === activeTerm.id : Boolean(term.is_active);
+                  {/* Semesters List Inside This Year (Accordion Content with Expand & Collapse Animation) */}
+                  <div
+                    className={cn(
+                      'grid transition-all duration-300 ease-in-out',
+                      isExpanded
+                        ? 'grid-rows-[1fr] opacity-100'
+                        : 'grid-rows-[0fr] opacity-0 pointer-events-none'
+                    )}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="border-t border-[#F1EEF4] p-4 space-y-2.5 bg-[#FAF8FB]/60">
+                        {group.terms.map((term) => {
+                          const isActive = activeTerm ? term.id === activeTerm.id : Boolean(term.is_active);
 
-                        return (
-                          <div
-                            key={term.id}
-                            className={cn(
-                              'flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border bg-white p-3.5 transition-all',
-                              isActive
-                                ? 'border-emerald-300 bg-emerald-50/40 shadow-xs'
-                                : 'border-[#E5E0EB] hover:border-slate-300'
-                            )}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={cn(
-                                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold',
-                                  isActive
-                                    ? 'bg-emerald-600 text-white'
-                                    : 'bg-slate-100 text-slate-600'
-                                )}
-                              >
-                                {term.semester === '1st Sem' ? '1st' : '2nd'}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-bold text-[#24133F]">
-                                    {term.semester}
-                                  </span>
-                                  {isActive && (
-                                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
-                                      Active Term
-                                    </span>
+                          return (
+                            <div
+                              key={term.id}
+                              className={cn(
+                                'flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border bg-white p-3.5 transition-all',
+                                isActive
+                                  ? 'border-emerald-300 bg-emerald-50/40 shadow-xs'
+                                  : 'border-[#E5E0EB] hover:border-slate-300'
+                              )}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={cn(
+                                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold',
+                                    isActive
+                                      ? 'bg-emerald-600 text-white'
+                                      : 'bg-slate-100 text-slate-600'
                                   )}
+                                >
+                                  {term.semester === '1st Sem' ? '1st' : '2nd'}
                                 </div>
-                                <p className="text-[11px] text-[#756883] mt-0.5 flex items-center gap-1">
-                                  <Clock className="h-3 w-3 shrink-0" />
-                                  <span>
-                                    {formatDateDisplay(term.start_date)} – {formatDateDisplay(term.end_date)}
-                                  </span>
-                                </p>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-[#24133F]">
+                                      {term.semester}
+                                    </span>
+                                    {isActive && (
+                                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                                        Active Term
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-[#756883] mt-0.5 flex items-center gap-1">
+                                    <Clock className="h-3 w-3 shrink-0" />
+                                    <span>
+                                      {formatDateDisplay(term.start_date)} – {formatDateDisplay(term.end_date)}
+                                    </span>
+                                  </p>
+                                </div>
                               </div>
-                            </div>
 
-                            <div className="flex items-center gap-2 self-end sm:self-center">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openEditSemester(term);
-                                }}
-                                className="h-8 gap-1.5 text-xs text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7] hover:bg-[#FAF6FE] cursor-pointer"
-                              >
-                                <Pencil className="h-3 w-3" />
-                                Edit
-                              </Button>
-
-                              {isActive ? (
-                                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 px-3 py-1.5 rounded-xl">
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                  Currently Active
-                                </span>
-                              ) : (
+                              <div className="flex items-center gap-2 self-end sm:self-center">
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => activateTerm(term.id)}
-                                  className="text-xs hover:border-[#7026B7] hover:text-[#7026B7] hover:bg-[#F0E8FC] cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openEditSemester(term);
+                                  }}
+                                  className="h-8 gap-1.5 text-xs text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7] hover:bg-[#FAF6FE] cursor-pointer"
                                 >
-                                  Set as Active
+                                  <Pencil className="h-3 w-3" />
+                                  Edit
                                 </Button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
 
-                      {/* Missing Semester Prompt / Add Semester Button inside card */}
-                      {group.missingSemesters.map((missingSem) => (
-                        <button
-                          key={missingSem}
-                          type="button"
-                          onClick={() => openAddSemesterForYear(group.school_year, missingSem)}
-                          className="flex w-full items-center justify-between rounded-xl border border-dashed border-[#D6BBFB] bg-white/70 p-3 text-left transition-colors hover:bg-[#FAF6FE] hover:border-[#7026B7] cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FAF0FE] text-[#7026B7]">
-                              <Plus className="h-3.5 w-3.5" />
+                                {isActive ? (
+                                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 px-3 py-1.5 rounded-xl">
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    Currently Active
+                                  </span>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => activateTerm(term.id)}
+                                    className="text-xs hover:border-[#7026B7] hover:text-[#7026B7] hover:bg-[#F0E8FC] cursor-pointer"
+                                  >
+                                    Set as Active
+                                  </Button>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <span className="text-xs font-bold text-[#7026B7]">
-                                Configure {missingSem}
-                              </span>
-                              <p className="text-[10px] text-[#756883]">
-                                Not yet added for A.Y. {group.school_year}. Click to set dates.
-                              </p>
+                          );
+                        })}
+
+                        {/* Missing Semester Prompt / Add Semester Button inside card */}
+                        {group.missingSemesters.map((missingSem) => (
+                          <button
+                            key={missingSem}
+                            type="button"
+                            onClick={() => openAddSemesterForYear(group.school_year, missingSem)}
+                            className="flex w-full items-center justify-between rounded-xl border border-dashed border-[#D6BBFB] bg-white/70 p-3 text-left transition-colors hover:bg-[#FAF6FE] hover:border-[#7026B7] cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FAF0FE] text-[#7026B7]">
+                                <Plus className="h-3.5 w-3.5" />
+                              </div>
+                              <div>
+                                <span className="text-xs font-bold text-[#7026B7]">
+                                  Configure {missingSem}
+                                </span>
+                                <p className="text-[10px] text-[#756883]">
+                                  Not yet added for A.Y. {group.school_year}. Click to set dates.
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                          <span className="text-xs font-bold text-[#7026B7] px-2.5 py-1 rounded-lg bg-[#F0E8FC]">
-                            + Add {missingSem}
-                          </span>
-                        </button>
-                      ))}
+                            <span className="text-xs font-bold text-[#7026B7] px-2.5 py-1 rounded-lg bg-[#F0E8FC]">
+                              + Add {missingSem}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
