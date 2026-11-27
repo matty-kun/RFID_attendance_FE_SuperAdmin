@@ -380,8 +380,8 @@ export function ReportsPage() {
         </div>
       </div>
 
-      {/* Filter Bar - Strictly One Line */}
-      <div className="flex items-center gap-2 w-full flex-nowrap overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-center gap-2 w-full">
         {/* Semester Filter Dropdown */}
         <Dropdown
           className="shrink-0"

@@ -205,7 +205,7 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({
   }, [tempStart, tempEnd, hoverDate]);
 
   return (
-    <div className={cn('relative inline-block', className)} ref={containerRef}>
+    <div className={cn('relative inline-block', isOpen && 'z-30', className)} ref={containerRef}>
       {/* Trigger Button with Single Chevron and Calendar Icon */}
       <button
         type="button"
