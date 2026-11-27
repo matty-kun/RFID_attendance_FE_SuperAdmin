@@ -392,8 +392,9 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
 
             <Button
               size="sm"
+              variant="primary"
               onClick={openCreateNewYear}
-              className="gap-1.5 text-xs bg-[#7026B7] hover:bg-[#5E1E9D] text-white shadow-xs self-start sm:self-auto cursor-pointer"
+              className="gap-1.5 text-xs font-bold rounded-xl shadow-[0_3.5px_0_0_#451475] hover:bg-[#621FA3] active:translate-y-[2.5px] active:shadow-[0_1px_0_0_#451475] transition-all self-start sm:self-auto cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
               New Academic Year
@@ -419,8 +420,9 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
             </div>
             <Button
               size="sm"
+              variant="primary"
               onClick={openCreateNewYear}
-              className="gap-1.5 text-xs bg-[#7026B7] text-white hover:bg-[#5E1E9D] cursor-pointer"
+              className="gap-1.5 text-xs font-bold rounded-xl shadow-[0_3.5px_0_0_#451475] hover:bg-[#621FA3] active:translate-y-[2.5px] active:shadow-[0_1px_0_0_#451475] transition-all cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
               Add Academic Year
@@ -996,7 +998,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="text-xs bg-[#7026B7] hover:bg-[#5E1E9D] text-white cursor-pointer"
+              className="text-xs font-bold rounded-xl shadow-[0_3.5px_0_0_#451475] hover:bg-[#621FA3] active:translate-y-[2.5px] active:shadow-[0_1px_0_0_#451475] transition-all cursor-pointer"
             >
               {isSubmitting
                 ? 'Saving...'
