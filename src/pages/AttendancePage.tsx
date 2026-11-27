@@ -34,6 +34,7 @@ import {
   type AssignedOfficer,
 } from '../features/events/views/AssignOfficersDrawer';
 import { adminService } from '../services/adminService';
+import { useAcademicTerm } from '../context/AcademicTermContext';
 import { getEventStatus, getSessionStatus } from '../utils/status';
 import type { EventRecord, SessionRecord } from '../types';
 import hawiQuestionImg from '../assets/illustrations/Hawi Question.png';
@@ -133,10 +134,21 @@ export function AttendancePage() {
   const [sessionToDelete, setSessionToDelete] = useState<SessionItem | null>(null);
   const [isDeletingSession, setIsDeletingSession] = useState(false);
 
+  // Academic Term Context & Filtering
+  const { terms, selectedTerm, setSelectedTerm, activeTerm } = useAcademicTerm();
+  const currentTerm = selectedTerm || activeTerm || terms[0];
+
   // Filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [academicYearFilter, setAcademicYearFilter] = useState<string>('all');
+  const [academicTermFilter, setAcademicTermFilter] = useState<string>(currentTerm?.id || 'all');
+
+  // Sync when user changes viewing term in header selector or active term changes
+  useEffect(() => {
+    if (currentTerm?.id) {
+      setAcademicTermFilter(currentTerm.id);
+    }
+  }, [currentTerm?.id]);
 
   // Modals state
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
@@ -750,24 +762,20 @@ export function AttendancePage() {
     handleSelectEvent(createdEvent.id);
   };
 
-  const academicYearOptions = useMemo(() => {
-    const yearsSet = new Set<string>();
-    const currentAY = getAcademicYear(new Date().toISOString().slice(0, 10));
-    if (currentAY) yearsSet.add(currentAY);
-
-    events.forEach((ev) => {
-      const ayStart = getAcademicYear(ev.start_date);
-      if (ayStart) yearsSet.add(ayStart);
-      const ayEnd = getAcademicYear(ev.end_date);
-      if (ayEnd) yearsSet.add(ayEnd);
-    });
-
-    const sorted = Array.from(yearsSet).sort().reverse();
+  const academicTermOptions = useMemo(() => {
     return [
-      { value: 'all', label: 'All Academic Years' },
-      ...sorted.map((ay) => ({ value: ay, label: ay })),
+      { value: 'all', label: 'All Semesters / Years' },
+      ...terms.map((t) => ({
+        value: t.id,
+        label: `${t.school_year} · ${t.semester}${t.is_active ? ' (Active)' : ''}`,
+      })),
     ];
-  }, [events]);
+  }, [terms]);
+
+  const toYmd = (val?: string | null) => {
+    if (!val) return '';
+    return val.substring(0, 10);
+  };
 
   const filteredEventsList = useMemo(() => {
     return events.filter((ev) => {
@@ -783,15 +791,28 @@ export function AttendancePage() {
         if (evRawStatus !== statusFilter) return false;
       }
 
-      if (academicYearFilter !== 'all') {
-        const evAY = getAcademicYear(ev.start_date);
-        const evEndAY = getAcademicYear(ev.end_date);
-        if (evAY !== academicYearFilter && evEndAY !== academicYearFilter) return false;
+      // Filter events by selected semester/term date window
+      if (academicTermFilter !== 'all') {
+        const targetTerm =
+          terms.find((t) => t.id === academicTermFilter) ||
+          (academicTermFilter === currentTerm?.id ? currentTerm : null);
+
+        if (targetTerm?.start_date && targetTerm?.end_date) {
+          const termStart = toYmd(targetTerm.start_date);
+          const termEnd = toYmd(targetTerm.end_date);
+          const evStart = toYmd(ev.start_date);
+          const evEnd = toYmd(ev.end_date || ev.start_date);
+
+          // Event must fall within/overlap with the semester date range
+          if (evStart > termEnd || evEnd < termStart) {
+            return false;
+          }
+        }
       }
 
       return true;
     });
-  }, [events, search, statusFilter, academicYearFilter]);
+  }, [events, search, statusFilter, academicTermFilter, terms, currentTerm]);
 
   return (
     <div className="mx-auto w-full max-w-[1180px] space-y-6 text-[#24133F]">
@@ -944,11 +965,17 @@ export function AttendancePage() {
             />
 
             <Dropdown
-              value={academicYearFilter}
-              onChange={setAcademicYearFilter}
+              value={academicTermFilter}
+              onChange={(val) => {
+                setAcademicTermFilter(val);
+                if (val !== 'all') {
+                  const matched = terms.find((t) => t.id === val);
+                  if (matched) setSelectedTerm(matched);
+                }
+              }}
               icon={<GraduationCap className="h-4 w-4 text-[#756883]" />}
               buttonClassName="h-10 rounded-xl font-semibold"
-              options={academicYearOptions}
+              options={academicTermOptions}
             />
           </div>
         </div>
@@ -1254,23 +1281,23 @@ export function AttendancePage() {
           {filteredEventsList.length === 0 ? (
             <div className="rounded-[24px] border border-[#E5E0EB] bg-white">
               <EmptyState
-                variant={search || statusFilter !== 'all' || academicYearFilter !== 'all' ? 'no-search-results' : 'custom'}
+                variant={search || statusFilter !== 'all' || academicTermFilter !== 'all' ? 'no-search-results' : 'custom'}
                 illustration={hawiQuestionImg}
-                title={search || statusFilter !== 'all' || academicYearFilter !== 'all' ? 'No events found' : 'No campus events registered yet'}
+                title={search || statusFilter !== 'all' || academicTermFilter !== 'all' ? 'No events found' : 'No campus events registered yet'}
                 description={
-                  search || statusFilter !== 'all' || academicYearFilter !== 'all'
-                    ? 'No events match your current search or filter criteria. Try clearing search or filters.'
+                  search || statusFilter !== 'all' || academicTermFilter !== 'all'
+                    ? 'No events match your current semester or filter criteria. Try selecting another semester or clearing filters.'
                     : 'There are currently no campus events registered. Create a new event to configure schedules and attendance sessions.'
                 }
                 action={
-                  search || statusFilter !== 'all' || academicYearFilter !== 'all'
+                  search || statusFilter !== 'all' || academicTermFilter !== 'all'
                     ? {
                         label: 'Clear Filters',
                         variant: 'secondary',
                         onClick: () => {
                           setSearch('');
                           setStatusFilter('all');
-                          setAcademicYearFilter('all');
+                          setAcademicTermFilter('all');
                         },
                       }
                     : {
