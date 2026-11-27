@@ -21,10 +21,6 @@ export const AcademicTermHeaderSelector: React.FC<AcademicTermHeaderSelectorProp
     ? `${currentTerm.school_year} · ${currentTerm.semester}`
     : '2026-2027 · 2nd Sem';
 
-  const isViewingPast = Boolean(
-    selectedTerm && activeTerm && selectedTerm.id !== activeTerm.id
-  );
-
   useEffect(() => {
     if (!isOpen) return;
 
@@ -74,12 +70,6 @@ export const AcademicTermHeaderSelector: React.FC<AcademicTermHeaderSelectorProp
         <span className="text-xs sm:text-[13px] font-bold tracking-tight text-[#24133F] whitespace-nowrap">
           {termText}
         </span>
-
-        {isViewingPast && (
-          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-[#FAF0FE] text-[#7026B7] border border-[#E9D5FF]/80">
-            Viewing
-          </span>
-        )}
 
         <ChevronDown
           className={cn(
