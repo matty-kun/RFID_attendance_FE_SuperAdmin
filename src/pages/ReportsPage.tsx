@@ -379,8 +379,50 @@ export function ReportsPage() {
           }
         }
       }
+      const uniqueStudents = new Set(rows.map((r) => r.name)).size;
+      const timeIns = rows.filter((r) => r.timeIn && r.timeIn !== '-').length;
+      const timeOuts = rows.filter((r) => r.timeOut && r.timeOut !== '-').length;
+      const totalScans = timeIns + timeOuts;
+
+      const termLabel = currentTerm
+        ? `A.Y. ${currentTerm.school_year} · ${currentTerm.semester}`
+        : 'All Semesters';
+      const eventLabel = event === 'all' ? 'All Events' : (events.find((e) => e.id === event)?.name || event);
+      const dayLabel = selectedDayValue === 'all'
+        ? 'All Days'
+        : (eventDays.find((d) => d.value === selectedDayValue)?.label || selectedDayValue);
+      const sessionLabel = session === 'all' ? 'All Sessions' : session;
+      const courseLabel = course === 'all' ? 'All Courses' : course;
+      const typeLabel = type === 'all' ? 'All Types' : (type === 'time_in' ? 'Time In' : 'Time Out');
+      const locationLabel = location === 'all' ? 'All Locations' : location;
+
       const { exportAttendance } = await import('./reportExports');
-      exportAttendance(rows, format, endDate || new Date().toISOString().slice(0, 10));
+      await exportAttendance(rows, format, endDate || new Date().toISOString().slice(0, 10), {
+        summary: {
+          studentsCheckedIn: uniqueStudents,
+          timeIns,
+          timeOuts,
+          totalScans,
+        },
+        filters: {
+          academicTerm: termLabel,
+          event: eventLabel,
+          day: dayLabel,
+          session: sessionLabel,
+          course: courseLabel,
+          type: typeLabel,
+          location: locationLabel,
+          dateRange: `${startDate || 'Start'} to ${endDate || 'End'}`,
+          generatedAt: new Intl.DateTimeFormat('en-PH', {
+            timeZone: 'Asia/Manila',
+            dateStyle: 'medium',
+            timeStyle: 'short',
+          }).format(new Date()),
+        },
+        sessionBreakdown,
+        checkpointList,
+        courseList,
+      });
     } catch {
       toast.error('Could not export the report. Try again.');
     }
