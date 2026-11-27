@@ -726,19 +726,10 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                     : 'border-[#E5E0EB] bg-white hover:border-[#7026B7]/40 hover:bg-[#FAF8FC]'
                 )}
               >
-                <div className="flex items-center justify-between mb-0.5">
+                <div className="mb-0.5">
                   <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider">
                     Start Date
                   </span>
-                  {activeDateField === 'start' ? (
-                    <span className="text-[9px] font-extrabold text-[#7026B7] bg-[#E9D5FF]/60 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                      Selecting
-                    </span>
-                  ) : startDate ? (
-                    <span className="text-[9px] font-semibold text-[#756883]">
-                      Click to edit
-                    </span>
-                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className={cn(
@@ -773,19 +764,10 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                     : 'border-[#E5E0EB] bg-white hover:border-[#7026B7]/40 hover:bg-[#FAF8FC]'
                 )}
               >
-                <div className="flex items-center justify-between mb-0.5">
+                <div className="mb-0.5">
                   <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider">
                     End Date
                   </span>
-                  {activeDateField === 'end' ? (
-                    <span className="text-[9px] font-extrabold text-[#7026B7] bg-[#E9D5FF]/60 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                      Selecting
-                    </span>
-                  ) : endDate ? (
-                    <span className="text-[9px] font-semibold text-[#756883]">
-                      Click to edit
-                    </span>
-                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className={cn(
