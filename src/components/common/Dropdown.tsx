@@ -6,6 +6,7 @@ export interface DropdownOption {
   value: string;
   label: string;
   icon?: React.ReactNode;
+  activeDot?: boolean;
 }
 
 export interface DropdownProps {
@@ -77,7 +78,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   };
 
   return (
-    <div className={cn('relative inline-block', className)} ref={containerRef}>
+    <div className={cn('relative inline-block', isOpen && 'z-30', className)} ref={containerRef}>
       {/* Trigger Button with SINGLE arrow */}
       <button
         type="button"
@@ -86,13 +87,16 @@ export const Dropdown: React.FC<DropdownProps> = ({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         className={cn(
-          'flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs font-semibold text-[#24133F] transition-colors hover:border-brand-700 focus-visible:outline-2 focus-visible:outline-brand-700 disabled:opacity-50 disabled:cursor-not-allowed select-none',
+          'flex h-10 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-xs font-semibold text-[#24133F] transition-colors hover:border-brand-700 focus-visible:outline-2 focus-visible:outline-brand-700 disabled:opacity-50 disabled:cursor-not-allowed select-none cursor-pointer',
           isOpen && 'border-brand-700 ring-2 ring-brand-100',
           buttonClassName
         )}
       >
         {icon && <span className="text-[#756883] shrink-0">{icon}</span>}
         <span className="truncate">{displayLabel}</span>
+        {selectedOption?.activeDot && (
+          <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="Active" />
+        )}
         <ChevronDown
           className={cn(
             'h-3.5 w-3.5 text-[#756883] shrink-0 transition-transform duration-200 ml-auto',
@@ -128,9 +132,12 @@ export const Dropdown: React.FC<DropdownProps> = ({
                     : 'text-[#24133F] hover:bg-[#FAF8FC] hover:text-brand-700'
                 )}
               >
-                <div className="flex items-center gap-2 truncate">
+                <div className="flex items-center gap-2 min-w-0">
                   {option.icon && <span className="shrink-0">{option.icon}</span>}
                   <span className="truncate">{option.label}</span>
+                  {option.activeDot && (
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="Active" />
+                  )}
                 </div>
                 {isSelected && <Check className="h-3.5 w-3.5 text-brand-700 shrink-0" />}
               </button>

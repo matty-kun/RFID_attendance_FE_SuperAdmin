@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
-  CheckCircle2,
+  Check,
   Plus,
   AlertCircle,
   GraduationCap,
@@ -10,6 +10,7 @@ import {
   Clock,
   Calendar,
   Pencil,
+  Eye,
 } from 'lucide-react';
 import { Drawer } from '../common/Drawer';
 import { Modal } from '../common/Modal';
@@ -17,6 +18,7 @@ import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Checkbox } from '../common/Checkbox';
 import { useAcademicTerm } from '../../context/AcademicTermContext';
+import { toast } from '../../context';
 import type { SemesterType, AcademicTerm } from '../../types';
 import { cn } from '../../utils/cn';
 
@@ -45,7 +47,19 @@ const formatDateDisplay = (dateStr: string) => {
 };
 
 export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen, onClose }) => {
-  const { terms, activeTerm, activateTerm, createTerm, updateTerm, refreshTerms, isLoading } = useAcademicTerm();
+  const {
+    terms,
+    activeTerm,
+    selectedTerm,
+    setSelectedTerm,
+    activateTerm,
+    createTerm,
+    updateTerm,
+    refreshTerms,
+    isLoading,
+  } = useAcademicTerm();
+
+  const currentViewingTerm = selectedTerm || activeTerm;
 
   // Always re-fetch terms from backend whenever drawer is opened
   useEffect(() => {
@@ -112,6 +126,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
   const [semester, setSemester] = useState<SemesterType>('1st Sem');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [activeDateField, setActiveDateField] = useState<'start' | 'end'>('start');
   const [setActiveNow, setSetActiveNow] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
@@ -121,19 +136,39 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
   const [calYear, setCalYear] = useState<number>(() => new Date().getFullYear());
   const [hoverDate, setHoverDate] = useState<string | null>(null);
 
+  const resetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimeoutRef.current) {
+        clearTimeout(resetTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const resetForm = () => {
-    setSchoolYear('');
-    setSemester('1st Sem');
-    setStartDate('');
-    setEndDate('');
-    setSetActiveNow(true);
-    setFormError('');
     setShowCreateForm(false);
-    setCreateMode('year');
-    setEditingTermId(null);
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
+    // Delay resetting form state until modal unmount animation (180ms) finishes
+    resetTimeoutRef.current = setTimeout(() => {
+      setSchoolYear('');
+      setSemester('1st Sem');
+      setStartDate('');
+      setEndDate('');
+      setActiveDateField('start');
+      setSetActiveNow(true);
+      setFormError('');
+      setCreateMode('year');
+      setEditingTermId(null);
+    }, 220);
   };
 
   const openEditSemester = (term: AcademicTerm) => {
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
     setCreateMode('edit');
     setEditingTermId(term.id);
     setSchoolYear(term.school_year);
@@ -143,6 +178,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
     const eDate = term.end_date ? term.end_date.substring(0, 10) : '';
     setStartDate(sDate);
     setEndDate(eDate);
+    setActiveDateField('start');
 
     const [yearPart, monthPart] = sDate.split('-').map(Number);
     if (!isNaN(yearPart) && !isNaN(monthPart) && monthPart >= 1 && monthPart <= 12) {
@@ -157,6 +193,9 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
   };
 
   const openAddSemesterForYear = (sy: string, defaultSem?: SemesterType) => {
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
     setCreateMode('semester');
     setEditingTermId(null);
     setSchoolYear(sy);
@@ -170,19 +209,21 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
       if (semToSet === '1st Sem') {
         setCalYear(parts[0]);
         setCalMonth(7); // August
-        setStartDate(`${parts[0]}-08-15`);
-        setEndDate(`${parts[0]}-12-20`);
       } else {
         setCalYear(parts[1]);
         setCalMonth(0); // January
-        setStartDate(`${parts[1]}-01-15`);
-        setEndDate(`${parts[1]}-05-30`);
       }
     }
+    setStartDate('');
+    setEndDate('');
+    setActiveDateField('start');
     setShowCreateForm(true);
   };
 
   const openCreateNewYear = () => {
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current);
+    }
     setCreateMode('year');
     setEditingTermId(null);
     // Suggest next academic year if years already exist
@@ -196,8 +237,6 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
         setSchoolYear(nextSy);
         setCalYear(nextStart);
         setCalMonth(7); // August
-        setStartDate(`${nextStart}-08-15`);
-        setEndDate(`${nextStart}-12-20`);
       } else {
         setSchoolYear('');
       }
@@ -206,9 +245,10 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
       setSchoolYear(`${currentYear}-${currentYear + 1}`);
       setCalYear(currentYear);
       setCalMonth(7);
-      setStartDate(`${currentYear}-08-15`);
-      setEndDate(`${currentYear}-12-20`);
     }
+    setStartDate('');
+    setEndDate('');
+    setActiveDateField('start');
     setSemester('1st Sem');
     setFormError('');
     setShowCreateForm(true);
@@ -221,46 +261,32 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
       if (newSem === '1st Sem') {
         setCalYear(parts[0]);
         setCalMonth(7);
-        setStartDate(`${parts[0]}-08-15`);
-        setEndDate(`${parts[0]}-12-20`);
       } else {
         setCalYear(parts[1]);
         setCalMonth(0);
-        setStartDate(`${parts[1]}-01-15`);
-        setEndDate(`${parts[1]}-05-30`);
       }
     }
+    setStartDate('');
+    setEndDate('');
+    setActiveDateField('start');
   };
 
   const handleCalendarDayClick = (dayStr: string) => {
-    if (!startDate || (startDate && endDate && startDate !== endDate)) {
+    if (activeDateField === 'start') {
       setStartDate(dayStr);
-      setEndDate(dayStr);
-    } else if (startDate && (!endDate || startDate === endDate)) {
-      if (dayStr < startDate) {
-        setEndDate(startDate);
-        setStartDate(dayStr);
-      } else {
+      if (endDate && dayStr > endDate) {
         setEndDate(dayStr);
+        setActiveDateField('end');
+      } else if (!endDate) {
+        setActiveDateField('end');
       }
-    }
-  };
-
-  const setPresetDates = (type: 'firstSem' | 'secondSem') => {
-    const parts = schoolYear.trim().split('-').map(Number);
-    const baseYear = parts.length === 2 && !isNaN(parts[0]) ? parts[0] : calYear;
-    const endYear = parts.length === 2 && !isNaN(parts[1]) ? parts[1] : baseYear + 1;
-
-    if (type === 'firstSem') {
-      setStartDate(`${baseYear}-08-15`);
-      setEndDate(`${baseYear}-12-20`);
-      setCalYear(baseYear);
-      setCalMonth(7); // August
     } else {
-      setStartDate(`${endYear}-01-15`);
-      setEndDate(`${endYear}-05-30`);
-      setCalYear(endYear);
-      setCalMonth(0); // January
+      setEndDate(dayStr);
+      if (startDate && dayStr < startDate) {
+        setStartDate(dayStr);
+      } else if (!startDate) {
+        setStartDate(dayStr);
+      }
     }
   };
 
@@ -341,15 +367,21 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
   const firstDay = new Date(calYear, calMonth, 1).getDay();
 
   const effectiveStart = useMemo(() => {
-    if (startDate && hoverDate && !endDate && hoverDate < startDate) return hoverDate;
+    if (activeDateField === 'start' && hoverDate && endDate && hoverDate <= endDate) {
+      return hoverDate;
+    }
     return startDate;
-  }, [startDate, endDate, hoverDate]);
+  }, [startDate, endDate, hoverDate, activeDateField]);
 
   const effectiveEnd = useMemo(() => {
-    if (endDate) return endDate;
-    if (startDate && hoverDate && hoverDate >= startDate) return hoverDate;
-    return startDate;
-  }, [startDate, endDate, hoverDate]);
+    if (activeDateField === 'end' && hoverDate && startDate && hoverDate >= startDate) {
+      return hoverDate;
+    }
+    if (!endDate && startDate && hoverDate && hoverDate >= startDate) {
+      return hoverDate;
+    }
+    return endDate;
+  }, [startDate, endDate, hoverDate, activeDateField]);
 
   const modalTitle =
     createMode === 'year'
@@ -444,14 +476,8 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                     className="flex items-center justify-between p-4 cursor-pointer select-none transition-colors bg-[#FCFBFD] hover:bg-slate-50"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F5F2F8] text-[#756883] border border-[#E5E0EB]">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F5F2F8] text-[#756883] border border-[#E5E0EB]">
                         <GraduationCap className="h-5 w-5" />
-                        {group.hasActive && (
-                          <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 ring-2 ring-white" />
-                          </span>
-                        )}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -459,10 +485,10 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                             A.Y. {group.school_year}
                           </h3>
                           {group.hasActive && (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200">
-                              <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-                              Active Year
-                            </span>
+                            <span
+                              className="h-2 w-2 rounded-full bg-emerald-500 shrink-0"
+                              title="Active Academic Year"
+                            />
                           )}
                         </div>
                         <p className="text-xs text-[#756883] mt-0.5">
@@ -492,7 +518,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                       )}
                       <div
                         className={cn(
-                          'flex h-7 w-7 items-center justify-center rounded-lg text-[#756883] transition-transform duration-200',
+                          'flex h-7 w-7 items-center justify-center rounded-lg text-[#756883] transition-transform duration-300 ease-in-out',
                           isExpanded && 'rotate-180 text-[#7026B7]'
                         )}
                       >
@@ -501,115 +527,160 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                     </div>
                   </div>
 
-                  {/* Semesters List Inside This Year (Accordion Content) */}
-                  {isExpanded && (
-                    <div className="border-t border-[#F1EEF4] p-4 space-y-2.5 bg-[#FAF8FB]/60 animate-in fade-in slide-in-from-top-1 duration-150">
-                      {group.terms.map((term) => {
-                        const isActive = activeTerm ? term.id === activeTerm.id : Boolean(term.is_active);
+                  {/* Semesters List Inside This Year (Accordion Content with Expand & Collapse Animation) */}
+                  <div
+                    className={cn(
+                      'grid transition-all duration-300 ease-in-out',
+                      isExpanded
+                        ? 'grid-rows-[1fr] opacity-100'
+                        : 'grid-rows-[0fr] opacity-0 pointer-events-none'
+                    )}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="border-t border-[#F1EEF4] p-4 space-y-2.5 bg-[#FAF8FB]/60">
+                        {group.terms.map((term) => {
+                          const isActive = activeTerm ? term.id === activeTerm.id : Boolean(term.is_active);
+                          const isViewing = currentViewingTerm ? term.id === currentViewingTerm.id : isActive;
 
-                        return (
-                          <div
-                            key={term.id}
-                            className={cn(
-                              'flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border bg-white p-3.5 transition-all',
-                              isActive
-                                ? 'border-emerald-300 bg-emerald-50/40 shadow-xs'
-                                : 'border-[#E5E0EB] hover:border-slate-300'
-                            )}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={cn(
-                                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold',
-                                  isActive
-                                    ? 'bg-emerald-600 text-white'
-                                    : 'bg-slate-100 text-slate-600'
+                          return (
+                            <div
+                              key={term.id}
+                              className={cn(
+                                'flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border p-3.5 transition-all',
+                                isActive
+                                  ? 'border-emerald-300 bg-emerald-50/40 shadow-xs'
+                                  : isViewing
+                                  ? 'border-[#D6BBFB] bg-[#FAF7FD]/80 shadow-xs ring-1 ring-[#7026B7]/20'
+                                  : 'border-[#E5E0EB] bg-white hover:border-slate-300'
+                              )}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={cn(
+                                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold transition-colors',
+                                    isActive
+                                      ? 'bg-emerald-600 text-white'
+                                      : isViewing
+                                      ? 'bg-[#7026B7] text-white shadow-xs'
+                                      : 'bg-slate-100 text-slate-600'
+                                  )}
+                                >
+                                  {term.semester === '1st Sem' ? '1st' : '2nd'}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-[#24133F]">
+                                      {term.semester}
+                                    </span>
+                                    {isActive && (
+                                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                                        Active Term
+                                      </span>
+                                    )}
+                                    {isViewing && !isActive && (
+                                      <span className="rounded-full bg-[#FAF0FE] px-2 py-0.5 text-[10px] font-extrabold text-[#7026B7] border border-[#E9D5FF]">
+                                        Viewing
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-[#756883] mt-0.5 flex items-center gap-1">
+                                    <Clock className="h-3 w-3 shrink-0" />
+                                    <span>
+                                      {formatDateDisplay(term.start_date)} – {formatDateDisplay(term.end_date)}
+                                    </span>
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 self-end sm:self-center">
+                                {/* Edit Action as Icon */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openEditSemester(term);
+                                  }}
+                                  title="Edit semester dates"
+                                  aria-label={`Edit ${term.semester}`}
+                                  className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#E5E0EB] bg-white text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 hover:bg-[#FAF6FE] transition-all shadow-2xs active:scale-95 cursor-pointer"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+
+                                {/* Viewing Scope Action as Icon */}
+                                {!isActive && isViewing ? (
+                                  <span
+                                    title="Currently viewed across students and reports"
+                                    aria-label={`Currently viewing ${term.semester}`}
+                                    className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#D6BBFB] bg-[#FAF0FE] text-[#7026B7] shadow-2xs cursor-default"
+                                  >
+                                    <Eye className="h-3.5 w-3.5" />
+                                  </span>
+                                ) : !isViewing ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedTerm(term);
+                                      toast.success(`Now viewing A.Y. ${term.school_year} · ${term.semester}`);
+                                    }}
+                                    title={`View ${term.semester} records`}
+                                    aria-label={`View ${term.semester} records`}
+                                    className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#D6BBFB] bg-white text-[#7026B7] hover:bg-[#FAF0FE] hover:border-[#7026B7] transition-all shadow-2xs active:scale-95 cursor-pointer"
+                                  >
+                                    <Eye className="h-3.5 w-3.5" />
+                                  </button>
+                                ) : null}
+
+                                {/* Set as Active Action (hidden if already active) */}
+                                {!isActive && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void activateTerm(term.id);
+                                    }}
+                                    title="Set as active term"
+                                    aria-label={`Set ${term.semester} as active term`}
+                                    className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#E5E0EB] bg-white text-[#756883] hover:text-emerald-700 hover:border-emerald-400 hover:bg-emerald-50 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </button>
                                 )}
-                              >
-                                {term.semester === '1st Sem' ? '1st' : '2nd'}
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* Missing Semester Prompt / Add Semester Button inside card */}
+                        {group.missingSemesters.map((missingSem) => (
+                          <button
+                            key={missingSem}
+                            type="button"
+                            onClick={() => openAddSemesterForYear(group.school_year, missingSem)}
+                            className="flex w-full items-center justify-between rounded-xl border border-dashed border-[#D6BBFB] bg-white/70 p-3 text-left transition-colors hover:bg-[#FAF6FE] hover:border-[#7026B7] cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FAF0FE] text-[#7026B7]">
+                                <Plus className="h-3.5 w-3.5" />
                               </div>
                               <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-bold text-[#24133F]">
-                                    {term.semester}
-                                  </span>
-                                  {isActive && (
-                                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
-                                      Active Term
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-[11px] text-[#756883] mt-0.5 flex items-center gap-1">
-                                  <Clock className="h-3 w-3 shrink-0" />
-                                  <span>
-                                    {formatDateDisplay(term.start_date)} – {formatDateDisplay(term.end_date)}
-                                  </span>
+                                <span className="text-xs font-bold text-[#7026B7]">
+                                  Configure {missingSem}
+                                </span>
+                                <p className="text-[10px] text-[#756883]">
+                                  Not yet added for A.Y. {group.school_year}. Click to set dates.
                                 </p>
                               </div>
                             </div>
-
-                            <div className="flex items-center gap-2 self-end sm:self-center">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openEditSemester(term);
-                                }}
-                                className="h-8 gap-1.5 text-xs text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7] hover:bg-[#FAF6FE] cursor-pointer"
-                              >
-                                <Pencil className="h-3 w-3" />
-                                Edit
-                              </Button>
-
-                              {isActive ? (
-                                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 px-3 py-1.5 rounded-xl">
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                  Currently Active
-                                </span>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => activateTerm(term.id)}
-                                  className="text-xs hover:border-[#7026B7] hover:text-[#7026B7] hover:bg-[#F0E8FC] cursor-pointer"
-                                >
-                                  Set as Active
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-
-                      {/* Missing Semester Prompt / Add Semester Button inside card */}
-                      {group.missingSemesters.map((missingSem) => (
-                        <button
-                          key={missingSem}
-                          type="button"
-                          onClick={() => openAddSemesterForYear(group.school_year, missingSem)}
-                          className="flex w-full items-center justify-between rounded-xl border border-dashed border-[#D6BBFB] bg-white/70 p-3 text-left transition-colors hover:bg-[#FAF6FE] hover:border-[#7026B7] cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FAF0FE] text-[#7026B7]">
-                              <Plus className="h-3.5 w-3.5" />
-                            </div>
-                            <div>
-                              <span className="text-xs font-bold text-[#7026B7]">
-                                Configure {missingSem}
-                              </span>
-                              <p className="text-[10px] text-[#756883]">
-                                Not yet added for A.Y. {group.school_year}. Click to set dates.
-                              </p>
-                            </div>
-                          </div>
-                          <span className="text-xs font-bold text-[#7026B7] px-2.5 py-1 rounded-lg bg-[#F0E8FC]">
-                            + Add {missingSem}
-                          </span>
-                        </button>
-                      ))}
+                            <span className="text-xs font-bold text-[#7026B7] px-2.5 py-1 rounded-lg bg-[#F0E8FC]">
+                              + Add {missingSem}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
@@ -702,34 +773,18 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
 
           {/* Custom Interactive Calendar Date Picker */}
           <div className="rounded-2xl border border-[#E5E0EB] bg-[#FAF8FB]/60 p-4 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-bold text-[#24133F] flex items-center gap-1.5">
                 <Calendar className="h-4 w-4 text-[#7026B7]" />
                 Term Date Range
               </span>
-              {/* Semester Presets */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setPresetDates('firstSem')}
-                  className="rounded-lg bg-white border border-[#E5E0EB] px-2 py-1 text-[11px] font-semibold text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 transition-colors cursor-pointer"
-                >
-                  Aug – Dec (1st Sem)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPresetDates('secondSem')}
-                  className="rounded-lg bg-white border border-[#E5E0EB] px-2 py-1 text-[11px] font-semibold text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 transition-colors cursor-pointer"
-                >
-                  Jan – May (2nd Sem)
-                </button>
-              </div>
             </div>
 
-            {/* Start & End Date Summary Cards (Clickable to jump months) */}
+            {/* Start & End Date Summary Cards (Clickable to switch active field and jump months) */}
             <div className="grid grid-cols-2 gap-3">
               <div
                 onClick={() => {
+                  setActiveDateField('start');
                   if (startDate) {
                     const [y, m] = startDate.split('-').map(Number);
                     if (!isNaN(y) && !isNaN(m)) {
@@ -738,22 +793,36 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                     }
                   }
                 }}
-                title={startDate ? 'Click to jump to Start Month' : undefined}
-                className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 shadow-2xs cursor-pointer hover:border-[#7026B7]/50 hover:bg-[#FAF8FC] transition-colors"
+                title="Click to select or edit Start Date"
+                className={cn(
+                  'rounded-xl border px-3 py-2 shadow-2xs cursor-pointer transition-all select-none',
+                  activeDateField === 'start'
+                    ? 'border-[#7026B7] ring-2 ring-[#7026B7]/25 bg-[#FAF6FE]'
+                    : 'border-[#E5E0EB] bg-white hover:border-[#7026B7]/40 hover:bg-[#FAF8FC]'
+                )}
               >
-                <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">
-                  Start Date
-                </span>
+                <div className="mb-0.5">
+                  <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider">
+                    Start Date
+                  </span>
+                </div>
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-3.5 w-3.5 text-[#7026B7] shrink-0" />
-                  <span className="text-xs font-bold text-[#24133F]">
-                    {startDate ? formatDateDisplay(startDate) : 'Click day on calendar'}
+                  <Calendar className={cn(
+                    'h-3.5 w-3.5 shrink-0',
+                    activeDateField === 'start' ? 'text-[#7026B7]' : 'text-[#756883]'
+                  )} />
+                  <span className={cn(
+                    'text-xs font-bold truncate',
+                    startDate ? 'text-[#24133F]' : 'text-[#A094AC] font-medium'
+                  )}>
+                    {startDate ? formatDateDisplay(startDate) : 'Select date'}
                   </span>
                 </div>
               </div>
 
               <div
                 onClick={() => {
+                  setActiveDateField('end');
                   if (endDate) {
                     const [y, m] = endDate.split('-').map(Number);
                     if (!isNaN(y) && !isNaN(m)) {
@@ -762,16 +831,29 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                     }
                   }
                 }}
-                title={endDate ? 'Click to jump to End Month' : undefined}
-                className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 shadow-2xs cursor-pointer hover:border-[#7026B7]/50 hover:bg-[#FAF8FC] transition-colors"
+                title="Click to select or edit End Date"
+                className={cn(
+                  'rounded-xl border px-3 py-2 shadow-2xs cursor-pointer transition-all select-none',
+                  activeDateField === 'end'
+                    ? 'border-[#7026B7] ring-2 ring-[#7026B7]/25 bg-[#FAF6FE]'
+                    : 'border-[#E5E0EB] bg-white hover:border-[#7026B7]/40 hover:bg-[#FAF8FC]'
+                )}
               >
-                <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">
-                  End Date
-                </span>
+                <div className="mb-0.5">
+                  <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider">
+                    End Date
+                  </span>
+                </div>
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-3.5 w-3.5 text-[#7026B7] shrink-0" />
-                  <span className="text-xs font-bold text-[#24133F]">
-                    {endDate ? formatDateDisplay(endDate) : 'Click 2nd day on calendar'}
+                  <Calendar className={cn(
+                    'h-3.5 w-3.5 shrink-0',
+                    activeDateField === 'end' ? 'text-[#7026B7]' : 'text-[#756883]'
+                  )} />
+                  <span className={cn(
+                    'text-xs font-bold truncate',
+                    endDate ? 'text-[#24133F]' : 'text-[#A094AC] font-medium'
+                  )}>
+                    {endDate ? formatDateDisplay(endDate) : 'Select date'}
                   </span>
                 </div>
               </div>
@@ -901,12 +983,14 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                         type="button"
                         onClick={() => handleCalendarDayClick(dayStr)}
                         className={cn(
-                          'relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors cursor-pointer',
+                          'relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-all cursor-pointer',
                           isStart || isEnd
                             ? 'bg-[#7026B7] font-bold text-white shadow-xs'
                             : inRange
                               ? 'text-[#7026B7] font-bold hover:bg-[#D8B4FE]/40'
-                              : 'text-[#24133F] hover:bg-slate-100'
+                              : 'text-[#24133F] hover:bg-slate-100',
+                          ((isStart && activeDateField === 'start') || (isEnd && activeDateField === 'end')) &&
+                            'ring-2 ring-white ring-offset-1 ring-offset-[#7026B7]'
                         )}
                       >
                         {day}
@@ -917,51 +1001,6 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                 return cells;
               })()}
             </div>
-
-            {/* Multi-month Term Continuation Banner */}
-            {effectiveEnd &&
-              effectiveEnd >
-                `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}` && (
-                <div className="flex items-center justify-between text-[11px] text-[#7026B7] bg-[#F7F2FD] border border-[#E9D5FF] px-3 py-1.5 rounded-xl animate-in fade-in duration-150">
-                  <span className="font-medium">
-                    Term continues through {formatDateDisplay(effectiveEnd)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const [y, m] = effectiveEnd.split('-').map(Number);
-                      if (!isNaN(y) && !isNaN(m)) {
-                        setCalYear(y);
-                        setCalMonth(m - 1);
-                      }
-                    }}
-                    className="font-bold underline hover:text-[#5E1E9D] cursor-pointer ml-2 shrink-0"
-                  >
-                    Jump to End Month ({new Date(Number(effectiveEnd.split('-')[0]), Number(effectiveEnd.split('-')[1]) - 1).toLocaleDateString('en-US', { month: 'short' })}) &rarr;
-                  </button>
-                </div>
-              )}
-            {effectiveStart &&
-              effectiveStart < `${calYear}-${String(calMonth + 1).padStart(2, '0')}-01` && (
-                <div className="flex items-center justify-between text-[11px] text-[#7026B7] bg-[#F7F2FD] border border-[#E9D5FF] px-3 py-1.5 rounded-xl animate-in fade-in duration-150">
-                  <span className="font-medium">
-                    Term started on {formatDateDisplay(effectiveStart)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const [y, m] = effectiveStart.split('-').map(Number);
-                      if (!isNaN(y) && !isNaN(m)) {
-                        setCalYear(y);
-                        setCalMonth(m - 1);
-                      }
-                    }}
-                    className="font-bold underline hover:text-[#5E1E9D] cursor-pointer ml-2 shrink-0"
-                  >
-                    &larr; Jump to Start Month ({new Date(Number(effectiveStart.split('-')[0]), Number(effectiveStart.split('-')[1]) - 1).toLocaleDateString('en-US', { month: 'short' })})
-                  </button>
-                </div>
-              )}
           </div>
 
           <div className="pt-1">

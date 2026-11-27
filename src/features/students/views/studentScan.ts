@@ -9,6 +9,7 @@ export interface StudentScanItem {
   timestamp?: string;
   timeWindow: string;
   locationName: string;
+  adminName: string;
   cardNumber: string | null;
 }
 
@@ -18,6 +19,7 @@ export type RecordedScan = {
   recorded_at: string;
   card_number: string | null;
   location_name: string;
+  officer_name?: string | null;
   session: {
     id: string;
     name: string;
@@ -83,6 +85,7 @@ export const toStudentScan = (record: RecordedScan): StudentScanItem => {
     timestamp: formatScanTime(record.recorded_at),
     timeWindow: windowStart && windowEnd ? `${formatWindowTime(windowStart)} – ${formatWindowTime(windowEnd)}` : '',
     locationName: record.location_name,
+    adminName: record.officer_name?.trim() || 'Admin',
     cardNumber: record.card_number,
   };
 };
