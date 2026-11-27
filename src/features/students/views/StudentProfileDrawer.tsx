@@ -28,9 +28,6 @@ import {
   KeyRound,
   Plus,
   Search,
-  Printer,
-  CheckCircle2,
-  AlertCircle,
 } from 'lucide-react';
 import { ResetPasswordModal } from '../../../components/common/ResetPasswordModal';
 import { DeleteStudentConfirmationModal } from './DeleteStudentConfirmationModal';
@@ -1323,34 +1320,11 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
 
           {/* ATTENDANCE COMPLIANCE SECTION: Dean's Requirement */}
           <div className="pt-2">
-            <div className="flex items-center justify-between pb-1.5">
-              <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase">
-                Attendance Compliance
-              </p>
-              <div className="flex items-center gap-2">
-                <span
-                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${attendanceMetrics.standing.bg} ${attendanceMetrics.standing.text} ${attendanceMetrics.standing.border}`}
-                >
-                  {attendanceMetrics.rate >= 75 ? (
-                    <CheckCircle2 className="h-3 w-3" />
-                  ) : (
-                    <AlertCircle className="h-3 w-3" />
-                  )}
-                  {attendanceMetrics.standing.label}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-[#E5E0EB] bg-white text-[11px] font-semibold text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7] transition-all cursor-pointer shadow-2xs"
-                  title="Print attendance record"
-                >
-                  <Printer className="h-3 w-3" />
-                  <span>Print</span>
-                </button>
-              </div>
-            </div>
+            <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase">
+              Attendance Compliance
+            </p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
               {/* 1. Attendance Ratio: X / Y Sessions */}
               <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
                 <p className="text-[10px] font-bold text-[#A59AAB] uppercase">Attendance Ratio</p>
