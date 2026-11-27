@@ -74,6 +74,7 @@ describe('attendance history', () => {
     expect(scan.cardNumber).toBe('RFID-001');
     expect(scan.dayLabel).toBe('Day 2');
     expect(scan.locationName).toBe('Gate 1');
+    expect(scan.adminName).toBe('Admin');
   });
 });
 
