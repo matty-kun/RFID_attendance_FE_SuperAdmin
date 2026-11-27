@@ -473,7 +473,14 @@ export function CardsPage() {
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div><h1 className="text-[22px] font-extrabold">RFID Cards</h1><p className="text-xs text-[#756883]">Track physical cards, current holders, and every handoff.</p></div>
       <div className="flex items-center gap-2">
-        <Button variant="secondary" leftIcon={<Radio className="h-4 w-4" />} onClick={() => setInspectOpen(true)}>Inspect card</Button>
+        <Button
+          variant="secondary"
+          className="w-[180px] justify-center"
+          leftIcon={<Radio className="h-4 w-4" />}
+          onClick={() => setInspectOpen(true)}
+        >
+          Inspect card
+        </Button>
         <CardRegisterActionsDropdown
           onRegisterSingle={() => {
             setIsContinuousRegister(false);
