@@ -77,9 +77,9 @@ const initialStart = manilaDate(new Date(Date.now() - 6 * 86400000));
 const emptySummary = { studentsCheckedIn: 0, timeIns: 0, timeOuts: 0, totalScans: 0 };
 
 export function ReportsPage() {
-  const { terms, selectedTerm, setSelectedTerm, activeTerm } = useAcademicTerm();
+  const { terms, selectedTerm, activeTerm } = useAcademicTerm();
   const currentTerm = selectedTerm || activeTerm || terms[0];
-  const [termId, setTermId] = useState<string>(currentTerm?.id || 'all');
+  const termId = currentTerm?.id || '';
   const [startDate, setStartDate] = useState(
     currentTerm?.start_date ? currentTerm.start_date.substring(0, 10) : initialStart
   );
@@ -113,14 +113,11 @@ export function ReportsPage() {
   useEffect(() => { void adminService.getEvents().then(setEvents).catch(() => toast.error('Could not load events.')); }, []);
   useEffect(() => { const timer = window.setTimeout(() => { setQuery(search.trim()); setPage(1); }, 250); return () => window.clearTimeout(timer); }, [search]);
   useEffect(() => {
-    if (selectedTerm) {
-      setTermId(selectedTerm.id);
-      if (selectedTerm.start_date && selectedTerm.end_date) {
-        setStartDate(selectedTerm.start_date.substring(0, 10));
-        setEndDate(selectedTerm.end_date.substring(0, 10));
-      }
+    if (currentTerm?.start_date && currentTerm?.end_date) {
+      setStartDate(currentTerm.start_date.substring(0, 10));
+      setEndDate(currentTerm.end_date.substring(0, 10));
     }
-  }, [selectedTerm]);
+  }, [currentTerm]);
   useEffect(() => { setPage(1); setSelected([]); }, [startDate, endDate, termId, event, session, course, type, location]);
 
   const filterParams = useMemo(() => {
@@ -142,28 +139,6 @@ export function ReportsPage() {
   }, [startDate, endDate, termId, event, session, course, type, location, query]);
 
   const filterKey = useMemo(() => JSON.stringify(filterParams), [filterParams]);
-
-  const termOptions = useMemo(() => {
-    if (terms.length > 0) {
-      const distinctYears = new Set(terms.map((t) => t.school_year));
-      const showYear = distinctYears.size > 1;
-      return [
-        { value: 'all', label: 'All Semesters' },
-        ...terms.map((t) => ({
-          value: t.id,
-          label: showYear
-            ? `${t.school_year} · ${t.semester}`
-            : `${t.semester}`,
-          activeDot: t.id === activeTerm?.id || Boolean(t.is_active),
-        })),
-      ];
-    }
-    return [
-      { value: 'all', label: 'All Semesters' },
-      { value: '1st Sem', label: '1st Sem', activeDot: false },
-      { value: '2nd Sem', label: '2nd Sem', activeDot: true },
-    ];
-  }, [terms, activeTerm]);
 
   const prefetchPage = useCallback((targetPage: number) => {
     const total = snapshot?.rowTotal ?? 0;
@@ -424,35 +399,6 @@ export function ReportsPage() {
       <div className="flex items-start justify-between gap-3 w-full">
         {/* Left: Filters that wrap together without dropping Export down alone */}
         <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
-          {/* Semester Filter Dropdown */}
-          <Dropdown
-            className="shrink-0"
-            buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
-            value={termId}
-            onChange={(val) => {
-              if (val === 'all') {
-                setTermId('all');
-                setSelectedTerm(null as any);
-                setStartDate('');
-                setEndDate('');
-                return;
-              }
-              const matched = terms.find((item) => item.id === val || item.semester === val);
-              if (matched) {
-                setTermId(matched.id);
-                setSelectedTerm(matched);
-                if (matched.start_date && matched.end_date) {
-                  setStartDate(matched.start_date.substring(0, 10));
-                  setEndDate(matched.end_date.substring(0, 10));
-                }
-              } else {
-                setTermId(val);
-              }
-            }}
-            icon={<Calendar className="h-4 w-4 text-[#756883]" />}
-            options={termOptions}
-          />
-
           {/* Event Filter Dropdown (compact with max-w so long event titles truncate cleanly) */}
           <Dropdown
             className="shrink-0"
@@ -468,9 +414,9 @@ export function ReportsPage() {
                   setEndDate(matched.end_date.substring(0, 10));
                 }
               } else {
-                if (selectedTerm?.start_date && selectedTerm?.end_date) {
-                  setStartDate(selectedTerm.start_date.substring(0, 10));
-                  setEndDate(selectedTerm.end_date.substring(0, 10));
+                if (currentTerm?.start_date && currentTerm?.end_date) {
+                  setStartDate(currentTerm.start_date.substring(0, 10));
+                  setEndDate(currentTerm.end_date.substring(0, 10));
                 } else {
                   setStartDate('');
                   setEndDate('');
