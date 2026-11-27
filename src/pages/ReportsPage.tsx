@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRightLeft, Calendar, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
 import { toast } from '../context';
 import { Dropdown } from '../components/common/Dropdown';
-import { CalendarDatePicker } from '../components/common/CalendarDatePicker';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
 import { Checkbox } from '../components/common/Checkbox';
 import { Button } from '../components/common/Button';
@@ -328,7 +327,7 @@ export function ReportsPage() {
 
   const dayOptions = useMemo(() => {
     return [
-      { value: 'all', label: eventDays.length > 1 ? `All Days (${eventDays.length} Days)` : 'All Days' },
+      { value: 'all', label: 'All Days' },
       ...eventDays.map((d) => ({ value: d.value, label: d.label })),
     ];
   }, [eventDays]);
@@ -484,8 +483,8 @@ export function ReportsPage() {
             ]}
           />
 
-          {/* Day / Date Filter: If Event is selected, show Day 1, Day 2, etc. Otherwise show CalendarDatePicker */}
-          {matchedEvent && eventDays.length > 0 ? (
+          {/* Day Filter: Only shown when an event is selected */}
+          {matchedEvent && eventDays.length > 0 && (
             <Dropdown
               className="shrink-0"
               buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
@@ -503,17 +502,6 @@ export function ReportsPage() {
               }}
               icon={<Calendar className="h-4 w-4 text-[#756883]" />}
               options={dayOptions}
-            />
-          ) : (
-            <CalendarDatePicker
-              className="shrink-0"
-              buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
-              startDate={startDate}
-              endDate={endDate}
-              onChange={(range) => {
-                setStartDate(range.startDate);
-                setEndDate(range.endDate);
-              }}
             />
           )}
 
@@ -630,7 +618,7 @@ export function ReportsPage() {
       </div>
 
       {/* Row 1: Attendance Trend (Card 1) & Session Breakdown (Card 2) */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr] items-start">
+      <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr] items-start">
         {/* Card 1: Attendance Trend */}
         <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -787,19 +775,19 @@ export function ReportsPage() {
         </section>
 
         {/* Card 2: Session Breakdown */}
-        <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white p-6">
-          <div>
+        <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white overflow-hidden">
+          <div className="p-6 pb-2">
             <h2 className="text-lg font-bold text-[#24133F]">Session Breakdown</h2>
             <p className="text-xs text-[#756883] mt-0.5">Recorded scans by event day and session period</p>
           </div>
 
-          <div className="mt-4 max-h-[290px] overflow-y-auto overflow-x-auto [scrollbar-width:thin]">
-            <table className="w-full min-w-[500px] text-left text-xs">
+          <div className="max-h-[290px] overflow-y-auto overflow-x-auto [scrollbar-width:thin] pb-3">
+            <table className="w-full text-left text-xs">
               <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_#F1EEF4]">
                 <tr className="text-[#756883] font-medium">
-                  <th className="py-2.5 font-medium">Event Day · Period</th>
-                  <th className="py-2.5 font-medium">Time In</th>
-                  <th className="py-2.5 font-medium">Time Out</th>
+                  <th className="py-2.5 pl-6 pr-3 font-medium">Event Day · Period</th>
+                  <th className="py-2.5 px-3 font-medium">Time In</th>
+                  <th className="py-2.5 pl-3 pr-6 font-medium">Time Out</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F1EEF4]">
@@ -818,9 +806,9 @@ export function ReportsPage() {
                 ) : (
                   sessionBreakdown.map((row) => (
                     <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="py-2.5 text-[#756883] font-normal">{row.name}</td>
-                      <td className="py-2.5 text-[#756883]">{row.timeIns}</td>
-                      <td className="py-2.5 text-[#756883]">{row.timeOuts}</td>
+                      <td className="py-2.5 pl-6 pr-3 text-[#756883] font-normal">{row.name}</td>
+                      <td className="py-2.5 px-3 text-[#756883]">{row.timeIns}</td>
+                      <td className="py-2.5 pl-3 pr-6 text-[#756883]">{row.timeOuts}</td>
                     </tr>
                   ))
                 )}
@@ -833,92 +821,92 @@ export function ReportsPage() {
       {/* Checkpoints and Course Breakdown */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
         {/* Checkpoints */}
-        <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white p-6">
-          <div>
+        <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white overflow-hidden">
+          <div className="p-6 pb-2">
             <h2 className="text-lg font-bold text-[#24133F]">Checkpoints</h2>
             <p className="text-xs text-[#756883] mt-0.5">Scans by checkpoint location</p>
+          </div>
 
-            <div className="mt-4 max-h-[290px] overflow-y-auto overflow-x-auto [scrollbar-width:thin]">
-              <table className="w-full min-w-[400px] text-left text-xs">
-                <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_#F1EEF4]">
-                  <tr className="text-[#756883] font-medium">
-                    <th className="py-2.5 pr-4 font-medium">Checkpoint</th>
-                    <th className="px-2 py-2.5 font-medium">In Scans</th>
-                    <th className="px-2 py-2.5 font-medium">Out Scans</th>
-                    <th className="py-2.5 pl-2 text-right font-medium">Total</th>
+          <div className="max-h-[290px] overflow-y-auto overflow-x-auto [scrollbar-width:thin] pb-3">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_#F1EEF4]">
+                <tr className="text-[#756883] font-medium">
+                  <th className="py-2.5 pl-6 pr-3 font-medium">Checkpoint</th>
+                  <th className="px-3 py-2.5 font-medium">In Scans</th>
+                  <th className="px-3 py-2.5 font-medium">Out Scans</th>
+                  <th className="py-2.5 pl-3 pr-6 text-right font-medium">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#F1EEF4]">
+                {loading ? (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-xs text-[#756883]">
+                      Loading checkpoints…
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-[#F1EEF4]">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={4} className="py-8 text-center text-xs text-[#756883]">
-                        Loading checkpoints…
-                      </td>
+                ) : checkpointList.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-xs text-[#756883]">
+                      No attendance records available.
+                    </td>
+                  </tr>
+                ) : (
+                  checkpointList.map((row) => (
+                    <tr key={row.name} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="py-2.5 pl-6 pr-3 text-[#756883] font-normal">{row.name}</td>
+                      <td className="px-3 py-2.5 text-[#756883]">{row.inScans.toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-[#756883]">{row.outScans.toLocaleString()}</td>
+                      <td className="py-2.5 pl-3 pr-6 text-right text-[#756883] font-medium">{row.total.toLocaleString()}</td>
                     </tr>
-                  ) : checkpointList.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="py-8 text-center text-xs text-[#756883]">
-                        No attendance records available.
-                      </td>
-                    </tr>
-                  ) : (
-                    checkpointList.map((row) => (
-                      <tr key={row.name} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="py-2.5 pr-4 text-[#756883] font-normal">{row.name}</td>
-                        <td className="px-2 py-2.5 text-[#756883]">{row.inScans.toLocaleString()}</td>
-                        <td className="px-2 py-2.5 text-[#756883]">{row.outScans.toLocaleString()}</td>
-                        <td className="py-2.5 pl-2 text-right text-[#756883] font-medium">{row.total.toLocaleString()}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </section>
 
         {/* Course Breakdown */}
-        <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white p-6">
-          <div>
+        <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white overflow-hidden">
+          <div className="p-6 pb-2">
             <h2 className="text-lg font-bold text-[#24133F]">Course Breakdown</h2>
             <p className="mt-0.5 text-xs text-[#756883]">Scan counts follow the selected filters. Active roster is the current student count per course.</p>
+          </div>
 
-            <div className="mt-4 max-h-[290px] overflow-y-auto overflow-x-auto [scrollbar-width:thin]">
-              <table className="w-full min-w-[400px] text-left text-xs">
-                <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_#F1EEF4]">
-                  <tr className="text-[#756883] font-medium">
-                    <th className="py-2.5 pr-4 font-medium">Courses</th>
-                    <th className="px-2 py-2.5 font-medium">Active roster</th>
-                    <th className="px-2 py-2.5 font-medium">Time In</th>
-                    <th className="py-2.5 pl-2 text-right font-medium">Time Out</th>
+          <div className="max-h-[290px] overflow-y-auto overflow-x-auto [scrollbar-width:thin] pb-3">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_#F1EEF4]">
+                <tr className="text-[#756883] font-medium">
+                  <th className="py-2.5 pl-6 pr-3 font-medium">Courses</th>
+                  <th className="px-3 py-2.5 font-medium">Active roster</th>
+                  <th className="px-3 py-2.5 font-medium">Time In</th>
+                  <th className="py-2.5 pl-3 pr-6 text-right font-medium">Time Out</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#F1EEF4]">
+                {loading ? (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-xs text-[#756883]">
+                      Loading courses…
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-[#F1EEF4]">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={4} className="py-8 text-center text-xs text-[#756883]">
-                        Loading courses…
-                      </td>
+                ) : courseList.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-xs text-[#756883]">
+                      No course records available.
+                    </td>
+                  </tr>
+                ) : (
+                  courseList.map((row) => (
+                    <tr key={row.course} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="py-2.5 pl-6 pr-3 text-[#756883] font-normal">{row.course}</td>
+                      <td className="px-3 py-2.5 text-[#756883]">{row.expected}</td>
+                      <td className="px-3 py-2.5 text-[#756883]">{row.timeIn}</td>
+                      <td className="py-2.5 pl-3 pr-6 text-right text-[#756883]">{row.timeOut}</td>
                     </tr>
-                  ) : courseList.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="py-8 text-center text-xs text-[#756883]">
-                        No course records available.
-                      </td>
-                    </tr>
-                  ) : (
-                    courseList.map((row) => (
-                      <tr key={row.course} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="py-2.5 pr-4 text-[#756883] font-normal">{row.course}</td>
-                        <td className="px-2 py-2.5 text-[#756883]">{row.expected}</td>
-                        <td className="px-2 py-2.5 text-[#756883]">{row.timeIn}</td>
-                        <td className="py-2.5 pl-2 text-right text-[#756883]">{row.timeOut}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </section>
       </div>
