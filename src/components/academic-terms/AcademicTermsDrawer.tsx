@@ -10,6 +10,7 @@ import {
   Clock,
   Calendar,
   Pencil,
+  Eye,
 } from 'lucide-react';
 import { Drawer } from '../common/Drawer';
 import { Modal } from '../common/Modal';
@@ -17,6 +18,7 @@ import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Checkbox } from '../common/Checkbox';
 import { useAcademicTerm } from '../../context/AcademicTermContext';
+import { toast } from '../../context';
 import type { SemesterType, AcademicTerm } from '../../types';
 import { cn } from '../../utils/cn';
 
@@ -45,7 +47,19 @@ const formatDateDisplay = (dateStr: string) => {
 };
 
 export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen, onClose }) => {
-  const { terms, activeTerm, activateTerm, createTerm, updateTerm, refreshTerms, isLoading } = useAcademicTerm();
+  const {
+    terms,
+    activeTerm,
+    selectedTerm,
+    setSelectedTerm,
+    activateTerm,
+    createTerm,
+    updateTerm,
+    refreshTerms,
+    isLoading,
+  } = useAcademicTerm();
+
+  const currentViewingTerm = selectedTerm || activeTerm;
 
   // Always re-fetch terms from backend whenever drawer is opened
   useEffect(() => {
@@ -526,23 +540,28 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                       <div className="border-t border-[#F1EEF4] p-4 space-y-2.5 bg-[#FAF8FB]/60">
                         {group.terms.map((term) => {
                           const isActive = activeTerm ? term.id === activeTerm.id : Boolean(term.is_active);
+                          const isViewing = currentViewingTerm ? term.id === currentViewingTerm.id : isActive;
 
                           return (
                             <div
                               key={term.id}
                               className={cn(
-                                'flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border bg-white p-3.5 transition-all',
+                                'flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border p-3.5 transition-all',
                                 isActive
                                   ? 'border-emerald-300 bg-emerald-50/40 shadow-xs'
-                                  : 'border-[#E5E0EB] hover:border-slate-300'
+                                  : isViewing
+                                  ? 'border-[#D6BBFB] bg-[#FAF7FD]/80 shadow-xs ring-1 ring-[#7026B7]/20'
+                                  : 'border-[#E5E0EB] bg-white hover:border-slate-300'
                               )}
                             >
                               <div className="flex items-center gap-3">
                                 <div
                                   className={cn(
-                                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold',
+                                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold transition-colors',
                                     isActive
                                       ? 'bg-emerald-600 text-white'
+                                      : isViewing
+                                      ? 'bg-[#7026B7] text-white shadow-xs'
                                       : 'bg-slate-100 text-slate-600'
                                   )}
                                 >
@@ -558,6 +577,11 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                                         Active Term
                                       </span>
                                     )}
+                                    {isViewing && !isActive && (
+                                      <span className="rounded-full bg-[#FAF0FE] px-2 py-0.5 text-[10px] font-extrabold text-[#7026B7] border border-[#E9D5FF]">
+                                        Viewing
+                                      </span>
+                                    )}
                                   </div>
                                   <p className="text-[11px] text-[#756883] mt-0.5 flex items-center gap-1">
                                     <Clock className="h-3 w-3 shrink-0" />
@@ -568,7 +592,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2 self-end sm:self-center">
+                              <div className="flex items-center flex-wrap gap-2 self-end sm:self-center">
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -582,6 +606,35 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                                   Edit
                                 </Button>
 
+                                {/* Viewing Scope Action / Indicator */}
+                                {!isActive && isViewing && (
+                                  <span
+                                    title="Currently viewed across students and reports"
+                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7026B7] bg-[#FAF0FE] border border-[#E9D5FF] px-2.5 py-1.5 rounded-xl shadow-2xs"
+                                  >
+                                    <Eye className="h-3.5 w-3.5 text-[#7026B7]" />
+                                    Viewing
+                                  </span>
+                                )}
+
+                                {!isViewing && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedTerm(term);
+                                      toast.success(`Now viewing A.Y. ${term.school_year} · ${term.semester}`);
+                                    }}
+                                    title={`Switch viewing scope to ${term.semester}`}
+                                    className="h-8 gap-1.5 text-xs border-[#D6BBFB] text-[#7026B7] hover:bg-[#FAF0FE] hover:border-[#7026B7] active:scale-95 cursor-pointer"
+                                  >
+                                    <Eye className="h-3.5 w-3.5" />
+                                    View
+                                  </Button>
+                                )}
+
+                                {/* Active Status / Set as Active Action */}
                                 {isActive ? (
                                   <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 px-3 py-1.5 rounded-xl">
                                     <CheckCircle2 className="h-3.5 w-3.5" />
@@ -592,7 +645,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                                     size="sm"
                                     variant="outline"
                                     onClick={() => activateTerm(term.id)}
-                                    className="text-xs hover:border-[#7026B7] hover:text-[#7026B7] hover:bg-[#F0E8FC] cursor-pointer"
+                                    className="h-8 text-xs hover:border-[#7026B7] hover:text-[#7026B7] hover:bg-[#F0E8FC] active:scale-95 cursor-pointer"
                                   >
                                     Set as Active
                                   </Button>
