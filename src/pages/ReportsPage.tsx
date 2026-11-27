@@ -987,7 +987,7 @@ export function ReportsPage() {
                       >
                         {record.initials}
                       </div>
-                      <span className="font-semibold text-[#24133F] text-xs group-hover:text-[#7026B7] group-hover:underline transition-colors">
+                      <span className="font-semibold text-[#24133F] text-xs group-hover:text-[#7026B7] transition-colors">
                         {record.name}
                       </span>
                     </button>
