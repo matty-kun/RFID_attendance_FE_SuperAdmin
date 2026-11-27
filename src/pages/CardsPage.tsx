@@ -647,38 +647,8 @@ export function CardsPage() {
                 </th>
                 <th className="px-4 py-3 font-semibold">Status</th>
                 <th className="px-4 py-3 font-semibold">Current holder</th>
-                <th className="px-4 py-3 font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (sortField === 'created_at') {
-                        setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'));
-                      } else {
-                        setSortField('created_at');
-                        setSortDirection('desc');
-                      }
-                      setPage(1);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 -ml-2 text-xs font-bold text-[#756883] hover:text-[#24133F] hover:bg-purple-100/60 transition-colors cursor-pointer group/sort"
-                    title={
-                      sortField === 'created_at'
-                        ? sortDirection === 'desc'
-                          ? 'Sorted newest first. Click to sort oldest first.'
-                          : 'Sorted oldest first. Click to sort newest first.'
-                        : 'Click to sort by registration date'
-                    }
-                  >
-                    <span>Registered</span>
-                    {sortField === 'created_at' ? (
-                      sortDirection === 'desc' ? (
-                        <ArrowDown className="h-3.5 w-3.5 text-[#7026B7]" />
-                      ) : (
-                        <ArrowUp className="h-3.5 w-3.5 text-[#7026B7]" />
-                      )
-                    ) : (
-                      <ArrowUpDown className="h-3 w-3 text-[#A59AAB] group-hover/sort:text-[#7026B7]" />
-                    )}
-                  </button>
+                <th className="px-4 py-3 font-semibold text-xs text-[#756883]">
+                  Registered
                 </th>
                 <th className="px-4 py-3 text-right font-semibold">Actions</th>
               </tr>
