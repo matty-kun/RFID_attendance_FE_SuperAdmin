@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRightLeft, Calendar, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
+import {
+  ArrowRightLeft,
+  Calendar,
+  Clock,
+  GraduationCap,
+  MapPin,
+  Search,
+  ChevronRight,
+  Eye,
+  CheckCircle2,
+  AlertCircle,
+} from 'lucide-react';
 import { toast } from '../context';
 import { Dropdown } from '../components/common/Dropdown';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
@@ -10,6 +21,7 @@ import { adminService } from '../services/adminService';
 import { useAcademicTerm } from '../context/AcademicTermContext';
 import type { EventRecord } from '../types';
 import { formatReportSessionLabel, type ReportSessionItem, type ReportCheckpointItem, type ReportCourseItem, type ReportStudentAttendanceRow } from './auditPreviewRecords';
+import { StudentAttendanceDrawer } from '../components/reports/StudentAttendanceDrawer';
 
 type Snapshot = {
   summary: { studentsCheckedIn: number; timeIns: number; timeOuts: number; totalScans: number };
@@ -109,6 +121,14 @@ export function ReportsPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const pageSize = 25;
+  const [attendanceViewMode, setAttendanceViewMode] = useState<'summaries' | 'logs'>('summaries');
+  const [selectedStudentForAttendance, setSelectedStudentForAttendance] = useState<{
+    id: string;
+    name: string;
+    number?: string;
+    course?: string;
+    yearLevel?: number;
+  } | null>(null);
 
   useEffect(() => { void adminService.getEvents().then(setEvents).catch(() => toast.error('Could not load events.')); }, []);
   useEffect(() => { const timer = window.setTimeout(() => { setQuery(search.trim()); setPage(1); }, 250); return () => window.clearTimeout(timer); }, [search]);
@@ -359,6 +379,79 @@ export function ReportsPage() {
     rows.forEach((r) => knownRowsMap.current.set(r.id, r));
     return rows;
   }, [snapshot?.rows, mapReportRow]);
+
+  const studentSummaries = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        studentId: string;
+        name: string;
+        course: string;
+        initials: string;
+        avatarBg: string;
+        avatarColor: string;
+        attendedSessions: number;
+        completedSessions: number;
+        totalSessions: number;
+        rate: number;
+        missedSessions: number;
+        latestEvent?: string;
+        rows: ReportStudentAttendanceRow[];
+      }
+    >();
+
+    const totalSessionsCount = Math.max(
+      1,
+      snapshot?.sessions?.length || new Set(filteredStudents.map((r) => r.session)).size || 1
+    );
+
+    for (const record of filteredStudents) {
+      const studentId = record.id.includes('::') ? record.id.split('::')[0] : record.id;
+      const key = studentId || record.name;
+      const existing = map.get(key);
+
+      const isAttended =
+        record.status === 'Completed' ||
+        record.status === 'Time In Only' ||
+        Boolean(record.timeIn && record.timeIn !== '-');
+      const isCompleted = record.status === 'Completed';
+
+      if (!existing) {
+        map.set(key, {
+          studentId,
+          name: record.name,
+          course: record.course,
+          initials: record.initials,
+          avatarBg: record.avatarBg,
+          avatarColor: record.avatarColor,
+          attendedSessions: isAttended ? 1 : 0,
+          completedSessions: isCompleted ? 1 : 0,
+          totalSessions: totalSessionsCount,
+          rate: 0,
+          missedSessions: 0,
+          latestEvent: record.event,
+          rows: [record],
+        });
+      } else {
+        if (isAttended) existing.attendedSessions += 1;
+        if (isCompleted) existing.completedSessions += 1;
+        existing.rows.push(record);
+        if (record.event && record.event !== '-') existing.latestEvent = record.event;
+      }
+    }
+
+    return Array.from(map.values()).map((item) => {
+      const effectiveTotal = Math.max(item.attendedSessions, totalSessionsCount);
+      const rate = Math.round((item.attendedSessions / effectiveTotal) * 100);
+      const missedSessions = Math.max(0, effectiveTotal - item.attendedSessions);
+      return {
+        ...item,
+        totalSessions: effectiveTotal,
+        rate,
+        missedSessions,
+      };
+    });
+  }, [filteredStudents, snapshot?.sessions]);
 
   const handleExport = async (format: ExportFormat) => {
     try {
@@ -902,9 +995,36 @@ export function ReportsPage() {
       {/* Student Attendance Records */}
       <section className="rounded-[24px] border border-[#E5E0EB] bg-white p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-[#24133F]">Student Attendance Records</h2>
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-lg font-bold text-[#24133F]">Student Attendance</h2>
+
+            {/* View Mode Segmented Controls */}
+            <div className="flex items-center rounded-xl bg-slate-100 p-1">
+              <button
+                type="button"
+                onClick={() => setAttendanceViewMode('summaries')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  attendanceViewMode === 'summaries'
+                    ? 'bg-white text-[#7026B7] shadow-xs'
+                    : 'text-[#756883] hover:text-[#24133F]'
+                }`}
+              >
+                <span>Compliance Summary (X/Y)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAttendanceViewMode('logs')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  attendanceViewMode === 'logs'
+                    ? 'bg-white text-[#7026B7] shadow-xs'
+                    : 'text-[#756883] hover:text-[#24133F]'
+                }`}
+              >
+                <span>Session Logs</span>
+              </button>
+            </div>
           </div>
+
           <label className="flex h-10 w-56 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-slate-500 transition-all focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100 md:w-64">
             <Search className="h-4 w-4 shrink-0 text-slate-400" />
             <span className="sr-only">Search attendance records</span>
@@ -918,110 +1038,372 @@ export function ReportsPage() {
           </label>
         </div>
 
-        <div className="mt-5 overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="text-[#756883] font-medium">
-                <th className="w-9 py-3 pr-3">
-                  <Checkbox
-                    aria-label="Select all students on page"
-                    checked={filteredStudents.length > 0 && filteredStudents.every((r) => selected.includes(r.id))}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        const pageIds = filteredStudents.map((r) => r.id);
-                        setSelected((prev) => Array.from(new Set([...prev, ...pageIds])));
-                      } else {
-                        const pageIdSet = new Set(filteredStudents.map((r) => r.id));
-                        setSelected((prev) => prev.filter((id) => !pageIdSet.has(id)));
-                      }
-                    }}
-                  />
-                </th>
-                <th className="px-3 py-3 font-medium whitespace-nowrap">Name</th>
-                <th className="px-3 py-3 font-medium whitespace-nowrap">Course</th>
-                <th className="px-3 py-3 font-medium whitespace-nowrap">Event &amp; Session</th>
-                <th className="px-3 py-3 text-center font-medium whitespace-nowrap">Time In</th>
-                <th className="px-3 py-3 text-center font-medium whitespace-nowrap">Time Out</th>
-                <th className="px-3 py-3 font-medium whitespace-nowrap">Admin Officer</th>
-                <th className="px-3 py-3 font-medium whitespace-nowrap">Status</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y divide-[#F1EEF4] transition-opacity duration-150 ${isFetchingPage ? 'opacity-40 pointer-events-none' : ''}`}>
-              {filteredStudents.map((record) => (
-                <tr key={record.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="py-3 pr-3">
+        {attendanceViewMode === 'summaries' ? (
+          /* Dean's Requirement 1: Student Attendance Summary Table (X/Y Sessions) */
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="text-[#756883] font-medium">
+                  <th className="w-9 py-3 pr-3">
                     <Checkbox
-                      aria-label={`Select ${record.name}`}
-                      checked={selected.includes(record.id)}
-                      onChange={(e) =>
-                        setSelected((prev) =>
-                          e.target.checked ? [...prev, record.id] : prev.filter((id) => id !== record.id)
-                        )
+                      aria-label="Select all students on page"
+                      checked={
+                        studentSummaries.length > 0 &&
+                        studentSummaries.every((s) => s.rows.every((r) => selected.includes(r.id)))
                       }
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          const allRowIds = studentSummaries.flatMap((s) => s.rows.map((r) => r.id));
+                          setSelected((prev) => Array.from(new Set([...prev, ...allRowIds])));
+                        } else {
+                          const pageRowIdSet = new Set(
+                            studentSummaries.flatMap((s) => s.rows.map((r) => r.id))
+                          );
+                          setSelected((prev) => prev.filter((id) => !pageRowIdSet.has(id)));
+                        }
+                      }}
                     />
-                  </td>
-                  <td className="px-3 py-3 font-medium whitespace-nowrap">
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className={`w-7 h-7 rounded-full ${record.avatarBg} ${record.avatarColor} font-bold text-xs flex items-center justify-center shrink-0`}
-                      >
-                        {record.initials}
-                      </div>
-                      <span className="font-semibold text-[#24133F] text-xs">{record.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 text-[#24133F] whitespace-nowrap">
-                    {record.course || '-'}
-                  </td>
-                  <td className="px-3 py-3 text-[#24133F]">
-                    <div className="font-semibold text-xs leading-tight">{record.event || '-'}</div>
-                    <div className="text-[11px] text-[#756883] mt-0.5 leading-tight">{formatReportSessionLabel(record) || '-'}</div>
-                  </td>
-                  <td className="px-3 py-3 text-center text-[#24133F] whitespace-nowrap">
-                    {record.timeIn || '-'}
-                  </td>
-                  <td className="px-3 py-3 text-center text-[#24133F] whitespace-nowrap">
-                    {record.timeOut || '-'}
-                  </td>
-                  <td className="px-3 py-3 text-[#24133F] whitespace-nowrap">
-                    {record.scannedByIn && record.scannedByOut && record.scannedByIn !== record.scannedByOut ? (
-                      <div className="flex flex-col text-[11px] leading-tight">
-                        <span className="text-emerald-700 font-medium">In: {record.scannedByIn}</span>
-                        <span className="text-rose-700 font-medium">Out: {record.scannedByOut}</span>
-                      </div>
-                    ) : record.adminOfficer && record.adminOfficer !== '—' && record.adminOfficer !== '-' ? (
-                      <span className="font-medium text-xs text-[#24133F]">{record.adminOfficer}</span>
-                    ) : (
-                      <span className="inline-block w-10 text-center text-[#756883]">-</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold text-white ${
-                        record.status === 'Completed'
-                          ? 'bg-[#10B981]'
-                          : record.status === 'Time In Only'
-                          ? 'bg-[#F59E0B]'
-                          : 'bg-[#EF4444]'
-                      }`}
-                    >
-                      {record.status}
-                    </span>
-                  </td>
+                  </th>
+                  <th className="px-3 py-3 font-medium whitespace-nowrap">Student</th>
+                  <th className="px-3 py-3 font-medium whitespace-nowrap">Course</th>
+                  <th className="px-3 py-3 font-medium whitespace-nowrap">Attendance Ratio (X/Y)</th>
+                  <th className="px-3 py-3 font-medium whitespace-nowrap">Compliance Rate</th>
+                  <th className="px-3 py-3 font-medium whitespace-nowrap">Attendance Details</th>
+                  <th className="px-3 py-3 text-right font-medium whitespace-nowrap">Day Breakdown</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody
+                className={`divide-y divide-[#F1EEF4] transition-opacity duration-150 ${
+                  isFetchingPage ? 'opacity-40 pointer-events-none' : ''
+                }`}
+              >
+                {studentSummaries.map((item) => {
+                  const isSelected = item.rows.every((r) => selected.includes(r.id));
+                  return (
+                    <tr
+                      key={item.studentId || item.name}
+                      className="hover:bg-slate-50/50 transition-colors group"
+                    >
+                      <td className="py-3 pr-3">
+                        <Checkbox
+                          aria-label={`Select ${item.name}`}
+                          checked={isSelected}
+                          onChange={(e) => {
+                            const studentRowIds = item.rows.map((r) => r.id);
+                            if (e.target.checked) {
+                              setSelected((prev) => Array.from(new Set([...prev, ...studentRowIds])));
+                            } else {
+                              const sIdSet = new Set(studentRowIds);
+                              setSelected((prev) => prev.filter((id) => !sIdSet.has(id)));
+                            }
+                          }}
+                        />
+                      </td>
 
-          {!filteredStudents.length && (
-            <p className="py-10 text-center text-xs text-[#756883]">
-              {loading
-                ? 'Loading attendance records…'
-                : 'No attendance records available.'}
-            </p>
-          )}
-        </div>
+                      {/* Student Name & Avatar */}
+                      <td className="px-3 py-3 font-medium whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedStudentForAttendance({
+                              id: item.studentId,
+                              name: item.name,
+                              course: item.course,
+                            })
+                          }
+                          className="flex items-center gap-2.5 text-left cursor-pointer group-hover:opacity-90"
+                        >
+                          <div
+                            className={`w-8 h-8 rounded-full ${item.avatarBg} ${item.avatarColor} font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs`}
+                          >
+                            {item.initials}
+                          </div>
+                          <div>
+                            <span className="font-bold text-[#24133F] text-xs group-hover:text-[#7026B7] transition-colors">
+                              {item.name}
+                            </span>
+                            {item.latestEvent && item.latestEvent !== '-' && (
+                              <span className="block text-[10px] text-[#756883] font-normal truncate max-w-[180px]">
+                                {item.latestEvent}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      </td>
+
+                      {/* Course */}
+                      <td className="px-3 py-3 text-[#24133F] whitespace-nowrap font-medium">
+                        {item.course || '-'}
+                      </td>
+
+                      {/* Attendance Ratio: The Dean's Core Metric (e.g. 5/10) */}
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-sm font-black text-[#24133F]">
+                            {item.attendedSessions}
+                          </span>
+                          <span className="text-xs font-bold text-[#A59AAB]">
+                            / {item.totalSessions}
+                          </span>
+                          <span className="text-[11px] font-medium text-[#756883] ml-1">
+                            sessions
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Compliance Rate & Standing Badge */}
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <div className="flex flex-col gap-1.5">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border self-start ${
+                              item.rate >= 80
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : item.rate >= 50
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                            }`}
+                          >
+                            {item.rate >= 80 ? (
+                              <CheckCircle2 className="h-3 w-3" />
+                            ) : (
+                              <AlertCircle className="h-3 w-3" />
+                            )}
+                            <span>{item.rate}%</span>
+                            <span className="font-normal text-[10px] opacity-80">
+                              · {item.rate >= 80 ? 'Good' : item.rate >= 50 ? 'Needs Attention' : 'At Risk'}
+                            </span>
+                          </span>
+
+                          <div className="h-1.5 w-28 rounded-full bg-slate-100 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                item.rate >= 80
+                                  ? 'bg-emerald-500'
+                                  : item.rate >= 50
+                                  ? 'bg-amber-500'
+                                  : 'bg-rose-500'
+                              }`}
+                              style={{ width: `${Math.min(100, item.rate)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Completed vs Missed Sessions */}
+                      <td className="px-3 py-3 whitespace-nowrap text-xs text-[#756883]">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-emerald-700">
+                            {item.completedSessions} attended
+                          </span>
+                          <span>·</span>
+                          <span
+                            className={
+                              item.missedSessions > 0
+                                ? 'font-semibold text-rose-600'
+                                : 'text-[#756883]'
+                            }
+                          >
+                            {item.missedSessions > 0
+                              ? `${item.missedSessions} missed`
+                              : '0 missed'}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Action: Open Day-by-Day Checklist Drawer */}
+                      <td className="px-3 py-3 text-right whitespace-nowrap">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            setSelectedStudentForAttendance({
+                              id: item.studentId,
+                              name: item.name,
+                              course: item.course,
+                            })
+                          }
+                          className="gap-1.5 text-xs text-[#7026B7] border-[#E9DCFA] hover:bg-[#FAF7FD] hover:border-[#7026B7] transition-all cursor-pointer shadow-2xs"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          <span>View Day Checklist</span>
+                          <ChevronRight className="h-3 w-3 text-[#A59AAB]" />
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {!studentSummaries.length && (
+              <p className="py-10 text-center text-xs text-[#756883]">
+                {loading
+                  ? 'Loading attendance summaries…'
+                  : 'No student attendance records match the selected filters.'}
+              </p>
+            )}
+          </div>
+        ) : (
+          /* Session Logs Table (Detailed Granular Rows) */
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="text-[#756883] font-medium">
+                  <th className="w-9 py-3 pr-3">
+                    <Checkbox
+                      aria-label="Select all students on page"
+                      checked={filteredStudents.length > 0 && filteredStudents.every((r) => selected.includes(r.id))}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          const pageIds = filteredStudents.map((r) => r.id);
+                          setSelected((prev) => Array.from(new Set([...prev, ...pageIds])));
+                        } else {
+                          const pageIdSet = new Set(filteredStudents.map((r) => r.id));
+                          setSelected((prev) => prev.filter((id) => !pageIdSet.has(id)));
+                        }
+                      }}
+                    />
+                  </th>
+                  <th className="px-3 py-3 font-medium whitespace-nowrap">Name</th>
+                  <th className="px-3 py-3 font-medium whitespace-nowrap">Course</th>
+                  <th className="px-3 py-3 font-medium whitespace-nowrap">Event &amp; Session</th>
+                  <th className="px-3 py-3 text-center font-medium whitespace-nowrap">Time In</th>
+                  <th className="px-3 py-3 text-center font-medium whitespace-nowrap">Time Out</th>
+                  <th className="px-3 py-3 font-medium whitespace-nowrap">Admin Officer</th>
+                  <th className="px-3 py-3 font-medium whitespace-nowrap">Status</th>
+                  <th className="px-3 py-3 text-right font-medium whitespace-nowrap">Checklist</th>
+                </tr>
+              </thead>
+              <tbody
+                className={`divide-y divide-[#F1EEF4] transition-opacity duration-150 ${
+                  isFetchingPage ? 'opacity-40 pointer-events-none' : ''
+                }`}
+              >
+                {filteredStudents.map((record) => (
+                  <tr key={record.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="py-3 pr-3">
+                      <Checkbox
+                        aria-label={`Select ${record.name}`}
+                        checked={selected.includes(record.id)}
+                        onChange={(e) =>
+                          setSelected((prev) =>
+                            e.target.checked ? [...prev, record.id] : prev.filter((id) => id !== record.id)
+                          )
+                        }
+                      />
+                    </td>
+                    <td className="px-3 py-3 font-medium whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedStudentForAttendance({
+                            id: record.id.split('::')[0],
+                            name: record.name,
+                            course: record.course,
+                          })
+                        }
+                        className="flex items-center gap-2.5 text-left cursor-pointer group-hover:opacity-90"
+                      >
+                        <div
+                          className={`w-7 h-7 rounded-full ${record.avatarBg} ${record.avatarColor} font-bold text-xs flex items-center justify-center shrink-0`}
+                        >
+                          {record.initials}
+                        </div>
+                        <span className="font-semibold text-[#24133F] text-xs group-hover:text-[#7026B7] group-hover:underline transition-colors">
+                          {record.name}
+                        </span>
+                      </button>
+                    </td>
+                    <td className="px-3 py-3 text-[#24133F] whitespace-nowrap">
+                      {record.course || '-'}
+                    </td>
+                    <td className="px-3 py-3 text-[#24133F]">
+                      <div className="font-semibold text-xs leading-tight">{record.event || '-'}</div>
+                      <div className="text-[11px] text-[#756883] mt-0.5 leading-tight">
+                        {formatReportSessionLabel(record) || '-'}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-center text-[#24133F] whitespace-nowrap">
+                      {record.timeIn || '-'}
+                    </td>
+                    <td className="px-3 py-3 text-center text-[#24133F] whitespace-nowrap">
+                      {record.timeOut || '-'}
+                    </td>
+                    <td className="px-3 py-3 text-[#24133F] whitespace-nowrap">
+                      {record.scannedByIn &&
+                      record.scannedByOut &&
+                      record.scannedByIn !== record.scannedByOut ? (
+                        <div className="flex flex-col text-[11px] leading-tight">
+                          <span className="text-emerald-700 font-medium">In: {record.scannedByIn}</span>
+                          <span className="text-rose-700 font-medium">Out: {record.scannedByOut}</span>
+                        </div>
+                      ) : record.adminOfficer &&
+                        record.adminOfficer !== '—' &&
+                        record.adminOfficer !== '-' ? (
+                        <span className="font-medium text-xs text-[#24133F]">{record.adminOfficer}</span>
+                      ) : (
+                        <span className="inline-block w-10 text-center text-[#756883]">-</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold text-white ${
+                          record.status === 'Completed'
+                            ? 'bg-[#10B981]'
+                            : record.status === 'Time In Only'
+                            ? 'bg-[#F59E0B]'
+                            : 'bg-[#EF4444]'
+                        }`}
+                      >
+                        {record.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">
+                      <button
+                        type="button"
+                        title="View Day Checklist"
+                        onClick={() =>
+                          setSelectedStudentForAttendance({
+                            id: record.id.split('::')[0],
+                            name: record.name,
+                            course: record.course,
+                          })
+                        }
+                        className="inline-flex items-center gap-1 rounded-lg border border-[#E5E0EB] bg-white px-2 py-1 text-[11px] font-medium text-[#756883] hover:border-[#7026B7] hover:text-[#7026B7] transition-all cursor-pointer shadow-2xs"
+                      >
+                        <Eye className="h-3 w-3" />
+                        <span>Checklist</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {!filteredStudents.length && (
+              <p className="py-10 text-center text-xs text-[#756883]">
+                {loading
+                  ? 'Loading attendance records…'
+                  : 'No attendance records available.'}
+              </p>
+            )}
+          </div>
+        )}
       </section>
+
+      {/* Dean's Requirement 2: Student Attendance Detail Drawer ("Wala ka diri sa Day 3 oh") */}
+      <StudentAttendanceDrawer
+        isOpen={Boolean(selectedStudentForAttendance)}
+        onClose={() => setSelectedStudentForAttendance(null)}
+        studentId={selectedStudentForAttendance?.id ?? null}
+        studentName={selectedStudentForAttendance?.name}
+        studentNumber={selectedStudentForAttendance?.number}
+        studentCourse={selectedStudentForAttendance?.course}
+        studentYearLevel={selectedStudentForAttendance?.yearLevel}
+        eventId={event !== 'all' ? event : undefined}
+        eventName={matchedEvent?.name}
+        termName={currentTerm ? `${currentTerm.school_year} · ${currentTerm.semester}` : undefined}
+      />
       <div className="flex items-center justify-between text-xs text-[#756883]">
         <span>
           {(snapshot?.rowTotal ?? 0).toLocaleString()} records · Page {page} of {Math.max(1, Math.ceil((snapshot?.rowTotal ?? 0) / pageSize))}
