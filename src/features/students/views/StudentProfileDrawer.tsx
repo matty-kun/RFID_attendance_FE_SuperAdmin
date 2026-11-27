@@ -28,14 +28,19 @@ import {
   KeyRound,
   Plus,
   Search,
+  Printer,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import { ResetPasswordModal } from '../../../components/common/ResetPasswordModal';
 import { DeleteStudentConfirmationModal } from './DeleteStudentConfirmationModal';
 import hawiWavingImg from '../../../assets/illustrations/Hawi Waving.png';
 import hawiBoxImg from '../../../assets/illustrations/Hawi Box.png';
 import type { StudentRecord } from '../models';
+import type { SessionRecord } from '../../../types';
 import { formatYearLevel } from '../../../utils/formatters';
 import { request } from '../../../services/apiClient';
+import { adminService } from '../../../services/adminService';
 import { toStudentScan, type RecordedScan, type StudentScanItem } from './studentScan';
 import {
   getAllKnownCourses,
@@ -61,6 +66,7 @@ export interface StudentProfileDrawerProps {
   onRemoveAvatar?: (studentId: string) => Promise<void>;
   onDeleteStudent?: (studentId: string) => Promise<boolean>;
   availableCourses?: string[];
+  initialEventId?: string;
 }
 
 const YEAR_OPTIONS = [
@@ -87,8 +93,9 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   onDeleteStudent,
   onResetPassword,
   availableCourses = [],
+  initialEventId,
 }) => {
-  const [selectedEventId, setSelectedEventId] = useState<string>('all');
+  const [selectedEventId, setSelectedEventId] = useState<string>(initialEventId || 'all');
   const [filterType, setFilterType] = useState<'all' | 'time_in' | 'time_out'>('all');
   const [copiedUid, setCopiedUid] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
@@ -432,20 +439,126 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   };
 
   const [scans, setScans] = useState<StudentScanItem[]>([]);
+  const [rawScans, setRawScans] = useState<RecordedScan[]>([]);
+  const [eventSessions, setEventSessions] = useState<SessionRecord[]>([]);
   const [loadingScans, setLoadingScans] = useState(false);
   const [scanError, setScanError] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && initialEventId) {
+      setSelectedEventId(initialEventId);
+    }
+  }, [isOpen, initialEventId]);
+
   useEffect(() => {
     if (!isOpen || !currentStudent?.id) return;
     let cancelled = false;
     setScans([]);
+    setRawScans([]);
     setLoadingScans(true);
     setScanError(false);
     void request.get<{ scans: RecordedScan[] }>(`/students/${currentStudent.id}/scans`)
-      .then(result => { if (!cancelled) setScans(result.scans.map(toStudentScan)); })
+      .then(result => {
+        if (!cancelled) {
+          const list = result.scans || [];
+          setRawScans(list);
+          setScans(list.map(toStudentScan));
+        }
+      })
       .catch(() => { if (!cancelled) { setScanError(true); toast.error('Could not load student scan history.'); } })
       .finally(() => { if (!cancelled) setLoadingScans(false); });
     return () => { cancelled = true; };
   }, [isOpen, currentStudent?.id]);
+
+  useEffect(() => {
+    if (!selectedEventId || selectedEventId === 'all') {
+      setEventSessions([]);
+      return;
+    }
+    let isMounted = true;
+    adminService.getSessions(selectedEventId)
+      .then((sessions) => {
+        if (isMounted) setEventSessions(sessions || []);
+      })
+      .catch(() => {
+        if (isMounted) setEventSessions([]);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedEventId]);
+
+  const attendanceMetrics = useMemo(() => {
+    const targetSessions =
+      selectedEventId !== 'all' && eventSessions.length > 0
+        ? eventSessions
+        : Array.from(
+            new Map(
+              rawScans
+                .filter(
+                  (s) =>
+                    s.session?.id &&
+                    (selectedEventId === 'all' || s.session?.event_id === selectedEventId)
+                )
+                .map((s) => [s.session!.id, s.session!])
+            ).values()
+          );
+
+    const relevantScans = rawScans.filter((s) => {
+      if (selectedEventId !== 'all') {
+        return s.session?.event_id === selectedEventId;
+      }
+      return true;
+    });
+
+    const sessionAttendanceMap = new Map<string, { hasIn: boolean; hasOut: boolean }>();
+    for (const s of relevantScans) {
+      if (!s.session?.id) continue;
+      const existing = sessionAttendanceMap.get(s.session.id) || { hasIn: false, hasOut: false };
+      if (s.type === 'time_in') existing.hasIn = true;
+      if (s.type === 'time_out') existing.hasOut = true;
+      sessionAttendanceMap.set(s.session.id, existing);
+    }
+
+    let completed = 0;
+    let partial = 0;
+    for (const status of sessionAttendanceMap.values()) {
+      if (status.hasIn && status.hasOut) {
+        completed += 1;
+      } else if (status.hasIn || status.hasOut) {
+        partial += 1;
+      }
+    }
+
+    const attended = completed + partial;
+    const total = Math.max(attended, targetSessions.length);
+    const missed = Math.max(0, total - attended);
+    const rate = total > 0 ? Math.round((attended / total) * 100) : 0;
+
+    let standing = {
+      label: 'Good Standing',
+      bg: 'bg-emerald-50',
+      text: 'text-emerald-700',
+      border: 'border-emerald-200',
+    };
+    if (rate < 50) {
+      standing = {
+        label: 'At Risk',
+        bg: 'bg-rose-50',
+        text: 'text-rose-700',
+        border: 'border-rose-200',
+      };
+    } else if (rate < 75) {
+      standing = {
+        label: 'Needs Attention',
+        bg: 'bg-amber-50',
+        text: 'text-amber-700',
+        border: 'border-amber-200',
+      };
+    }
+
+    return { total, attended, completed, partial, missed, rate, standing };
+  }, [rawScans, eventSessions, selectedEventId]);
 
   // Dynamic list of unique events from scans
   const eventOptions = useMemo(() => {
@@ -1204,6 +1317,104 @@ export const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                     })}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* ATTENDANCE COMPLIANCE SECTION: Dean's Requirement */}
+          <div className="pt-2">
+            <div className="flex items-center justify-between pb-1.5">
+              <p className="text-[11px] font-black tracking-wider text-[#A59AAB] uppercase">
+                Attendance Compliance
+              </p>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${attendanceMetrics.standing.bg} ${attendanceMetrics.standing.text} ${attendanceMetrics.standing.border}`}
+                >
+                  {attendanceMetrics.rate >= 75 ? (
+                    <CheckCircle2 className="h-3 w-3" />
+                  ) : (
+                    <AlertCircle className="h-3 w-3" />
+                  )}
+                  {attendanceMetrics.standing.label}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-[#E5E0EB] bg-white text-[11px] font-semibold text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7] transition-all cursor-pointer shadow-2xs"
+                  title="Print attendance record"
+                >
+                  <Printer className="h-3 w-3" />
+                  <span>Print</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              {/* 1. Attendance Ratio: X / Y Sessions */}
+              <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
+                <p className="text-[10px] font-bold text-[#A59AAB] uppercase">Attendance Ratio</p>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span className="text-xl font-black text-[#24133F]">{attendanceMetrics.attended}</span>
+                  <span className="text-xs font-bold text-[#A59AAB]">/ {attendanceMetrics.total}</span>
+                </div>
+                <p className="mt-0.5 text-[10px] font-medium text-[#756883]">Sessions attended</p>
+              </div>
+
+              {/* 2. Attendance Rate */}
+              <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
+                <p className="text-[10px] font-bold text-[#A59AAB] uppercase">Compliance Rate</p>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span
+                    className={`text-xl font-black ${
+                      attendanceMetrics.rate >= 75
+                        ? 'text-emerald-700'
+                        : attendanceMetrics.rate >= 50
+                        ? 'text-amber-600'
+                        : 'text-rose-600'
+                    }`}
+                  >
+                    {attendanceMetrics.rate}%
+                  </span>
+                </div>
+                <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      attendanceMetrics.rate >= 75
+                        ? 'bg-emerald-500'
+                        : attendanceMetrics.rate >= 50
+                        ? 'bg-amber-500'
+                        : 'bg-rose-500'
+                    }`}
+                    style={{ width: `${Math.min(100, attendanceMetrics.rate)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* 3. Completed Sessions */}
+              <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
+                <p className="text-[10px] font-bold text-[#A59AAB] uppercase">Completed</p>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span className="text-xl font-black text-emerald-700">{attendanceMetrics.completed}</span>
+                </div>
+                <p className="mt-0.5 text-[10px] font-medium text-[#756883]">Both In &amp; Out</p>
+              </div>
+
+              {/* 4. Missed Sessions (Absences) */}
+              <div className="rounded-2xl border border-[#E5E0EB] bg-white p-3 shadow-2xs">
+                <p className="text-[10px] font-bold text-[#A59AAB] uppercase">Missed Sessions</p>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span
+                    className={`text-xl font-black ${
+                      attendanceMetrics.missed > 0 ? 'text-rose-600' : 'text-slate-400'
+                    }`}
+                  >
+                    {attendanceMetrics.missed}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[10px] font-medium text-[#756883]">
+                  {attendanceMetrics.missed === 0 ? 'Zero absences' : 'Absent / unrecorded'}
+                </p>
               </div>
             </div>
           </div>
