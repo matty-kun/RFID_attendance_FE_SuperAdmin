@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   REPORT_EXPORT_HEADERS,
+  STUDENT_COMPLIANCE_HEADERS,
+  buildStudentComplianceRows,
   formatReportSessionLabel,
   buildReportExportRowValues,
   safeCell,
@@ -107,5 +109,123 @@ describe('SA-12 Report Exports — Non-Redundant Columns & Formatting', () => {
       'LEO Admin',
       'Time In Only',
     ]);
+  });
+
+  it('exports Student Compliance (X/Y) sorted by Course -> Year Level -> Student Name', () => {
+    expect(STUDENT_COMPLIANCE_HEADERS).toEqual([
+      'Course',
+      'Year Level',
+      'Student Name',
+      'Present',
+      'Absent',
+      'Total Required',
+      'Attendance Ratio (X/Y)',
+      'Compliance Rate',
+    ]);
+
+    const mockRows = [
+      {
+        id: 's2::sess1',
+        name: 'Vargas, Jan Matthew',
+        initials: 'JV',
+        avatarBg: '',
+        avatarColor: '',
+        course: 'BS Information Technology',
+        yearLevel: 2,
+        event: 'Festival',
+        session: 'Day 1 - Morning',
+        day: 'Day 1',
+        period: 'Morning',
+        timeIn: '8:00 AM',
+        timeOut: '11:00 AM',
+        status: 'Completed' as const,
+      },
+      {
+        id: 's1::sess1',
+        name: 'Borres, John Lorenz',
+        initials: 'JB',
+        avatarBg: '',
+        avatarColor: '',
+        course: 'BS Information Technology',
+        yearLevel: 1,
+        event: 'Festival',
+        session: 'Day 1 - Morning',
+        day: 'Day 1',
+        period: 'Morning',
+        timeIn: '8:05 AM',
+        timeOut: '11:00 AM',
+        status: 'Completed' as const,
+      },
+      {
+        id: 's1::sess2',
+        name: 'Borres, John Lorenz',
+        initials: 'JB',
+        avatarBg: '',
+        avatarColor: '',
+        course: 'BS Information Technology',
+        yearLevel: 1,
+        event: 'Festival',
+        session: 'Day 2 - Morning',
+        day: 'Day 2',
+        period: 'Morning',
+        timeIn: '8:10 AM',
+        timeOut: '11:00 AM',
+        status: 'Completed' as const,
+      },
+      {
+        id: 's3::sess1',
+        name: 'Abad, Eammiel Kurt',
+        initials: 'EA',
+        avatarBg: '',
+        avatarColor: '',
+        course: 'BS Computer Science',
+        yearLevel: 3,
+        event: 'Festival',
+        session: 'Day 1 - Morning',
+        day: 'Day 1',
+        period: 'Morning',
+        timeIn: '8:15 AM',
+        timeOut: '11:00 AM',
+        status: 'Completed' as const,
+      },
+    ];
+
+    const compliance = buildStudentComplianceRows(mockRows, {
+      sessionBreakdown: [
+        { id: '1', name: 'Day 1 - Morning', timeIns: 3, timeOuts: 3 },
+        { id: '2', name: 'Day 2 - Morning', timeIns: 1, timeOuts: 1 },
+      ],
+    });
+
+    expect(compliance).toHaveLength(3);
+
+    // 1. BS Computer Science comes before BS Information Technology
+    expect(compliance[0].course).toBe('BS Computer Science');
+    expect(compliance[0].name).toBe('Abad, Eammiel Kurt');
+    expect(compliance[0].yearLabel).toBe('3rd Year');
+    expect(compliance[0].present).toBe(1);
+    expect(compliance[0].absent).toBe(1);
+    expect(compliance[0].totalRequired).toBe(2);
+    expect(compliance[0].ratio).toBe('1 / 2');
+    expect(compliance[0].complianceRate).toBe('50%');
+
+    // 2. In BS IT, 1st Year (Borres) comes before 2nd Year (Vargas)
+    expect(compliance[1].course).toBe('BS Information Technology');
+    expect(compliance[1].name).toBe('Borres, John Lorenz');
+    expect(compliance[1].yearLabel).toBe('1st Year');
+    expect(compliance[1].present).toBe(2);
+    expect(compliance[1].absent).toBe(0);
+    expect(compliance[1].totalRequired).toBe(2);
+    expect(compliance[1].ratio).toBe('2 / 2');
+    expect(compliance[1].complianceRate).toBe('100%');
+
+    // 3. 2nd Year (Vargas)
+    expect(compliance[2].course).toBe('BS Information Technology');
+    expect(compliance[2].name).toBe('Vargas, Jan Matthew');
+    expect(compliance[2].yearLabel).toBe('2nd Year');
+    expect(compliance[2].present).toBe(1);
+    expect(compliance[2].absent).toBe(1);
+    expect(compliance[2].ratio).toBe('1 / 2');
+    expect(compliance[2].complianceRate).toBe('50%');
   });
 });

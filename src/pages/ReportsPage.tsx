@@ -23,6 +23,8 @@ type Snapshot = {
     id: string;
     name: string;
     course: string;
+    yearLevel?: number | null;
+    year_level?: number | null;
     event?: string;
     eventName?: string;
     event_name?: string;
@@ -343,6 +345,7 @@ export function ReportsPage() {
       avatarBg: index % 2 ? 'bg-purple-200' : 'bg-purple-100',
       avatarColor: 'text-purple-800',
       course: row.course,
+      yearLevel: row.yearLevel ?? row.year_level ?? null,
       event: eventName,
       session: row.session,
       day: normalizeDayLabel(row.day),

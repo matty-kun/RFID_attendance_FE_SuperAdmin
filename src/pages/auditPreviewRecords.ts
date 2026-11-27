@@ -34,6 +34,7 @@ export interface ReportStudentAttendanceRow {
   avatarBg: string;
   avatarColor: string;
   course: string;
+  yearLevel?: number | null;
   event: string;
   session: string;
   day: string;
