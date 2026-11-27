@@ -48,19 +48,19 @@ export const CardRegisterActionsDropdown: React.FC<CardRegisterActionsDropdownPr
   return (
     <div className={cn('relative inline-flex', className)} ref={containerRef}>
       {/* 3D Tactile Split Button matching Students page */}
-      <div className="inline-flex h-10 w-[180px] items-stretch rounded-2xl bg-[#7026B7] text-white shadow-[0_5px_0_0_#451475] select-none transition-all">
+      <div className="inline-flex h-10 items-stretch rounded-2xl bg-[#7026B7] text-white shadow-[0_5px_0_0_#451475] select-none transition-all">
         {/* Left primary Register card button */}
         <button
           type="button"
           onClick={handleMainClick}
-          className="flex flex-1 items-center justify-center gap-2 pl-3.5 pr-2 text-xs font-bold rounded-l-2xl hover:bg-[#621FA3] active:translate-y-[3px] active:shadow-none transition-all cursor-pointer"
+          className="flex items-center gap-2 pl-4 pr-3 text-xs font-bold rounded-l-2xl hover:bg-[#621FA3] active:translate-y-[3px] active:shadow-none transition-all cursor-pointer"
         >
           <CreditCard className="h-4 w-4 stroke-[2.5]" />
           <span>Register card</span>
         </button>
 
         {/* Thin vertical separator */}
-        <div className="w-[0.5px] bg-white/20 my-2.5 self-stretch shrink-0" />
+        <div className="w-[0.5px] bg-white/20 my-2.5 self-stretch" />
 
         {/* Right dropdown chevron trigger button */}
         <button
@@ -69,7 +69,7 @@ export const CardRegisterActionsDropdown: React.FC<CardRegisterActionsDropdownPr
           aria-haspopup="menu"
           aria-expanded={isOpen}
           aria-label="Registration options"
-          className="flex items-center justify-center px-3 rounded-r-2xl hover:bg-[#621FA3] active:translate-y-[3px] active:shadow-none transition-all cursor-pointer shrink-0"
+          className="flex items-center justify-center px-3 rounded-r-2xl hover:bg-[#621FA3] active:translate-y-[3px] active:shadow-none transition-all cursor-pointer"
         >
           <ChevronDown
             className={cn(
