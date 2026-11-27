@@ -170,15 +170,13 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
       if (semToSet === '1st Sem') {
         setCalYear(parts[0]);
         setCalMonth(7); // August
-        setStartDate(`${parts[0]}-08-15`);
-        setEndDate(`${parts[0]}-12-20`);
       } else {
         setCalYear(parts[1]);
         setCalMonth(0); // January
-        setStartDate(`${parts[1]}-01-15`);
-        setEndDate(`${parts[1]}-05-30`);
       }
     }
+    setStartDate('');
+    setEndDate('');
     setShowCreateForm(true);
   };
 
@@ -196,8 +194,6 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
         setSchoolYear(nextSy);
         setCalYear(nextStart);
         setCalMonth(7); // August
-        setStartDate(`${nextStart}-08-15`);
-        setEndDate(`${nextStart}-12-20`);
       } else {
         setSchoolYear('');
       }
@@ -206,9 +202,9 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
       setSchoolYear(`${currentYear}-${currentYear + 1}`);
       setCalYear(currentYear);
       setCalMonth(7);
-      setStartDate(`${currentYear}-08-15`);
-      setEndDate(`${currentYear}-12-20`);
     }
+    setStartDate('');
+    setEndDate('');
     setSemester('1st Sem');
     setFormError('');
     setShowCreateForm(true);
@@ -221,22 +217,20 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
       if (newSem === '1st Sem') {
         setCalYear(parts[0]);
         setCalMonth(7);
-        setStartDate(`${parts[0]}-08-15`);
-        setEndDate(`${parts[0]}-12-20`);
       } else {
         setCalYear(parts[1]);
         setCalMonth(0);
-        setStartDate(`${parts[1]}-01-15`);
-        setEndDate(`${parts[1]}-05-30`);
       }
     }
+    setStartDate('');
+    setEndDate('');
   };
 
   const handleCalendarDayClick = (dayStr: string) => {
-    if (!startDate || (startDate && endDate && startDate !== endDate)) {
+    if (!startDate || (startDate && endDate)) {
       setStartDate(dayStr);
-      setEndDate(dayStr);
-    } else if (startDate && (!endDate || startDate === endDate)) {
+      setEndDate('');
+    } else if (startDate && !endDate) {
       if (dayStr < startDate) {
         setEndDate(startDate);
         setStartDate(dayStr);
