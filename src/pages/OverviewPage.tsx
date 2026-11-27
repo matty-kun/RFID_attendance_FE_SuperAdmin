@@ -9,6 +9,7 @@ import type { DashboardMetrics, EventRecord } from '../types';
 import hawiPeeking from '../assets/illustrations/Hawi Peeking.png';
 // TEMP: Scan-to-Confirmation Time Tracking (Testing Only — remove before production)
 import { ScanTimingTestPanel } from '../components/testing/ScanTimingTestPanel';
+import { cn } from '../utils/cn';
 
 type OverviewData = { metrics: DashboardMetrics; roster: StudentRosterStats; event: EventRecord | null };
 const manilaDate = () => new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date());
@@ -43,8 +44,7 @@ export function OverviewPage() {
   const maxSingleMetric = Math.max(1, ...days.map((d) => Math.max(d.timeIns, d.timeOuts)));
   const yAxisMax = Math.max(4, Math.ceil(maxSingleMetric * 1.25));
   const yAxisMid = Math.round(yAxisMax / 2);
-  const locationPeak = Math.max(1, ...locations.map((location) => location.scansToday));
-  const hasCheckpointActivity = locations.some((location) => location.scansToday > 0);
+  const hasCheckpointActivity = locations.length > 0;
   const today = days.at(-1);
   const scansToday = today ? today.timeIns + today.timeOuts : undefined;
   const cardRate = data?.roster.active ? Math.round(data.roster.with_cards / data.roster.active * 100) : 0;
@@ -261,25 +261,44 @@ export function OverviewPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-[#E5E0EB] bg-white p-6 shadow-xs">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-[#24133F]">Checkpoint activity</h2>
-            <Link to="/locations" className="text-xs font-bold text-[#7026B7] hover:underline">Manage</Link>
+        <div className="rounded-3xl border border-[#E5E0EB] bg-white shadow-xs overflow-hidden flex flex-col justify-between">
+          <div className="p-6 pb-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-[#24133F]">Checkpoint activity</h2>
+              <Link to="/locations" className="text-xs font-bold text-[#7026B7] hover:underline">Manage</Link>
+            </div>
+            <p className="text-xs text-[#756883] mt-0.5">Distribution across scan locations</p>
           </div>
-          <p className="text-xs text-[#756883]">Distribution across scan locations</p>
 
-          <div className="mt-5 space-y-3 max-h-[280px] overflow-y-auto pr-1 [scrollbar-width:thin]">
+          <div className="mt-2 space-y-1.5 max-h-[290px] overflow-y-auto px-6 pb-6 [scrollbar-width:thin]">
             {hasCheckpointActivity ? locations.map((loc) => {
-              const pct = Math.round((loc.scansToday / locationPeak) * 100);
+              const hasScans = loc.scansToday > 0;
               return (
-                <div key={loc.id} className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="font-semibold text-[#24133F]">{loc.name}</span>
-                    <span className="font-bold text-[#756883]">{loc.scansToday}</span>
+                <div
+                  key={loc.id}
+                  className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-[#FAF8FC] transition-colors border border-transparent hover:border-[#F1EEF4]"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 pr-3">
+                    <div
+                      className={cn(
+                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors',
+                        hasScans ? 'bg-[#F5F0FA] text-[#7026B7]' : 'bg-slate-100 text-slate-400'
+                      )}
+                    >
+                      <MapPin className="h-3.5 w-3.5" />
+                    </div>
+                    <span className="text-xs font-semibold text-[#24133F] truncate">{loc.name}</span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-[#FAF8FC]">
-                    <div style={{ width: `${Math.max(6, pct)}%` }} className="h-2 rounded-full bg-[#7026B7]" />
-                  </div>
+                  <span
+                    className={cn(
+                      'text-[11px] font-bold px-2.5 py-0.5 rounded-full shrink-0 tabular-nums',
+                      hasScans
+                        ? 'bg-purple-50 text-[#7026B7] border border-purple-200/80'
+                        : 'bg-slate-50 text-slate-400 border border-slate-200/60'
+                    )}
+                  >
+                    {loc.scansToday} {loc.scansToday === 1 ? 'scan' : 'scans'}
+                  </span>
                 </div>
               );
             }) : (
