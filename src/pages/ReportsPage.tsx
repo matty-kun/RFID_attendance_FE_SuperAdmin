@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRightLeft, Calendar, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
+import { ArrowRightLeft, Calendar, CalendarDays, Clock, GraduationCap, MapPin, Search } from 'lucide-react';
 import { toast } from '../context';
 import { Dropdown } from '../components/common/Dropdown';
 import { ExportButton, type ExportFormat } from '../components/common/ExportButton';
@@ -471,6 +471,7 @@ export function ReportsPage() {
                 }
               }
             }}
+            icon={<CalendarDays className="h-4 w-4 text-[#756883]" />}
             options={[
               { value: 'all', label: 'All Events' },
               ...events.map((item) => ({ value: item.id, label: item.name })),
