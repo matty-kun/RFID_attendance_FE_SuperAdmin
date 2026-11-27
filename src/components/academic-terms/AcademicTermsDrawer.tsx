@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   CheckCircle2,
+  Check,
   Plus,
   AlertCircle,
   GraduationCap,
@@ -592,63 +593,65 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                                 </div>
                               </div>
 
-                              <div className="flex items-center flex-wrap gap-2 self-end sm:self-center">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
+                              <div className="flex items-center gap-1.5 self-end sm:self-center">
+                                {/* Edit Action as Icon */}
+                                <button
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     openEditSemester(term);
                                   }}
-                                  className="h-8 gap-1.5 text-xs text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7] hover:bg-[#FAF6FE] cursor-pointer"
+                                  title="Edit semester dates"
+                                  aria-label={`Edit ${term.semester}`}
+                                  className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#E5E0EB] bg-white text-[#756883] hover:text-[#7026B7] hover:border-[#7026B7]/40 hover:bg-[#FAF6FE] transition-all shadow-2xs active:scale-95 cursor-pointer"
                                 >
-                                  <Pencil className="h-3 w-3" />
-                                  Edit
-                                </Button>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
 
-                                {/* Viewing Scope Action / Indicator */}
-                                {!isActive && isViewing && (
+                                {/* Viewing Scope Action as Icon */}
+                                {!isActive && isViewing ? (
                                   <span
                                     title="Currently viewed across students and reports"
-                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7026B7] bg-[#FAF0FE] border border-[#E9D5FF] px-2.5 py-1.5 rounded-xl shadow-2xs"
+                                    aria-label={`Currently viewing ${term.semester}`}
+                                    className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#D6BBFB] bg-[#FAF0FE] text-[#7026B7] shadow-2xs cursor-default"
                                   >
-                                    <Eye className="h-3.5 w-3.5 text-[#7026B7]" />
-                                    Viewing
+                                    <Eye className="h-3.5 w-3.5" />
                                   </span>
-                                )}
-
-                                {!isViewing && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
+                                ) : !isViewing ? (
+                                  <button
+                                    type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setSelectedTerm(term);
                                       toast.success(`Now viewing A.Y. ${term.school_year} · ${term.semester}`);
                                     }}
-                                    title={`Switch viewing scope to ${term.semester}`}
-                                    className="h-8 gap-1.5 text-xs border-[#D6BBFB] text-[#7026B7] hover:bg-[#FAF0FE] hover:border-[#7026B7] active:scale-95 cursor-pointer"
+                                    title={`View ${term.semester} records`}
+                                    aria-label={`View ${term.semester} records`}
+                                    className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#D6BBFB] bg-white text-[#7026B7] hover:bg-[#FAF0FE] hover:border-[#7026B7] transition-all shadow-2xs active:scale-95 cursor-pointer"
                                   >
                                     <Eye className="h-3.5 w-3.5" />
-                                    View
-                                  </Button>
-                                )}
+                                  </button>
+                                ) : null}
 
-                                {/* Active Status / Set as Active Action */}
+                                {/* Active Status / Set as Active Action as Icon */}
                                 {isActive ? (
                                   <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 px-3 py-1.5 rounded-xl">
                                     <CheckCircle2 className="h-3.5 w-3.5" />
                                     Currently Active
                                   </span>
                                 ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => activateTerm(term.id)}
-                                    className="h-8 text-xs hover:border-[#7026B7] hover:text-[#7026B7] hover:bg-[#F0E8FC] active:scale-95 cursor-pointer"
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void activateTerm(term.id);
+                                    }}
+                                    title="Set as active term"
+                                    aria-label={`Set ${term.semester} as active term`}
+                                    className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#E5E0EB] bg-white text-[#756883] hover:text-emerald-700 hover:border-emerald-400 hover:bg-emerald-50 transition-all shadow-2xs active:scale-95 cursor-pointer"
                                   >
-                                    Set as Active
-                                  </Button>
+                                    <Check className="h-4 w-4" />
+                                  </button>
                                 )}
                               </div>
                             </div>
