@@ -112,6 +112,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
   const [semester, setSemester] = useState<SemesterType>('1st Sem');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [activeDateField, setActiveDateField] = useState<'start' | 'end'>('start');
   const [setActiveNow, setSetActiveNow] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
@@ -126,6 +127,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
     setSemester('1st Sem');
     setStartDate('');
     setEndDate('');
+    setActiveDateField('start');
     setSetActiveNow(true);
     setFormError('');
     setShowCreateForm(false);
@@ -143,6 +145,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
     const eDate = term.end_date ? term.end_date.substring(0, 10) : '';
     setStartDate(sDate);
     setEndDate(eDate);
+    setActiveDateField('start');
 
     const [yearPart, monthPart] = sDate.split('-').map(Number);
     if (!isNaN(yearPart) && !isNaN(monthPart) && monthPart >= 1 && monthPart <= 12) {
@@ -177,6 +180,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
     }
     setStartDate('');
     setEndDate('');
+    setActiveDateField('start');
     setShowCreateForm(true);
   };
 
@@ -205,6 +209,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
     }
     setStartDate('');
     setEndDate('');
+    setActiveDateField('start');
     setSemester('1st Sem');
     setFormError('');
     setShowCreateForm(true);
@@ -224,18 +229,24 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
     }
     setStartDate('');
     setEndDate('');
+    setActiveDateField('start');
   };
 
   const handleCalendarDayClick = (dayStr: string) => {
-    if (!startDate || (startDate && endDate)) {
+    if (activeDateField === 'start') {
       setStartDate(dayStr);
-      setEndDate('');
-    } else if (startDate && !endDate) {
-      if (dayStr < startDate) {
-        setEndDate(startDate);
-        setStartDate(dayStr);
-      } else {
+      if (endDate && dayStr > endDate) {
         setEndDate(dayStr);
+        setActiveDateField('end');
+      } else if (!endDate) {
+        setActiveDateField('end');
+      }
+    } else {
+      setEndDate(dayStr);
+      if (startDate && dayStr < startDate) {
+        setStartDate(dayStr);
+      } else if (!startDate) {
+        setStartDate(dayStr);
       }
     }
   };
@@ -250,11 +261,13 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
       setEndDate(`${baseYear}-12-20`);
       setCalYear(baseYear);
       setCalMonth(7); // August
+      setActiveDateField('start');
     } else {
       setStartDate(`${endYear}-01-15`);
       setEndDate(`${endYear}-05-30`);
       setCalYear(endYear);
       setCalMonth(0); // January
+      setActiveDateField('start');
     }
   };
 
@@ -335,15 +348,21 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
   const firstDay = new Date(calYear, calMonth, 1).getDay();
 
   const effectiveStart = useMemo(() => {
-    if (startDate && hoverDate && !endDate && hoverDate < startDate) return hoverDate;
+    if (activeDateField === 'start' && hoverDate && endDate && hoverDate <= endDate) {
+      return hoverDate;
+    }
     return startDate;
-  }, [startDate, endDate, hoverDate]);
+  }, [startDate, endDate, hoverDate, activeDateField]);
 
   const effectiveEnd = useMemo(() => {
-    if (endDate) return endDate;
-    if (startDate && hoverDate && hoverDate >= startDate) return hoverDate;
-    return startDate;
-  }, [startDate, endDate, hoverDate]);
+    if (activeDateField === 'end' && hoverDate && startDate && hoverDate >= startDate) {
+      return hoverDate;
+    }
+    if (!endDate && startDate && hoverDate && hoverDate >= startDate) {
+      return hoverDate;
+    }
+    return endDate;
+  }, [startDate, endDate, hoverDate, activeDateField]);
 
   const modalTitle =
     createMode === 'year'
@@ -720,10 +739,11 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
               </div>
             </div>
 
-            {/* Start & End Date Summary Cards (Clickable to jump months) */}
+            {/* Start & End Date Summary Cards (Clickable to switch active field and jump months) */}
             <div className="grid grid-cols-2 gap-3">
               <div
                 onClick={() => {
+                  setActiveDateField('start');
                   if (startDate) {
                     const [y, m] = startDate.split('-').map(Number);
                     if (!isNaN(y) && !isNaN(m)) {
@@ -732,22 +752,45 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                     }
                   }
                 }}
-                title={startDate ? 'Click to jump to Start Month' : undefined}
-                className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 shadow-2xs cursor-pointer hover:border-[#7026B7]/50 hover:bg-[#FAF8FC] transition-colors"
+                title="Click to select or edit Start Date"
+                className={cn(
+                  'rounded-xl border px-3 py-2 shadow-2xs cursor-pointer transition-all select-none',
+                  activeDateField === 'start'
+                    ? 'border-[#7026B7] ring-2 ring-[#7026B7]/25 bg-[#FAF6FE]'
+                    : 'border-[#E5E0EB] bg-white hover:border-[#7026B7]/40 hover:bg-[#FAF8FC]'
+                )}
               >
-                <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">
-                  Start Date
-                </span>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider">
+                    Start Date
+                  </span>
+                  {activeDateField === 'start' ? (
+                    <span className="text-[9px] font-extrabold text-[#7026B7] bg-[#E9D5FF]/60 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                      Selecting
+                    </span>
+                  ) : startDate ? (
+                    <span className="text-[9px] font-semibold text-[#756883]">
+                      Click to edit
+                    </span>
+                  ) : null}
+                </div>
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-3.5 w-3.5 text-[#7026B7] shrink-0" />
-                  <span className="text-xs font-bold text-[#24133F]">
-                    {startDate ? formatDateDisplay(startDate) : 'Click day on calendar'}
+                  <Calendar className={cn(
+                    'h-3.5 w-3.5 shrink-0',
+                    activeDateField === 'start' ? 'text-[#7026B7]' : 'text-[#756883]'
+                  )} />
+                  <span className={cn(
+                    'text-xs font-bold truncate',
+                    startDate ? 'text-[#24133F]' : 'text-[#A094AC] font-medium'
+                  )}>
+                    {startDate ? formatDateDisplay(startDate) : 'Select date'}
                   </span>
                 </div>
               </div>
 
               <div
                 onClick={() => {
+                  setActiveDateField('end');
                   if (endDate) {
                     const [y, m] = endDate.split('-').map(Number);
                     if (!isNaN(y) && !isNaN(m)) {
@@ -756,16 +799,38 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                     }
                   }
                 }}
-                title={endDate ? 'Click to jump to End Month' : undefined}
-                className="rounded-xl border border-[#E5E0EB] bg-white px-3 py-2 shadow-2xs cursor-pointer hover:border-[#7026B7]/50 hover:bg-[#FAF8FC] transition-colors"
+                title="Click to select or edit End Date"
+                className={cn(
+                  'rounded-xl border px-3 py-2 shadow-2xs cursor-pointer transition-all select-none',
+                  activeDateField === 'end'
+                    ? 'border-[#7026B7] ring-2 ring-[#7026B7]/25 bg-[#FAF6FE]'
+                    : 'border-[#E5E0EB] bg-white hover:border-[#7026B7]/40 hover:bg-[#FAF8FC]'
+                )}
               >
-                <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider mb-0.5">
-                  End Date
-                </span>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="block text-[10px] font-bold text-[#756883] uppercase tracking-wider">
+                    End Date
+                  </span>
+                  {activeDateField === 'end' ? (
+                    <span className="text-[9px] font-extrabold text-[#7026B7] bg-[#E9D5FF]/60 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                      Selecting
+                    </span>
+                  ) : endDate ? (
+                    <span className="text-[9px] font-semibold text-[#756883]">
+                      Click to edit
+                    </span>
+                  ) : null}
+                </div>
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-3.5 w-3.5 text-[#7026B7] shrink-0" />
-                  <span className="text-xs font-bold text-[#24133F]">
-                    {endDate ? formatDateDisplay(endDate) : 'Click 2nd day on calendar'}
+                  <Calendar className={cn(
+                    'h-3.5 w-3.5 shrink-0',
+                    activeDateField === 'end' ? 'text-[#7026B7]' : 'text-[#756883]'
+                  )} />
+                  <span className={cn(
+                    'text-xs font-bold truncate',
+                    endDate ? 'text-[#24133F]' : 'text-[#A094AC] font-medium'
+                  )}>
+                    {endDate ? formatDateDisplay(endDate) : 'Select date'}
                   </span>
                 </div>
               </div>
@@ -895,12 +960,14 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                         type="button"
                         onClick={() => handleCalendarDayClick(dayStr)}
                         className={cn(
-                          'relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors cursor-pointer',
+                          'relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-all cursor-pointer',
                           isStart || isEnd
                             ? 'bg-[#7026B7] font-bold text-white shadow-xs'
                             : inRange
                               ? 'text-[#7026B7] font-bold hover:bg-[#D8B4FE]/40'
-                              : 'text-[#24133F] hover:bg-slate-100'
+                              : 'text-[#24133F] hover:bg-slate-100',
+                          ((isStart && activeDateField === 'start') || (isEnd && activeDateField === 'end')) &&
+                            'ring-2 ring-white ring-offset-1 ring-offset-[#7026B7]'
                         )}
                       >
                         {day}
@@ -927,6 +994,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                       if (!isNaN(y) && !isNaN(m)) {
                         setCalYear(y);
                         setCalMonth(m - 1);
+                        setActiveDateField('end');
                       }
                     }}
                     className="font-bold underline hover:text-[#5E1E9D] cursor-pointer ml-2 shrink-0"
@@ -948,6 +1016,7 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
                       if (!isNaN(y) && !isNaN(m)) {
                         setCalYear(y);
                         setCalMonth(m - 1);
+                        setActiveDateField('start');
                       }
                     }}
                     className="font-bold underline hover:text-[#5E1E9D] cursor-pointer ml-2 shrink-0"
