@@ -45,7 +45,14 @@ const formatDateDisplay = (dateStr: string) => {
 };
 
 export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen, onClose }) => {
-  const { terms, activeTerm, activateTerm, createTerm, updateTerm } = useAcademicTerm();
+  const { terms, activeTerm, activateTerm, createTerm, updateTerm, refreshTerms, isLoading } = useAcademicTerm();
+
+  // Always re-fetch terms from backend whenever drawer is opened
+  useEffect(() => {
+    if (isOpen) {
+      void refreshTerms();
+    }
+  }, [isOpen, refreshTerms]);
 
   // Group terms by school year
   const yearGroups: YearGroup[] = useMemo(() => {
@@ -394,7 +401,12 @@ export const AcademicTermsDrawer: React.FC<AcademicTermsDrawerProps> = ({ isOpen
           </div>
 
           {/* Academic Years Accordion List (Patterned after Events & Attendance) */}
-        {yearGroups.length === 0 ? (
+        {isLoading && yearGroups.length === 0 ? (
+          <div className="rounded-2xl border border-[#E5E0EB] bg-white p-12 text-center space-y-3">
+            <div className="h-8 w-8 mx-auto animate-spin rounded-full border-[3px] border-[#E9DCFA] border-t-[#7026B7]" />
+            <p className="text-xs text-[#756883]">Loading academic years…</p>
+          </div>
+        ) : yearGroups.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#E5E0EB] bg-[#FAF8FC] p-8 text-center space-y-3">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-[#7026B7]">
               <GraduationCap className="h-6 w-6" />

@@ -68,6 +68,18 @@ export const AcademicTermProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   useEffect(() => {
     void refreshTerms();
+
+    const handleRefresh = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshTerms();
+      }
+    };
+    window.addEventListener('visibilitychange', handleRefresh);
+    window.addEventListener('presnt:refresh-academic-terms', handleRefresh);
+    return () => {
+      window.removeEventListener('visibilitychange', handleRefresh);
+      window.removeEventListener('presnt:refresh-academic-terms', handleRefresh);
+    };
   }, [refreshTerms]);
 
   const setSelectedTerm = useCallback((term: AcademicTerm | null) => {
