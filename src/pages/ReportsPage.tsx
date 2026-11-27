@@ -291,6 +291,47 @@ export function ReportsPage() {
   const sessions = knownSessions;
   const courses = knownCourses;
   const locations = knownLocations;
+  const matchedEvent = useMemo(() => events.find((e) => e.id === event), [events, event]);
+
+  const eventDays = useMemo(() => {
+    if (!matchedEvent?.start_date || !matchedEvent?.end_date) return [];
+    const startStr = matchedEvent.start_date.substring(0, 10);
+    const endStr = matchedEvent.end_date.substring(0, 10);
+    const start = new Date(`${startStr}T00:00:00+08:00`);
+    const end = new Date(`${endStr}T00:00:00+08:00`);
+    const days: { value: string; label: string; date: string }[] = [];
+    const curr = new Date(start);
+    let dayNum = 1;
+    while (curr <= end && dayNum <= 30) {
+      const ymd = curr.toISOString().substring(0, 10);
+      const shortDate = new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' }).format(curr);
+      days.push({
+        value: ymd,
+        label: `Day ${dayNum} (${shortDate})`,
+        date: ymd,
+      });
+      curr.setDate(curr.getDate() + 1);
+      dayNum++;
+    }
+    return days;
+  }, [matchedEvent]);
+
+  const selectedDayValue = useMemo(() => {
+    if (!matchedEvent) return 'all';
+    if (startDate && startDate === endDate) {
+      const found = eventDays.find((d) => d.value === startDate);
+      if (found) return found.value;
+    }
+    return 'all';
+  }, [matchedEvent, startDate, endDate, eventDays]);
+
+  const dayOptions = useMemo(() => {
+    return [
+      { value: 'all', label: eventDays.length > 1 ? `All Days (${eventDays.length} Days)` : 'All Days' },
+      ...eventDays.map((d) => ({ value: d.value, label: d.label })),
+    ];
+  }, [eventDays]);
+
   const reportSummary = snapshot?.summary ?? emptySummary;
   const [hoveredTrendIdx, setHoveredTrendIdx] = useState<number | null>(null);
   const trendRows = snapshot?.trend ?? [];
@@ -380,120 +421,157 @@ export function ReportsPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-2 w-full">
-        {/* Semester Filter Dropdown */}
-        <Dropdown
-          className="shrink-0"
-          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
-          value={termId}
-          onChange={(val) => {
-            if (val === 'all') {
-              setTermId('all');
-              setSelectedTerm(null as any);
-              setStartDate('');
-              setEndDate('');
-              return;
-            }
-            const matched = terms.find((item) => item.id === val || item.semester === val);
-            if (matched) {
-              setTermId(matched.id);
-              setSelectedTerm(matched);
-              if (matched.start_date && matched.end_date) {
-                setStartDate(matched.start_date.substring(0, 10));
-                setEndDate(matched.end_date.substring(0, 10));
+      <div className="flex items-start justify-between gap-3 w-full">
+        {/* Left: Filters that wrap together without dropping Export down alone */}
+        <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
+          {/* Semester Filter Dropdown */}
+          <Dropdown
+            className="shrink-0"
+            buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
+            value={termId}
+            onChange={(val) => {
+              if (val === 'all') {
+                setTermId('all');
+                setSelectedTerm(null as any);
+                setStartDate('');
+                setEndDate('');
+                return;
               }
-            } else {
-              setTermId(val);
-            }
-          }}
-          icon={<Calendar className="h-4 w-4 text-[#756883]" />}
-          options={termOptions}
-        />
-
-        <CalendarDatePicker
-          className="shrink-0"
-          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
-          startDate={startDate}
-          endDate={endDate}
-          onChange={(range) => {
-            setStartDate(range.startDate);
-            setEndDate(range.endDate);
-          }}
-        />
-
-        <Dropdown
-          className="shrink-0"
-          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
-          value={event}
-          onChange={(value) => {
-            setEvent(value);
-            setSession('all');
-            if (value !== 'all') {
-              const matchedEvent = events.find((e) => e.id === value);
-              if (matchedEvent?.start_date && matchedEvent?.end_date) {
-                const evStart = matchedEvent.start_date.substring(0, 10);
-                const evEnd = matchedEvent.end_date.substring(0, 10);
-                if (!startDate || evStart < startDate) setStartDate(evStart);
-                if (!endDate || evEnd > endDate) setEndDate(evEnd);
+              const matched = terms.find((item) => item.id === val || item.semester === val);
+              if (matched) {
+                setTermId(matched.id);
+                setSelectedTerm(matched);
+                if (matched.start_date && matched.end_date) {
+                  setStartDate(matched.start_date.substring(0, 10));
+                  setEndDate(matched.end_date.substring(0, 10));
+                }
+              } else {
+                setTermId(val);
               }
-            }
-          }}
-          options={[
-            { value: 'all', label: 'All Events' },
-            ...events.map((item) => ({ value: item.id, label: item.name })),
-          ]}
-        />
+            }}
+            icon={<Calendar className="h-4 w-4 text-[#756883]" />}
+            options={termOptions}
+          />
 
-        <Dropdown
-          className="shrink-0"
-          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
-          value={session}
-          onChange={setSession}
-          icon={<Clock className="h-4 w-4 text-[#756883]" />}
-          options={[
-            { value: 'all', label: 'All Sessions' },
-            ...sessions.map((s) => ({ value: s, label: s })),
-          ]}
-        />
+          {/* Event Filter Dropdown (compact with max-w so long event titles truncate cleanly) */}
+          <Dropdown
+            className="shrink-0"
+            buttonClassName="h-10 px-2.5 text-xs max-w-[190px] sm:max-w-[220px]"
+            value={event}
+            onChange={(value) => {
+              setEvent(value);
+              setSession('all');
+              if (value !== 'all') {
+                const matched = events.find((e) => e.id === value);
+                if (matched?.start_date && matched?.end_date) {
+                  setStartDate(matched.start_date.substring(0, 10));
+                  setEndDate(matched.end_date.substring(0, 10));
+                }
+              } else {
+                if (selectedTerm?.start_date && selectedTerm?.end_date) {
+                  setStartDate(selectedTerm.start_date.substring(0, 10));
+                  setEndDate(selectedTerm.end_date.substring(0, 10));
+                } else {
+                  setStartDate('');
+                  setEndDate('');
+                }
+              }
+            }}
+            options={[
+              { value: 'all', label: 'All Events' },
+              ...events.map((item) => ({ value: item.id, label: item.name })),
+            ]}
+          />
 
-        <Dropdown
-          className="shrink-0"
-          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
-          value={course}
-          onChange={setCourse}
-          icon={<GraduationCap className="h-4 w-4 text-[#756883]" />}
-          options={[
-            { value: 'all', label: 'All Courses' },
-            ...courses.map((c) => ({ value: c, label: c })),
-          ]}
-        />
+          {/* Day / Date Filter: If Event is selected, show Day 1, Day 2, etc. Otherwise show CalendarDatePicker */}
+          {matchedEvent && eventDays.length > 0 ? (
+            <Dropdown
+              className="shrink-0"
+              buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
+              value={selectedDayValue}
+              onChange={(val) => {
+                if (val === 'all') {
+                  if (matchedEvent.start_date && matchedEvent.end_date) {
+                    setStartDate(matchedEvent.start_date.substring(0, 10));
+                    setEndDate(matchedEvent.end_date.substring(0, 10));
+                  }
+                } else {
+                  setStartDate(val);
+                  setEndDate(val);
+                }
+              }}
+              icon={<Calendar className="h-4 w-4 text-[#756883]" />}
+              options={dayOptions}
+            />
+          ) : (
+            <CalendarDatePicker
+              className="shrink-0"
+              buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
+              startDate={startDate}
+              endDate={endDate}
+              onChange={(range) => {
+                setStartDate(range.startDate);
+                setEndDate(range.endDate);
+              }}
+            />
+          )}
 
-        <Dropdown
-          className="shrink-0"
-          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
-          value={type}
-          onChange={setType}
-          icon={<ArrowRightLeft className="h-4 w-4 text-[#756883]" />}
-          options={[
-            { value: 'all', label: 'All Types' },
-            { value: 'time_in', label: 'Time In' },
-            { value: 'time_out', label: 'Time Out' },
-          ]}
-        />
+          {/* Session Filter */}
+          <Dropdown
+            className="shrink-0"
+            buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
+            value={session}
+            onChange={setSession}
+            icon={<Clock className="h-4 w-4 text-[#756883]" />}
+            options={[
+              { value: 'all', label: 'All Sessions' },
+              ...sessions.map((s) => ({ value: s, label: s })),
+            ]}
+          />
 
-        <Dropdown
-          className="shrink-0"
-          buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
-          value={location}
-          onChange={setLocation}
-          icon={<MapPin className="h-4 w-4 text-[#756883]" />}
-          options={[
-            { value: 'all', label: 'All Locations' },
-            ...locations.map((loc) => ({ value: loc, label: loc })),
-          ]}
-        />
+          {/* Course Filter */}
+          <Dropdown
+            className="shrink-0"
+            buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
+            value={course}
+            onChange={setCourse}
+            icon={<GraduationCap className="h-4 w-4 text-[#756883]" />}
+            options={[
+              { value: 'all', label: 'All Courses' },
+              ...courses.map((c) => ({ value: c, label: c })),
+            ]}
+          />
 
-        <div className="ml-auto flex items-center gap-2 shrink-0">
+          {/* Type Filter */}
+          <Dropdown
+            className="shrink-0"
+            buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
+            value={type}
+            onChange={setType}
+            icon={<ArrowRightLeft className="h-4 w-4 text-[#756883]" />}
+            options={[
+              { value: 'all', label: 'All Types' },
+              { value: 'time_in', label: 'Time In' },
+              { value: 'time_out', label: 'Time Out' },
+            ]}
+          />
+
+          {/* Location Filter */}
+          <Dropdown
+            className="shrink-0"
+            buttonClassName="h-10 px-2.5 text-xs whitespace-nowrap"
+            value={location}
+            onChange={setLocation}
+            icon={<MapPin className="h-4 w-4 text-[#756883]" />}
+            options={[
+              { value: 'all', label: 'All Locations' },
+              ...locations.map((loc) => ({ value: loc, label: loc })),
+            ]}
+          />
+        </div>
+
+        {/* Right: Actions (permanently anchored top-right, NEVER drops below) */}
+        <div className="flex items-center gap-2 shrink-0">
           {selected.length > 0 && (
             <button
               type="button"
