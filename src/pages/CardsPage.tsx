@@ -542,7 +542,7 @@ export function CardsPage() {
                 type="button"
                 disabled={bulkBusy}
                 onClick={() => setPendingBulkAction('return')}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-40 cursor-pointer"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-100 focus-visible:outline-2 focus-visible:outline-emerald-600 disabled:opacity-40 cursor-pointer"
               >
                 <RotateCcw className="h-3.5 w-3.5 shrink-0" /> Return cards
               </button>
