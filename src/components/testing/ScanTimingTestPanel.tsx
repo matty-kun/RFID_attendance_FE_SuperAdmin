@@ -247,7 +247,7 @@ export function ScanTimingTestPanel() {
           <button
             type="button"
             onClick={() => setIsResetModalOpen(true)}
-            disabled={loading || !metrics?.overall.total_tracked_scans}
+            disabled={loading || !metrics?.overall?.total_tracked_scans}
             className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 transition hover:bg-rose-100 disabled:opacity-40"
             title="Delete test scan records to start with fresh data"
           >
