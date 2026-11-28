@@ -61,7 +61,7 @@ export const AcademicTermHeaderSelector: React.FC<AcademicTermHeaderSelectorProp
         aria-haspopup="true"
         title="Click to switch semester view or manage terms"
         className={cn(
-          'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border select-none cursor-pointer transition-all focus:outline-hidden',
+          'group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border select-none cursor-pointer transition-all focus:outline-hidden',
           isOpen
             ? 'border-[#7026B7]/30 bg-[#FAF7FD] shadow-xs'
             : 'border-transparent hover:border-[#E5E0EB] hover:bg-slate-50/80 active:scale-95'
@@ -73,8 +73,10 @@ export const AcademicTermHeaderSelector: React.FC<AcademicTermHeaderSelectorProp
 
         <ChevronDown
           className={cn(
-            'h-3.5 w-3.5 text-[#756883] transition-transform duration-200 ease-out',
-            isOpen && 'rotate-180 text-[#7026B7]'
+            'h-3.5 w-3.5 text-[#756883] transition-all duration-200 ease-out',
+            isOpen
+              ? 'opacity-100 rotate-180 text-[#7026B7]'
+              : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100'
           )}
         />
       </button>
