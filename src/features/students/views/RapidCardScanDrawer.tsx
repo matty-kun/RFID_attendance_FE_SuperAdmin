@@ -352,9 +352,9 @@ export const RapidCardScanDrawer: React.FC<RapidCardScanDrawerProps> = ({
     const val = e.target.value;
     setInputValue(val);
 
-    // Auto-detect fast hardware scanner typing (e.g. 10 digits decimal or standard hex)
+    // Auto-detect fast hardware scanner typing (4-byte, 7-byte hex or decimal UIDs)
     const clean = val.trim().toUpperCase();
-    if (isValidRfidUid(clean) && (clean.length === 10 || clean.length === 8)) {
+    if (isValidRfidUid(clean) && clean.length >= 8 && clean.length <= 16) {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = setTimeout(() => {
         void processScan(clean);
