@@ -276,4 +276,54 @@ describe('SA-12 Report Exports — Non-Redundant Columns & Formatting', () => {
       expect(sheetName.length).toBeLessThanOrEqual(31);
     }
   });
+
+  it('includes zero-attendance students from master roster in compliance rows', () => {
+    const mockRows = [
+      {
+        id: 's1::sess1',
+        name: 'Abad, Eammiel Kurt Oblianda',
+        initials: 'AE',
+        avatarBg: '',
+        avatarColor: '',
+        course: 'BS Information Technology',
+        yearLevel: 3,
+        event: 'French',
+        session: 'Day 4 - Morning Session',
+        day: 'Day 4',
+        period: 'Morning',
+        timeIn: '7:27 AM',
+        timeOut: '-',
+        adminOfficer: 'LEO Admin',
+        status: 'Time In Only' as const,
+      },
+    ];
+
+    const allStudents = [
+      { id: 's1', name: 'Abad, Eammiel Kurt Oblianda', course: 'BS Information Technology', year_level: 3 },
+      { id: 's2', name: 'Absent Student', course: 'BS Information Technology', year_level: 1 },
+    ];
+
+    const compliance = buildStudentComplianceRows(mockRows, {
+      allStudents,
+      sessionBreakdown: [
+        { id: '1', name: 'Day 1', timeIns: 1, timeOuts: 1 },
+        { id: '2', name: 'Day 2', timeIns: 1, timeOuts: 1 },
+      ],
+    });
+
+    expect(compliance).toHaveLength(2);
+    const absent = compliance.find((c) => c.name === 'Absent Student');
+    expect(absent).toBeDefined();
+    expect(absent?.present).toBe(0);
+    expect(absent?.absent).toBe(2);
+    expect(absent?.ratio).toBe('0 / 2');
+    expect(absent?.complianceRate).toBe('0%');
+
+    const attended = compliance.find((c) => c.name === 'Abad, Eammiel Kurt Oblianda');
+    expect(attended).toBeDefined();
+    expect(attended?.present).toBe(1);
+    expect(attended?.absent).toBe(1);
+    expect(attended?.ratio).toBe('1 / 2');
+    expect(attended?.complianceRate).toBe('50%');
+  });
 });
