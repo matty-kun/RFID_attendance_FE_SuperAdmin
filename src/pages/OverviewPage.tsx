@@ -5,6 +5,7 @@ import {
   Calendar,
   Check,
   ChevronDown,
+  ChevronUp,
   CreditCard,
   History,
   MapPin,
