@@ -103,8 +103,7 @@ describe('OverviewPage - Hybrid Context-Aware Overview', () => {
     );
 
     // Live mode indicators
-    expect(await screen.findByText(/Live Operations · Today/i)).toBeTruthy();
-    expect(screen.getByText(/Attendance today/i)).toBeTruthy();
+    expect(await screen.findByText(/Attendance today/i)).toBeTruthy();
     expect(screen.getByText('Testing Event Live')).toBeTruthy();
     expect(screen.getByText('Scans today')).toBeTruthy();
   });
@@ -131,8 +130,8 @@ describe('OverviewPage - Hybrid Context-Aware Overview', () => {
     );
 
     // Historical mode indicators
-    expect(await screen.findByText(/Semester Archive · 2026-2027 1st Sem/i)).toBeTruthy();
-    expect(screen.getByText(/1st Sem Overview/i)).toBeTruthy();
+    expect(await screen.findByText(/1st Sem Overview/i)).toBeTruthy();
+    expect(screen.getByText(/Viewing Historical Term Archive \(2026-2027 · 1st Sem\)/i)).toBeTruthy();
     expect(screen.getByText('Term Scans')).toBeTruthy();
     expect(screen.getByText('Term Events')).toBeTruthy();
 
