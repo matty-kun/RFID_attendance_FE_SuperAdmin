@@ -154,8 +154,8 @@ export function Header() {
   }, []);
 
   return (
-    <header className="relative flex min-h-[84px] flex-wrap items-center justify-between gap-2 pl-7 pr-11 py-3 md:flex-nowrap">
-      <div className="z-10 flex items-center gap-2.5 sm:gap-3">
+    <header className="relative z-30 flex min-h-[84px] flex-wrap items-center justify-between gap-2 pl-7 pr-11 py-3 md:flex-nowrap">
+      <div className="relative z-10 flex items-center gap-2.5 sm:gap-3">
         <NavLink
           to="/overview"
           aria-label="Presnt Overview"

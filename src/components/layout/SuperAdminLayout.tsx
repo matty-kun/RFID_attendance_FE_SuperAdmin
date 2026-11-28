@@ -28,7 +28,7 @@ export const SuperAdminLayout: React.FC = () => {
     <div className="relative mx-auto min-h-screen max-w-[1440px] bg-slate-50 font-sans md:my-4 md:min-h-[calc(100vh-32px)] md:w-[calc(100%-36px)]">
       <Header />
       <UtilityRail />
-      <main className="w-full px-4 pb-9 pt-8 md:pl-[92px] md:pr-10 md:pt-4">
+      <main className="relative z-0 w-full px-4 pb-9 pt-8 md:pl-[92px] md:pr-10 md:pt-4">
         <Outlet />
       </main>
 

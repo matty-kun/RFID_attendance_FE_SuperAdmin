@@ -52,7 +52,7 @@ export const AcademicTermHeaderSelector: React.FC<AcademicTermHeaderSelectorProp
   };
 
   return (
-    <div ref={containerRef} className="relative inline-block text-left">
+    <div ref={containerRef} className={cn('relative inline-block text-left', isOpen && 'z-50')}>
       {/* Trigger Button */}
       <button
         type="button"
