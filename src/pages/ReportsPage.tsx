@@ -429,7 +429,8 @@ export function ReportsPage() {
         checkpointList,
         courseList,
       });
-    } catch {
+    } catch (err) {
+      console.error('Report export failed:', err);
       toast.error('Could not export the report. Try again.');
     }
   };

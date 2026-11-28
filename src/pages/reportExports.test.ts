@@ -228,4 +228,52 @@ describe('SA-12 Report Exports — Non-Redundant Columns & Formatting', () => {
     expect(compliance[2].ratio).toBe('1 / 2');
     expect(compliance[2].complianceRate).toBe('50%');
   });
+
+  it('successfully builds Excel workbook with valid sheet names', async () => {
+    const { buildExcelWorkbook } = await import('./reportExports');
+    const mockRows = [
+      {
+        id: 's1::sess1',
+        name: 'Abad, Eammiel Kurt Oblianda',
+        initials: 'AE',
+        avatarBg: '',
+        avatarColor: '',
+        course: 'BS Information Technology',
+        yearLevel: 3,
+        event: 'French',
+        session: 'Day 4 - Morning Session',
+        day: 'Day 4',
+        period: 'Morning',
+        timeIn: '7:27 AM',
+        timeOut: '-',
+        adminOfficer: 'LEO Admin',
+        status: 'Time In Only' as const,
+      },
+    ];
+
+    const book = buildExcelWorkbook(mockRows, {
+      summary: { studentsCheckedIn: 1, timeIns: 1, timeOuts: 0, totalScans: 1 },
+      filters: {
+        academicTerm: '2026-2027 · 1st Sem',
+        event: 'French',
+        day: 'All Days',
+        session: 'All Sessions',
+        course: 'All Courses',
+        type: 'All Types',
+        location: 'All Locations',
+        dateRange: '2026-11-01 to 2026-11-27',
+        generatedAt: 'Nov 27, 2026',
+      },
+    });
+
+    expect(book.SheetNames).toEqual([
+      'Attendance Summary',
+      'Student Compliance',
+      'Attendance Records',
+    ]);
+    for (const sheetName of book.SheetNames) {
+      expect(sheetName).not.toMatch(/[:\\/?*\[\]]/);
+      expect(sheetName.length).toBeLessThanOrEqual(31);
+    }
+  });
 });
