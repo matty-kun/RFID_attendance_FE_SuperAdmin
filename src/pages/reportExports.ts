@@ -198,6 +198,118 @@ function resolveSummary(rows: ReportStudentAttendanceRow[], extra?: ReportExport
   };
 }
 
+export function buildExcelWorkbook(
+  rows: ReportStudentAttendanceRow[],
+  extra?: ReportExportExtra
+): XLSX.WorkBook {
+  const book = XLSX.utils.book_new();
+  const headers = [...REPORT_EXPORT_HEADERS];
+  const summary = resolveSummary(rows, extra);
+  const filters = extra?.filters;
+  const sessionBreakdown = extra?.sessionBreakdown ?? [];
+  const checkpointList = extra?.checkpointList ?? [];
+  const courseList = extra?.courseList ?? [];
+  const complianceRows = buildStudentComplianceRows(rows, extra);
+
+  // --- Sheet 1: Attendance Summary ---
+  const summaryAoa: (string | number)[][] = [
+    ['PRESNT Attendance Summary'],
+    ['Generated:', filters?.generatedAt || new Date().toLocaleString(), '', 'Academic Term:', filters?.academicTerm || 'All'],
+    ['Event:', filters?.event || 'All Events', '', 'Day / Session:', `${filters?.day || 'All'} · ${filters?.session || 'All'}`],
+    ['Course:', filters?.course || 'All Courses', '', 'Location / Type:', `${filters?.location || 'All'} · ${filters?.type || 'All'}`],
+    [],
+    ['KEY ATTENDANCE METRICS'],
+    ['Metric', 'Value'],
+    ['Unique Students Checked In', summary.studentsCheckedIn],
+    ['Total Time-Ins (Entry Scans)', summary.timeIns],
+    ['Total Time-Outs (Exit Scans)', summary.timeOuts],
+    ['Total Attendance Scans', summary.totalScans],
+    ['Total Records in Export', rows.length],
+    [],
+  ];
+
+  if (sessionBreakdown.length > 0) {
+    summaryAoa.push(['SESSION BREAKDOWN']);
+    summaryAoa.push(['Session / Event Period', 'Time In', 'Time Out', 'Total Scans']);
+    for (const item of sessionBreakdown) {
+      summaryAoa.push([item.name, item.timeIns, item.timeOuts, item.timeIns + item.timeOuts]);
+    }
+    summaryAoa.push([]);
+  }
+
+  if (checkpointList.length > 0) {
+    summaryAoa.push(['CHECKPOINT DISTRIBUTION']);
+    summaryAoa.push(['Checkpoint Location', 'In Scans', 'Out Scans', 'Total Scans']);
+    for (const item of checkpointList) {
+      summaryAoa.push([item.name, item.inScans, item.outScans, item.total]);
+    }
+    summaryAoa.push([]);
+  }
+
+  if (courseList.length > 0) {
+    summaryAoa.push(['COURSE BREAKDOWN']);
+    summaryAoa.push(['Course', 'Active Roster', 'Time In', 'Time Out', 'Total Scans']);
+    for (const item of courseList) {
+      summaryAoa.push([item.course, item.expected, item.timeIn, item.timeOut, item.timeIn + item.timeOut]);
+    }
+    summaryAoa.push([]);
+  }
+
+  const summarySheet = XLSX.utils.aoa_to_sheet(
+    summaryAoa.map((row) => row.map(safeCell))
+  );
+  summarySheet['!cols'] = [
+    { wch: 38 },
+    { wch: 22 },
+    { wch: 14 },
+    { wch: 28 },
+    { wch: 32 },
+  ];
+  XLSX.utils.book_append_sheet(book, summarySheet, 'Attendance Summary');
+
+  // --- Sheet 2: Student Compliance ---
+  const complianceHeaders = [...STUDENT_COMPLIANCE_HEADERS];
+  const complianceMappedRows = complianceRows.map((r) =>
+    [
+      r.course,
+      r.yearLabel,
+      r.name,
+      r.present,
+      r.absent,
+      r.totalRequired,
+      r.ratio,
+      r.complianceRate,
+    ].map(safeCell)
+  );
+  const complianceSheet = XLSX.utils.aoa_to_sheet([complianceHeaders, ...complianceMappedRows]);
+  complianceSheet['!cols'] = [
+    { wch: 32 }, // Course
+    { wch: 14 }, // Year Level
+    { wch: 36 }, // Student Name
+    { wch: 12 }, // Present
+    { wch: 12 }, // Absent
+    { wch: 16 }, // Total Required
+    { wch: 24 }, // Attendance Ratio (X/Y)
+    { wch: 18 }, // Compliance Rate
+  ];
+  XLSX.utils.book_append_sheet(book, complianceSheet, 'Student Compliance');
+
+  // --- Sheet 3: Attendance Records ---
+  const mappedRows = rows.map((row) => buildReportExportRowValues(row).map(safeCell));
+  const recordsSheet = XLSX.utils.aoa_to_sheet([headers, ...mappedRows]);
+  recordsSheet['!cols'] = headers.map((header, colIndex) => {
+    let maxLen = header.length;
+    for (const row of mappedRows) {
+      const valLen = String(row[colIndex] ?? '').length;
+      if (valLen > maxLen) maxLen = valLen;
+    }
+    return { wch: Math.min(60, Math.max(12, maxLen + 4)) };
+  });
+  XLSX.utils.book_append_sheet(book, recordsSheet, 'Attendance Records');
+
+  return book;
+}
+
 export async function exportAttendance(
   rows: ReportStudentAttendanceRow[],
   format: 'xlsx' | 'pdf' | 'docx',
@@ -217,100 +329,7 @@ export async function exportAttendance(
   // 1. EXCEL (.XLSX)
   // ==========================================
   if (format === 'xlsx') {
-    const book = XLSX.utils.book_new();
-
-    // --- Sheet 1: Attendance Summary ---
-    const summaryAoa: (string | number)[][] = [
-      ['PRESNT Attendance Summary'],
-      ['Generated:', filters?.generatedAt || new Date().toLocaleString(), '', 'Academic Term:', filters?.academicTerm || 'All'],
-      ['Event:', filters?.event || 'All Events', '', 'Day / Session:', `${filters?.day || 'All'} · ${filters?.session || 'All'}`],
-      ['Course:', filters?.course || 'All Courses', '', 'Location / Type:', `${filters?.location || 'All'} · ${filters?.type || 'All'}`],
-      [],
-      ['KEY ATTENDANCE METRICS'],
-      ['Metric', 'Value'],
-      ['Unique Students Checked In', summary.studentsCheckedIn],
-      ['Total Time-Ins (Entry Scans)', summary.timeIns],
-      ['Total Time-Outs (Exit Scans)', summary.timeOuts],
-      ['Total Attendance Scans', summary.totalScans],
-      ['Total Records in Export', rows.length],
-      [],
-    ];
-
-    if (sessionBreakdown.length > 0) {
-      summaryAoa.push(['SESSION BREAKDOWN']);
-      summaryAoa.push(['Session / Event Period', 'Time In', 'Time Out', 'Total Scans']);
-      for (const item of sessionBreakdown) {
-        summaryAoa.push([item.name, item.timeIns, item.timeOuts, item.timeIns + item.timeOuts]);
-      }
-      summaryAoa.push([]);
-    }
-
-    if (checkpointList.length > 0) {
-      summaryAoa.push(['CHECKPOINT DISTRIBUTION']);
-      summaryAoa.push(['Checkpoint Location', 'In Scans', 'Out Scans', 'Total Scans']);
-      for (const item of checkpointList) {
-        summaryAoa.push([item.name, item.inScans, item.outScans, item.total]);
-      }
-      summaryAoa.push([]);
-    }
-
-    if (courseList.length > 0) {
-      summaryAoa.push(['COURSE BREAKDOWN']);
-      summaryAoa.push(['Course', 'Active Roster', 'Time In', 'Time Out', 'Total Scans']);
-      for (const item of courseList) {
-        summaryAoa.push([item.course, item.expected, item.timeIn, item.timeOut, item.timeIn + item.timeOut]);
-      }
-      summaryAoa.push([]);
-    }
-
-    const summarySheet = XLSX.utils.aoa_to_sheet(
-      summaryAoa.map((row) => row.map(safeCell))
-    );
-    summarySheet['!cols'] = [
-      { wch: 38 },
-      { wch: 22 },
-      { wch: 14 },
-      { wch: 28 },
-      { wch: 32 },
-    ];
-    XLSX.utils.book_append_sheet(book, summarySheet, 'Attendance Summary');
-
-    // --- Sheet 2: Student Compliance (X/Y) ---
-    const complianceHeaders = [...STUDENT_COMPLIANCE_HEADERS];
-    const complianceMappedRows = complianceRows.map((r) =>
-      [
-        r.course,
-        r.yearLabel,
-        r.name,
-        r.present,
-        r.absent,
-        r.totalRequired,
-        r.ratio,
-        r.complianceRate,
-      ].map(safeCell)
-    );
-    const complianceSheet = XLSX.utils.aoa_to_sheet([complianceHeaders, ...complianceMappedRows]);
-    complianceSheet['!cols'] = [
-      { wch: 32 }, // Course
-      { wch: 14 }, // Year Level
-      { wch: 36 }, // Student Name
-      { wch: 12 }, // Present
-      { wch: 12 }, // Absent
-      { wch: 16 }, // Total Required
-      { wch: 24 }, // Attendance Ratio (X/Y)
-      { wch: 18 }, // Compliance Rate
-    ];
-    XLSX.utils.book_append_sheet(book, complianceSheet, 'Student Compliance (X/Y)');
-
-    // --- Sheet 3: Attendance Records ---
-    const mappedRows = rows.map((row) => buildReportExportRowValues(row).map(safeCell));
-    const recordsSheet = XLSX.utils.aoa_to_sheet([headers, ...mappedRows]);
-    recordsSheet['!cols'] = headers.map((header, colIndex) => {
-      const maxLen = Math.max(header.length, ...mappedRows.map((row) => String(row[colIndex] ?? '').length));
-      return { wch: Math.min(60, Math.max(12, maxLen + 4)) };
-    });
-    XLSX.utils.book_append_sheet(book, recordsSheet, 'Attendance Records');
-
+    const book = buildExcelWorkbook(rows, extra);
     XLSX.writeFile(book, `${filename}.xlsx`);
     return;
   }
