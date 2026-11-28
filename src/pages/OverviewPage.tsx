@@ -214,7 +214,7 @@ export function OverviewPage() {
 
       {/* Historical Context Callout Banner */}
       {isHistorical && (
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-purple-200/80 bg-[#FAF7FD] px-5 py-3.5 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-purple-300 bg-white px-5 py-3.5 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-[#7026B7]">
               <History className="h-4 w-4" />
