@@ -321,6 +321,13 @@ export const useStudentsViewModel = (showArchived = false, termId?: string): Use
     setUnassignedPool((prev) => prev.filter((c) => c.uid.toUpperCase() !== clean));
 
     try {
+      if (previousUid && previousUid.trim().toUpperCase() !== clean) {
+        try {
+          await request.post(`/cards/${encodeURIComponent(previousUid)}/actions`, { action: 'return' });
+        } catch {
+          // Fallback handled on backend
+        }
+      }
       await studentService.updateStudent(studentId, { rfid_uid: clean, card_number: cardNumber || undefined });
       toast.success(`Card ${cardNumber || clean} successfully linked to ${targetStudent?.name || 'student'}!`);
       // Non-blocking background re-sync
