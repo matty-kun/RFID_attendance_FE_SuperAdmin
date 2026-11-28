@@ -124,8 +124,8 @@ describe('OverviewPage - Hybrid Context-Aware Overview', () => {
 
     // Full overview is now displayed
     expect(await screen.findByRole('heading', { level: 1, name: /OVERVIEW/i })).toBeTruthy();
-    expect(screen.getByText(/Attendance across all events · Live operations/i)).toBeTruthy();
-    expect(screen.getByText('Scans today')).toBeTruthy();
+    expect(screen.getByText(/Attendance across all events/i)).toBeTruthy();
+    expect(screen.getByText('Total Scans')).toBeTruthy();
   });
 
   it('renders Historical Term Archive mode and switch button when viewing past term', async () => {

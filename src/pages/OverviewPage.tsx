@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   Calendar,
-  Check,
   ChevronDown,
-  ChevronUp,
   CreditCard,
   History,
   MapPin,
@@ -100,12 +98,45 @@ export function OverviewPage() {
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
   const [selectedScope, setSelectedScope] = useState<string>('auto');
   const [isEventTrayOpen, setIsEventTrayOpen] = useState(false);
+  const [isClosingTray, setIsClosingTray] = useState(false);
+  const isPillOpen = isEventTrayOpen && !isClosingTray;
   const [eventsInTerm, setEventsInTerm] = useState<EventRecord[]>([]);
+  const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const closeTrayWithAnim = useCallback((onComplete?: () => void) => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    setIsClosingTray(true);
+    const count = eventsInTerm.length + 1;
+    const isTest = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+    const duration = isTest ? 10 : Math.min(260, 120 + count * 25);
+    closeTimerRef.current = setTimeout(() => {
+      setIsEventTrayOpen(false);
+      setIsClosingTray(false);
+      onComplete?.();
+    }, duration);
+  }, [eventsInTerm.length]);
+
+  const toggleEventTray = useCallback(() => {
+    if (isPillOpen) {
+      closeTrayWithAnim();
+    } else {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+      setIsClosingTray(false);
+      setIsEventTrayOpen(true);
+    }
+  }, [isPillOpen, closeTrayWithAnim]);
+
+  const handleSelectScope = useCallback((scope: string) => {
+    closeTrayWithAnim(() => {
+      setSelectedScope(scope);
+    });
+  }, [closeTrayWithAnim]);
 
   // Reset event filter whenever academic term changes
   useEffect(() => {
     setSelectedScope('auto');
     setIsEventTrayOpen(false);
+    setIsClosingTray(false);
   }, [currentTerm?.id]);
 
   const refresh = useCallback(async () => {
@@ -252,7 +283,6 @@ export function OverviewPage() {
   const yAxisMid = Math.round(yAxisMax / 2);
   const hasCheckpointActivity = locations.length > 0;
   const today = !isCustomScope ? days.at(-1) : undefined;
-  const scansToday = today ? today.timeIns + today.timeOuts : undefined;
   const cardRate = data?.roster.active ? Math.round((data.roster.with_cards / data.roster.active) * 100) : 0;
   const hasAttendance = days.some((day) => day.timeIns + day.timeOuts > 0);
 
@@ -274,11 +304,11 @@ export function OverviewPage() {
             </p>
             <button
               type="button"
-              onClick={() => setIsEventTrayOpen((prev) => !prev)}
+              onClick={toggleEventTray}
               className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/15 hover:bg-white/25 active:scale-95 text-xs font-bold text-white transition-all duration-200 cursor-pointer backdrop-blur-xs shadow-xs"
             >
-              <span>{isEventTrayOpen ? 'Close' : 'Change Event'}</span>
-              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-300 ease-out", isEventTrayOpen && "rotate-180")} />
+              <span>{isPillOpen ? 'Close' : 'Change Event'}</span>
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]", isPillOpen && "rotate-180")} />
             </button>
           </div>
           <div className="pointer-events-none absolute -bottom-4 -right-2 sm:-bottom-[22px] sm:-right-2.5 md:-bottom-[26px] md:-right-3 z-20">
@@ -303,11 +333,11 @@ export function OverviewPage() {
             </p>
             <button
               type="button"
-              onClick={() => setIsEventTrayOpen((prev) => !prev)}
+              onClick={toggleEventTray}
               className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/15 hover:bg-white/25 active:scale-95 text-xs font-bold text-white transition-all duration-200 cursor-pointer backdrop-blur-xs shadow-xs"
             >
-              <span>{isEventTrayOpen ? 'Close' : 'Select Event'}</span>
-              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-300 ease-out", isEventTrayOpen && "rotate-180")} />
+              <span>{isPillOpen ? 'Close' : 'Select Event'}</span>
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]", isPillOpen && "rotate-180")} />
             </button>
           </div>
           <div className="pointer-events-none absolute -bottom-4 -right-2 sm:-bottom-[22px] sm:-right-2.5 md:-bottom-[26px] md:-right-3 z-20">
@@ -325,18 +355,18 @@ export function OverviewPage() {
               OVERVIEW
             </h1>
             <p className="mt-2 text-sm font-medium text-[#EEE1FA]">
-              Attendance across all events · Live operations
+              Attendance across all events
             </p>
             <p className="text-xs text-[#D7B9FA] font-medium mt-0.5">
               Notre Dame of Midsayap College
             </p>
             <button
               type="button"
-              onClick={() => setIsEventTrayOpen((prev) => !prev)}
+              onClick={toggleEventTray}
               className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/15 hover:bg-white/25 active:scale-95 text-xs font-bold text-white transition-all duration-200 cursor-pointer backdrop-blur-xs shadow-xs"
             >
-              <span>{isEventTrayOpen ? 'Close' : 'Select Event'}</span>
-              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-300 ease-out", isEventTrayOpen && "rotate-180")} />
+              <span>{isPillOpen ? 'Close' : 'Select Event'}</span>
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]", isPillOpen && "rotate-180")} />
             </button>
           </div>
           <div className="pointer-events-none absolute -bottom-4 -right-2 sm:-bottom-[22px] sm:-right-2.5 md:-bottom-[26px] md:-right-3 z-20">
@@ -381,7 +411,35 @@ export function OverviewPage() {
 
       {/* When Event Tray is open, it replaces the contents below with scrollable purple cards */}
       {isEventTrayOpen ? (
-        <section className="space-y-4 animate-in fade-in-50 slide-in-from-top-3 duration-300 ease-out fill-mode-forwards">
+        <section
+          className={cn(
+            'space-y-4 transition-all duration-300 ease-out',
+            isClosingTray ? 'opacity-0 -translate-y-2' : 'animate-in fade-in-50 slide-in-from-top-3 duration-300 fill-mode-forwards'
+          )}
+        >
+          <style>{`
+            @keyframes mobileCardEnter {
+              0% {
+                opacity: 0;
+                transform: translateY(-14px);
+              }
+              100% {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+            @keyframes mobileCardExit {
+              0% {
+                opacity: 1;
+                transform: translateY(0);
+              }
+              100% {
+                opacity: 0;
+                transform: translateY(-10px);
+              }
+            }
+          `}</style>
+
           <div className="flex items-center justify-between px-1">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[#756883]">
               Select Event
@@ -391,85 +449,69 @@ export function OverviewPage() {
             </span>
           </div>
 
-          <div className="max-h-[600px] overflow-y-auto pr-1.5 pb-2 [scrollbar-width:thin]">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Option 0: Overview / All Events */}
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  setSelectedScope('overview');
-                  setIsEventTrayOpen(false);
-                }}
-                className={cn(
-                  'relative overflow-hidden rounded-[24px] bg-[#351567] hover:bg-[#2A1054] hover:-translate-y-0.5 active:scale-[0.99] p-5 sm:p-6 text-white transition-all duration-200 cursor-pointer shadow-md group',
-                  (selectedScope === 'overview' || (!isEventMode && selectedScope === 'auto')) &&
-                    'ring-2 ring-[#D7B9FA] ring-offset-2 ring-offset-[#FAF7FD]'
-                )}
-              >
-                <div className="relative z-10 max-w-[70%] sm:max-w-[75%] space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-base sm:text-lg font-black tracking-wide uppercase text-white truncate">
-                      OVERVIEW
-                    </h4>
-                    {(selectedScope === 'overview' || (!isEventMode && selectedScope === 'auto')) && (
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-white">
-                        <Check className="h-3.5 w-3.5" />
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs font-medium text-[#EEE1FA]">
-                    Attendance across all events
-                  </p>
-                  <p className="text-[11px] text-[#D7B9FA] font-medium pt-0.5">
-                    Notre Dame of Midsayap College
-                  </p>
-                </div>
-                <div className="pointer-events-none absolute -bottom-3 -right-2 sm:-bottom-4 sm:-right-2 z-20">
-                  <img
-                    src={hawiPeeking}
-                    alt="Hawi mascot"
-                    className="h-24 sm:h-28 w-auto object-contain drop-shadow-xl transition-transform group-hover:scale-105"
-                  />
-                </div>
-              </div>
+          {/* Selectable items: exclude whichever item is currently displayed in the top container */}
+          {(() => {
+            const selectableItems = isEventMode
+              ? [
+                  {
+                    id: 'overview',
+                    name: 'OVERVIEW',
+                    subtext: 'Attendance across all events',
+                    dateText: undefined,
+                    isOngoing: false,
+                  },
+                  ...eventsInTerm
+                    .filter((ev) => ev.id !== data?.event?.id)
+                    .map((ev) => ({
+                      id: ev.id,
+                      name: ev.name,
+                      subtext: undefined,
+                      dateText: formatEventDateRange(ev.start_date, ev.end_date),
+                      isOngoing: getEventStatus(ev.start_date, ev.end_date) === 'ongoing',
+                    })),
+                ]
+              : eventsInTerm.map((ev) => ({
+                  id: ev.id,
+                  name: ev.name,
+                  subtext: undefined,
+                  dateText: formatEventDateRange(ev.start_date, ev.end_date),
+                  isOngoing: getEventStatus(ev.start_date, ev.end_date) === 'ongoing',
+                }));
 
-              {/* Individual Event Cards */}
-              {eventsInTerm.map((ev) => {
-                  const isSelected = isEventMode && data?.mode === 'event' && data.event.id === ev.id;
-                  const evStatus = getEventStatus(ev.start_date, ev.end_date);
-                  return (
+            return (
+              <div className="max-h-[600px] overflow-y-auto pr-1.5 pb-2 [scrollbar-width:thin]">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {selectableItems.map((item, index) => (
                     <div
-                      key={ev.id}
+                      key={item.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => {
-                        setSelectedScope(ev.id);
-                        setIsEventTrayOpen(false);
+                      onClick={() => handleSelectScope(item.id)}
+                      style={{
+                        animation: isClosingTray
+                          ? `mobileCardExit 180ms cubic-bezier(0.25, 1, 0.5, 1) ${(selectableItems.length - 1 - index) * 28}ms both`
+                          : `mobileCardEnter 340ms cubic-bezier(0.16, 1, 0.3, 1) ${index * 45}ms both`,
                       }}
-                      className={cn(
-                        'relative overflow-hidden rounded-[24px] bg-[#351567] hover:bg-[#2A1054] hover:-translate-y-0.5 active:scale-[0.99] p-5 sm:p-6 text-white transition-all duration-200 cursor-pointer shadow-md group',
-                        isSelected && 'ring-2 ring-[#D7B9FA] ring-offset-2 ring-offset-[#FAF7FD]'
-                      )}
+                      className="relative overflow-hidden rounded-[24px] bg-[#351567] hover:bg-[#2A1054] hover:-translate-y-0.5 active:scale-[0.99] p-5 sm:p-6 text-white transition-all duration-200 cursor-pointer shadow-md group"
                     >
                       <div className="relative z-10 max-w-[70%] sm:max-w-[75%] space-y-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-base sm:text-lg font-black tracking-wide uppercase text-white truncate">
-                            {ev.name}
-                          </h4>
-                          {isSelected && (
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-white">
-                              <Check className="h-3.5 w-3.5" />
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs font-medium text-[#EEE1FA]">
-                          {formatEventDateRange(ev.start_date, ev.end_date)}
-                        </p>
+                        <h4 className="text-base sm:text-lg font-black tracking-wide uppercase text-white truncate">
+                          {item.name}
+                        </h4>
+                        {item.subtext && (
+                          <p className="text-xs font-medium text-[#EEE1FA]">
+                            {item.subtext}
+                          </p>
+                        )}
+                        {item.dateText && (
+                          <p className="text-xs font-medium text-[#EEE1FA]">
+                            {item.dateText}
+                          </p>
+                        )}
                         <p className="text-[11px] text-[#D7B9FA] font-medium pt-0.5 truncate">
                           Notre Dame of Midsayap College
                         </p>
-                        {evStatus === 'ongoing' && (
+                        {item.isOngoing && (
                           <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/25 text-emerald-200 border border-emerald-400/30">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                             Ongoing
@@ -484,10 +526,11 @@ export function OverviewPage() {
                         />
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </div>
+            );
+          })()}
         </section>
       ) : (
         <div className="space-y-6 animate-in fade-in-50 slide-in-from-top-2 duration-300 ease-out fill-mode-forwards">
@@ -497,19 +540,19 @@ export function OverviewPage() {
         <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#756883]">
-              {isEventMode ? 'Event Scans' : (isHistorical ? 'Term Scans' : 'Scans today')}
+              {isEventMode ? 'Event Scans' : (isHistorical ? 'Term Scans' : 'Total Scans')}
             </span>
             <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]">
               <ScanLine className="h-4 w-4" />
             </div>
           </div>
           <p className="mt-3 text-2xl font-black text-[#24133F]">
-            {number(isCustomScope ? data.totalScans : scansToday)}
+            {number(isEventMode ? data.totalScans : (isHistorical ? data.totalScans : totalPeriodScans))}
           </p>
           <p className="mt-1 text-[11px] text-[#A59CAC]">
             {isEventMode
               ? 'Total scans for this event'
-              : (isHistorical ? 'Total scans in semester' : 'All recorded taps today')}
+              : (isHistorical ? 'Total scans in semester' : 'Total scans recorded across all events')}
           </p>
         </div>
 
