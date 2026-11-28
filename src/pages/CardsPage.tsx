@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, ArrowDown, ArrowUp, ArrowUpDown, Check, CheckCircle2, ChevronDown, CircleAlert, Clock, CreditCard, ExternalLink, FileText, Filter, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, ShieldCheck, Trash2, UserRound, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowUpDown, Check, CheckCircle2, ChevronDown, CircleAlert, Clock, CreditCard, ExternalLink, FileText, Filter, Loader2, Pencil, Radio, RotateCcw, Search, ShieldAlert, ShieldCheck, Trash2, UserRound, X } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { compareCardNumbers } from '../utils/cardSort';
 import { formatYearLevel } from '../utils/formatters';
@@ -171,7 +171,7 @@ export function CardsPage() {
     }
   };
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
-  const [pendingBulkAction, setPendingBulkAction] = useState<'archive' | 'unarchive' | 'delete' | null>(null);
+  const [pendingBulkAction, setPendingBulkAction] = useState<'archive' | 'unarchive' | 'delete' | 'return' | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const isSingleDeleteConfirmed =
@@ -189,13 +189,32 @@ export function CardsPage() {
   const canBulkDelete = selectedCards.length > 0 && selectedWithHistory.length === 0;
   const canBulkArchive = selectedCards.some(c => c.status === 'available');
   const canBulkRestore = selectedCards.some(c => c.status === 'archived');
+  const canBulkReturn = selectedCards.some(c => c.status === 'issued' || c.holder !== null);
 
   const runBulkAction = async () => {
     if (!pendingBulkAction || bulkBusy) return;
     setBulkBusy(true);
 
     try {
-      if (pendingBulkAction === 'archive') {
+      if (pendingBulkAction === 'return') {
+        const eligible = selectedCards.filter(c => c.status === 'issued' || c.holder !== null);
+        let successCount = 0;
+        for (const card of eligible) {
+          try {
+            await request.post(`/cards/${encodeURIComponent(card.uid)}/actions`, {
+              action: 'return',
+              note: 'Bulk returned from cards management',
+            });
+            successCount++;
+          } catch {
+            // continue
+          }
+        }
+        showToast(
+          `Returned ${successCount} of ${eligible.length} selected cards to inventory.`,
+          successCount > 0 ? 'success' : 'error'
+        );
+      } else if (pendingBulkAction === 'archive') {
         const eligible = selectedCards.filter(c => c.status === 'available');
         let successCount = 0;
         for (const card of eligible) {
@@ -518,6 +537,16 @@ export function CardsPage() {
       <aside aria-label="Bulk card actions" aria-live="polite" className="flex h-9 w-full shrink-0 gap-1 2xl:absolute 2xl:right-[calc(100%+16px)] 2xl:top-12 2xl:h-auto 2xl:w-32 2xl:flex-col">
         {selectedCards.length > 0 && (
           <>
+            {canBulkReturn && (
+              <button
+                type="button"
+                disabled={bulkBusy}
+                onClick={() => setPendingBulkAction('return')}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-40 cursor-pointer"
+              >
+                <RotateCcw className="h-3.5 w-3.5 shrink-0" /> Return cards
+              </button>
+            )}
             {canBulkArchive && (
               <button
                 type="button"
@@ -623,31 +652,14 @@ export function CardsPage() {
                     <button
                       type="button"
                       onClick={toggleCardNumberSort}
-                      className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 -ml-2 text-xs font-bold text-[#24133F] hover:bg-purple-100/60 transition-colors cursor-pointer group/sort"
+                      className="rounded-lg px-2 py-1 -ml-2 text-xs font-bold text-[#24133F] hover:bg-purple-100/60 transition-colors cursor-pointer"
                       title={
-                        sortField === 'card_number'
-                          ? sortDirection === 'asc'
-                            ? 'Sorted Ascending. Click to sort Descending.'
-                            : 'Sorted Descending. Click to sort Ascending.'
-                          : 'Click to sort by Card No. (Ascending)'
+                        sortDirection === 'asc'
+                          ? 'Click to sort Descending'
+                          : 'Click to sort Ascending'
                       }
                     >
                       <span>Card No.</span>
-                      {sortField === 'card_number' ? (
-                        sortDirection === 'asc' ? (
-                          <span className="flex items-center gap-0.5 text-[#7026B7]">
-                            <ArrowUp className="h-3.5 w-3.5" />
-                            <span className="text-[10px] font-semibold tracking-tight text-[#7026B7]/80">Asc</span>
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-0.5 text-[#7026B7]">
-                            <ArrowDown className="h-3.5 w-3.5" />
-                            <span className="text-[10px] font-semibold tracking-tight text-[#7026B7]/80">Desc</span>
-                          </span>
-                        )
-                      ) : (
-                        <ArrowUpDown className="h-3 w-3 text-[#A59AAB] group-hover/sort:text-[#7026B7]" />
-                      )}
                     </button>
                     {selectedCards.length > 0 && (
                       <span className="font-bold text-[#7026B7]">
@@ -1158,7 +1170,9 @@ export function CardsPage() {
       isOpen={Boolean(pendingBulkAction)}
       onClose={() => !bulkBusy && setPendingBulkAction(null)}
       title={
-        pendingBulkAction === 'archive'
+        pendingBulkAction === 'return'
+          ? 'Return Selected Cards'
+          : pendingBulkAction === 'archive'
           ? 'Archive Selected Cards'
           : pendingBulkAction === 'unarchive'
           ? 'Restore Selected Cards'
@@ -1171,7 +1185,9 @@ export function CardsPage() {
         <div className="flex justify-center">
           <img
             src={
-              pendingBulkAction === 'archive'
+              pendingBulkAction === 'return'
+                ? hawiScanning
+                : pendingBulkAction === 'archive'
                 ? hawiBox
                 : pendingBulkAction === 'unarchive'
                 ? hawiCheck
@@ -1183,14 +1199,18 @@ export function CardsPage() {
         </div>
         <div className="text-center space-y-1">
           <p className="text-sm font-bold text-[#24133F]">
-            {pendingBulkAction === 'archive'
+            {pendingBulkAction === 'return'
+              ? `Return ${selectedCards.filter(c => c.status === 'issued' || c.holder !== null).length} card(s) to inventory?`
+              : pendingBulkAction === 'archive'
               ? `Archive ${selectedCards.filter(c => c.status === 'available').length} card(s)?`
               : pendingBulkAction === 'unarchive'
               ? `Restore ${selectedCards.filter(c => c.status === 'archived').length} card(s)?`
               : `Permanently delete ${selectedCards.length} card(s)?`}
           </p>
           <p className="text-xs text-[#756883] leading-relaxed">
-            {pendingBulkAction === 'archive'
+            {pendingBulkAction === 'return'
+              ? 'These cards will be unlinked from their current student holders and returned to available inventory.'
+              : pendingBulkAction === 'archive'
               ? 'Archived cards cannot be issued to students. Their historical audit logs remain preserved.'
               : pendingBulkAction === 'unarchive'
               ? 'These cards will be restored to available inventory and can be issued to students again.'
@@ -1246,7 +1266,9 @@ export function CardsPage() {
             disabled={pendingBulkAction === 'delete' && !isBulkDeleteConfirmed}
             onClick={() => void runBulkAction()}
           >
-            {pendingBulkAction === 'archive'
+            {pendingBulkAction === 'return'
+              ? 'Return Cards'
+              : pendingBulkAction === 'archive'
               ? 'Archive Cards'
               : pendingBulkAction === 'unarchive'
               ? 'Restore Cards'
