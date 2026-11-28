@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Calendar, CreditCard, History, MapPin, ScanLine, Users } from 'lucide-react';
+import {
+  ArrowRight,
+  Calendar,
+  Check,
+  ChevronDown,
+  CreditCard,
+  History,
+  Layers,
+  MapPin,
+  ScanLine,
+  Users,
+} from 'lucide-react';
 import { adminService } from '../services/adminService';
 import { studentService } from '../features/students/services/studentService';
 import { useAcademicTerm } from '../context/AcademicTermContext';
@@ -12,12 +23,14 @@ import hawiPeeking from '../assets/illustrations/Hawi Peeking.png';
 // TEMP: Scan-to-Confirmation Time Tracking (Testing Only — remove before production)
 import { ScanTimingTestPanel } from '../components/testing/ScanTimingTestPanel';
 import { cn } from '../utils/cn';
+import { getEventStatus } from '../utils/status';
 
 type LiveOverviewData = {
   mode: 'live';
   metrics: DashboardMetrics;
   roster: StudentRosterStats;
   event: EventRecord | null;
+  eventsInTerm?: EventRecord[];
 };
 
 type HistoricalOverviewData = {
@@ -30,7 +43,19 @@ type HistoricalOverviewData = {
   roster: StudentRosterStats;
 };
 
-type OverviewData = LiveOverviewData | HistoricalOverviewData;
+type EventOverviewData = {
+  mode: 'event';
+  event: EventRecord;
+  term: AcademicTerm;
+  eventsInTerm: EventRecord[];
+  totalScans: number;
+  uniqueStudents: number;
+  trend: Array<{ day: string; timeIns: number; timeOuts: number }>;
+  checkpoints: Array<{ name: string; total: number }>;
+  roster: StudentRosterStats;
+};
+
+type OverviewData = LiveOverviewData | HistoricalOverviewData | EventOverviewData;
 
 const manilaDate = () =>
   new Intl.DateTimeFormat('en-PH', {
@@ -47,6 +72,20 @@ const formatDay = (date: string) =>
     day: 'numeric',
     timeZone: 'Asia/Manila',
   }).format(new Date(`${date}T00:00:00+08:00`));
+
+const formatEventDateRange = (startDate?: string, endDate?: string) => {
+  if (!startDate) return '';
+  const fmt = (d: string) =>
+    new Intl.DateTimeFormat('en-PH', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'Asia/Manila',
+    }).format(new Date(`${d.substring(0, 10)}T00:00:00+08:00`));
+  const s = fmt(startDate);
+  const e = endDate ? fmt(endDate) : s;
+  return s === e ? s : `${s} – ${e}`;
+};
 
 const number = (value?: number) => (value === undefined ? '—' : value.toLocaleString());
 
@@ -80,21 +119,68 @@ export function OverviewPage() {
   const [data, setData] = useState<OverviewData | null>(null);
   const [, setLoading] = useState(true);
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [isEventTrayOpen, setIsEventTrayOpen] = useState(false);
+  const [eventsInTerm, setEventsInTerm] = useState<EventRecord[]>([]);
+
+  // Reset event filter whenever academic term changes
+  useEffect(() => {
+    setSelectedEventId(null);
+    setIsEventTrayOpen(false);
+  }, [currentTerm?.id]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      if (isViewingActive || !currentTerm) {
+      const allEvents = await adminService.getEvents().catch(() => [] as EventRecord[]);
+      const termEvents = (allEvents || []).filter((e) => isEventInTerm(e, currentTerm));
+      setEventsInTerm(termEvents);
+
+      const targetEvent = selectedEventId ? termEvents.find((e) => e.id === selectedEventId) : null;
+
+      if (targetEvent) {
+        // Mode 3: Specific Event Focused Overview
+        const [reportRes, roster] = await Promise.all([
+          request.get<any>('/reports', {
+            params: {
+              eventId: targetEvent.id,
+              limit: 1,
+            },
+          }),
+          studentService.getRosterStats().catch(() => ({ total: 0, active: 0, archived: 0, with_cards: 0, without_cards: 0 })),
+        ]);
+
+        const trend = Array.isArray(reportRes?.trend) ? reportRes.trend : [];
+        const rawCheckpoints = Array.isArray(reportRes?.checkpoints) ? reportRes.checkpoints : [];
+        const checkpoints = rawCheckpoints
+          .map((c: any) => ({
+            name: c.name || 'Checkpoint',
+            total: c.total ?? (c.inScans ?? 0) + (c.outScans ?? 0),
+          }))
+          .sort((a: any, b: any) => b.total - a.total);
+
+        setData({
+          mode: 'event',
+          event: targetEvent,
+          term: currentTerm || terms[0],
+          eventsInTerm: termEvents,
+          totalScans: reportRes?.summary?.totalScans ?? 0,
+          uniqueStudents: reportRes?.summary?.uniqueStudents ?? 0,
+          trend,
+          checkpoints,
+          roster,
+        });
+      } else if (isViewingActive || !currentTerm) {
         // Mode 1: Live Today Operations
         const [metrics, roster, active] = await Promise.all([
           adminService.getMetrics(),
           studentService.getRosterStats(),
           adminService.getActiveEvent(),
         ]);
-        setData({ mode: 'live', metrics, roster, event: active.event });
+        setData({ mode: 'live', metrics, roster, event: active.event, eventsInTerm: termEvents });
       } else {
         // Mode 2: Historical Term Archive
-        const [reportRes, allEvents, roster] = await Promise.all([
+        const [reportRes, roster] = await Promise.all([
           request.get<any>('/reports', {
             params: {
               termId: currentTerm.id,
@@ -103,11 +189,9 @@ export function OverviewPage() {
               limit: 1,
             },
           }),
-          adminService.getEvents().catch(() => [] as EventRecord[]),
           studentService.getRosterStats().catch(() => ({ total: 0, active: 0, archived: 0, with_cards: 0, without_cards: 0 })),
         ]);
 
-        const eventsInTerm = (allEvents || []).filter((e) => isEventInTerm(e, currentTerm));
         const trend = Array.isArray(reportRes?.trend) ? reportRes.trend : [];
         const rawCheckpoints = Array.isArray(reportRes?.checkpoints) ? reportRes.checkpoints : [];
         const checkpoints = rawCheckpoints
@@ -120,7 +204,7 @@ export function OverviewPage() {
         setData({
           mode: 'historical',
           term: currentTerm,
-          events: eventsInTerm,
+          events: termEvents,
           totalScans: reportRes?.summary?.totalScans ?? 0,
           trend,
           checkpoints,
@@ -133,7 +217,7 @@ export function OverviewPage() {
     } finally {
       setLoading(false);
     }
-  }, [isViewingActive, currentTerm]);
+  }, [isViewingActive, currentTerm, selectedEventId, terms]);
 
   useEffect(() => {
     void refresh();
@@ -141,11 +225,14 @@ export function OverviewPage() {
 
   // Derived metrics and chart inputs depending on mode
   const isHistorical = data?.mode === 'historical';
-  const days = isHistorical
+  const isEventMode = data?.mode === 'event';
+  const isCustomScope = isHistorical || isEventMode;
+
+  const days = isCustomScope
     ? (data?.trend || []).map((t) => ({ date: t.day, timeIns: t.timeIns, timeOuts: t.timeOuts }))
     : data?.metrics.attendanceByDay ?? [];
 
-  const locations = isHistorical
+  const locations = isCustomScope
     ? (data?.checkpoints || []).map((c, i) => ({ id: String(i), name: c.name, scans: c.total }))
     : (data?.metrics.locationActivity || []).map((loc) => ({
         id: loc.id,
@@ -153,7 +240,7 @@ export function OverviewPage() {
         scans: loc.scansToday,
       }));
 
-  const totalPeriodScans = isHistorical
+  const totalPeriodScans = isCustomScope
     ? data?.totalScans ?? 0
     : days.reduce((sum, d) => sum + d.timeIns + d.timeOuts, 0);
 
@@ -161,7 +248,7 @@ export function OverviewPage() {
   const yAxisMax = Math.max(4, Math.ceil(maxSingleMetric * 1.25));
   const yAxisMid = Math.round(yAxisMax / 2);
   const hasCheckpointActivity = locations.length > 0;
-  const today = !isHistorical ? days.at(-1) : undefined;
+  const today = !isCustomScope ? days.at(-1) : undefined;
   const scansToday = today ? today.timeIns + today.timeOuts : undefined;
   const cardRate = data?.roster.active ? Math.round((data.roster.with_cards / data.roster.active) * 100) : 0;
   const hasAttendance = days.some((day) => day.timeIns + day.timeOuts > 0);
@@ -169,7 +256,29 @@ export function OverviewPage() {
   return (
     <div className="space-y-6 pb-8">
       {/* Hero Banner */}
-      {isHistorical ? (
+      {isEventMode ? (
+        <section className="relative rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9">
+          <div className="relative z-10 max-w-[75%] sm:max-w-[70%]">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]">
+              {data.term.school_year} · {data.term.semester} · Event Overview
+            </p>
+            <h1 className="mt-3 text-2xl font-extrabold leading-tight sm:text-4xl">
+              {data.event.name}
+            </h1>
+            <p className="mt-2.5 max-w-lg text-sm leading-relaxed text-[#EEE1FA]">
+              {formatEventDateRange(data.event.start_date, data.event.end_date)}
+              {data.event.description ? ` · ${data.event.description}` : ''}
+            </p>
+          </div>
+          <div className="pointer-events-none absolute -bottom-4 -right-2 sm:-bottom-[22px] sm:-right-2.5 md:-bottom-[26px] md:-right-3 z-20">
+            <img
+              src={hawiPeeking}
+              alt="Hawi mascot peeking"
+              className="h-[195px] sm:h-[235px] md:h-[265px] w-auto object-contain drop-shadow-2xl"
+            />
+          </div>
+        </section>
+      ) : isHistorical ? (
         <section className="relative rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9">
           <div className="relative z-10 max-w-[75%] sm:max-w-[70%]">
             <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]">
@@ -242,23 +351,187 @@ export function OverviewPage() {
         </div>
       )}
 
+      {/* Mobile-Style Expandable Event Selector Tray */}
+      <div className="rounded-2xl border border-purple-200/80 bg-white shadow-2xs overflow-hidden transition-all">
+        <button
+          type="button"
+          onClick={() => setIsEventTrayOpen((prev) => !prev)}
+          className="flex w-full items-center justify-between gap-3 p-3.5 sm:px-4 text-left transition-colors hover:bg-[#FAF8FC]/60 cursor-pointer group"
+          aria-expanded={isEventTrayOpen}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-[#7026B7] border border-purple-100/70">
+              <Calendar className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">
+                {isEventMode ? 'Event Focus' : 'Event Scope'}
+              </p>
+              <div className="flex items-center gap-2 mt-0.5 min-w-0">
+                <p className="truncate text-sm font-bold text-[#24133F] group-hover:text-[#7026B7] transition-colors">
+                  {isEventMode
+                    ? data.event.name
+                    : (isHistorical
+                        ? `All Events in ${data.term.semester}`
+                        : 'All Events · Live Operations')}
+                </p>
+                {isEventMode && (
+                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-[#7026B7] border border-purple-200/60">
+                    Focused
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            {eventsInTerm.length > 0 && (
+              <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-[#7026B7] border border-purple-200/60">
+                {eventsInTerm.length} {eventsInTerm.length === 1 ? 'event' : 'events'}
+              </span>
+            )}
+            <span className="flex items-center gap-1.5 rounded-xl bg-[#FAF7FD] group-hover:bg-[#F3EDFA] px-3 py-1.5 text-xs font-bold text-[#7026B7] border border-purple-200/70 transition-colors">
+              <span>{isEventTrayOpen ? 'Hide events' : 'Browse events'}</span>
+              <ChevronDown
+                className={cn(
+                  'h-3.5 w-3.5 transition-transform duration-200',
+                  isEventTrayOpen && 'rotate-180'
+                )}
+              />
+            </span>
+          </div>
+        </button>
+
+        {isEventTrayOpen && (
+          <div className="border-t border-purple-100 bg-[#FAF8FC]/60 p-3.5 sm:p-4 animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">
+                Events in {currentTerm?.school_year} {currentTerm?.semester} ({eventsInTerm.length})
+              </p>
+              {selectedEventId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedEventId(null);
+                    setIsEventTrayOpen(false);
+                  }}
+                  className="text-xs font-bold text-[#7026B7] hover:text-[#5E1E9E] transition-colors cursor-pointer"
+                >
+                  Reset to All Events
+                </button>
+              )}
+            </div>
+
+            {eventsInTerm.length === 0 ? (
+              <p className="py-4 text-center text-xs text-[#756883]">
+                No events scheduled or recorded for this academic term.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {/* Option 0: All Events Aggregate */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedEventId(null);
+                    setIsEventTrayOpen(false);
+                  }}
+                  className={cn(
+                    'flex items-start justify-between p-3 rounded-xl border text-left transition-all cursor-pointer',
+                    selectedEventId === null
+                      ? 'bg-white border-[#7026B7] shadow-xs ring-1 ring-[#7026B7]'
+                      : 'bg-white border-[#E5E0EB] hover:border-purple-300 hover:bg-[#FAF8FC]'
+                  )}
+                >
+                  <div className="min-w-0 pr-2">
+                    <div className="flex items-center gap-1.5">
+                      <Layers className="h-3.5 w-3.5 text-[#7026B7]" />
+                      <span className="text-xs font-bold text-[#24133F]">
+                        {isHistorical ? 'All Semester Events' : 'All Events · Live Operations'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#756883] mt-1">
+                      Aggregate metrics across the entire academic term
+                    </p>
+                  </div>
+                  {selectedEventId === null && (
+                    <Check className="h-4 w-4 text-[#7026B7] shrink-0 mt-0.5" />
+                  )}
+                </button>
+
+                {/* Individual Event Cards */}
+                {eventsInTerm.map((ev) => {
+                  const evStatus = getEventStatus(ev.start_date, ev.end_date);
+                  const isSelected = selectedEventId === ev.id;
+                  return (
+                    <button
+                      key={ev.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedEventId(ev.id);
+                        setIsEventTrayOpen(false);
+                      }}
+                      className={cn(
+                        'flex items-start justify-between p-3 rounded-xl border text-left transition-all cursor-pointer',
+                        isSelected
+                          ? 'bg-white border-[#7026B7] shadow-xs ring-1 ring-[#7026B7]'
+                          : 'bg-white border-[#E5E0EB] hover:border-purple-300 hover:bg-[#FAF8FC]'
+                      )}
+                    >
+                      <div className="min-w-0 pr-2">
+                        <p className="truncate text-xs font-bold text-[#24133F]">{ev.name}</p>
+                        <p className="text-[11px] text-[#756883] mt-0.5">
+                          {formatEventDateRange(ev.start_date, ev.end_date)}
+                        </p>
+                        <div className="mt-2 flex items-center gap-1.5">
+                          {evStatus === 'ongoing' && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              Ongoing
+                            </span>
+                          )}
+                          {evStatus === 'upcoming' && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                              Upcoming
+                            </span>
+                          )}
+                          {evStatus === 'completed' && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-50 text-slate-600 border border-slate-200">
+                              Completed
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <Check className="h-4 w-4 text-[#7026B7] shrink-0 mt-0.5" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* 4 Metric KPI Cards */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {/* Card 1 */}
         <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#756883]">
-              {isHistorical ? 'Term Scans' : 'Scans today'}
+              {isEventMode ? 'Event Scans' : (isHistorical ? 'Term Scans' : 'Scans today')}
             </span>
             <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]">
               <ScanLine className="h-4 w-4" />
             </div>
           </div>
           <p className="mt-3 text-2xl font-black text-[#24133F]">
-            {number(isHistorical ? data.totalScans : scansToday)}
+            {number(isCustomScope ? data.totalScans : scansToday)}
           </p>
           <p className="mt-1 text-[11px] text-[#A59CAC]">
-            {isHistorical ? 'Total scans in semester' : 'All recorded taps today'}
+            {isEventMode
+              ? 'Total scans for this event'
+              : (isHistorical ? 'Total scans in semester' : 'All recorded taps today')}
           </p>
         </div>
 
@@ -266,37 +539,51 @@ export function OverviewPage() {
         <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#756883]">
-              {isHistorical ? 'Term Events' : 'Active students'}
+              {isEventMode ? 'Attendees' : (isHistorical ? 'Term Events' : 'Active students')}
             </span>
             <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]">
               {isHistorical ? <Calendar className="h-4 w-4" /> : <Users className="h-4 w-4" />}
             </div>
           </div>
           <p className="mt-3 text-2xl font-black text-[#24133F]">
-            {number(isHistorical ? data.events.length : data?.roster.active)}
+            {number(
+              isEventMode
+                ? data.uniqueStudents
+                : (isHistorical ? data.events.length : data?.roster.active)
+            )}
           </p>
           <p className="mt-1 text-[11px] text-[#A59CAC]">
-            {isHistorical ? 'Events scheduled in term' : 'Registered active students'}
+            {isEventMode
+              ? 'Unique student attendees'
+              : (isHistorical ? 'Events scheduled in term' : 'Registered active students')}
           </p>
         </div>
 
         {/* Card 3 */}
         <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#756883]">Cards assigned</span>
+            <span className="text-xs font-semibold text-[#756883]">
+              {isEventMode ? 'Turnout Rate' : 'Cards assigned'}
+            </span>
             <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]">
               <CreditCard className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-2xl font-black text-[#24133F]">{cardRate}%</p>
-          <p className="mt-1 text-[11px] text-[#A59CAC]">Students with RFID card</p>
+          <p className="mt-3 text-2xl font-black text-[#24133F]">
+            {isEventMode
+              ? `${data.roster.active ? Math.round((data.uniqueStudents / data.roster.active) * 100) : 0}%`
+              : `${cardRate}%`}
+          </p>
+          <p className="mt-1 text-[11px] text-[#A59CAC]">
+            {isEventMode ? 'Of active student roster' : 'Students with RFID card'}
+          </p>
         </div>
 
         {/* Card 4 */}
         <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#756883]">
-              {isHistorical ? 'Active Checkpoints' : 'Checkpoints'}
+              {isEventMode ? 'Checkpoints' : (isHistorical ? 'Active Checkpoints' : 'Checkpoints')}
             </span>
             <div className="rounded-xl bg-[#FAF8FC] p-2 text-[#7026B7]">
               <MapPin className="h-4 w-4" />
@@ -304,13 +591,15 @@ export function OverviewPage() {
           </div>
           <p className="mt-3 text-2xl font-black text-[#24133F]">
             {number(
-              isHistorical
-                ? data.checkpoints.filter((c) => c.total > 0).length
+              isCustomScope
+                ? data.checkpoints.filter((c) => c.total > 0).length || data.checkpoints.length
                 : data?.metrics.totalLocations
             )}
           </p>
           <p className="mt-1 text-[11px] text-[#A59CAC]">
-            {isHistorical ? 'Locations with activity' : 'Configured scan locations'}
+            {isEventMode
+              ? 'Active checkpoints used'
+              : (isHistorical ? 'Locations with activity' : 'Configured scan locations')}
           </p>
         </div>
       </section>
@@ -323,16 +612,20 @@ export function OverviewPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-[#24133F]">
-                  {isHistorical ? `Attendance volume (${data.term.semester})` : 'Attendance volume'}
+                  {isEventMode
+                    ? `${data.event.name} Attendance`
+                    : (isHistorical ? `Attendance volume (${data.term.semester})` : 'Attendance volume')}
                 </h2>
                 <span className="rounded-full bg-purple-50 border border-purple-200/80 px-2 py-0.5 text-[11px] font-bold text-[#7026B7]">
                   {totalPeriodScans} {totalPeriodScans === 1 ? 'scan' : 'scans'}
                 </span>
               </div>
               <p className="text-xs text-[#756883] mt-0.5">
-                {isHistorical
-                  ? `Daily scans recorded across ${data.term.school_year} ${data.term.semester}`
-                  : 'Total daily scans recorded by date'}
+                {isEventMode
+                  ? `Daily scans recorded for ${data.event.name}`
+                  : (isHistorical
+                      ? `Daily scans recorded across ${data.term.school_year} ${data.term.semester}`
+                      : 'Total daily scans recorded by date')}
               </p>
             </div>
 
@@ -350,10 +643,10 @@ export function OverviewPage() {
               </div>
 
               <Link
-                to={isHistorical ? '/reports' : '/attendance'}
+                to={isCustomScope ? '/reports' : '/attendance'}
                 className="inline-flex items-center gap-1 text-xs font-bold text-[#7026B7] hover:underline shrink-0"
               >
-                {isHistorical ? 'View Reports' : 'Full logs'} <ArrowRight className="h-3 w-3" />
+                {isCustomScope ? 'View Reports' : 'Full logs'} <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
           </div>
@@ -488,7 +781,9 @@ export function OverviewPage() {
                 </div>
               ) : (
                 <div className="h-full w-full flex items-center justify-center text-xs text-[#756883] pb-6">
-                  {isHistorical
+                  {isEventMode
+                    ? `No attendance scans recorded for ${data.event.name} yet.`
+                    : isHistorical
                     ? 'No attendance scans recorded for this semester.'
                     : 'No attendance scans recorded for this period yet.'}
                 </div>
@@ -507,7 +802,9 @@ export function OverviewPage() {
               </Link>
             </div>
             <p className="text-xs text-[#756883] mt-0.5">
-              {isHistorical
+              {isEventMode
+                ? `Distribution across scan locations for ${data.event.name}`
+                : isHistorical
                 ? `Distribution across scan locations in ${data.term.semester}`
                 : 'Distribution across scan locations'}
             </p>

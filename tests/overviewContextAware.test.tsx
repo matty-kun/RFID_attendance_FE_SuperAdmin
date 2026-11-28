@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { OverviewPage } from '../src/pages/OverviewPage';
 import * as AcademicTermContext from '../src/context/AcademicTermContext';
@@ -35,6 +35,10 @@ describe('OverviewPage - Hybrid Context-Aware Overview', () => {
     created_at: '2026-05-01T00:00:00Z',
     updated_at: '2026-05-01T00:00:00Z',
   };
+
+  afterEach(() => {
+    cleanup();
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -140,5 +144,45 @@ describe('OverviewPage - Hybrid Context-Aware Overview', () => {
     expect(returnButtons.length).toBeGreaterThan(0);
     fireEvent.click(returnButtons[0]);
     expect(setSelectedTermMock).toHaveBeenCalledWith(mockActiveTerm);
+  });
+
+  it('reveals mobile-style event tray and focuses overview on selected event', async () => {
+    vi.spyOn(AcademicTermContext, 'useAcademicTerm').mockReturnValue({
+      activeTerm: mockActiveTerm,
+      selectedTerm: mockPastTerm,
+      terms: [mockActiveTerm, mockPastTerm],
+      isLoading: false,
+      error: null,
+      setSelectedTerm: vi.fn(),
+      activateTerm: vi.fn(),
+      createTerm: vi.fn(),
+      updateTerm: vi.fn(),
+      refreshTerms: vi.fn(),
+    });
+
+    render(
+      <BrowserRouter>
+        <OverviewPage />
+      </BrowserRouter>
+    );
+
+    // Button shows "Browse events"
+    const browseButton = await screen.findByRole('button', { name: /Browse events/i });
+    expect(browseButton).toBeTruthy();
+
+    // Click button to reveal event tray
+    fireEvent.click(browseButton);
+
+    // Tray reveals events
+    const eventCard = await screen.findByText('Past Festival');
+    expect(eventCard).toBeTruthy();
+
+    // Select the event
+    fireEvent.click(eventCard);
+
+    // Overview updates to event focus
+    expect(await screen.findByText(/Event Overview/i)).toBeTruthy();
+    expect(screen.getByText('Event Scans')).toBeTruthy();
+    expect(screen.getByText('Attendees')).toBeTruthy();
   });
 });
