@@ -5,9 +5,9 @@ import {
   Calendar,
   Check,
   ChevronDown,
+  ChevronUp,
   CreditCard,
   History,
-  Layers,
   MapPin,
   ScanLine,
   Users,
@@ -57,15 +57,6 @@ type EventOverviewData = {
 
 type OverviewData = LiveOverviewData | HistoricalOverviewData | EventOverviewData;
 
-const manilaDate = () =>
-  new Intl.DateTimeFormat('en-PH', {
-    timeZone: 'Asia/Manila',
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date());
-
 const formatDay = (date: string) =>
   new Intl.DateTimeFormat('en-PH', {
     month: 'short',
@@ -99,18 +90,6 @@ const isEventInTerm = (event: EventRecord, term?: AcademicTerm | null): boolean 
   return eventStart <= termEnd && eventEnd >= termStart;
 };
 
-const formatTermRange = (term?: AcademicTerm | null) => {
-  if (!term?.start_date || !term?.end_date) return '';
-  const fmt = (d: string) =>
-    new Intl.DateTimeFormat('en-PH', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      timeZone: 'Asia/Manila',
-    }).format(new Date(`${d.substring(0, 10)}T00:00:00+08:00`));
-  return `${fmt(term.start_date)} – ${fmt(term.end_date)}`;
-};
-
 export function OverviewPage() {
   const { terms, selectedTerm, setSelectedTerm, activeTerm } = useAcademicTerm();
   const currentTerm = selectedTerm || activeTerm || terms[0];
@@ -119,13 +98,13 @@ export function OverviewPage() {
   const [data, setData] = useState<OverviewData | null>(null);
   const [, setLoading] = useState(true);
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectedScope, setSelectedScope] = useState<string>('auto');
   const [isEventTrayOpen, setIsEventTrayOpen] = useState(false);
   const [eventsInTerm, setEventsInTerm] = useState<EventRecord[]>([]);
 
   // Reset event filter whenever academic term changes
   useEffect(() => {
-    setSelectedEventId(null);
+    setSelectedScope('auto');
     setIsEventTrayOpen(false);
   }, [currentTerm?.id]);
 
@@ -136,7 +115,26 @@ export function OverviewPage() {
       const termEvents = (allEvents || []).filter((e) => isEventInTerm(e, currentTerm));
       setEventsInTerm(termEvents);
 
-      const targetEvent = selectedEventId ? termEvents.find((e) => e.id === selectedEventId) : null;
+      // Determine active / ongoing event in active operations
+      let activeRes: any = null;
+      if (isViewingActive || !currentTerm) {
+        activeRes = await adminService.getActiveEvent().catch(() => null);
+      }
+
+      const ongoingEvent =
+        termEvents.find((e) => getEventStatus(e.start_date, e.end_date) === 'ongoing') ||
+        activeRes?.event ||
+        null;
+
+      // Resolve which event to target
+      let targetEvent: EventRecord | null = null;
+      if (selectedScope !== 'overview') {
+        if (selectedScope !== 'auto') {
+          targetEvent = termEvents.find((e) => e.id === selectedScope) || null;
+        } else if (ongoingEvent) {
+          targetEvent = ongoingEvent;
+        }
+      }
 
       if (targetEvent) {
         // Mode 3: Specific Event Focused Overview
@@ -172,12 +170,17 @@ export function OverviewPage() {
         });
       } else if (isViewingActive || !currentTerm) {
         // Mode 1: Live Today Operations
-        const [metrics, roster, active] = await Promise.all([
+        const [metrics, roster] = await Promise.all([
           adminService.getMetrics(),
           studentService.getRosterStats(),
-          adminService.getActiveEvent(),
         ]);
-        setData({ mode: 'live', metrics, roster, event: active.event, eventsInTerm: termEvents });
+        setData({
+          mode: 'live',
+          metrics,
+          roster,
+          event: activeRes?.event || null,
+          eventsInTerm: termEvents,
+        });
       } else {
         // Mode 2: Historical Term Archive
         const [reportRes, roster] = await Promise.all([
@@ -217,7 +220,7 @@ export function OverviewPage() {
     } finally {
       setLoading(false);
     }
-  }, [isViewingActive, currentTerm, selectedEventId, terms]);
+  }, [isViewingActive, currentTerm, selectedScope, terms]);
 
   useEffect(() => {
     void refresh();
@@ -259,16 +262,24 @@ export function OverviewPage() {
       {isEventMode ? (
         <section className="relative rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9">
           <div className="relative z-10 max-w-[75%] sm:max-w-[70%]">
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]">
-              {data.term.school_year} · {data.term.semester} · Event Overview
-            </p>
-            <h1 className="mt-3 text-2xl font-extrabold leading-tight sm:text-4xl">
+            <h1 className="text-2xl font-black uppercase tracking-wide sm:text-4xl">
               {data.event.name}
             </h1>
-            <p className="mt-2.5 max-w-lg text-sm leading-relaxed text-[#EEE1FA]">
+            <p className="mt-2 text-sm font-medium text-[#EEE1FA]">
               {formatEventDateRange(data.event.start_date, data.event.end_date)}
               {data.event.description ? ` · ${data.event.description}` : ''}
             </p>
+            <p className="text-xs text-[#D7B9FA] font-medium mt-0.5">
+              Notre Dame of Midsayap College
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsEventTrayOpen((prev) => !prev)}
+              className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/15 hover:bg-white/25 text-xs font-bold text-white transition-all cursor-pointer backdrop-blur-xs shadow-xs"
+            >
+              <span>{isEventTrayOpen ? 'Close' : 'Change Event'}</span>
+              {isEventTrayOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </button>
           </div>
           <div className="pointer-events-none absolute -bottom-4 -right-2 sm:-bottom-[22px] sm:-right-2.5 md:-bottom-[26px] md:-right-3 z-20">
             <img
@@ -281,16 +292,23 @@ export function OverviewPage() {
       ) : isHistorical ? (
         <section className="relative rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9">
           <div className="relative z-10 max-w-[75%] sm:max-w-[70%]">
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]">
-              {data.term.school_year} · {data.term.semester}
-            </p>
-            <h1 className="mt-3 text-2xl font-extrabold leading-tight sm:text-4xl">
-              {data.term.semester} Overview
+            <h1 className="text-2xl font-black uppercase tracking-wide sm:text-4xl">
+              OVERVIEW
             </h1>
-            <p className="mt-2.5 max-w-lg text-sm leading-relaxed text-[#EEE1FA]">
-              {data.events.length} {data.events.length === 1 ? 'event' : 'events'} recorded
-              {formatTermRange(data.term) ? ` · ${formatTermRange(data.term)}` : ''}
+            <p className="mt-2 text-sm font-medium text-[#EEE1FA]">
+              Attendance across all events ({data.term.school_year} · {data.term.semester})
             </p>
+            <p className="text-xs text-[#D7B9FA] font-medium mt-0.5">
+              Notre Dame of Midsayap College
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsEventTrayOpen((prev) => !prev)}
+              className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/15 hover:bg-white/25 text-xs font-bold text-white transition-all cursor-pointer backdrop-blur-xs shadow-xs"
+            >
+              <span>{isEventTrayOpen ? 'Close' : 'Select Event'}</span>
+              {isEventTrayOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </button>
           </div>
           <div className="pointer-events-none absolute -bottom-4 -right-2 sm:-bottom-[22px] sm:-right-2.5 md:-bottom-[26px] md:-right-3 z-20">
             <img
@@ -303,13 +321,23 @@ export function OverviewPage() {
       ) : (
         <section className="relative rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9">
           <div className="relative z-10 max-w-[70%] sm:max-w-[65%]">
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]">
-              {manilaDate()}
+            <h1 className="text-2xl font-black uppercase tracking-wide sm:text-4xl">
+              OVERVIEW
+            </h1>
+            <p className="mt-2 text-sm font-medium text-[#EEE1FA]">
+              Attendance across all events · Live operations
             </p>
-            <h1 className="mt-3 text-2xl font-extrabold leading-tight sm:text-4xl">Attendance today</h1>
-            <p className="mt-3 max-w-lg text-sm leading-relaxed text-[#EEE1FA]">
-              {data?.event?.name || 'Student scans and checkpoint activity'}
+            <p className="text-xs text-[#D7B9FA] font-medium mt-0.5">
+              Notre Dame of Midsayap College
             </p>
+            <button
+              type="button"
+              onClick={() => setIsEventTrayOpen((prev) => !prev)}
+              className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/15 hover:bg-white/25 text-xs font-bold text-white transition-all cursor-pointer backdrop-blur-xs shadow-xs"
+            >
+              <span>{isEventTrayOpen ? 'Close' : 'Select Event'}</span>
+              {isEventTrayOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </button>
           </div>
           <div className="pointer-events-none absolute -bottom-4 -right-2 sm:-bottom-[22px] sm:-right-2.5 md:-bottom-[26px] md:-right-3 z-20">
             <img
@@ -351,169 +379,119 @@ export function OverviewPage() {
         </div>
       )}
 
-      {/* Mobile-Style Expandable Event Selector Tray */}
-      <div className="rounded-2xl border border-purple-200/80 bg-white shadow-2xs overflow-hidden transition-all">
-        <button
-          type="button"
-          onClick={() => setIsEventTrayOpen((prev) => !prev)}
-          className="flex w-full items-center justify-between gap-3 p-3.5 sm:px-4 text-left transition-colors hover:bg-[#FAF8FC]/60 cursor-pointer group"
-          aria-expanded={isEventTrayOpen}
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-[#7026B7] border border-purple-100/70">
-              <Calendar className="h-4 w-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">
-                {isEventMode ? 'Event Focus' : 'Event Scope'}
-              </p>
-              <div className="flex items-center gap-2 mt-0.5 min-w-0">
-                <p className="truncate text-sm font-bold text-[#24133F] group-hover:text-[#7026B7] transition-colors">
-                  {isEventMode
-                    ? data.event.name
-                    : (isHistorical
-                        ? `All Events in ${data.term.semester}`
-                        : 'All Events · Live Operations')}
-                </p>
-                {isEventMode && (
-                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-[#7026B7] border border-purple-200/60">
-                    Focused
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 shrink-0">
-            {eventsInTerm.length > 0 && (
-              <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-[#7026B7] border border-purple-200/60">
-                {eventsInTerm.length} {eventsInTerm.length === 1 ? 'event' : 'events'}
-              </span>
-            )}
-            <span className="flex items-center gap-1.5 rounded-xl bg-[#FAF7FD] group-hover:bg-[#F3EDFA] px-3 py-1.5 text-xs font-bold text-[#7026B7] border border-purple-200/70 transition-colors">
-              <span>{isEventTrayOpen ? 'Hide events' : 'Browse events'}</span>
-              <ChevronDown
-                className={cn(
-                  'h-3.5 w-3.5 transition-transform duration-200',
-                  isEventTrayOpen && 'rotate-180'
-                )}
-              />
+      {/* When Event Tray is open, it replaces the contents below with scrollable purple cards */}
+      {isEventTrayOpen ? (
+        <section className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300 ease-out">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#756883]">
+              Select Event
+            </h3>
+            <span className="text-xs font-semibold text-[#A59CAC]">
+              {eventsInTerm.length} {eventsInTerm.length === 1 ? 'event' : 'events'} recorded
             </span>
           </div>
-        </button>
 
-        {isEventTrayOpen && (
-          <div className="border-t border-purple-100 bg-[#FAF8FC]/60 p-3.5 sm:p-4 animate-in fade-in slide-in-from-top-2 duration-150">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-[#756883]">
-                Events in {currentTerm?.school_year} {currentTerm?.semester} ({eventsInTerm.length})
-              </p>
-              {selectedEventId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedEventId(null);
-                    setIsEventTrayOpen(false);
-                  }}
-                  className="text-xs font-bold text-[#7026B7] hover:text-[#5E1E9E] transition-colors cursor-pointer"
-                >
-                  Reset to All Events
-                </button>
-              )}
-            </div>
-
-            {eventsInTerm.length === 0 ? (
-              <p className="py-4 text-center text-xs text-[#756883]">
-                No events scheduled or recorded for this academic term.
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {/* Option 0: All Events Aggregate */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedEventId(null);
-                    setIsEventTrayOpen(false);
-                  }}
-                  className={cn(
-                    'flex items-start justify-between p-3 rounded-xl border text-left transition-all cursor-pointer',
-                    selectedEventId === null
-                      ? 'bg-white border-[#7026B7] shadow-xs ring-1 ring-[#7026B7]'
-                      : 'bg-white border-[#E5E0EB] hover:border-purple-300 hover:bg-[#FAF8FC]'
-                  )}
-                >
-                  <div className="min-w-0 pr-2">
-                    <div className="flex items-center gap-1.5">
-                      <Layers className="h-3.5 w-3.5 text-[#7026B7]" />
-                      <span className="text-xs font-bold text-[#24133F]">
-                        {isHistorical ? 'All Semester Events' : 'All Events · Live Operations'}
+          <div className="max-h-[600px] overflow-y-auto pr-1.5 pb-2 [scrollbar-width:thin]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Option 0: Overview / All Events */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setSelectedScope('overview');
+                  setIsEventTrayOpen(false);
+                }}
+                className={cn(
+                  'relative overflow-hidden rounded-[24px] bg-[#351567] hover:bg-[#2A1054] p-5 sm:p-6 text-white transition-all cursor-pointer shadow-md group',
+                  (selectedScope === 'overview' || (!isEventMode && selectedScope === 'auto')) &&
+                    'ring-2 ring-[#D7B9FA] ring-offset-2 ring-offset-[#FAF7FD]'
+                )}
+              >
+                <div className="relative z-10 max-w-[70%] sm:max-w-[75%] space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-base sm:text-lg font-black tracking-wide uppercase text-white truncate">
+                      OVERVIEW
+                    </h4>
+                    {(selectedScope === 'overview' || (!isEventMode && selectedScope === 'auto')) && (
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-white">
+                        <Check className="h-3.5 w-3.5" />
                       </span>
-                    </div>
-                    <p className="text-[11px] text-[#756883] mt-1">
-                      Aggregate metrics across the entire academic term
-                    </p>
+                    )}
                   </div>
-                  {selectedEventId === null && (
-                    <Check className="h-4 w-4 text-[#7026B7] shrink-0 mt-0.5" />
-                  )}
-                </button>
+                  <p className="text-xs font-medium text-[#EEE1FA]">
+                    Attendance across all events
+                  </p>
+                  <p className="text-[11px] text-[#D7B9FA] font-medium pt-0.5">
+                    Notre Dame of Midsayap College
+                  </p>
+                </div>
+                <div className="pointer-events-none absolute -bottom-3 -right-2 sm:-bottom-4 sm:-right-2 z-20">
+                  <img
+                    src={hawiPeeking}
+                    alt="Hawi mascot"
+                    className="h-24 sm:h-28 w-auto object-contain drop-shadow-xl transition-transform group-hover:scale-105"
+                  />
+                </div>
+              </div>
 
-                {/* Individual Event Cards */}
-                {eventsInTerm.map((ev) => {
+              {/* Individual Event Cards */}
+              {eventsInTerm.map((ev) => {
+                  const isSelected = isEventMode && data?.mode === 'event' && data.event.id === ev.id;
                   const evStatus = getEventStatus(ev.start_date, ev.end_date);
-                  const isSelected = selectedEventId === ev.id;
                   return (
-                    <button
+                    <div
                       key={ev.id}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => {
-                        setSelectedEventId(ev.id);
+                        setSelectedScope(ev.id);
                         setIsEventTrayOpen(false);
                       }}
                       className={cn(
-                        'flex items-start justify-between p-3 rounded-xl border text-left transition-all cursor-pointer',
-                        isSelected
-                          ? 'bg-white border-[#7026B7] shadow-xs ring-1 ring-[#7026B7]'
-                          : 'bg-white border-[#E5E0EB] hover:border-purple-300 hover:bg-[#FAF8FC]'
+                        'relative overflow-hidden rounded-[24px] bg-[#351567] hover:bg-[#2A1054] p-5 sm:p-6 text-white transition-all cursor-pointer shadow-md group',
+                        isSelected && 'ring-2 ring-[#D7B9FA] ring-offset-2 ring-offset-[#FAF7FD]'
                       )}
                     >
-                      <div className="min-w-0 pr-2">
-                        <p className="truncate text-xs font-bold text-[#24133F]">{ev.name}</p>
-                        <p className="text-[11px] text-[#756883] mt-0.5">
-                          {formatEventDateRange(ev.start_date, ev.end_date)}
-                        </p>
-                        <div className="mt-2 flex items-center gap-1.5">
-                          {evStatus === 'ongoing' && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                              Ongoing
-                            </span>
-                          )}
-                          {evStatus === 'upcoming' && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
-                              Upcoming
-                            </span>
-                          )}
-                          {evStatus === 'completed' && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-50 text-slate-600 border border-slate-200">
-                              Completed
+                      <div className="relative z-10 max-w-[70%] sm:max-w-[75%] space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-base sm:text-lg font-black tracking-wide uppercase text-white truncate">
+                            {ev.name}
+                          </h4>
+                          {isSelected && (
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-white">
+                              <Check className="h-3.5 w-3.5" />
                             </span>
                           )}
                         </div>
+                        <p className="text-xs font-medium text-[#EEE1FA]">
+                          {formatEventDateRange(ev.start_date, ev.end_date)}
+                        </p>
+                        <p className="text-[11px] text-[#D7B9FA] font-medium pt-0.5 truncate">
+                          Notre Dame of Midsayap College
+                        </p>
+                        {evStatus === 'ongoing' && (
+                          <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/25 text-emerald-200 border border-emerald-400/30">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            Ongoing
+                          </span>
+                        )}
                       </div>
-                      {isSelected && (
-                        <Check className="h-4 w-4 text-[#7026B7] shrink-0 mt-0.5" />
-                      )}
-                    </button>
+                      <div className="pointer-events-none absolute -bottom-3 -right-2 sm:-bottom-4 sm:-right-2 z-20">
+                        <img
+                          src={hawiPeeking}
+                          alt="Hawi mascot"
+                          className="h-24 sm:h-28 w-auto object-contain drop-shadow-xl transition-transform group-hover:scale-105"
+                        />
+                      </div>
+                    </div>
                   );
                 })}
               </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 4 Metric KPI Cards */}
+            </div>
+        </section>
+      ) : (
+        <>
+          {/* 4 Metric KPI Cards */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {/* Card 1 */}
         <div className="rounded-3xl border border-[#E5E0EB] bg-white p-5 shadow-xs">
@@ -853,6 +831,8 @@ export function OverviewPage() {
           </div>
         </div>
       </section>
+      </>
+      )}
 
       {/* TEMP: Scan-to-Confirmation Time Tracking (Testing Only — remove before production) */}
       <ScanTimingTestPanel />

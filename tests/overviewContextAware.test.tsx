@@ -86,7 +86,7 @@ describe('OverviewPage - Hybrid Context-Aware Overview', () => {
     });
   });
 
-  it('renders Live Operations mode when viewing active term', async () => {
+  it('focuses on ongoing event when an event is currently active, and allows switching to full overview', async () => {
     vi.spyOn(AcademicTermContext, 'useAcademicTerm').mockReturnValue({
       activeTerm: mockActiveTerm,
       selectedTerm: mockActiveTerm,
@@ -106,9 +106,25 @@ describe('OverviewPage - Hybrid Context-Aware Overview', () => {
       </BrowserRouter>
     );
 
-    // Live mode indicators
-    expect(await screen.findByText(/Attendance today/i)).toBeTruthy();
-    expect(screen.getByText('Testing Event Live')).toBeTruthy();
+    // Ongoing event is displayed in hero and contents
+    expect(await screen.findByRole('heading', { level: 1, name: /Testing Event Live/i })).toBeTruthy();
+    expect(screen.getByText('Event Scans')).toBeTruthy();
+    expect(screen.getByText('Attendees')).toBeTruthy();
+
+    // Click Change Event to reveal tray
+    const changeEventBtn = screen.getByRole('button', { name: /Change Event/i });
+    fireEvent.click(changeEventBtn);
+
+    // Contents below are replaced by event selector
+    expect(screen.queryByText('Event Scans')).toBeNull();
+
+    // Select "OVERVIEW" to view general attendance across all events
+    const overviewOption = screen.getByRole('heading', { level: 4, name: /OVERVIEW/i });
+    fireEvent.click(overviewOption);
+
+    // Full overview is now displayed
+    expect(await screen.findByRole('heading', { level: 1, name: /OVERVIEW/i })).toBeTruthy();
+    expect(screen.getByText(/Attendance across all events · Live operations/i)).toBeTruthy();
     expect(screen.getByText('Scans today')).toBeTruthy();
   });
 
@@ -134,7 +150,8 @@ describe('OverviewPage - Hybrid Context-Aware Overview', () => {
     );
 
     // Historical mode indicators
-    expect(await screen.findByText(/1st Sem Overview/i)).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: /OVERVIEW/i })).toBeTruthy();
+    expect(screen.getByText(/Attendance across all events \(2026-2027 · 1st Sem\)/i)).toBeTruthy();
     expect(screen.getByText(/Viewing Historical Term Archive \(2026-2027 · 1st Sem\)/i)).toBeTruthy();
     expect(screen.getByText('Term Scans')).toBeTruthy();
     expect(screen.getByText('Term Events')).toBeTruthy();
@@ -146,7 +163,7 @@ describe('OverviewPage - Hybrid Context-Aware Overview', () => {
     expect(setSelectedTermMock).toHaveBeenCalledWith(mockActiveTerm);
   });
 
-  it('reveals mobile-style event tray and focuses overview on selected event', async () => {
+  it('reveals mobile-style event tray replacing contents below and focuses overview on selected event', async () => {
     vi.spyOn(AcademicTermContext, 'useAcademicTerm').mockReturnValue({
       activeTerm: mockActiveTerm,
       selectedTerm: mockPastTerm,
@@ -166,22 +183,25 @@ describe('OverviewPage - Hybrid Context-Aware Overview', () => {
       </BrowserRouter>
     );
 
-    // Button shows "Browse events"
-    const browseButton = await screen.findByRole('button', { name: /Browse events/i });
-    expect(browseButton).toBeTruthy();
+    // Button shows "Select Event"
+    const selectEventButton = await screen.findByRole('button', { name: /Select Event/i });
+    expect(selectEventButton).toBeTruthy();
 
     // Click button to reveal event tray
-    fireEvent.click(browseButton);
+    fireEvent.click(selectEventButton);
+
+    // Contents below are replaced
+    expect(screen.queryByText('Term Scans')).toBeNull();
 
     // Tray reveals events
-    const eventCard = await screen.findByText('Past Festival');
+    const eventCard = await screen.findByRole('heading', { level: 4, name: 'Past Festival' });
     expect(eventCard).toBeTruthy();
 
     // Select the event
     fireEvent.click(eventCard);
 
     // Overview updates to event focus
-    expect(await screen.findByText(/Event Overview/i)).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: /Past Festival/i })).toBeTruthy();
     expect(screen.getByText('Event Scans')).toBeTruthy();
     expect(screen.getByText('Attendees')).toBeTruthy();
   });
