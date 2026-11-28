@@ -306,18 +306,35 @@ export function buildExcelWorkbook(
 
   // --- Sheet 2: Student Compliance ---
   const complianceHeaders = [...STUDENT_COMPLIANCE_HEADERS];
-  const complianceMappedRows = complianceRows.map((r) =>
-    [
-      r.course,
-      r.yearLabel,
-      r.name,
-      r.present,
-      r.absent,
-      r.totalRequired,
-      r.ratio,
-      r.complianceRate,
-    ].map(safeCell)
-  );
+  const complianceMappedRows: (string | number)[][] = [];
+
+  for (let i = 0; i < complianceRows.length; i++) {
+    const r = complianceRows[i];
+    complianceMappedRows.push(
+      [
+        r.course,
+        r.yearLabel,
+        r.name,
+        r.present,
+        r.absent,
+        r.totalRequired,
+        r.ratio,
+        r.complianceRate,
+      ].map(safeCell)
+    );
+
+    // Spacing: insert blank row below each course and per year level of each course
+    if (i < complianceRows.length - 1) {
+      const nextR = complianceRows[i + 1];
+      const isCourseChanged = r.course !== nextR.course;
+      const isYearChanged = (r.yearLevel ?? null) !== (nextR.yearLevel ?? null);
+
+      if (isCourseChanged || isYearChanged) {
+        complianceMappedRows.push([]);
+      }
+    }
+  }
+
   const complianceSheet = XLSX.utils.aoa_to_sheet([complianceHeaders, ...complianceMappedRows]);
   complianceSheet['!cols'] = [
     { wch: 32 }, // Course
