@@ -17,11 +17,13 @@ import {
   Plus,
   Trash2,
   Copy,
+  GraduationCap,
 } from 'lucide-react';
 import { Checkbox } from '../../../components/common/Checkbox';
 import { toast } from '../../../context';
 import { draftStorage } from '../../../utils/draftStorage';
 import { adminService } from '../../../services/adminService';
+import { useAcademicTerm } from '../../../context/AcademicTermContext';
 import { EditTimeWindowDrawer } from './EditTimeWindowDrawer';
 import {
   AssignOfficersDrawer,
@@ -126,6 +128,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   onClose,
   onPublished,
 }) => {
+  const { terms, selectedTerm, activeTerm } = useAcademicTerm();
+  const currentTerm = selectedTerm || activeTerm || terms[0];
+
   const [isMounted, setIsMounted] = useState(isOpen);
   const [isVisible, setIsVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -245,9 +250,18 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         if (saved.currentStep) setCurrentStep(saved.currentStep);
         if (saved.daysSchedule) setDaysSchedule(saved.daysSchedule);
         setHasRestoredDraft(true);
+      } else if (currentTerm?.start_date && currentTerm?.end_date) {
+        const tStart = currentTerm.start_date.substring(0, 10);
+        const tEnd = currentTerm.end_date.substring(0, 10);
+        if (today < tStart || today > tEnd) {
+          setStartDate(tStart);
+          setEndDate(tStart);
+          setCalendarMonth(Number(tStart.slice(5, 7)) - 1);
+          setCalendarYear(Number(tStart.slice(0, 4)));
+        }
       }
     }
-  }, [isOpen]);
+  }, [isOpen, currentTerm, today]);
 
   useEffect(() => {
     if (isOpen && (eventName || eventDescription)) {
@@ -677,6 +691,21 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 <h3 className="text-lg font-bold text-[#24133F]">Event Details</h3>
                 <p className="text-xs text-[#756883]">Provide the basic information about your event</p>
               </div>
+
+              {currentTerm && (
+                <div className="flex items-center gap-2 rounded-2xl bg-purple-50/70 border border-purple-200/60 px-3.5 py-2.5 text-xs text-[#24133F]">
+                  <GraduationCap className="h-4 w-4 text-brand-700 shrink-0" />
+                  <span className="text-[11px] text-[#756883]">Academic Semester:</span>
+                  <span className="font-bold text-brand-700 text-[11px]">
+                    {currentTerm.school_year} · {currentTerm.semester}
+                  </span>
+                  {currentTerm.start_date && currentTerm.end_date && (
+                    <span className="text-[10px] text-slate-500 ml-auto">
+                      ({formatDateDisplay(currentTerm.start_date)} – {formatDateDisplay(currentTerm.end_date)})
+                    </span>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-[#24133F]">
