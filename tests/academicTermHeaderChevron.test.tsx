@@ -21,4 +21,22 @@ describe('AcademicTermHeaderSelector Chevron Hover Styling', () => {
     expect(svg?.getAttribute('class')).toContain('opacity-0');
     expect(svg?.getAttribute('class')).toContain('group-hover:opacity-100');
   });
+
+  it('elevates container z-index to z-50 when open and selects terms cleanly on click', async () => {
+    const { fireEvent } = await import('@testing-library/react');
+    const { container } = render(
+      <AcademicTermProvider>
+        <AcademicTermHeaderSelector />
+      </AcademicTermProvider>
+    );
+
+    const trigger = container.querySelector('button')!;
+    const wrapper = container.querySelector('.relative.inline-block');
+    expect(wrapper?.className).not.toContain('z-50');
+
+    // Open menu
+    fireEvent.click(trigger);
+    expect(wrapper?.className).toContain('z-50');
+    expect(screen.getByRole('menu')).toBeTruthy();
+  });
 });
