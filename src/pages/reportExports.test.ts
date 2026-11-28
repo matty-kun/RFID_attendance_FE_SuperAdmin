@@ -326,4 +326,56 @@ describe('SA-12 Report Exports — Non-Redundant Columns & Formatting', () => {
     expect(attended?.ratio).toBe('1 / 2');
     expect(attended?.complianceRate).toBe('50%');
   });
+
+  it('inserts blank spacing rows below each course and per year level in Student Compliance sheet', async () => {
+    const { buildExcelWorkbook } = await import('./reportExports');
+    const XLSX = await import('xlsx');
+    const allStudents = [
+      { id: '1', name: 'Student CPE 2', course: 'BS Computer Engineering', year_level: 2 },
+      { id: '2', name: 'Student CS 2', course: 'BS Computer Science', year_level: 2 },
+      { id: '3', name: 'Student CS 3A', course: 'BS Computer Science', year_level: 3 },
+      { id: '4', name: 'Student CS 3B', course: 'BS Computer Science', year_level: 3 },
+      { id: '5', name: 'Student ECE 1', course: 'BS Electronics Engineering', year_level: 1 },
+    ];
+
+    const book = buildExcelWorkbook([], {
+      allStudents,
+      sessionBreakdown: [{ id: '1', name: 'Session 1', timeIns: 0, timeOuts: 0 }],
+    });
+
+    const sheet = book.Sheets['Student Compliance'];
+    const aoa: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+    // Header row is index 0
+    expect(aoa[0]).toEqual(STUDENT_COMPLIANCE_HEADERS);
+
+    // Row 1: Student CPE 2
+    expect(aoa[1][0]).toBe('BS Computer Engineering');
+    expect(aoa[1][1]).toBe('2nd Year');
+
+    // Row 2: BLANK row separating BS Computer Engineering (course change)
+    expect(aoa[2]).toEqual([]);
+
+    // Row 3: Student CS 2
+    expect(aoa[3][0]).toBe('BS Computer Science');
+    expect(aoa[3][1]).toBe('2nd Year');
+
+    // Row 4: BLANK row separating BS Computer Science 2nd Year from 3rd Year (year change)
+    expect(aoa[4]).toEqual([]);
+
+    // Row 5: Student CS 3A
+    expect(aoa[5][0]).toBe('BS Computer Science');
+    expect(aoa[5][1]).toBe('3rd Year');
+
+    // Row 6: Student CS 3B (same course, same year -> no blank row between them)
+    expect(aoa[6][0]).toBe('BS Computer Science');
+    expect(aoa[6][1]).toBe('3rd Year');
+
+    // Row 7: BLANK row separating BS Computer Science from BS Electronics Engineering (course change)
+    expect(aoa[7]).toEqual([]);
+
+    // Row 8: Student ECE 1
+    expect(aoa[8][0]).toBe('BS Electronics Engineering');
+    expect(aoa[8][1]).toBe('1st Year');
+  });
 });
