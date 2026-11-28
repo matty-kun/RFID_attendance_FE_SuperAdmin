@@ -1,15 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useEventsViewModel } from '../viewmodels';
 import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
+import { Dropdown } from '../../../components/common/Dropdown';
 import { Input } from '../../../components/common/Input';
 import { Modal } from '../../../components/common/Modal';
 import { DeleteConfirmationModal } from '../../../components/common/DeleteConfirmationModal';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { LoadingState } from '../../../components/common/LoadingState';
-import { Plus, RefreshCw, Search, Sparkles, Calendar, Trash2, CheckCircle2 } from 'lucide-react';
+import { Plus, RefreshCw, Search, Sparkles, Calendar, Trash2, CheckCircle2, GraduationCap, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getEventStatus } from '../../../utils/status';
+import { useAcademicTerm } from '../../../context/AcademicTermContext';
 
 export const EventsView: React.FC = () => {
   const {
@@ -36,18 +38,79 @@ export const EventsView: React.FC = () => {
     handleDeleteEvent,
   } = useEventsViewModel();
 
+  // Academic Term Context & Filtering
+  const { terms, selectedTerm, setSelectedTerm, activeTerm } = useAcademicTerm();
+  const currentTerm = selectedTerm || activeTerm || terms[0];
+
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [academicTermFilter, setAcademicTermFilter] = useState<string>(currentTerm?.id || 'all');
   const [eventToDelete, setEventToDelete] = useState<{ id: string; name: string } | null>(null);
 
+  // Sync when user changes viewing term in header selector or active term changes
+  useEffect(() => {
+    if (currentTerm?.id) {
+      setAcademicTermFilter(currentTerm.id);
+    }
+  }, [currentTerm?.id]);
+
+  const toYmd = (val?: string | null) => (val ? val.substring(0, 10) : '');
+
+  const getEventAcademicTerm = (startDate: string, endDate?: string) => {
+    const evStart = toYmd(startDate);
+    const evEnd = toYmd(endDate || startDate);
+    return terms.find((t) => {
+      if (!t.start_date || !t.end_date) return false;
+      const tStart = toYmd(t.start_date);
+      const tEnd = toYmd(t.end_date);
+      return !(evStart > tEnd || evEnd < tStart);
+    });
+  };
+
+  const academicTermOptions = useMemo(() => {
+    return [
+      { value: 'all', label: 'All Semesters / Terms' },
+      ...terms.map((t) => ({
+        value: t.id,
+        label: `${t.school_year} · ${t.semester}${t.is_active ? ' (Active)' : ''}`,
+      })),
+    ];
+  }, [terms]);
+
   const filteredEvents = useMemo(() => {
-    if (!searchQuery.trim()) return events;
-    const query = searchQuery.toLowerCase();
-    return events.filter(
-      (ev) =>
-        ev.name.toLowerCase().includes(query) ||
-        (ev.description && ev.description.toLowerCase().includes(query))
-    );
-  }, [events, searchQuery]);
+    return events.filter((ev) => {
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const matchesName = ev.name.toLowerCase().includes(query);
+        const matchesDesc = ev.description?.toLowerCase().includes(query);
+        if (!matchesName && !matchesDesc) return false;
+      }
+
+      if (statusFilter !== 'all') {
+        const evStatus = getEventStatus(ev.start_date, ev.end_date);
+        if (evStatus !== statusFilter) return false;
+      }
+
+      if (academicTermFilter !== 'all') {
+        const targetTerm =
+          terms.find((t) => t.id === academicTermFilter) ||
+          (academicTermFilter === currentTerm?.id ? currentTerm : null);
+
+        if (targetTerm?.start_date && targetTerm?.end_date) {
+          const termStart = toYmd(targetTerm.start_date);
+          const termEnd = toYmd(targetTerm.end_date);
+          const evStart = toYmd(ev.start_date);
+          const evEnd = toYmd(ev.end_date || ev.start_date);
+
+          if (evStart > termEnd || evEnd < termStart) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    });
+  }, [events, searchQuery, statusFilter, academicTermFilter, terms, currentTerm]);
 
   const activeEvent = useMemo(() => {
     const ev = events.find((e) => e.id === activeEventId);
@@ -77,7 +140,7 @@ export const EventsView: React.FC = () => {
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex h-10 min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] transition-all focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100 sm:max-w-[310px]">
+        <label className="flex h-10 min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#E5E0EB] bg-white px-3 text-[#756883] transition-all focus-within:border-[#7026B7] focus-within:ring-4 focus-within:ring-purple-100 sm:max-w-[280px]">
           <Search className="h-4 w-4" />
           <span className="sr-only">Search events</span>
           <input
@@ -88,6 +151,34 @@ export const EventsView: React.FC = () => {
             className="w-full bg-transparent text-xs text-[#24133F] outline-none placeholder:text-[#A59AAB]"
           />
         </label>
+
+        <Dropdown
+          value={statusFilter}
+          onChange={setStatusFilter}
+          icon={<Activity className="h-4 w-4 text-[#756883]" />}
+          buttonClassName="h-10 rounded-xl text-xs"
+          options={[
+            { value: 'all', label: 'All Status' },
+            { value: 'ongoing', label: 'Ongoing' },
+            { value: 'upcoming', label: 'Upcoming' },
+            { value: 'completed', label: 'Completed' },
+          ]}
+        />
+
+        <Dropdown
+          value={academicTermFilter}
+          onChange={(val) => {
+            setAcademicTermFilter(val);
+            if (val !== 'all') {
+              const matched = terms.find((t) => t.id === val);
+              if (matched) setSelectedTerm(matched);
+            }
+          }}
+          icon={<GraduationCap className="h-4 w-4 text-[#756883]" />}
+          buttonClassName="h-10 rounded-xl text-xs font-semibold"
+          options={academicTermOptions}
+        />
+
         <div className="ml-auto flex items-center gap-2">
           <Button
             variant="secondary"
@@ -160,19 +251,27 @@ export const EventsView: React.FC = () => {
               <tr>
                 <td colSpan={6} className="py-6">
                   <EmptyState
-                    variant={searchQuery ? 'no-search-results' : 'empty-list'}
-                    title={searchQuery ? 'No campus events match your search' : 'No campus events registered yet'}
+                    variant={searchQuery || statusFilter !== 'all' || academicTermFilter !== 'all' ? 'no-search-results' : 'empty-list'}
+                    title={
+                      searchQuery || statusFilter !== 'all' || academicTermFilter !== 'all'
+                        ? 'No campus events match filters'
+                        : 'No campus events registered yet'
+                    }
                     description={
-                      searchQuery
-                        ? 'Try clearing your search terms to see all events.'
+                      searchQuery || statusFilter !== 'all' || academicTermFilter !== 'all'
+                        ? 'Try clearing search terms or switching academic terms.'
                         : 'Create your first event to configure dates and attendance sessions.'
                     }
                     action={
-                      searchQuery
+                      searchQuery || statusFilter !== 'all' || academicTermFilter !== 'all'
                         ? {
-                            label: 'Clear Search',
+                            label: 'Clear Filters',
                             variant: 'secondary',
-                            onClick: () => setSearchQuery(''),
+                            onClick: () => {
+                              setSearchQuery('');
+                              setStatusFilter('all');
+                              setAcademicTermFilter('all');
+                            },
                           }
                         : {
                             label: 'Create Event',
@@ -188,6 +287,7 @@ export const EventsView: React.FC = () => {
               filteredEvents.map((ev) => {
                 const status = getEventStatus(ev.start_date, ev.end_date);
                 const isActive = ev.id === activeEventId && status !== 'completed';
+                const matchedTerm = getEventAcademicTerm(ev.start_date, ev.end_date);
 
                 return (
                   <tr
@@ -205,8 +305,16 @@ export const EventsView: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-[#756883] mt-0.5 line-clamp-1 max-w-xs">
-                        {ev.description || 'No description provided'}
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        {matchedTerm && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-[#FAF7FD] border border-purple-200/80 px-1.5 py-0.5 text-[10px] font-semibold text-brand-700">
+                            <GraduationCap className="h-2.5 w-2.5 text-brand-600" />
+                            {matchedTerm.school_year} · {matchedTerm.semester}
+                          </span>
+                        )}
+                        <span className="text-xs text-[#756883] line-clamp-1 max-w-xs">
+                          {ev.description || 'No description provided'}
+                        </span>
                       </div>
                     </td>
                     <td className="px-3 py-3">
