@@ -275,10 +275,10 @@ export function OverviewPage() {
             <button
               type="button"
               onClick={() => setIsEventTrayOpen((prev) => !prev)}
-              className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/15 hover:bg-white/25 text-xs font-bold text-white transition-all cursor-pointer backdrop-blur-xs shadow-xs"
+              className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/15 hover:bg-white/25 active:scale-95 text-xs font-bold text-white transition-all duration-200 cursor-pointer backdrop-blur-xs shadow-xs"
             >
               <span>{isEventTrayOpen ? 'Close' : 'Change Event'}</span>
-              {isEventTrayOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-300 ease-out", isEventTrayOpen && "rotate-180")} />
             </button>
           </div>
           <div className="pointer-events-none absolute -bottom-4 -right-2 sm:-bottom-[22px] sm:-right-2.5 md:-bottom-[26px] md:-right-3 z-20">
@@ -304,10 +304,10 @@ export function OverviewPage() {
             <button
               type="button"
               onClick={() => setIsEventTrayOpen((prev) => !prev)}
-              className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/15 hover:bg-white/25 text-xs font-bold text-white transition-all cursor-pointer backdrop-blur-xs shadow-xs"
+              className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/15 hover:bg-white/25 active:scale-95 text-xs font-bold text-white transition-all duration-200 cursor-pointer backdrop-blur-xs shadow-xs"
             >
               <span>{isEventTrayOpen ? 'Close' : 'Select Event'}</span>
-              {isEventTrayOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-300 ease-out", isEventTrayOpen && "rotate-180")} />
             </button>
           </div>
           <div className="pointer-events-none absolute -bottom-4 -right-2 sm:-bottom-[22px] sm:-right-2.5 md:-bottom-[26px] md:-right-3 z-20">
@@ -333,10 +333,10 @@ export function OverviewPage() {
             <button
               type="button"
               onClick={() => setIsEventTrayOpen((prev) => !prev)}
-              className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/15 hover:bg-white/25 text-xs font-bold text-white transition-all cursor-pointer backdrop-blur-xs shadow-xs"
+              className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/15 hover:bg-white/25 active:scale-95 text-xs font-bold text-white transition-all duration-200 cursor-pointer backdrop-blur-xs shadow-xs"
             >
               <span>{isEventTrayOpen ? 'Close' : 'Select Event'}</span>
-              {isEventTrayOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-300 ease-out", isEventTrayOpen && "rotate-180")} />
             </button>
           </div>
           <div className="pointer-events-none absolute -bottom-4 -right-2 sm:-bottom-[22px] sm:-right-2.5 md:-bottom-[26px] md:-right-3 z-20">
@@ -381,7 +381,7 @@ export function OverviewPage() {
 
       {/* When Event Tray is open, it replaces the contents below with scrollable purple cards */}
       {isEventTrayOpen ? (
-        <section className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300 ease-out">
+        <section className="space-y-4 animate-in fade-in-50 slide-in-from-top-3 duration-300 ease-out fill-mode-forwards">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[#756883]">
               Select Event
@@ -402,7 +402,7 @@ export function OverviewPage() {
                   setIsEventTrayOpen(false);
                 }}
                 className={cn(
-                  'relative overflow-hidden rounded-[24px] bg-[#351567] hover:bg-[#2A1054] p-5 sm:p-6 text-white transition-all cursor-pointer shadow-md group',
+                  'relative overflow-hidden rounded-[24px] bg-[#351567] hover:bg-[#2A1054] hover:-translate-y-0.5 active:scale-[0.99] p-5 sm:p-6 text-white transition-all duration-200 cursor-pointer shadow-md group',
                   (selectedScope === 'overview' || (!isEventMode && selectedScope === 'auto')) &&
                     'ring-2 ring-[#D7B9FA] ring-offset-2 ring-offset-[#FAF7FD]'
                 )}
@@ -448,7 +448,7 @@ export function OverviewPage() {
                         setIsEventTrayOpen(false);
                       }}
                       className={cn(
-                        'relative overflow-hidden rounded-[24px] bg-[#351567] hover:bg-[#2A1054] p-5 sm:p-6 text-white transition-all cursor-pointer shadow-md group',
+                        'relative overflow-hidden rounded-[24px] bg-[#351567] hover:bg-[#2A1054] hover:-translate-y-0.5 active:scale-[0.99] p-5 sm:p-6 text-white transition-all duration-200 cursor-pointer shadow-md group',
                         isSelected && 'ring-2 ring-[#D7B9FA] ring-offset-2 ring-offset-[#FAF7FD]'
                       )}
                     >
@@ -490,7 +490,7 @@ export function OverviewPage() {
             </div>
         </section>
       ) : (
-        <>
+        <div className="space-y-6 animate-in fade-in-50 slide-in-from-top-2 duration-300 ease-out fill-mode-forwards">
           {/* 4 Metric KPI Cards */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {/* Card 1 */}
@@ -831,7 +831,7 @@ export function OverviewPage() {
           </div>
         </div>
       </section>
-      </>
+        </div>
       )}
 
       {/* TEMP: Scan-to-Confirmation Time Tracking (Testing Only — remove before production) */}
