@@ -402,6 +402,16 @@ export function ReportsPage() {
       const typeLabel = type === 'all' ? 'All Types' : (type === 'time_in' ? 'Time In' : 'Time Out');
       const locationLabel = location === 'all' ? 'All Locations' : location;
 
+      let allStudents: Array<{ id: string; name: string; course?: string; year_level?: number | null }> = [];
+      try {
+        const rosterRes = await request.get<{ students: any[] }>('/students/roster');
+        if (rosterRes?.students) {
+          allStudents = rosterRes.students;
+        }
+      } catch {
+        // non-blocking fallback
+      }
+
       const { exportAttendance } = await import('./reportExports');
       await exportAttendance(rows, format, endDate || new Date().toISOString().slice(0, 10), {
         summary: {
@@ -428,6 +438,7 @@ export function ReportsPage() {
         sessionBreakdown,
         checkpointList,
         courseList,
+        allStudents,
       });
     } catch (err) {
       console.error('Report export failed:', err);
@@ -614,9 +625,9 @@ export function ReportsPage() {
       </div>
 
       {/* Row 1: Attendance Trend (Card 1) & Session Breakdown (Card 2) */}
-      <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr] items-start">
+      <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         {/* Card 1: Attendance Trend */}
-        <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white p-6">
+        <section className="flex flex-col h-full justify-between rounded-[24px] border border-[#E5E0EB] bg-white p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
@@ -771,13 +782,13 @@ export function ReportsPage() {
         </section>
 
         {/* Card 2: Session Breakdown */}
-        <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white overflow-hidden">
-          <div className="p-6 pb-2">
+        <section className="flex flex-col h-full rounded-[24px] border border-[#E5E0EB] bg-white overflow-hidden">
+          <div className="p-6 pb-2 shrink-0">
             <h2 className="text-lg font-bold text-[#24133F]">Session Breakdown</h2>
             <p className="text-xs text-[#756883] mt-0.5">Recorded scans by event day and session period</p>
           </div>
 
-          <div className="max-h-[290px] overflow-y-auto overflow-x-auto [scrollbar-width:thin] pb-3">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto [scrollbar-width:thin] pb-3 max-h-[300px]">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_#F1EEF4]">
                 <tr className="text-[#756883] font-medium">
@@ -815,15 +826,15 @@ export function ReportsPage() {
       </div>
 
       {/* Checkpoints and Course Breakdown */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Checkpoints */}
-        <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white overflow-hidden">
-          <div className="p-6 pb-2">
+        <section className="flex flex-col h-full rounded-[24px] border border-[#E5E0EB] bg-white overflow-hidden">
+          <div className="p-6 pb-2 shrink-0">
             <h2 className="text-lg font-bold text-[#24133F]">Checkpoints</h2>
             <p className="text-xs text-[#756883] mt-0.5">Scans by checkpoint location</p>
           </div>
 
-          <div className="max-h-[290px] overflow-y-auto overflow-x-auto [scrollbar-width:thin] pb-3">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto [scrollbar-width:thin] pb-3 max-h-[300px]">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_#F1EEF4]">
                 <tr className="text-[#756883] font-medium">
@@ -862,13 +873,13 @@ export function ReportsPage() {
         </section>
 
         {/* Course Breakdown */}
-        <section className="flex flex-col rounded-[24px] border border-[#E5E0EB] bg-white overflow-hidden">
-          <div className="p-6 pb-2">
+        <section className="flex flex-col h-full rounded-[24px] border border-[#E5E0EB] bg-white overflow-hidden">
+          <div className="p-6 pb-2 shrink-0">
             <h2 className="text-lg font-bold text-[#24133F]">Course Breakdown</h2>
             <p className="mt-0.5 text-xs text-[#756883]">Scan counts follow the selected filters. Active roster is the current student count per course.</p>
           </div>
 
-          <div className="max-h-[290px] overflow-y-auto overflow-x-auto [scrollbar-width:thin] pb-3">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto [scrollbar-width:thin] pb-3 max-h-[300px]">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_#F1EEF4]">
                 <tr className="text-[#756883] font-medium">
