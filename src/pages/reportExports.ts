@@ -5,6 +5,7 @@ import {
   Document,
   HeadingLevel,
   Packer,
+  PageBreak,
   Paragraph,
   ShadingType,
   Table,
@@ -832,6 +833,9 @@ export async function exportAttendance(
   if (complianceRows.length > 0) {
     docChildren.push(
       new Paragraph({
+        children: [new PageBreak()],
+      }),
+      new Paragraph({
         text: `Student Attendance Compliance (X/Y) — ${complianceRows.length} Students`,
         heading: HeadingLevel.HEADING_2,
         spacing: { before: 200, after: 100 },
@@ -841,6 +845,7 @@ export async function exportAttendance(
         rows: [
           new TableRow({
             tableHeader: true,
+            cantSplit: true,
             children: STUDENT_COMPLIANCE_HEADERS.map((h, i) =>
               new TableCell({
                 margins: { top: 60, bottom: 60, left: 80, right: 80 },
@@ -860,6 +865,7 @@ export async function exportAttendance(
           }),
           ...complianceRows.map((r, idx) =>
             new TableRow({
+              cantSplit: true,
               children: [
                 r.course,
                 r.yearLabel,
@@ -901,6 +907,9 @@ export async function exportAttendance(
   // Section 3: Full Detailed Attendance Records Table
   docChildren.push(
     new Paragraph({
+      children: [new PageBreak()],
+    }),
+    new Paragraph({
       text: `Student Attendance Records (${rows.length} records)`,
       heading: HeadingLevel.HEADING_2,
       spacing: { before: 200, after: 100 },
@@ -911,6 +920,7 @@ export async function exportAttendance(
     (cells, rowIndex) =>
       new TableRow({
         tableHeader: rowIndex === 0,
+        cantSplit: true,
         children: cells.map(
           (value, colIndex) =>
             new TableCell({
