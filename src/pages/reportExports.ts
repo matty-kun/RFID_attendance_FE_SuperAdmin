@@ -76,14 +76,50 @@ export function buildStudentComplianceRows(
     }
   >();
 
+  // 1. Seed full roster so absent students (0 scans) are included
+  if (extra?.allStudents && extra.allStudents.length > 0) {
+    const activeCourseFilter =
+      extra.filters?.course && extra.filters.course !== 'All Courses'
+        ? extra.filters.course.trim().toLowerCase()
+        : null;
+
+    for (const s of extra.allStudents) {
+      if (activeCourseFilter && (s.course || '').trim().toLowerCase() !== activeCourseFilter) {
+        continue;
+      }
+      studentMap.set(s.id, {
+        name: s.name,
+        course: s.course || 'Unspecified',
+        yearLevel: s.year_level ?? s.yearLevel ?? null,
+        attendedSessions: new Set<string>(),
+      });
+    }
+  }
+
+  // 2. Add attendance records from rows
   for (const r of rows) {
     const studentKey = r.id.includes('::') ? r.id.split('::')[0] : r.name;
-    const existing = studentMap.get(studentKey) || {
-      name: r.name,
-      course: r.course || 'Unspecified',
-      yearLevel: r.yearLevel ?? null,
-      attendedSessions: new Set<string>(),
-    };
+    let existing = studentMap.get(studentKey);
+    if (!existing) {
+      // Also try matching by name in case roster had different key
+      for (const val of studentMap.values()) {
+        if (val.name.trim().toLowerCase() === (r.name || '').trim().toLowerCase()) {
+          existing = val;
+          break;
+        }
+      }
+    }
+
+    if (!existing) {
+      existing = {
+        name: r.name,
+        course: r.course || 'Unspecified',
+        yearLevel: r.yearLevel ?? null,
+        attendedSessions: new Set<string>(),
+      };
+      studentMap.set(studentKey, existing);
+    }
+
     if (existing.yearLevel === null && r.yearLevel !== undefined && r.yearLevel !== null) {
       existing.yearLevel = r.yearLevel;
     }
@@ -92,7 +128,6 @@ export function buildStudentComplianceRows(
     }
     const sessionKey = `${r.event}::${r.session}`;
     existing.attendedSessions.add(sessionKey);
-    studentMap.set(studentKey, existing);
   }
 
   const list: StudentComplianceSummaryRow[] = [];
@@ -153,6 +188,7 @@ export interface ReportExportExtra {
   sessionBreakdown?: ReportSessionItem[];
   checkpointList?: ReportCheckpointItem[];
   courseList?: ReportCourseItem[];
+  allStudents?: Array<{ id: string; name: string; course?: string; year_level?: number | null; yearLevel?: number | null }>;
 }
 
 export function buildReportExportRowValues(row: ReportStudentAttendanceRow): string[] {
