@@ -52,12 +52,12 @@ export interface DrawerProps {
 }
 
 const maxWidthMap = {
-  sm: 'max-w-sm',
-  md: 'max-w-md',
-  lg: 'max-w-lg',
-  xl: 'max-w-xl',
-  '2xl': 'max-w-2xl',
-  '3xl': 'max-w-3xl',
+  sm: 'w-full max-w-full sm:max-w-sm',
+  md: 'w-full max-w-full sm:max-w-md',
+  lg: 'w-full max-w-full sm:max-w-lg',
+  xl: 'w-full max-w-full sm:max-w-xl',
+  '2xl': 'w-full max-w-full sm:max-w-xl md:max-w-2xl',
+  '3xl': 'w-full max-w-full sm:max-w-2xl lg:max-w-3xl',
 };
 
 export const Drawer: React.FC<DrawerProps> = ({
@@ -164,7 +164,7 @@ export const Drawer: React.FC<DrawerProps> = ({
       >
         {/* Drawer Header (rendered unless hideHeader is true) */}
         {!hideHeader && (
-          <div className="border-b border-[#F1EEF4] p-6 shrink-0 bg-white">
+          <div className="border-b border-[#F1EEF4] p-4 sm:p-6 shrink-0 bg-white">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 {icon && (
@@ -173,7 +173,7 @@ export const Drawer: React.FC<DrawerProps> = ({
                   </div>
                 )}
                 <div>
-                  {title && <h2 className="text-lg font-bold text-[#24133F]">{title}</h2>}
+                  {title && <h2 className="text-base sm:text-lg font-bold text-[#24133F]">{title}</h2>}
                   {description && <p className="text-xs text-[#756883] mt-0.5">{description}</p>}
                 </div>
               </div>
@@ -192,13 +192,13 @@ export const Drawer: React.FC<DrawerProps> = ({
         )}
 
         {/* Drawer Content */}
-        <div className={cn('flex-1 overflow-y-auto min-h-0 flex flex-col', noPadding ? 'p-0' : 'p-6')}>
+        <div className={cn('flex-1 overflow-y-auto min-h-0 flex flex-col', noPadding ? 'p-0' : 'p-4 sm:p-6')}>
           {children}
         </div>
 
         {/* Drawer Footer */}
         {footer && (
-          <div className="border-t border-[#F1EEF4] p-6 bg-white shrink-0">
+          <div className="border-t border-[#F1EEF4] p-4 sm:p-6 bg-white shrink-0">
             {footer}
           </div>
         )}
