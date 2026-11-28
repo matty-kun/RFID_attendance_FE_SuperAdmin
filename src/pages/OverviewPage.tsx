@@ -170,24 +170,11 @@ export function OverviewPage() {
     <div className="space-y-6 pb-8">
       {/* Hero Banner */}
       {isHistorical ? (
-        <section className="relative rounded-[28px] bg-gradient-to-r from-[#24133F] via-[#351567] to-[#451475] px-6 py-7 text-white sm:px-9 sm:py-9">
+        <section className="relative rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9">
           <div className="relative z-10 max-w-[75%] sm:max-w-[70%]">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="flex items-center gap-1.5 text-[11px] font-bold text-purple-200 bg-purple-900/60 border border-purple-400/40 px-2.5 py-0.5 rounded-full">
-                <Calendar className="h-3 w-3 text-purple-300" />
-                Semester Archive · {data.term.school_year} {data.term.semester}
-              </span>
-              {activeTerm && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedTerm(activeTerm)}
-                  className="flex items-center gap-1 text-[11px] font-bold text-emerald-300 hover:text-emerald-200 bg-emerald-950/60 hover:bg-emerald-900/70 border border-emerald-500/40 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer"
-                >
-                  <span>Return to Live Today</span>
-                  <ArrowRight className="h-3 w-3" />
-                </button>
-              )}
-            </div>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]">
+              {data.term.school_year} · {data.term.semester}
+            </p>
             <h1 className="mt-3 text-2xl font-extrabold leading-tight sm:text-4xl">
               {data.term.semester} Overview
             </h1>
@@ -207,15 +194,9 @@ export function OverviewPage() {
       ) : (
         <section className="relative rounded-[28px] bg-[#351567] px-6 py-7 text-white sm:px-9 sm:py-9">
           <div className="relative z-10 max-w-[70%] sm:max-w-[65%]">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 px-2.5 py-0.5 rounded-full">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Live Operations · Today
-              </span>
-              <span className="text-xs font-semibold text-[#D7B9FA] tracking-[0.05em] uppercase hidden sm:inline">
-                {manilaDate()}
-              </span>
-            </div>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#D7B9FA]">
+              {manilaDate()}
+            </p>
             <h1 className="mt-3 text-2xl font-extrabold leading-tight sm:text-4xl">Attendance today</h1>
             <p className="mt-3 max-w-lg text-sm leading-relaxed text-[#EEE1FA]">
               {data?.event?.name || 'Student scans and checkpoint activity'}
